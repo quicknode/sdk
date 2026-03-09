@@ -1,0 +1,16 @@
+[package]
+name = "my-sdk-python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Python bindings for my-sdk"
+
+[lib]
+name = "_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+my-sdk-core = { path = "../core" }
+pyo3 = { version = "0.27", features = ["extension-module", "experimental-async"] }
+pyo3-async-runtimes = { version = "0.27", features = ["tokio-runtime"] }
+

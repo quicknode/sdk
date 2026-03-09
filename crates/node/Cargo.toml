@@ -1,0 +1,18 @@
+[package]
+name = "my-sdk-node"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Node.js bindings for my-sdk"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+my-sdk-core = { path = "../core" }
+napi = { version = "2", features = ["async", "tokio_rt"] }
+napi-derive = "2"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+
+[build-dependencies]
+napi-build = "2"
