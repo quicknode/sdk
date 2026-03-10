@@ -1,9 +1,9 @@
 [package]
-name = "my-sdk-core"
+name = "sdk-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Core library for my-sdk"
+description = "Core library for quicknode sdk"
 
 [dependencies]
 thiserror = "1.0"

@@ -1,47 +1,38 @@
-use reqwest::get;
-use serde::Deserialize;
+pub mod httpbin;
 
-#[derive(Deserialize)]
-struct UuidResponse {
-    uuid: String,
-}
-// Simple function: add two numbers
-pub fn add(a: i64, b: i64) -> i64 {
-    a + b
+use std::sync::OnceLock;
+
+use reqwest::Client as ReqwestClient;
+
+/// To be used as singleton for global client
+static BASE_CLIENT: OnceLock<Client> = OnceLock::new();
+
+#[derive(Debug, Clone)]
+pub struct Client {
+    http_client: ReqwestClient,
+    api_key: String,
+    // config
 }
 
-/// Function that can fail: divide two numbers
-pub fn divide(a: f64, b: f64) -> Result<f64, String> {
-    if b == 0.0 {
-        return Err("Can't divide by zero".to_string());
+impl Client {
+    pub fn new(api_key: impl Into<String>) -> Self {
+        Self {
+            http_client: ReqwestClient::new(),
+            api_key: api_key.into(),
+        }
     }
-    Ok(a / b)
 }
 
-/// Gets a uuid from httpbin
-pub async fn get_external_uuid() -> Result<String, Box<dyn std::error::Error>> {
-    let uuid: UuidResponse = get("https://httpbin.org/uuid").await?.json().await?;
-
-    Ok(uuid.uuid)
+/// Global SDK singleton to be initialized before use
+pub fn init(api_key: impl Into<String>) {
+    BASE_CLIENT
+        .set(Client::new(api_key))
+        .expect("BaseClient already initialized");
 }
 
-// ============================================================================
-// Tests
-// ============================================================================
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_add() {
-        assert_eq!(add(2, 3), 5);
-        assert_eq!(add(-1, 1), 0);
-    }
-
-    #[test]
-    fn test_divide() {
-        assert_eq!(divide(10.0, 2.0).unwrap(), 5.0);
-        assert!(divide(1.0, 0.0).is_err());
-    }
+/// Base client singleton for use in other clients
+pub fn base_client() -> &'static Client {
+    BASE_CLIENT
+        .get()
+        .expect("SDK Client not initialized. Call init() first.")
 }
