@@ -16,10 +16,17 @@ class HttpbinClient:
         return await self._client.get_uuid()
 
 
-def init(api_key: str) -> None:
+class SDK:
+    """Initialized SDK with all clients."""
+
+    def __init__(self) -> None:
+        self.httpbin = HttpbinClient()
+
+
+def init(api_key: str) -> SDK:
     """Initialize the SDK with your API key."""
     global httpbin
-
     _init(api_key)
-    httpbin = HttpbinClient()
-
+    sdk = SDK()
+    httpbin = sdk.httpbin
+    return sdk

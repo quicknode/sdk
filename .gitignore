@@ -50,6 +50,11 @@ __pycache__/
 dist/
 build/
 *.whl
+*.dSYM/
+
+# Maturin
+python/my_sdk/_core.cpython-*.so
+python/my_sdk/*.dylib
 
 # Node.js
 node_modules/

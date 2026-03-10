@@ -1,10 +1,10 @@
 import asyncio
-from my_sdk import add, get_external_uuid
+from sdk import init
 
 
 async def main():
-    add(1, 2)
-    uuid = await get_external_uuid()
+    qn_sdk = init(api_key="test123")
+    uuid = await qn_sdk.httpbin.get_uuid()
     print(uuid)
 
 

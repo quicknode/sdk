@@ -59,7 +59,7 @@ uv pip install maturin
 maturin develop
 
 # Node.js (from npm/)
-npm install && npm run build
+npm install && npm run build && npm run test
 ```
 
 ## License

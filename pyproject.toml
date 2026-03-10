@@ -3,15 +3,15 @@ requires = ["maturin>=1.5,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "my-sdk"
+name = "sdk"
 version = "0.1.0"
-description = "A Rust SDK with Python bindings"
+description = "Quicknode SDK"
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
 
 [tool.maturin]
 manifest-path = "crates/python/Cargo.toml"
-module-name = "my_sdk._core"
+module-name = "sdk._core"
 python-source = "python"
 features = ["pyo3/extension-module"]
