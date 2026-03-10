@@ -1,14 +1,9 @@
-const { add, divide } = require("./index.js");
+const sdk = require("./sdk.js");
 
-console.log("Testing my-sdk Node.js bindings\n");
-
-console.log("add(2, 3) =", add(2, 3));
-console.log("divide(10, 2) =", divide(10, 2));
-
-try {
-  console.log("divide(1, 0) =", divide(1, 0));
-} catch (e) {
-  console.log("divide(1, 0) threw:", e.message);
+async function main() {
+  sdk.init("test-key");
+  const uuid = await sdk.httpbin.getUuid();
+  console.log("UUID:", uuid);
 }
 
-console.log("\nAll tests passed!");
+main();

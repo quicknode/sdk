@@ -2,11 +2,13 @@
   "name": "my-sdk",
   "version": "0.1.0",
   "description": "A Rust SDK with Node.js bindings",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "sdk.js",
+  "types": "sdk.d.ts",
   "files": [
     "index.js",
     "index.d.ts",
+    "sdk.js",
+    "sdk.d.ts",
     "*.node"
   ],
   "napi": {
