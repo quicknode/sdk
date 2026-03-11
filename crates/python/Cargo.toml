@@ -10,7 +10,7 @@ name = "_core"
 crate-type = ["cdylib"]
 
 [dependencies]
-sdk-core = { path = "../core" }
-pyo3 = { version = "0.27", features = ["extension-module", "experimental-async"] }
-pyo3-async-runtimes = { version = "0.27", features = ["tokio-runtime"] }
+sdk-core = { path = "../core", features = ["python"] }
+pyo3 = { workspace = true, features = ["extension-module", "experimental-async"] }
+pyo3-async-runtimes = { workspace = true, features = ["tokio-runtime"] }
 

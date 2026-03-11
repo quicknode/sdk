@@ -5,9 +5,17 @@ edition.workspace = true
 license.workspace = true
 description = "Core library for quicknode sdk"
 
+[features]
+python = ["pyo3", "pyo3-async-runtimes"]
+node = ["napi", "napi-derive"]
+
 [dependencies]
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.0", features = ["time"] }
-reqwest = { version = "0.13.2", features = ["json"] }
+reqwest = { version = "0.13.2", features = ["json", "query"] }
+pyo3 = { workspace = true, optional = true, features = ["extension-module", "experimental-async"] }
+pyo3-async-runtimes = { workspace = true, optional = true, features = ["tokio-runtime"] }
+napi = { workspace = true, optional = true, features = ["async", "tokio_rt"] }
+napi-derive = { workspace = true, optional = true }

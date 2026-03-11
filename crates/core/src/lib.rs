@@ -1,38 +1,33 @@
-pub mod httpbin;
+pub mod admin_api;
+pub mod errors;
 
-use std::sync::OnceLock;
+use std::sync::Arc;
 
 use reqwest::Client as ReqwestClient;
 
-/// To be used as singleton for global client
-static BASE_CLIENT: OnceLock<Client> = OnceLock::new();
-
 #[derive(Debug, Clone)]
-pub struct Client {
+pub struct SdkConfig(Arc<SdkConfigInner>);
+
+#[derive(Debug)]
+struct SdkConfigInner {
     http_client: ReqwestClient,
     api_key: String,
     // config
 }
 
-impl Client {
+impl SdkConfig {
     pub fn new(api_key: impl Into<String>) -> Self {
-        Self {
+        Self(Arc::new(SdkConfigInner {
             http_client: ReqwestClient::new(),
             api_key: api_key.into(),
-        }
+        }))
     }
-}
 
-/// Global SDK singleton to be initialized before use
-pub fn init(api_key: impl Into<String>) {
-    BASE_CLIENT
-        .set(Client::new(api_key))
-        .expect("BaseClient already initialized");
-}
+    pub(crate) fn http_client(&self) -> &ReqwestClient {
+        &self.0.http_client
+    }
 
-/// Base client singleton for use in other clients
-pub fn base_client() -> &'static Client {
-    BASE_CLIENT
-        .get()
-        .expect("SDK Client not initialized. Call init() first.")
+    pub(crate) fn api_key(&self) -> &str {
+        &self.0.api_key
+    }
 }

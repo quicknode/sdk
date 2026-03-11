@@ -9,10 +9,10 @@ description = "Node.js bindings for my-sdk"
 crate-type = ["cdylib"]
 
 [dependencies]
-sdk-core = { path = "../core" }
+sdk-core = { path = "../core", features = ["node"] }
+tokio = { version = "1", features = ["rt-multi-thread"] }
 napi = { version = "2", features = ["async", "tokio_rt"] }
 napi-derive = "2"
-tokio = { version = "1", features = ["rt-multi-thread"] }
 
 [build-dependencies]
 napi-build = "2"

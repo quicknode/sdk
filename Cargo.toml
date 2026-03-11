@@ -10,3 +10,9 @@ members = [
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+
+[workspace.dependencies]
+pyo3 = { version = "0.27", features = ["extension-module", "experimental-async"] }
+pyo3-async-runtimes = { version = "0.27", features = ["tokio-runtime"] }
+napi = { version = "2", features = ["async", "tokio_rt"] }
+napi-derive = { version = "2" }

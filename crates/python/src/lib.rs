@@ -1,40 +1,62 @@
 use pyo3::{exceptions::PyValueError, prelude::*};
-
 use sdk_core as core;
 
-#[pyfunction]
-fn init(api_key: String) {
-    core::init(api_key);
-}
+// ── Sub-clients ────────────────────────────────────────────────
 
 #[pyclass]
-pub struct HttpbinClient {
-    inner: core::httpbin::HttpbinClient,
+#[derive(Clone)]
+pub struct AdminApiClient {
+    inner: core::admin_api::AdminApiClient,
 }
 
 #[pymethods]
-impl HttpbinClient {
-    #[new]
-    fn new() -> Self {
-        Self {
-            inner: core::httpbin::HttpbinClient::new(),
-        }
-    }
-
-    fn get_uuid<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+impl AdminApiClient {
+    fn get_endpoints<'py>(
+        &self,
+        py: Python<'py>,
+        params: &core::admin_api::GetEndpointsRequest,
+    ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
+        let params = params.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
-                .get_uuid()
+                .get_endpoints(&params)
                 .await
                 .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
 }
 
+// ── Top-level SDK ──────────────────────────────────────────────
+
+#[pyclass]
+pub struct QuickNodeSdk {
+    #[pyo3(get)]
+    admin_api: AdminApiClient,
+}
+
+#[pymethods]
+impl QuickNodeSdk {
+    #[new]
+    fn new(api_key: String) -> Self {
+        let config = core::SdkConfig::new(api_key);
+        Self {
+            admin_api: AdminApiClient {
+                inner: core::admin_api::AdminApiClient::new(config.clone()),
+            },
+        }
+    }
+}
+
+// ── Module ─────────────────────────────────────────────────────
+
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(init, m)?)?;
-    m.add_class::<HttpbinClient>()?;
+    m.add_class::<QuickNodeSdk>()?;
+    m.add_class::<AdminApiClient>()?;
+    m.add_class::<core::admin_api::GetEndpointsRequest>()?;
+    m.add_class::<core::admin_api::GetEndpointsResponse>()?;
+    m.add_class::<core::admin_api::Endpoint>()?;
+    m.add_class::<core::admin_api::EndpointTag>()?;
     Ok(())
 }
