@@ -1,14 +1,17 @@
 use pyo3::{exceptions::PyValueError, prelude::*};
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use sdk_core as core;
 
 // ── Top-level SDK ──────────────────────────────────────────────
 
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct QuickNodeSdk {
     #[pyo3(get)]
     admin_api: AdminApiClient,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl QuickNodeSdk {
     #[new]
@@ -24,12 +27,14 @@ impl QuickNodeSdk {
 
 // ── Sub-clients ────────────────────────────────────────────────
 
+#[gen_stub_pyclass]
 #[pyclass]
 #[derive(Clone)]
 pub struct AdminApiClient {
     inner: core::admin_api::AdminApiClient,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl AdminApiClient {
     fn get_endpoints<'py>(

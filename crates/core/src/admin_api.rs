@@ -1,5 +1,9 @@
+#[cfg(feature = "node")]
 use napi_derive::napi;
+#[cfg(feature = "python")]
 use pyo3::pyclass;
+#[cfg(feature = "python")]
+use pyo3_stub_gen::derive::gen_stub_pyclass;
 use serde::{Deserialize, Serialize};
 
 use crate::{errors::SdkError, SdkConfig};
@@ -11,7 +15,11 @@ pub struct AdminApiClient {
     config: SdkConfig,
 }
 
+// In core, any data structs get python stub pycalss to generate typing file
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+// Pyo3 macro to genrate python class from rust struct
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+// napi macro to generate typescript types from rust crate
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetEndpointsRequest {
@@ -25,6 +33,7 @@ pub struct GetEndpointsRequest {
     pub tag_labels: Option<Vec<String>>,
 }
 
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
@@ -34,6 +43,7 @@ pub struct GetEndpointsResponse {
     pub error: Option<String>,
 }
 
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
@@ -48,6 +58,7 @@ pub struct Endpoint {
     pub tags: Vec<EndpointTag>,
 }
 
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
