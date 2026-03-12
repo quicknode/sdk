@@ -14,4 +14,4 @@ license = { text = "MIT" }
 manifest-path = "crates/python/Cargo.toml"
 module-name = "sdk._core"
 python-source = "python"
-features = ["pyo3/extension-module"]
+features = ["extension-module"]

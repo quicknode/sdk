@@ -7,19 +7,13 @@ description = "Python bindings for Quicknode SDK"
 
 [lib]
 name = "_core"
-crate-type = ["cdylib",  "rlib"]
+crate-type = ["cdylib", "rlib"]
 
-[[bin]]
-name = "generate_stubs"
-path = "bin/generate_stubs.rs"
+[features]
+extension-module = ["pyo3/extension-module", "sdk-core/extension-module"]
 
 [dependencies]
 sdk-core = { path = "../core", features = ["python"] }
-pyo3 = { workspace = true, features = ["experimental-async"] }
+pyo3 = { workspace = true }
 pyo3-async-runtimes = { workspace = true, features = ["tokio-runtime"] }
-pyo3-stub-gen = { workspace = true}
-
-[features]
-default = ["extension-module"]
-extension-module = ["pyo3/extension-module"]
-
+pyo3-stub-gen = { workspace = true }

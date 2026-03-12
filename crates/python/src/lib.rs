@@ -1,5 +1,8 @@
 use pyo3::{exceptions::PyValueError, prelude::*};
-use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
+use pyo3_stub_gen::{
+    define_stub_info_gatherer,
+    derive::{gen_stub_pyclass, gen_stub_pymethods},
+};
 use sdk_core as core;
 
 // ── Top-level SDK ──────────────────────────────────────────────
@@ -65,3 +68,5 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin_api::EndpointTag>()?;
     Ok(())
 }
+
+define_stub_info_gatherer!(stub_info);
