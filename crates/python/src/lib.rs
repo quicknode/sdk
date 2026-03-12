@@ -1,6 +1,27 @@
 use pyo3::{exceptions::PyValueError, prelude::*};
 use sdk_core as core;
 
+// ── Top-level SDK ──────────────────────────────────────────────
+
+#[pyclass]
+pub struct QuickNodeSdk {
+    #[pyo3(get)]
+    admin_api: AdminApiClient,
+}
+
+#[pymethods]
+impl QuickNodeSdk {
+    #[new]
+    fn new(api_key: String) -> Self {
+        let config = core::SdkConfig::new(api_key);
+        Self {
+            admin_api: AdminApiClient {
+                inner: core::admin_api::AdminApiClient::new(config),
+            },
+        }
+    }
+}
+
 // ── Sub-clients ────────────────────────────────────────────────
 
 #[pyclass]
@@ -24,27 +45,6 @@ impl AdminApiClient {
                 .await
                 .map_err(|e| PyValueError::new_err(e.to_string()))
         })
-    }
-}
-
-// ── Top-level SDK ──────────────────────────────────────────────
-
-#[pyclass]
-pub struct QuickNodeSdk {
-    #[pyo3(get)]
-    admin_api: AdminApiClient,
-}
-
-#[pymethods]
-impl QuickNodeSdk {
-    #[new]
-    fn new(api_key: String) -> Self {
-        let config = core::SdkConfig::new(api_key);
-        Self {
-            admin_api: AdminApiClient {
-                inner: core::admin_api::AdminApiClient::new(config.clone()),
-            },
-        }
     }
 }
 

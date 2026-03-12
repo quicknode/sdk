@@ -13,4 +13,5 @@ crate-type = ["cdylib"]
 sdk-core = { path = "../core", features = ["python"] }
 pyo3 = { workspace = true, features = ["extension-module", "experimental-async"] }
 pyo3-async-runtimes = { workspace = true, features = ["tokio-runtime"] }
+pyo3-stub-gen = { workspace = true}
 

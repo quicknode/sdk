@@ -6,7 +6,7 @@ license.workspace = true
 description = "Core library for quicknode sdk"
 
 [features]
-python = ["pyo3", "pyo3-async-runtimes"]
+python = ["pyo3", "pyo3-async-runtimes", "pyo3-stub-gen"]
 node = ["napi", "napi-derive"]
 
 [dependencies]
@@ -19,3 +19,4 @@ pyo3 = { workspace = true, optional = true, features = ["extension-module", "exp
 pyo3-async-runtimes = { workspace = true, optional = true, features = ["tokio-runtime"] }
 napi = { workspace = true, optional = true, features = ["async", "tokio_rt"] }
 napi-derive = { workspace = true, optional = true }
+pyo3-stub-gen = { workspace = true, optional = true }

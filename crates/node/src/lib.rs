@@ -27,7 +27,7 @@ impl QuickNodeSdk {
     }
 }
 
-// ── Admin API sub-client ───────────────────────────────────────
+// ── Sub-clients ───────────────────────────────────────
 
 #[napi]
 pub struct AdminApiClient {

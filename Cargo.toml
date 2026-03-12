@@ -16,3 +16,4 @@ pyo3 = { version = "0.27", features = ["extension-module", "experimental-async"]
 pyo3-async-runtimes = { version = "0.27", features = ["tokio-runtime"] }
 napi = { version = "2", features = ["async", "tokio_rt"] }
 napi-derive = { version = "2" }
+pyo3-stub-gen = { version = "0.19.0" }
