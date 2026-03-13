@@ -14,7 +14,7 @@ __all__ = [
 
 @typing.final
 class AdminApiClient:
-    def get_endpoints(self, params: GetEndpointsRequest) -> typing.Any: ...
+    def get_endpoints(self, limit: typing.Optional[builtins.int] = None, offset: typing.Optional[builtins.int] = None, tag_ids: typing.Optional[typing.Sequence[builtins.int]] = None, tag_labels: typing.Optional[typing.Sequence[builtins.str]] = None) -> typing.Any: ...
 
 @typing.final
 class Endpoint:
@@ -91,6 +91,6 @@ class GetEndpointsResponse:
 @typing.final
 class QuickNodeSdk:
     @property
-    def admin_api(self) -> AdminApiClient: ...
+    def admin(self) -> AdminApiClient: ...
     def __new__(cls, api_key: builtins.str) -> QuickNodeSdk: ...
 

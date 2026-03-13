@@ -56,7 +56,7 @@ cargo test -p my-sdk-core
 # Python (from project root)
 uv venv && source .venv/bin/activate
 uv pip install maturin
-maturin develop
+maturin develop && cargo run -p sdk-python-stubs
 
 # Node.js (from npm/)
 npm install && npm run build && npm run test

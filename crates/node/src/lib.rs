@@ -6,7 +6,7 @@ use sdk_core as core;
 
 #[napi]
 pub struct QuickNodeSdk {
-    admin_api: core::admin_api::AdminApiClient,
+    admin: core::admin::AdminApiClient,
 }
 
 #[napi]
@@ -15,14 +15,14 @@ impl QuickNodeSdk {
     pub fn new(api_key: String) -> Self {
         let config = core::SdkConfig::new(api_key);
         Self {
-            admin_api: core::admin_api::AdminApiClient::new(config),
+            admin: core::admin::AdminApiClient::new(config),
         }
     }
 
     #[napi(getter)]
-    pub fn admin_api(&self) -> AdminApiClient {
+    pub fn admin(&self) -> AdminApiClient {
         AdminApiClient {
-            inner: self.admin_api.clone(),
+            inner: self.admin.clone(),
         }
     }
 }
@@ -31,7 +31,7 @@ impl QuickNodeSdk {
 
 #[napi]
 pub struct AdminApiClient {
-    inner: core::admin_api::AdminApiClient,
+    inner: core::admin::AdminApiClient,
 }
 
 #[napi]
@@ -39,8 +39,8 @@ impl AdminApiClient {
     #[napi]
     pub async fn get_endpoints(
         &self,
-        params: Option<core::admin_api::GetEndpointsRequest>,
-    ) -> Result<core::admin_api::GetEndpointsResponse> {
+        params: Option<core::admin::GetEndpointsRequest>,
+    ) -> Result<core::admin::GetEndpointsResponse> {
         let params = params.unwrap_or_default();
         self.inner
             .get_endpoints(&params)

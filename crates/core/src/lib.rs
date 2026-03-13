@@ -1,4 +1,4 @@
-pub mod admin_api;
+pub mod admin;
 pub mod errors;
 
 use std::sync::Arc;
