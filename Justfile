@@ -5,4 +5,4 @@ python-build:
   maturin develop && cargo run -p sdk-python-stubs && cp python/sdk/init_manual_override.pyi python/sdk/__init__.pyi
 
 node-build:
-  npm install && npm run build && npm run test
+  cd ./npm && npm install && npm run build && npm run test && cd ..

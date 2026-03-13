@@ -48,7 +48,7 @@ impl AdminApiClient {
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetEndpointsResponse]"
     ))]
-    // Need to take arguments here so the client doesn't't have to initalize a class for the param. If it was
+    // Need to take arguments here so the client doesn't have to initalize a class for the param. If it was
     // params: GetEndpointsRequest, that class needs to be initalized and passed in as param
     fn get_endpoints<'py>(
         &self,

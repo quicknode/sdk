@@ -1,9 +1,11 @@
-const sdk = require("./sdk.js");
+import { QuickNodeSdk } from ".";
 
 async function main() {
-  sdk.init("test-key");
-  const uuid = await sdk.httpbin.getUuid();
-  console.log("UUID:", uuid);
+  const qn = new QuickNodeSdk(process.env["QN_API_KEY"]);
+  const endpoint_request = await qn.admin.getEndpoints();
+  endpoint_request.data.map((ep) => {
+    console.log(`Endpoint ${ep.id} on ${ep.network}`);
+  });
 }
 
 main();

@@ -1,7 +1,7 @@
-export function init(apiKey: string): void;
+// sdk.d.ts
+import { QuickNodeSdk as _QuickNodeSdk } from "./index";
 
-export interface HttpbinClient {
-  getUuid(): Promise<string>;
+export class QuickNodeSdk {
+  constructor(apiKey: string);
+  admin: _QuickNodeSdk["admin"];
 }
-
-export const httpbin: HttpbinClient | null;
