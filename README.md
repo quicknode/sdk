@@ -1,18 +1,18 @@
 # Quicknode SDK
 
-Quicknode SDK making it easy to use Quicknode products
+A unified SDK for building on QuickNode.
 
-Quicknode SDK is a Rust SDK with Python and Node.js bindings.
+Rust SDK with Python and Node.js bindings.
 
 ## Project Structure
 
 ```
-my-sdk/
+sdk/
 ├── crates/
 │   ├── core/          # Pure Rust business logic
 │   ├── python/        # PyO3 bindings
 │   └── node/          # napi-rs bindings
-├── python/my_sdk/     # Python package with type hints
+├── python/sdk/        # Python package with type hints
 ├── npm/               # Node.js package with TypeScript types
 └── pyproject.toml     # maturin build config
 ```
@@ -30,27 +30,32 @@ my-sdk/
 - Rust (stable)
 - Python 3.8+ with [uv](https://docs.astral.sh/uv/)
 - Node.js 18+
+- [just](https://github.com/casey/just)
 
 ### Build Commands
 
 Use the commands in the `Justfile` for the setup and build commands
 ```bash
 # Core library
-cargo test -p my-sdk-core
+cargo check
+cargo test -p sdk-core
 
 # Python (from project root)
-uv venv && source .venv/bin/activate
-uv pip install maturin
-maturin develop && cargo run -p sdk-python-stubs && cp python/sdk/init_manual_override.pyi python/sdk/__init__.pyi
+just python-setup-env
+just python-build
 
 # Node.js (from npm/)
-npm install && npm run build && npm run test
+just node-build
+
+# Rust
+cargo build -p sdk-core
 ```
 
 Examples
 ```bash
-cd npm && QN_API_KEY=replaceme npx tsx example.ts
+QN_API_KEY=replaceme cargo run --example admin -p sdk-core
 QN_API_KEY=replaceme uv run example.py
+cd npm && QN_API_KEY=replaceme npx tsx example.ts
 ```
 
 ## License

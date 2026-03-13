@@ -1,5 +1,8 @@
 python-setup-env:
-  UV_VENV_CLEAR=1 uv venv --python 3.14 .venv && uv pip install maturin
+  uv venv && source .venv/bin/activate && uv pip install maturin
+
+python-setup-env-fish:
+  uv venv && source .venv/bin/activate.fish && uv pip install maturin
 
 python-build:
   maturin develop && cargo run -p sdk-python-stubs && cp python/sdk/init_manual_override.pyi python/sdk/__init__.pyi

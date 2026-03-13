@@ -1,9 +1,8 @@
 pub mod admin;
 pub mod errors;
 
-use std::sync::Arc;
-
 use reqwest::Client as ReqwestClient;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct SdkConfig(Arc<SdkConfigInner>);
@@ -12,7 +11,6 @@ pub struct SdkConfig(Arc<SdkConfigInner>);
 struct SdkConfigInner {
     http_client: ReqwestClient,
     api_key: String,
-    // config
 }
 
 impl SdkConfig {
@@ -29,5 +27,18 @@ impl SdkConfig {
 
     pub(crate) fn api_key(&self) -> &str {
         &self.0.api_key
+    }
+}
+
+pub struct QuickNodeSdk {
+    pub admin: admin::AdminApiClient,
+}
+
+impl QuickNodeSdk {
+    pub fn new(api_key: impl Into<String>) -> Self {
+        let config = SdkConfig::new(api_key);
+        Self {
+            admin: admin::AdminApiClient::new(config),
+        }
     }
 }
