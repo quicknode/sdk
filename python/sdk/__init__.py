@@ -1,2 +1,16 @@
-from sdk._core import *
-from sdk._core import __all__
+# Need to manually keep this file updated with the exports
+from sdk._core import (
+    QuickNodeSdk,
+    AdminApiClient,
+    Endpoint,
+    EndpointTag,
+    GetEndpointsResponse,
+)
+
+__all__ = [
+    "QuickNodeSdk",
+    "AdminApiClient",
+    "Endpoint",
+    "EndpointTag",
+    "GetEndpointsResponse",
+]

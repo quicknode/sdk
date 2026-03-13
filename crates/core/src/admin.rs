@@ -49,11 +49,11 @@ pub struct GetEndpointsResponse {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Endpoint {
     pub id: String,
-    pub label: String,
+    pub label: Option<String>,
     pub chain: String,
     pub network: String,
     pub http_url: String,
-    pub wss_url: String,
+    pub wss_url: Option<String>,
     #[serde(default)]
     pub tags: Vec<EndpointTag>,
 }
@@ -76,18 +76,23 @@ impl AdminApiClient {
         &self,
         params: &GetEndpointsRequest,
     ) -> Result<GetEndpointsResponse, SdkError> {
-        let resp: GetEndpointsResponse = self
+        let resp = self
             .config
             .http_client()
-            .get(format!("{BASE_URL}endpoints"))
+            .get(format!("{BASE_URL}/endpoints"))
             .header("accept", "application/json")
             .header("x-api-key", self.config.api_key())
             .query(params)
             .send()
-            .await?
-            .json()
-            .await?;
+            .await
+            .map_err(SdkError::Http)?;
 
-        Ok(resp)
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 }

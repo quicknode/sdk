@@ -23,22 +23,6 @@ my-sdk/
 
 **Node.js:** `npm install my-sdk`
 
-## Usage
-
-**Python:**
-```python
-import my_sdk
-my_sdk.add(2, 3)        # 5
-my_sdk.divide(10, 2)    # 5.0
-```
-
-**TypeScript:**
-```typescript
-import { add, divide } from 'my-sdk';
-add(2, 3);        // 5
-divide(10, 2);    // 5.0
-```
-
 ## Development
 
 ### Prerequisites

@@ -41,6 +41,13 @@ pub struct AdminApiClient {
 #[pymethods]
 impl AdminApiClient {
     #[pyo3(signature = (limit=None, offset=None, tag_ids=None, tag_labels=None))]
+    // We are using pyo3_async_runtimes::tokio::future_into_py, so we need an override of the
+    // return type generation because it will always return PyResult<Bound<'py, PyAny>>.
+    // The async wrapper future_into_py returns a generic "any Python object" type because Python's
+    // coroutine system doesn't carry information about what type the await will eventually produce.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetEndpointsResponse]"
+    ))]
     // Need to take arguments here so the client doesn't't have to initalize a class for the param. If it was
     // params: GetEndpointsRequest, that class needs to be initalized and passed in as param
     fn get_endpoints<'py>(
