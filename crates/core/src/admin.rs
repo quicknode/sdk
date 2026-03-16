@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{errors::SdkError, SdkConfig};
 
-const BASE_URL: &str = "https://api.quicknode.com/v0";
+static BASE_URL: std::sync::LazyLock<reqwest::Url> = std::sync::LazyLock::new(|| {
+    reqwest::Url::parse("https://api.quicknode.com/v0/").expect("invalid base URL")
+});
 
 #[derive(Debug, Clone)]
 pub struct AdminApiClient {
@@ -23,7 +25,7 @@ pub struct AdminApiClient {
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 // napi macro to generate typescript types from rust crate
 #[cfg_attr(feature = "node", napi(object))]
-// Rust's bon builder for builder pattern added to request params for easy building in rust sdk
+// Bon builder for builder pattern added to request params for easy building in rust sdk
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetEndpointsRequest {
@@ -80,10 +82,11 @@ impl AdminApiClient {
         &self,
         params: &GetEndpointsRequest,
     ) -> Result<GetEndpointsResponse, SdkError> {
+        let url = BASE_URL.join("endpoints")?;
         let resp = self
             .config
             .http_client()
-            .get(format!("{BASE_URL}/endpoints"))
+            .get(url)
             .header("accept", "application/json")
             .header("x-api-key", self.config.api_key())
             .query(params)

@@ -53,7 +53,7 @@ cargo build -p sdk-core
 
 Examples
 ```bash
-QN_API_KEY=replaceme cargo run --example admin -p sdk-core
+QN_API_KEY=replaceme cargo run --example admin -p sdk-core --features rust
 QN_API_KEY=replaceme uv run example.py
 cd npm && QN_API_KEY=replaceme npx tsx example.ts
 ```

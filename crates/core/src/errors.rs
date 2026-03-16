@@ -15,4 +15,7 @@ pub enum SdkError {
         source: serde_json::Error,
         body: String,
     },
+
+    #[error("Invalid URL: {0}")]
+    UrlParse(#[from] url::ParseError),
 }
