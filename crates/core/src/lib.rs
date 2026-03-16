@@ -4,6 +4,7 @@ pub mod errors;
 use reqwest::Client as ReqwestClient;
 use std::sync::Arc;
 
+// Using Arc for the inner config to keep as a cheap clone
 #[derive(Debug, Clone)]
 pub struct SdkConfig(Arc<SdkConfigInner>);
 

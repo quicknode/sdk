@@ -6,7 +6,7 @@ use sdk_core as core;
 
 #[napi]
 pub struct QuickNodeSdk {
-    admin: core::admin::AdminApiClient,
+    admin: AdminApiClient,
 }
 
 #[napi]
@@ -15,20 +15,21 @@ impl QuickNodeSdk {
     pub fn new(api_key: String) -> Self {
         let config = core::SdkConfig::new(api_key);
         Self {
-            admin: core::admin::AdminApiClient::new(config),
+            admin: AdminApiClient {
+                inner: core::admin::AdminApiClient::new(config),
+            },
         }
     }
 
     #[napi(getter)]
     pub fn admin(&self) -> AdminApiClient {
-        AdminApiClient {
-            inner: self.admin.clone(),
-        }
+        self.admin.clone()
     }
 }
 
 // ── Sub-clients ───────────────────────────────────────
 
+#[derive(Clone)]
 #[napi]
 pub struct AdminApiClient {
     inner: core::admin::AdminApiClient,
