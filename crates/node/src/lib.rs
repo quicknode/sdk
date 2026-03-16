@@ -12,11 +12,11 @@ pub struct QuickNodeSdk {
 #[napi]
 impl QuickNodeSdk {
     #[napi(constructor)]
-    pub fn new(api_key: String) -> Self {
-        let config = core::SdkConfig::new(api_key);
+    pub fn new(config: core::SdkFullConfig) -> Self {
+        let sdk_config = core::SdkConfig::new(config);
         Self {
             admin: AdminApiClient {
-                inner: core::admin::AdminApiClient::new(config),
+                inner: core::admin::AdminApiClient::new(sdk_config),
             },
         }
     }

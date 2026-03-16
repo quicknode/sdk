@@ -10,10 +10,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{errors::SdkError, SdkConfig};
 
-static BASE_URL: std::sync::LazyLock<reqwest::Url> = std::sync::LazyLock::new(|| {
-    reqwest::Url::parse("https://api.quicknode.com/v0/").expect("invalid base URL")
-});
-
 #[derive(Debug, Clone)]
 pub struct AdminApiClient {
     config: SdkConfig,
@@ -82,7 +78,7 @@ impl AdminApiClient {
         &self,
         params: &GetEndpointsRequest,
     ) -> Result<GetEndpointsResponse, SdkError> {
-        let url = BASE_URL.join("endpoints")?;
+        let url = self.config.admin_base_url().join("endpoints")?;
         let resp = self
             .config
             .http_client()

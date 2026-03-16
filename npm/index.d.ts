@@ -26,8 +26,20 @@ export interface EndpointTag {
   tagId: number
   label: string
 }
+export interface HttpConfig {
+  timeoutSecs?: number
+  poolMaxIdlePerHost?: number
+}
+export interface AdminConfig {
+  baseUrl?: string
+}
+export interface SdkFullConfig {
+  apiKey: string
+  http?: HttpConfig
+  admin?: AdminConfig
+}
 export declare class QuickNodeSdk {
-  constructor(apiKey: string)
+  constructor(config: SdkFullConfig)
   get admin(): AdminApiClient
 }
 export declare class AdminApiClient {

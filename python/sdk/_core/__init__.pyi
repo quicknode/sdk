@@ -5,16 +5,26 @@ import builtins
 import typing
 __all__ = [
     "AdminApiClient",
+    "AdminConfig",
     "Endpoint",
     "EndpointTag",
     "GetEndpointsRequest",
     "GetEndpointsResponse",
+    "HttpConfig",
     "QuickNodeSdk",
+    "SdkFullConfig",
 ]
 
 @typing.final
 class AdminApiClient:
     def get_endpoints(self, limit: typing.Optional[builtins.int] = None, offset: typing.Optional[builtins.int] = None, tag_ids: typing.Optional[typing.Sequence[builtins.int]] = None, tag_labels: typing.Optional[typing.Sequence[builtins.str]] = None) -> typing.Coroutine[typing.Any, typing.Any, GetEndpointsResponse]: ...
+
+@typing.final
+class AdminConfig:
+    @property
+    def base_url(self) -> typing.Optional[builtins.str]: ...
+    @base_url.setter
+    def base_url(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
 class Endpoint:
@@ -89,8 +99,34 @@ class GetEndpointsResponse:
     def error(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
+class HttpConfig:
+    @property
+    def timeout_secs(self) -> typing.Optional[builtins.int]: ...
+    @timeout_secs.setter
+    def timeout_secs(self, value: typing.Optional[builtins.int]) -> None: ...
+    @property
+    def pool_max_idle_per_host(self) -> typing.Optional[builtins.int]: ...
+    @pool_max_idle_per_host.setter
+    def pool_max_idle_per_host(self, value: typing.Optional[builtins.int]) -> None: ...
+
+@typing.final
 class QuickNodeSdk:
     @property
     def admin(self) -> AdminApiClient: ...
-    def __new__(cls, api_key: builtins.str) -> QuickNodeSdk: ...
+    def __new__(cls, config: SdkFullConfig) -> QuickNodeSdk: ...
+
+@typing.final
+class SdkFullConfig:
+    @property
+    def api_key(self) -> builtins.str: ...
+    @api_key.setter
+    def api_key(self, value: builtins.str) -> None: ...
+    @property
+    def http(self) -> typing.Optional[HttpConfig]: ...
+    @http.setter
+    def http(self, value: typing.Optional[HttpConfig]) -> None: ...
+    @property
+    def admin(self) -> typing.Optional[AdminConfig]: ...
+    @admin.setter
+    def admin(self, value: typing.Optional[AdminConfig]) -> None: ...
 

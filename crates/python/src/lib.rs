@@ -18,11 +18,11 @@ pub struct QuickNodeSdk {
 #[pymethods]
 impl QuickNodeSdk {
     #[new]
-    fn new(api_key: String) -> Self {
-        let config = core::SdkConfig::new(api_key);
+    fn new(config: core::SdkFullConfig) -> Self {
+        let sdk_config = core::SdkConfig::new(config);
         Self {
             admin: AdminApiClient {
-                inner: core::admin::AdminApiClient::new(config),
+                inner: core::admin::AdminApiClient::new(sdk_config),
             },
         }
     }
@@ -84,6 +84,9 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::GetEndpointsResponse>()?;
     m.add_class::<core::admin::Endpoint>()?;
     m.add_class::<core::admin::EndpointTag>()?;
+    m.add_class::<core::HttpConfig>()?;
+    m.add_class::<core::AdminConfig>()?;
+    m.add_class::<core::SdkFullConfig>()?;
     Ok(())
 }
 
