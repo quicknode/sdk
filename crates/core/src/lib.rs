@@ -9,9 +9,9 @@ use bon::Builder;
 #[cfg(feature = "node")]
 use napi_derive::napi;
 #[cfg(feature = "python")]
-use pyo3::pyclass;
+use pyo3::{pyclass, pymethods};
 #[cfg(feature = "python")]
-use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 const ADMIN_BASE_URL: &str = "https://api.quicknode.com/v0/";
 
@@ -25,6 +25,20 @@ pub struct HttpConfig {
     pub pool_max_idle_per_host: Option<i32>,
 }
 
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl HttpConfig {
+    #[new]
+    #[pyo3(signature = (timeout_secs=None, pool_max_idle_per_host=None))]
+    pub fn new(timeout_secs: Option<i64>, pool_max_idle_per_host: Option<i32>) -> Self {
+        HttpConfig {
+            timeout_secs,
+            pool_max_idle_per_host,
+        }
+    }
+}
+
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
@@ -32,6 +46,17 @@ pub struct HttpConfig {
 #[derive(Debug, Clone, Default)]
 pub struct AdminConfig {
     pub base_url: Option<String>,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl AdminConfig {
+    #[new]
+    #[pyo3(signature = (base_url=None))]
+    pub fn new(base_url: Option<String>) -> Self {
+        AdminConfig { base_url }
+    }
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
@@ -43,6 +68,21 @@ pub struct SdkFullConfig {
     pub api_key: String,
     pub http: Option<HttpConfig>,
     pub admin: Option<AdminConfig>,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl SdkFullConfig {
+    #[new]
+    #[pyo3(signature = (api_key, http=None, admin=None))]
+    pub fn new(api_key: String, http: Option<HttpConfig>, admin: Option<AdminConfig>) -> Self {
+        SdkFullConfig {
+            api_key,
+            http,
+            admin,
+        }
+    }
 }
 
 // Using Arc for the inner config to keep as a cheap clone
