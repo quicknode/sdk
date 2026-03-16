@@ -8,6 +8,7 @@ description = "Core library for quicknode sdk"
 [features]
 python = ["pyo3", "pyo3-async-runtimes", "pyo3-stub-gen"]
 node = ["napi", "napi-derive"]
+rust = ["bon"]
 extension-module = ["pyo3/extension-module"]
 
 [dependencies]
@@ -20,6 +21,7 @@ pyo3-async-runtimes = { workspace = true, optional = true, features = ["tokio-ru
 napi = { workspace = true, optional = true, features = ["async", "tokio_rt"] }
 napi-derive = { workspace = true, optional = true }
 pyo3-stub-gen = { workspace = true, optional = true }
+bon = { version = "3.9", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }

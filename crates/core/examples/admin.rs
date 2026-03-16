@@ -5,10 +5,7 @@ async fn main() {
     let api_key = std::env::var("QN_API_KEY").expect("set QN_API_KEY env var");
     let qn = QuickNodeSdk::new(api_key);
 
-    let params = GetEndpointsRequest {
-        limit: Some(5),
-        ..Default::default()
-    };
+    let params = GetEndpointsRequest::builder().limit(20).build();
 
     match qn.admin.get_endpoints(&params).await {
         Ok(resp) => {

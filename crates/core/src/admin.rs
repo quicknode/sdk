@@ -1,3 +1,5 @@
+#[cfg(feature = "rust")]
+use bon::Builder;
 #[cfg(feature = "node")]
 use napi_derive::napi;
 #[cfg(feature = "python")]
@@ -21,6 +23,8 @@ pub struct AdminApiClient {
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 // napi macro to generate typescript types from rust crate
 #[cfg_attr(feature = "node", napi(object))]
+// Rust's bon builder for builder pattern added to request params for easy building in rust sdk
+#[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetEndpointsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
