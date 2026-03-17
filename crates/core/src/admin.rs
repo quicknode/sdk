@@ -126,18 +126,12 @@ pub struct EndpointRateLimits {
 #[derive(Debug, Clone, Deserialize)]
 pub struct EndpointSecurity {
     pub options: Option<EndpointSecurityOptions>,
-    #[serde(default)]
-    pub tokens: Vec<EndpointToken>,
-    #[serde(default)]
-    pub jwts: Vec<EndpointJwt>,
-    #[serde(default)]
-    pub referrers: Vec<EndpointReferrer>,
-    #[serde(default)]
-    pub domain_masks: Vec<EndpointDomainMask>,
-    #[serde(default)]
-    pub ips: Vec<EndpointIp>,
-    #[serde(default)]
-    pub request_filters: Vec<EndpointRequestFilter>,
+    pub tokens: Option<Vec<EndpointToken>>,
+    pub jwts: Option<Vec<EndpointJwt>>,
+    pub referrers: Option<Vec<EndpointReferrer>>,
+    pub domain_masks: Option<Vec<EndpointDomainMask>>,
+    pub ips: Option<Vec<EndpointIp>>,
+    pub request_filters: Option<Vec<EndpointRequestFilter>>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
@@ -419,7 +413,15 @@ mod tests {
                     "network": "mainnet",
                     "http_url": "https://example.quicknode.pro/ep123",
                     "wss_url": null,
-                    "security": null,
+                    "security": {
+                        "options": { "tokens": true, "jwts": false, "domainMasks": false, "ips": false, "referrers": false, "requestFilters": false },
+                        "tokens": [{"id": "tok1", "token": "abc123"}],
+                        "jwts": null,
+                        "referrers": null,
+                        "domain_masks": null,
+                        "ips": null,
+                        "request_filters": null
+                    },
                     "rate_limits": null,
                     "tags": []
                 },
@@ -438,6 +440,9 @@ mod tests {
         assert_eq!(resp.data.id, "ep123");
         assert_eq!(resp.data.chain, "ethereum");
         assert_eq!(resp.data.network, "mainnet");
+        let security = resp.data.security.unwrap();
+        assert!(security.tokens.unwrap().len() == 1);
+        assert!(security.jwts.is_none());
     }
 
     #[tokio::test]
