@@ -11,160 +11,61 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[cfg_attr(feature = "rust", derive(Builder))]
-#[derive(Debug, Clone, Default, Serialize)]
-pub struct GetEndpointsRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub offset: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tag_ids: Option<Vec<i32>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tag_labels: Option<Vec<String>>,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
-pub struct GetEndpointsResponse {
-    #[serde(default)]
-    pub data: Vec<Endpoint>,
-    pub error: Option<String>,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct Endpoint {
-    pub id: String,
-    pub label: Option<String>,
-    pub chain: String,
-    pub network: String,
-    pub http_url: String,
-    pub wss_url: Option<String>,
-    #[serde(default)]
-    pub tags: Vec<EndpointTag>,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct EndpointTag {
-    pub tag_id: i32,
-    pub label: String,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[cfg_attr(feature = "rust", derive(Builder))]
-#[derive(Debug, Clone, Default, Serialize)]
-pub struct CreateEndpointRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub chain: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub network: Option<String>,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct CreateEndpointResponse {
-    pub data: SingleEndpoint,
-    pub error: Option<String>,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct SingleEndpoint {
-    pub id: String,
-    pub label: Option<String>,
+pub struct TeamUser {
+    pub id: i64,
+    pub full_name: Option<String>,
+    pub email: String,
+    pub role: Option<String>,
     pub status: Option<String>,
-    pub chain: String,
-    pub network: String,
-    pub http_url: String,
-    pub wss_url: Option<String>,
-    pub security: Option<EndpointSecurity>,
-    pub rate_limits: Option<EndpointRateLimits>,
+    pub created_at: Option<String>,
+    pub photo_url: Option<String>,
+    pub account_primary_user: Option<bool>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Deserialize)]
+pub struct TeamSummary {
+    pub id: i64,
+    pub name: String,
+    pub members_count: Option<i64>,
     #[serde(default)]
-    pub tags: Vec<EndpointTag>,
+    pub users: Vec<TeamUser>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
-pub struct EndpointRateLimits {
-    pub rate_limit_by_ip: Option<bool>,
-    pub account: Option<i32>,
-    pub rps: Option<i32>,
-    pub rpm: Option<i32>,
-    pub rpd: Option<i32>,
+pub struct TeamDetail {
+    pub id: i64,
+    pub name: String,
+    pub default_role: Option<String>,
+    pub members_count: Option<i64>,
+    #[serde(default)]
+    pub users: Vec<TeamUser>,
+    #[serde(default)]
+    pub pending_invites: Vec<TeamUser>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
-pub struct EndpointSecurity {
-    pub options: Option<EndpointSecurityOptions>,
-    pub tokens: Option<Vec<EndpointToken>>,
-    pub jwts: Option<Vec<EndpointJwt>>,
-    pub referrers: Option<Vec<EndpointReferrer>>,
-    pub domain_masks: Option<Vec<EndpointDomainMask>>,
-    pub ips: Option<Vec<EndpointIp>>,
-    pub request_filters: Option<Vec<EndpointRequestFilter>>,
+pub struct ListTeamsResponse {
+    #[serde(default)]
+    pub data: Vec<TeamSummary>,
+    pub error: Option<String>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct EndpointSecurityOptions {
-    pub tokens: Option<bool>,
-    pub jwts: Option<bool>,
-    #[serde(rename = "domainMasks")]
-    pub domain_masks: Option<bool>,
-    pub ips: Option<bool>,
-    pub referrers: Option<bool>,
-    #[serde(rename = "requestFilters")]
-    pub request_filters: Option<bool>,
-    #[serde(rename = "ipCustomHeader")]
-    pub ip_custom_header: Option<EndpointIpCustomHeaderOption>,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct EndpointIpCustomHeaderOption {
-    pub value: Option<String>,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct EndpointToken {
-    pub id: String,
-    pub token: String,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct EndpointJwt {
-    pub id: String,
-    pub public_key: String,
-    pub kid: String,
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct CreateTeamRequest {
     pub name: String,
 }
 
@@ -172,45 +73,66 @@ pub struct EndpointJwt {
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
-pub struct EndpointReferrer {
-    pub id: String,
-    pub referrer: String,
+pub struct CreateTeamData {
+    pub id: i64,
+    pub name: String,
+    pub default_role: Option<String>,
+    pub members_count: Option<i64>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
-pub struct EndpointDomainMask {
-    pub id: String,
-    pub domain: String,
+pub struct CreateTeamResponse {
+    pub data: Option<CreateTeamData>,
+    pub error: Option<String>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
-pub struct EndpointIp {
-    pub id: String,
-    pub ip: String,
+pub struct GetTeamResponse {
+    pub data: Option<TeamDetail>,
+    pub error: Option<String>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
-pub struct EndpointRequestFilter {
-    pub id: String,
+pub struct DeleteTeamData {
+    pub message: Option<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeleteTeamResponse {
+    pub data: Option<DeleteTeamData>,
+    pub error: Option<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Deserialize)]
+pub struct TeamEndpoint {
+    pub id: i64,
+    pub subdomain: String,
+    pub chain: Option<String>,
+    pub network: Option<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListTeamEndpointsResponse {
     #[serde(default)]
-    pub method: Vec<String>,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
-pub struct ShowEndpointResponse {
-    pub data: Option<SingleEndpoint>,
+    pub data: Vec<TeamEndpoint>,
     pub error: Option<String>,
 }
 
@@ -219,26 +141,24 @@ pub struct ShowEndpointResponse {
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
-pub struct UpdateEndpointRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub label: Option<String>,
-}
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[cfg_attr(feature = "rust", derive(Builder))]
-#[derive(Debug, Clone, Default, Serialize)]
-pub struct UpdateEndpointStatusRequest {
-    pub status: String,
+pub struct UpdateTeamEndpointsRequest {
+    pub endpoint_ids: Vec<String>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Deserialize)]
-pub struct UpdateEndpointStatusResponse {
-    pub data: Option<String>,
+pub struct UpdateTeamEndpointsData {
+    pub success: Option<bool>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Deserialize)]
+pub struct UpdateTeamEndpointsResponse {
+    pub data: Option<UpdateTeamEndpointsData>,
     pub error: Option<String>,
 }
 
@@ -247,7 +167,55 @@ pub struct UpdateEndpointStatusResponse {
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
-pub struct CreateTagRequest {
+pub struct InviteTeamMemberRequest {
+    pub email: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub label: Option<String>,
+    pub full_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Deserialize)]
+pub struct InviteTeamMemberResponse {
+    pub data: Option<TeamUser>,
+    pub error: Option<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct RemoveTeamMemberRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destroy_user: Option<bool>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Deserialize)]
+pub struct TeamMessageData {
+    pub message: Option<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Deserialize)]
+pub struct RemoveTeamMemberResponse {
+    pub data: Option<TeamMessageData>,
+    pub error: Option<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Deserialize)]
+pub struct ResendTeamInviteResponse {
+    pub data: Option<TeamMessageData>,
+    pub error: Option<String>,
 }
