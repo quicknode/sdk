@@ -16,7 +16,7 @@ cargo run --example admin -p sdk-core             # Run example (requires QN_API
 ```bash
 just python-setup-env                             # Create venv, install maturin (one-time)
 just python-build                                 # Compile bindings + generate stubs
-uv run example.py                                 # Run Python example (requires QN_API_KEY)
+cp python/sdk/init_manual_override.pyi python/sdk/__init__.pyi
 ```
 If you are in a fish shell, run the python-setup-env manually:
 ```
@@ -28,7 +28,6 @@ uv pip install maturin
 ### Node.js
 ```bash
 just node-build                                   # npm install + build + test
-cd npm && QN_API_KEY=xxx npx tsx example.ts       # Run example
 ```
 
 ## Verification
@@ -41,6 +40,8 @@ When verifying changes, use these commands based on what was modified:
 - **Full verification** — `cargo check && just lint && just python-build && just node-build && just test`
 
 > Note: Do not use `cargo build` directly — Python bindings are compiled via maturin (`just python-build`).
+
+if you can't run a just command, see what it's executing and run it manually
 
 ## Architecture
 
