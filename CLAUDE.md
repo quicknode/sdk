@@ -16,7 +16,7 @@ cargo run --example admin -p sdk-core             # Run example (requires QN_API
 ```bash
 just python-setup-env                             # Create venv, install maturin (one-time)
 just python-build                                 # Compile bindings + generate stubs
-cp python/sdk/init_manual_override.pyi python/sdk/__init__.pyi
+cp python/sdk/init_manual_override.pyi python/sdk/__init__.pyi # Manually override __init__ so we can overwrite the commands
 ```
 If you are in a fish shell, run the python-setup-env manually:
 ```
@@ -94,6 +94,7 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 
 ### Polyglot consistency
 - When adding a new public type to `crates/core`, export it across all three layers: Rust re-exports in `lib.rs`, Python `__init__.py` + `init_manual_override.pyi`, and TypeScript `sdk.d.ts`
+- When adding a new type with `#[cfg_attr(feature = "node", napi(object))]`, also add it to the named `export type { ... }` block in `npm/sdk.d.ts` — this is the user-facing type file and is not auto-updated by napi-rs
 - When updating `sdk.js` wrapper methods, verify the argument types match the underlying napi-rs constructor/method signature (object vs primitive)
 - `python/sdk/__init__.pyi` is overwritten by `just python-build` — edit `init_manual_override.pyi` instead
 
@@ -104,3 +105,9 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 ### Error handling
 - Library constructors should return `Result`, not panic — use `.unwrap()` or `.expect()` only in examples and tests, never in library code
 - Validate numeric config values before casting between signed/unsigned types (e.g., check `>= 0` before `i64 as u64`)
+
+## Code style
+
+### Imports
+- Use direct imports instead of glob imports
+- Keep modules at the top of the files

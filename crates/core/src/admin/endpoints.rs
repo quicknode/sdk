@@ -174,7 +174,7 @@ pub struct EndpointJwt {
 #[derive(Debug, Clone, Deserialize)]
 pub struct EndpointReferrer {
     pub id: String,
-    pub referrer: String,
+    pub referrer: Option<String>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]

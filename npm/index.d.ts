@@ -268,7 +268,7 @@ export interface EndpointJwt {
 }
 export interface EndpointReferrer {
   id: string
-  referrer: string
+  referrer?: string
 }
 export interface EndpointDomainMask {
   id: string
