@@ -10,7 +10,6 @@ use std::sync::Arc;
 
 use errors::SdkError;
 
-const ADMIN_BASE_URL: &str = "https://api.quicknode.com/v0/";
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 
 // Using Arc for the inner config to keep as a cheap clone
@@ -21,14 +20,14 @@ impl std::fmt::Debug for SdkConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SdkConfig")
             .field("api_key", &"[redacted]")
-            .field("admin_base_url", &self.0.admin_base_url)
+            .field("admin_base_url", &self.0.admin.base_url)
             .finish()
     }
 }
 
 struct SdkConfigInner {
     http_client: ReqwestClient,
-    admin_base_url: reqwest::Url,
+    admin: admin::ResolvedAdminConfig,
 }
 
 impl SdkConfig {
@@ -66,19 +65,9 @@ impl SdkConfig {
             .build()
             .map_err(|e| SdkError::Config(e.to_string()))?;
 
-        let admin_base_url_str = config
-            .admin
-            .as_ref()
-            .and_then(|a| a.base_url.as_deref())
-            .unwrap_or(ADMIN_BASE_URL);
-        let mut admin_base_url = reqwest::Url::parse(admin_base_url_str)?;
-        if !admin_base_url.path().ends_with('/') {
-            admin_base_url.set_path(&format!("{}/", admin_base_url.path()));
-        }
-
         Ok(Self(Arc::new(SdkConfigInner {
             http_client,
-            admin_base_url,
+            admin: admin::ResolvedAdminConfig::from_config(config.admin.as_ref())?,
         })))
     }
 
@@ -86,8 +75,8 @@ impl SdkConfig {
         &self.0.http_client
     }
 
-    pub(crate) fn admin_base_url(&self) -> &reqwest::Url {
-        &self.0.admin_base_url
+    pub(crate) fn admin(&self) -> &admin::ResolvedAdminConfig {
+        &self.0.admin
     }
 }
 
