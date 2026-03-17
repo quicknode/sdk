@@ -1,5 +1,3 @@
-#[cfg(feature = "rust")]
-use bon::Builder;
 #[cfg(feature = "node")]
 use napi_derive::napi;
 #[cfg(feature = "python")]
@@ -83,4 +81,3 @@ pub struct ListPaymentsData {
     #[serde(default)]
     pub payments: Vec<Payment>,
 }
-

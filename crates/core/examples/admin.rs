@@ -1,6 +1,7 @@
 use sdk_core::{admin::GetEndpointsRequest, QuickNodeSdk, SdkFullConfig};
 
 #[tokio::main]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn main() {
     let api_key = std::env::var("QN_API_KEY").expect("set QN_API_KEY env var");
     let config = SdkFullConfig::builder().api_key(api_key).build();
