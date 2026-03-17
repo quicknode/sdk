@@ -121,7 +121,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -171,7 +170,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -221,7 +219,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -245,7 +242,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -310,7 +306,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -407,7 +402,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -435,7 +429,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -464,7 +457,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -686,7 +678,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -762,7 +753,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -812,7 +802,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -862,7 +851,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -912,7 +900,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -962,7 +949,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -991,7 +977,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .put(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -1089,7 +1074,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -1164,7 +1148,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -1193,7 +1176,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await
@@ -1247,7 +1229,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .put(url)
-            .header("content-type", "application/json")
             .json(params)
             .send()
             .await

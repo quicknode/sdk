@@ -54,6 +54,7 @@ impl SdkConfig {
 
         let mut default_headers = HeaderMap::new();
         default_headers.insert(reqwest::header::ACCEPT, HeaderValue::from_static("application/json"));
+        default_headers.insert(reqwest::header::CONTENT_TYPE, HeaderValue::from_static("application/json"));
         default_headers.insert(
             "x-api-key",
             HeaderValue::from_str(&config.api_key)
