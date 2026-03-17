@@ -1,7 +1,8 @@
 // sdk.d.ts
-import { QuickNodeSdk as _QuickNodeSdk } from "./index";
+import { QuickNodeSdk as _QuickNodeSdk, SdkFullConfig } from "./index";
 
 export class QuickNodeSdk {
-  constructor(apiKey: string);
+  constructor(config: SdkFullConfig);
+  static fromEnv(): QuickNodeSdk;
   admin: _QuickNodeSdk["admin"];
 }

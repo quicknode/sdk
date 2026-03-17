@@ -35,10 +35,10 @@ cd npm && QN_API_KEY=xxx npx tsx example.ts       # Run example
 
 When verifying changes, use these commands based on what was modified:
 
-- **Rust only** — `cargo check`
+- **Rust only** — `cargo check && just lint`
 - **Python crate/bindings** — `just python-setup-env` (first time only), then `just python-build`
 - **Node/npm** — `just node-build`
-- **Full verification** — `cargo check && just python-build && just node-build && just test`
+- **Full verification** — `cargo check && just lint && just python-build && just node-build && just test`
 
 > Note: Do not use `cargo build` directly — Python bindings are compiled via maturin (`just python-build`).
 
@@ -83,3 +83,18 @@ Language bindings convert `SdkError` to native exceptions: `PyValueError` (Pytho
 
 ### Node.js Binding Pattern
 `crates/node/src/lib.rs` uses `#[napi(constructor)]` and `#[napi(getter)]` macros. napi handles async conversion automatically.
+
+## SDK-Specific Guidelines
+
+### Polyglot consistency
+- When adding a new public type to `crates/core`, export it across all three layers: Rust re-exports in `lib.rs`, Python `__init__.py` + `init_manual_override.pyi`, and TypeScript `sdk.d.ts`
+- When updating `sdk.js` wrapper methods, verify the argument types match the underlying napi-rs constructor/method signature (object vs primitive)
+- `python/sdk/__init__.pyi` is overwritten by `just python-build` — edit `init_manual_override.pyi` instead
+
+### Security
+- Never derive `Debug` on types containing sensitive values (API keys, tokens) without redaction — use `secrecy::SecretString` in internal structs, or a manual `Debug` impl that prints `[redacted]`
+- Configurable URL overrides must be validated: normalize trailing slash before calling `.join()`
+
+### Error handling
+- Library constructors should return `Result`, not panic — use `.unwrap()` or `.expect()` only in examples and tests, never in library code
+- Validate numeric config values before casting between signed/unsigned types (e.g., check `>= 0` before `i64 as u64`)

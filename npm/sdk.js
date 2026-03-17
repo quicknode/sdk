@@ -3,8 +3,8 @@
 const { QuickNodeSdk: _QuickNodeSdk } = require("./index.js");
 
 class QuickNodeSdk {
-  constructor(apiKey) {
-    this._inner = new _QuickNodeSdk(apiKey);
+  constructor(config) {
+    this._inner = new _QuickNodeSdk(config);
     this.admin = this._inner.admin;
   }
 }

@@ -53,8 +53,6 @@ build/
 *.dSYM/
 
 # Maturin
-python/my_sdk/_core.cpython-*.so
-python/my_sdk/*.dylib
 python/sdk/*.so
 python/sdk/__pycache__/
 python/sdk/*.dSYM/

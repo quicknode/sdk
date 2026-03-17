@@ -4,7 +4,11 @@ from sdk._core import (
     AdminApiClient,
     Endpoint,
     EndpointTag,
+    GetEndpointsRequest,
     GetEndpointsResponse,
+    HttpConfig,
+    AdminConfig,
+    SdkFullConfig,
 )
 
 __all__ = [
@@ -12,5 +16,9 @@ __all__ = [
     "AdminApiClient",
     "Endpoint",
     "EndpointTag",
+    "GetEndpointsRequest",
     "GetEndpointsResponse",
+    "HttpConfig",
+    "AdminConfig",
+    "SdkFullConfig",
 ]

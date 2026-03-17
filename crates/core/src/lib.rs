@@ -10,44 +10,68 @@ use std::sync::Arc;
 use errors::SdkError;
 
 const ADMIN_BASE_URL: &str = "https://api.quicknode.com/v0/";
+const DEFAULT_TIMEOUT_SECS: u64 = 30;
 
 // Using Arc for the inner config to keep as a cheap clone
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SdkConfig(Arc<SdkConfigInner>);
 
-#[derive(Debug)]
+impl std::fmt::Debug for SdkConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SdkConfig")
+            .field("api_key", &"[redacted]")
+            .field("admin_base_url", &self.0.admin_base_url)
+            .finish()
+    }
+}
+
 struct SdkConfigInner {
     http_client: ReqwestClient,
-    api_key: String,
+    api_key: secrecy::SecretString,
     admin_base_url: reqwest::Url,
 }
 
 impl SdkConfig {
-    pub fn new(config: SdkFullConfig) -> Self {
+    pub fn new(config: SdkFullConfig) -> Result<Self, SdkError> {
         let mut builder = ReqwestClient::builder();
+
+        let timeout_secs = match &config.http {
+            Some(h) => match h.timeout_secs {
+                Some(secs) if secs < 0 => {
+                    return Err(SdkError::Config("timeout_secs must be non-negative".into()));
+                }
+                Some(secs) => secs as u64,
+                None => DEFAULT_TIMEOUT_SECS,
+            },
+            None => DEFAULT_TIMEOUT_SECS,
+        };
+        builder = builder.timeout(std::time::Duration::from_secs(timeout_secs));
+
         if let Some(http) = &config.http {
-            if let Some(secs) = http.timeout_secs {
-                builder = builder.timeout(std::time::Duration::from_secs(secs as u64));
-            }
             if let Some(max_idle) = http.pool_max_idle_per_host {
                 builder = builder.pool_max_idle_per_host(max_idle as usize);
             }
         }
-        let http_client = builder.build().expect("failed to build HTTP client");
+
+        let http_client = builder
+            .build()
+            .map_err(|e| SdkError::Config(e.to_string()))?;
 
         let admin_base_url_str = config
             .admin
             .as_ref()
             .and_then(|a| a.base_url.as_deref())
             .unwrap_or(ADMIN_BASE_URL);
-        let admin_base_url =
-            reqwest::Url::parse(admin_base_url_str).expect("invalid admin base URL");
+        let mut admin_base_url = reqwest::Url::parse(admin_base_url_str)?;
+        if !admin_base_url.path().ends_with('/') {
+            admin_base_url.set_path(&format!("{}/", admin_base_url.path()));
+        }
 
-        Self(Arc::new(SdkConfigInner {
+        Ok(Self(Arc::new(SdkConfigInner {
             http_client,
-            api_key: config.api_key,
+            api_key: config.api_key.into(),
             admin_base_url,
-        }))
+        })))
     }
 
     pub(crate) fn http_client(&self) -> &ReqwestClient {
@@ -55,7 +79,8 @@ impl SdkConfig {
     }
 
     pub(crate) fn api_key(&self) -> &str {
-        &self.0.api_key
+        use secrecy::ExposeSecret;
+        self.0.api_key.expose_secret()
     }
 
     pub(crate) fn admin_base_url(&self) -> &reqwest::Url {
@@ -68,14 +93,14 @@ pub struct QuickNodeSdk {
 }
 
 impl QuickNodeSdk {
-    pub fn new(config: SdkFullConfig) -> Self {
-        let sdk_config = SdkConfig::new(config);
-        Self {
+    pub fn new(config: SdkFullConfig) -> Result<Self, SdkError> {
+        let sdk_config = SdkConfig::new(config)?;
+        Ok(Self {
             admin: admin::AdminApiClient::new(sdk_config),
-        }
+        })
     }
 
     pub fn from_env() -> Result<Self, SdkError> {
-        Ok(Self::new(SdkFullConfig::from_env()?))
+        Self::new(SdkFullConfig::from_env()?)
     }
 }

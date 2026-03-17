@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "Python bindings for Quicknode SDK"
 
+[lints]
+workspace = true
+
 [lib]
 name = "_core"
 crate-type = ["cdylib", "rlib"]

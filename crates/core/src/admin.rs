@@ -101,6 +101,7 @@ impl AdminApiClient {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
     use crate::{AdminConfig, QuickNodeSdk, SdkFullConfig};
@@ -115,6 +116,7 @@ mod tests {
                 base_url: Some(base_url),
             }),
         })
+        .unwrap()
     }
 
     #[tokio::test]
@@ -197,5 +199,43 @@ mod tests {
         let resp = sdk.admin.get_endpoints(&params).await.unwrap();
 
         assert_eq!(resp.data.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn get_endpoints_base_url_without_trailing_slash() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/endpoints"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": [],
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let base_url_no_slash = server.uri();
+        let sdk = make_sdk(base_url_no_slash);
+        let resp = sdk
+            .admin
+            .get_endpoints(&GetEndpointsRequest::default())
+            .await
+            .unwrap();
+
+        assert_eq!(resp.data.len(), 0);
+    }
+
+    #[test]
+    fn negative_timeout_secs_returns_error() {
+        use crate::{HttpConfig, SdkConfig, SdkFullConfig};
+        let result = SdkConfig::new(SdkFullConfig {
+            api_key: "test-key".to_string(),
+            http: Some(HttpConfig {
+                timeout_secs: Some(-1),
+                pool_max_idle_per_host: None,
+            }),
+            admin: None,
+        });
+        assert!(matches!(result, Err(crate::errors::SdkError::Config(_))));
     }
 }

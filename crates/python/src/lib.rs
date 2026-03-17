@@ -18,13 +18,14 @@ pub struct QuickNodeSdk {
 #[pymethods]
 impl QuickNodeSdk {
     #[new]
-    fn new(config: core::SdkFullConfig) -> Self {
-        let sdk_config = core::SdkConfig::new(config);
-        Self {
+    fn new(config: core::SdkFullConfig) -> PyResult<Self> {
+        let sdk_config = core::SdkConfig::new(config)
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
             admin: AdminApiClient {
                 inner: core::admin::AdminApiClient::new(sdk_config),
             },
-        }
+        })
     }
 
     #[staticmethod]

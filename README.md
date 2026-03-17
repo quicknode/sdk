@@ -19,9 +19,9 @@ sdk/
 
 ## Installation
 
-**Python:** `uv add my-sdk`
+**Python:** `uv add quicknode-sdk`
 
-**Node.js:** `npm install my-sdk`
+**Node.js:** `npm install quicknode-sdk`
 
 ## Development
 
@@ -65,6 +65,51 @@ QN_API_KEY=replaceme cargo run --example admin -p sdk-core --features rust
 QN_API_KEY=replaceme uv run example.py
 cd npm && QN_API_KEY=replaceme npx tsx example.ts
 ```
+
+## Configuration
+
+There are two ways to configure the SDK.
+
+### Option A — Pass config directly
+
+```python
+# Python
+from sdk import QuickNodeSdk, SdkFullConfig, HttpConfig
+qn = QuickNodeSdk(SdkFullConfig(api_key="your-key", http=HttpConfig(timeout_secs=30)))
+```
+
+```typescript
+// Node.js
+import { QuickNodeSdk } from ".";
+const qn = new QuickNodeSdk({ apiKey: "your-key", http: { timeoutSecs: 30 } });
+```
+
+```rust
+// Rust
+let qn = QuickNodeSdk::new(SdkFullConfig::builder().api_key("your-key").build())?;
+```
+
+### Option B — Load from environment (`from_env()`)
+
+```python
+qn = QuickNodeSdk.from_env()
+```
+```typescript
+const qn = QuickNodeSdk.fromEnv();
+```
+```rust
+let qn = QuickNodeSdk::from_env()?;
+```
+
+Environment variables (prefix `QN_SDK__`, separator `__`):
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `QN_SDK__API_KEY` | yes | — | Your QuickNode API key |
+| `QN_SDK__HTTP__TIMEOUT_SECS` | no | 30 | HTTP request timeout in seconds |
+| `QN_SDK__HTTP__POOL_MAX_IDLE_PER_HOST` | no | — | Max idle HTTP connections per host |
+| `QN_SDK__ADMIN__BASE_URL` | no | `https://api.quicknode.com/v0/` | Override admin API base URL (must be HTTPS, must end with `/`) |
+
 
 ## License
 

@@ -15,3 +15,6 @@ node-build:
 
 test:
   cargo test -p sdk-core --lib
+
+lint:
+  cargo clippy --workspace --lib --tests -- -D warnings
