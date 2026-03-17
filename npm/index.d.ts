@@ -26,6 +26,80 @@ export interface EndpointTag {
   tagId: number
   label: string
 }
+export interface CreateEndpointRequest {
+  chain?: string
+  network?: string
+}
+export interface CreateEndpointResponse {
+  data: SingleEndpoint
+  error?: string
+}
+export interface SingleEndpoint {
+  id: string
+  label?: string
+  status?: string
+  chain: string
+  network: string
+  httpUrl: string
+  wssUrl?: string
+  security?: EndpointSecurity
+  rateLimits?: EndpointRateLimits
+  tags: Array<EndpointTag>
+}
+export interface EndpointRateLimits {
+  rateLimitByIp?: boolean
+  account?: number
+  rps?: number
+  rpm?: number
+  rpd?: number
+}
+export interface EndpointSecurity {
+  options?: EndpointSecurityOptions
+  tokens: Array<EndpointToken>
+  jwts: Array<EndpointJwt>
+  referrers: Array<EndpointReferrer>
+  domainMasks: Array<EndpointDomainMask>
+  ips: Array<EndpointIp>
+  requestFilters: Array<EndpointRequestFilter>
+}
+export interface EndpointSecurityOptions {
+  tokens?: boolean
+  jwts?: boolean
+  domainMasks?: boolean
+  ips?: boolean
+  referrers?: boolean
+  requestFilters?: boolean
+  ipCustomHeader?: EndpointIpCustomHeaderOption
+}
+export interface EndpointIpCustomHeaderOption {
+  value?: string
+}
+export interface EndpointToken {
+  id: string
+  token: string
+}
+export interface EndpointJwt {
+  id: string
+  publicKey: string
+  kid: string
+  name: string
+}
+export interface EndpointReferrer {
+  id: string
+  referrer: string
+}
+export interface EndpointDomainMask {
+  id: string
+  domain: string
+}
+export interface EndpointIp {
+  id: string
+  ip: string
+}
+export interface EndpointRequestFilter {
+  id: string
+  method: Array<string>
+}
 export interface HttpConfig {
   timeoutSecs?: number
   poolMaxIdlePerHost?: number
@@ -45,4 +119,5 @@ export declare class QuickNodeSdk {
 }
 export declare class AdminApiClient {
   getEndpoints(params?: GetEndpointsRequest | undefined | null): Promise<GetEndpointsResponse>
+  createEndpoint(params?: CreateEndpointRequest | undefined | null): Promise<CreateEndpointResponse>
 }

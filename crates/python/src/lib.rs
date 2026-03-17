@@ -82,6 +82,26 @@ impl AdminApiClient {
                 .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
+
+    #[pyo3(signature = (chain=None, network=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateEndpointResponse]"
+    ))]
+    fn create_endpoint<'py>(
+        &self,
+        py: Python<'py>,
+        chain: Option<String>,
+        network: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::CreateEndpointRequest { chain, network };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_endpoint(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
 }
 
 // ── Module ─────────────────────────────────────────────────────
@@ -94,6 +114,19 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::GetEndpointsResponse>()?;
     m.add_class::<core::admin::Endpoint>()?;
     m.add_class::<core::admin::EndpointTag>()?;
+    m.add_class::<core::admin::CreateEndpointRequest>()?;
+    m.add_class::<core::admin::CreateEndpointResponse>()?;
+    m.add_class::<core::admin::SingleEndpoint>()?;
+    m.add_class::<core::admin::EndpointRateLimits>()?;
+    m.add_class::<core::admin::EndpointSecurity>()?;
+    m.add_class::<core::admin::EndpointSecurityOptions>()?;
+    m.add_class::<core::admin::EndpointIpCustomHeaderOption>()?;
+    m.add_class::<core::admin::EndpointToken>()?;
+    m.add_class::<core::admin::EndpointJwt>()?;
+    m.add_class::<core::admin::EndpointReferrer>()?;
+    m.add_class::<core::admin::EndpointDomainMask>()?;
+    m.add_class::<core::admin::EndpointIp>()?;
+    m.add_class::<core::admin::EndpointRequestFilter>()?;
     m.add_class::<core::HttpConfig>()?;
     m.add_class::<core::AdminConfig>()?;
     m.add_class::<core::SdkFullConfig>()?;

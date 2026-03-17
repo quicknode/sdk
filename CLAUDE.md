@@ -55,7 +55,9 @@ This is a polyglot SDK: one Rust core library with Python and Node.js bindings g
 - `npm/` — Node.js package directory
 
 ### Core Pattern
-`QuickNodeSdk` is the root entry point holding sub-clients (e.g., `admin: AdminApiClient`). All clients share a `SdkConfig(Arc<SdkConfigInner>)` wrapping one `reqwest` HTTP client and the API key.
+- `QuickNodeSdk` is the root entry point holding sub-clients (e.g., `admin: AdminApiClient`). All clients share a `SdkConfig(Arc<SdkConfigInner>)` wrapping one `reqwest` HTTP client and the API key.
+- Their are clients per QuickNode product, with functions mapping to API calls
+- Request params and Responses should be fully typed structs
 
 ### Multi-Language Type Annotations
 Data types are defined once in `crates/core/src/` with feature-gated attribute macros:
@@ -83,6 +85,9 @@ Language bindings convert `SdkError` to native exceptions: `PyValueError` (Pytho
 
 ### Node.js Binding Pattern
 `crates/node/src/lib.rs` uses `#[napi(constructor)]` and `#[napi(getter)]` macros. napi handles async conversion automatically.
+
+### Testing
+Core clients are tested using mocked API calls with wiremock. All functions making external http calls should be tested this way and test the happy path, errors, with params, and with bad params. Keep testing focused and flexible, avoid overtesting
 
 ## SDK-Specific Guidelines
 

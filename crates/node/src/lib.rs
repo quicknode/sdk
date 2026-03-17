@@ -58,4 +58,16 @@ impl AdminApiClient {
             .await
             .map_err(|e| Error::from_reason(e.to_string()))
     }
+
+    #[napi]
+    pub async fn create_endpoint(
+        &self,
+        params: Option<core::admin::CreateEndpointRequest>,
+    ) -> Result<core::admin::CreateEndpointResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .create_endpoint(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
 }
