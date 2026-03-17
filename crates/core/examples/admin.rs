@@ -1,9 +1,9 @@
-use sdk_core::{admin::GetEndpointsRequest, QuickNodeSdk};
+use sdk_core::{admin::GetEndpointsRequest, QuickNodeSdk, SdkFullConfig};
 
 #[tokio::main]
 async fn main() {
     let api_key = std::env::var("QN_API_KEY").expect("set QN_API_KEY env var");
-    let qn = QuickNodeSdk::new(api_key);
+    let qn = QuickNodeSdk::new(SdkFullConfig::builder().api_key(api_key).build());
 
     let params = GetEndpointsRequest::builder().limit(20).build();
 

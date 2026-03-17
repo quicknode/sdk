@@ -25,6 +25,7 @@ pub struct HttpConfig {
     pub pool_max_idle_per_host: Option<i32>,
 }
 
+// Only for python to keep typings in arguments rather than building a class as an argument
 #[cfg(feature = "python")]
 #[gen_stub_pymethods]
 #[pymethods]
@@ -68,6 +69,12 @@ pub struct SdkFullConfig {
     pub api_key: String,
     pub http: Option<HttpConfig>,
     pub admin: Option<AdminConfig>,
+}
+
+impl SdkFullConfig {
+    pub fn from_api_key(api_key: String) -> Self {
+        SdkFullConfig { api_key, http: None, admin: None }
+    }
 }
 
 #[cfg(feature = "python")]

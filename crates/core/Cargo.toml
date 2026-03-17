@@ -24,6 +24,10 @@ pyo3-stub-gen = { workspace = true, optional = true }
 bon = { version = "3.9", optional = true }
 url = "2.5.8"
 
+[[example]]
+name = "admin"
+required-features = ["rust"]
+
 [dev-dependencies]
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
 wiremock = "0.6"
