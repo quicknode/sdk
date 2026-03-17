@@ -12,8 +12,9 @@ pub struct QuickNodeSdk {
 #[napi]
 impl QuickNodeSdk {
     #[napi(constructor)]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn new(config: core::SdkFullConfig) -> Result<Self> {
-        let sdk_config = core::SdkConfig::new(config)
+        let sdk_config = core::SdkConfig::new(&config)
             .map_err(|e| Error::from_reason(e.to_string()))?;
         Ok(Self {
             admin: AdminApiClient {

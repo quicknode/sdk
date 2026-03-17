@@ -4,7 +4,7 @@ use sdk_core::{admin::GetEndpointsRequest, QuickNodeSdk, SdkFullConfig};
 async fn main() {
     let api_key = std::env::var("QN_API_KEY").expect("set QN_API_KEY env var");
     let config = SdkFullConfig::builder().api_key(api_key).build();
-    let qn = QuickNodeSdk::new(config);
+    let qn = QuickNodeSdk::new(&config);
 
     let params = GetEndpointsRequest::builder().limit(20).build();
 

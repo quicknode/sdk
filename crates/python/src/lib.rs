@@ -18,8 +18,9 @@ pub struct QuickNodeSdk {
 #[pymethods]
 impl QuickNodeSdk {
     #[new]
+    #[allow(clippy::needless_pass_by_value)]
     fn new(config: core::SdkFullConfig) -> PyResult<Self> {
-        let sdk_config = core::SdkConfig::new(config)
+        let sdk_config = core::SdkConfig::new(&config)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
         Ok(Self {
             admin: AdminApiClient {

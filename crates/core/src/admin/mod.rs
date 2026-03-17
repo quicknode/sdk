@@ -75,8 +75,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .query(params)
             .send()
             .await
@@ -100,9 +98,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -126,8 +122,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -154,9 +148,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -180,8 +172,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -208,9 +198,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -234,9 +222,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -260,8 +246,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -281,8 +265,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -305,9 +287,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -331,8 +311,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -355,8 +333,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -382,8 +358,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -410,9 +384,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -440,9 +412,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -471,9 +441,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -501,8 +469,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -522,8 +488,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .query(params)
             .send()
             .await
@@ -547,8 +511,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .query(params)
             .send()
             .await
@@ -572,8 +534,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .query(params)
             .send()
             .await
@@ -597,8 +557,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .query(params)
             .send()
             .await
@@ -626,8 +584,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .query(params)
             .send()
             .await
@@ -655,8 +611,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .query(&[("request_id", request_id)])
             .send()
             .await
@@ -683,8 +637,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -711,9 +663,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -737,8 +687,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -765,8 +713,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -793,9 +739,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -823,8 +767,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -847,9 +789,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -873,8 +813,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -901,9 +839,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -931,8 +867,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -955,9 +889,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -981,8 +913,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1009,9 +939,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -1040,9 +968,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .put(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -1070,8 +996,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1094,8 +1018,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1118,8 +1040,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1146,9 +1066,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -1172,8 +1090,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1199,8 +1115,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1227,9 +1141,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .post(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -1258,9 +1170,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .patch(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -1288,8 +1198,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .delete(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1316,9 +1224,7 @@ impl AdminApiClient {
             .config
             .http_client()
             .put(url)
-            .header("accept", "application/json")
             .header("content-type", "application/json")
-            .header("x-api-key", self.config.api_key())
             .json(params)
             .send()
             .await
@@ -1346,8 +1252,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .query(params)
             .send()
             .await
@@ -1371,8 +1275,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .query(params)
             .send()
             .await
@@ -1393,8 +1295,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1414,8 +1314,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1435,8 +1333,6 @@ impl AdminApiClient {
             .config
             .http_client()
             .get(url)
-            .header("accept", "application/json")
-            .header("x-api-key", self.config.api_key())
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -1460,7 +1356,7 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn make_sdk(base_url: String) -> QuickNodeSdk {
-        QuickNodeSdk::new(SdkFullConfig {
+        QuickNodeSdk::new(&SdkFullConfig {
             api_key: "test-key".to_string(),
             http: None,
             admin: Some(AdminConfig {
@@ -2609,7 +2505,7 @@ mod tests {
     #[test]
     fn negative_timeout_secs_returns_error() {
         use crate::{HttpConfig, SdkConfig, SdkFullConfig};
-        let result = SdkConfig::new(SdkFullConfig {
+        let result = SdkConfig::new(&SdkFullConfig {
             api_key: "test-key".to_string(),
             http: Some(HttpConfig {
                 timeout_secs: Some(-1),

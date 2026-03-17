@@ -4,6 +4,7 @@ pub mod errors;
 
 pub use config::{AdminConfig, HttpConfig, SdkFullConfig};
 
+use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::Client as ReqwestClient;
 use std::sync::Arc;
 
@@ -27,12 +28,11 @@ impl std::fmt::Debug for SdkConfig {
 
 struct SdkConfigInner {
     http_client: ReqwestClient,
-    api_key: secrecy::SecretString,
     admin_base_url: reqwest::Url,
 }
 
 impl SdkConfig {
-    pub fn new(config: SdkFullConfig) -> Result<Self, SdkError> {
+    pub fn new(config: &SdkFullConfig) -> Result<Self, SdkError> {
         let mut builder = ReqwestClient::builder();
 
         let timeout_secs = match &config.http {
@@ -53,6 +53,15 @@ impl SdkConfig {
             }
         }
 
+        let mut default_headers = HeaderMap::new();
+        default_headers.insert(reqwest::header::ACCEPT, HeaderValue::from_static("application/json"));
+        default_headers.insert(
+            "x-api-key",
+            HeaderValue::from_str(&config.api_key)
+                .map_err(|e| SdkError::Config(e.to_string()))?,
+        );
+        builder = builder.default_headers(default_headers);
+
         let http_client = builder
             .build()
             .map_err(|e| SdkError::Config(e.to_string()))?;
@@ -69,18 +78,12 @@ impl SdkConfig {
 
         Ok(Self(Arc::new(SdkConfigInner {
             http_client,
-            api_key: config.api_key.into(),
             admin_base_url,
         })))
     }
 
     pub(crate) fn http_client(&self) -> &ReqwestClient {
         &self.0.http_client
-    }
-
-    pub(crate) fn api_key(&self) -> &str {
-        use secrecy::ExposeSecret;
-        self.0.api_key.expose_secret()
     }
 
     pub(crate) fn admin_base_url(&self) -> &reqwest::Url {
@@ -93,7 +96,7 @@ pub struct QuickNodeSdk {
 }
 
 impl QuickNodeSdk {
-    pub fn new(config: SdkFullConfig) -> Result<Self, SdkError> {
+    pub fn new(config: &SdkFullConfig) -> Result<Self, SdkError> {
         let sdk_config = SdkConfig::new(config)?;
         Ok(Self {
             admin: admin::AdminApiClient::new(sdk_config),
@@ -101,6 +104,6 @@ impl QuickNodeSdk {
     }
 
     pub fn from_env() -> Result<Self, SdkError> {
-        Self::new(SdkFullConfig::from_env()?)
+        Self::new(&SdkFullConfig::from_env()?)
     }
 }
