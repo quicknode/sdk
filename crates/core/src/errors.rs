@@ -18,4 +18,7 @@ pub enum SdkError {
 
     #[error("Invalid URL: {0}")]
     UrlParse(#[from] url::ParseError),
+
+    #[error("Configuration error: {0}")]
+    Config(String),
 }

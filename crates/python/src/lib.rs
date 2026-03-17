@@ -26,6 +26,15 @@ impl QuickNodeSdk {
             },
         }
     }
+
+    #[staticmethod]
+    fn from_env() -> PyResult<Self> {
+        core::QuickNodeSdk::from_env()
+            .map(|sdk| Self {
+                admin: AdminApiClient { inner: sdk.admin },
+            })
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
 }
 
 // ── Sub-clients ────────────────────────────────────────────────

@@ -22,6 +22,7 @@ napi = { workspace = true, optional = true, features = ["async", "tokio_rt"] }
 napi-derive = { workspace = true, optional = true }
 pyo3-stub-gen = { workspace = true, optional = true }
 bon = { version = "3.9", optional = true }
+config = "0.15"
 url = "2.5.8"
 
 [[example]]

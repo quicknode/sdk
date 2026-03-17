@@ -41,6 +41,7 @@ export interface SdkFullConfig {
 export declare class QuickNodeSdk {
   constructor(config: SdkFullConfig)
   get admin(): AdminApiClient
+  static fromEnv(): QuickNodeSdk
 }
 export declare class AdminApiClient {
   getEndpoints(params?: GetEndpointsRequest | undefined | null): Promise<GetEndpointsResponse>

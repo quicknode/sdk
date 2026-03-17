@@ -25,6 +25,15 @@ impl QuickNodeSdk {
     pub fn admin(&self) -> AdminApiClient {
         self.admin.clone()
     }
+
+    #[napi(factory)]
+    pub fn from_env() -> Result<Self> {
+        core::QuickNodeSdk::from_env()
+            .map(|sdk| Self {
+                admin: AdminApiClient { inner: sdk.admin },
+            })
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
 }
 
 // ── Sub-clients ───────────────────────────────────────
