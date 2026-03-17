@@ -99,3 +99,103 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AdminConfig, QuickNodeSdk, SdkFullConfig};
+    use wiremock::matchers::{method, path, query_param};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn make_sdk(base_url: String) -> QuickNodeSdk {
+        QuickNodeSdk::new(SdkFullConfig {
+            api_key: "test-key".to_string(),
+            http: None,
+            admin: Some(AdminConfig {
+                base_url: Some(base_url),
+            }),
+        })
+    }
+
+    #[tokio::test]
+    async fn get_endpoints_success() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/endpoints"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": [
+                    {
+                        "id": "abc123",
+                        "label": "My Endpoint",
+                        "chain": "ethereum",
+                        "network": "mainnet",
+                        "http_url": "https://example.quicknode.pro/abc123",
+                        "wss_url": null,
+                        "tags": []
+                    }
+                ],
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk
+            .admin
+            .get_endpoints(&GetEndpointsRequest::default())
+            .await
+            .unwrap();
+
+        assert_eq!(resp.data.len(), 1);
+        assert_eq!(resp.data[0].id, "abc123");
+        assert_eq!(resp.data[0].chain, "ethereum");
+    }
+
+    #[tokio::test]
+    async fn get_endpoints_api_error() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/endpoints"))
+            .respond_with(ResponseTemplate::new(401).set_body_string("Unauthorized"))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk
+            .admin
+            .get_endpoints(&GetEndpointsRequest::default())
+            .await
+            .unwrap_err();
+
+        match err {
+            SdkError::Api { status, .. } => assert_eq!(status.as_u16(), 401),
+            other => panic!("expected SdkError::Api, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn get_endpoints_sends_query_params() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/endpoints"))
+            .and(query_param("limit", "10"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": [],
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = GetEndpointsRequest {
+            limit: Some(10),
+            ..Default::default()
+        };
+        let resp = sdk.admin.get_endpoints(&params).await.unwrap();
+
+        assert_eq!(resp.data.len(), 0);
+    }
+}
