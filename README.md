@@ -51,6 +51,14 @@ just node-build
 cargo build -p sdk-core
 ```
 
+### Testing
+
+```bash
+just test
+```
+
+Runs the Rust unit tests for `sdk-core` using [wiremock](https://github.com/LukeMathWalker/wiremock-rs) to mock HTTP responses — no API key required.
+
 Examples
 ```bash
 QN_API_KEY=replaceme cargo run --example admin -p sdk-core --features rust

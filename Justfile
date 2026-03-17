@@ -9,3 +9,6 @@ python-build:
 
 node-build:
   cd ./npm && npm install && npm run build && npm run test && cd ..
+
+test:
+  cargo test -p sdk-core --lib

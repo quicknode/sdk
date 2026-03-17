@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 cargo check                                        # Type check all crates
 cargo build -p sdk-core                           # Build core crate
-cargo test -p sdk-core                            # Run tests
+cargo test -p sdk-core --lib                      # Run tests (excludes examples)
 cargo run --example admin -p sdk-core             # Run example (requires QN_API_KEY env var)
 ```
 
@@ -32,7 +32,7 @@ When verifying changes, use these commands based on what was modified:
 - **Rust only** — `cargo check`
 - **Python crate/bindings** — `just python-setup-env` (first time only), then `just python-build`
 - **Node/npm** — `just node-build`
-- **Full verification** — `cargo check && just python-build && just node-build`
+- **Full verification** — `cargo check && just python-build && just node-build && just test`
 
 > Note: Do not use `cargo build` directly — Python bindings are compiled via maturin (`just python-build`).
 
