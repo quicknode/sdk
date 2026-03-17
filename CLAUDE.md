@@ -18,6 +18,12 @@ just python-setup-env                             # Create venv, install maturin
 just python-build                                 # Compile bindings + generate stubs
 uv run example.py                                 # Run Python example (requires QN_API_KEY)
 ```
+If you are in a fish shell, run the python-setup-env manually:
+```
+uv venv
+source .venv/bin/activate.fish
+uv pip install maturin
+```
 
 ### Node.js
 ```bash
@@ -38,7 +44,7 @@ When verifying changes, use these commands based on what was modified:
 
 ## Architecture
 
-This is a polyglot SDK: one Rust core library with Python and Node.js bindings generated from the same types.
+This is a polyglot SDK: one Rust core library with Python and Node.js bindings generated from the same types
 
 ### Workspace Layout
 - `crates/core` — Pure Rust business logic (HTTP client, request/response types, errors)
