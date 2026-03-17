@@ -57,8 +57,25 @@ This is a polyglot SDK: one Rust core library with Python and Node.js bindings g
 
 ### Core Pattern
 - `QuickNodeSdk` is the root entry point holding sub-clients (e.g., `admin: AdminApiClient`). All clients share a `SdkConfig(Arc<SdkConfigInner>)` wrapping one `reqwest` HTTP client and the API key.
-- Their are clients per QuickNode product, with functions mapping to API calls
+- There are clients per QuickNode product, with functions mapping to API calls
 - Request params and Responses should be fully typed structs
+
+### Per-Sub-Client Config Pattern
+Each sub-client module defines its own resolved config struct that holds the parsed, validated state derived from its public config type:
+```rust
+// In crates/core/src/<client>/mod.rs
+pub(crate) struct Resolved<Name>Config {
+    pub(crate) base_url: reqwest::Url,
+    // other resolved fields...
+}
+
+impl Resolved<Name>Config {
+    pub(crate) fn from_config(config: Option<&<Name>Config>) -> Result<Self, SdkError> {
+        // parse and validate here
+    }
+}
+```
+`SdkConfigInner` holds one field per sub-client (e.g., `admin: admin::ResolvedAdminConfig`), and `SdkConfig` exposes a matching accessor (e.g., `fn admin(&self) -> &admin::ResolvedAdminConfig`). Call sites use `self.config.admin().base_url` instead of a flat `admin_base_url` field. Resolved config structs should be cheaply cloneable — prefer types like `reqwest::Url` (which implements `Clone`) and avoid heap allocations that would make cloning expensive; `SdkConfig` itself is a cheap clone via `Arc<SdkConfigInner>`.
 
 ### Multi-Language Type Annotations
 Data types are defined once in `crates/core/src/` with feature-gated attribute macros:
