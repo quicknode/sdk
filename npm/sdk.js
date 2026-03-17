@@ -7,6 +7,13 @@ class QuickNodeSdk {
     this._inner = new _QuickNodeSdk(config);
     this.admin = this._inner.admin;
   }
+
+  static fromEnv() {
+    const instance = Object.create(QuickNodeSdk.prototype);
+    instance._inner = _QuickNodeSdk.fromEnv();
+    instance.admin = instance._inner.admin;
+    return instance;
+  }
 }
 
 module.exports = { QuickNodeSdk };
