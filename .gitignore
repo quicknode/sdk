@@ -62,3 +62,7 @@ node_modules/
 npm/*.node
 npm/index.js
 npm/dist/
+npm/quicknode-sdk-*.tgz
+
+# Claude
+.claude/settings.local.json

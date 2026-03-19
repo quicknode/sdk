@@ -61,7 +61,7 @@ pub struct Payment {
     pub created_at: String,
     pub currency: String,
     pub status: String,
-    pub marketplace_amount: Option<i64>,
+    pub marketplace_amount: Option<String>,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]

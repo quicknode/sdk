@@ -1,7 +1,7 @@
 {
-  "name": "my-sdk",
+  "name": "@quicknode/sdk",
   "version": "0.1.0",
-  "description": "A Rust SDK with Node.js bindings",
+  "description": "Quicknode SDK",
   "main": "sdk.js",
   "types": "sdk.d.ts",
   "files": [

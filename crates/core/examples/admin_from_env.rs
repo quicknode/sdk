@@ -94,6 +94,8 @@ async fn main() {
         Err(e) => eprintln!("list_teams error: {e}"),
     }
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     // --- Create endpoint ---
 
     let endpoint_id = match qn
@@ -502,6 +504,8 @@ async fn main() {
         Err(e) => eprintln!("delete_ip_custom_header error: {e}"),
     }
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     // --- Rate limits ---
 
     match qn
@@ -575,6 +579,8 @@ async fn main() {
         }
     }
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     // --- Multichain ---
 
     match qn.admin.enable_multichain(&endpoint_id).await {
@@ -586,6 +592,8 @@ async fn main() {
         Ok(()) => println!("disable_multichain: ok"),
         Err(e) => eprintln!("disable_multichain error: {e}"),
     }
+
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     // --- Teams ---
 
@@ -647,11 +655,15 @@ async fn main() {
             Err(e) => eprintln!("invite_team_member error (expected with placeholder email): {e}"),
         }
 
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
         match qn.admin.delete_team(team_id).await {
             Ok(resp) => println!("delete_team: {:?}", resp.data),
             Err(e) => eprintln!("delete_team error: {e}"),
         }
     }
+
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     // --- Cleanup endpoint ---
 

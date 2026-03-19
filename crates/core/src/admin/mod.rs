@@ -2280,7 +2280,7 @@ mod tests {
                             "created_at": "2024-01-01T00:00:00Z",
                             "currency": "usd",
                             "status": "succeeded",
-                            "marketplace_amount": null
+                            "marketplace_amount": "9.0"
                         }
                     ]
                 },
