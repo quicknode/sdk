@@ -6,9 +6,28 @@ use napi_derive::napi;
 use pyo3::{exceptions::PyValueError, pyclass, pymethods, PyResult};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::errors::SdkError;
+
+fn deserialize_as_json_string<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    serde_json::to_string(&value).map_err(serde::de::Error::custom)
+}
+
+fn deserialize_as_optional_json_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    match value {
+        None => Ok(None),
+        Some(v) => serde_json::to_string(&v).map(Some).map_err(serde::de::Error::custom),
+    }
+}
 
 // ── Enums ──────────────────────────────────────────────────────────────────
 
@@ -100,6 +119,9 @@ pub enum ProductType {
 pub enum StreamStatus {
     Active,
     Paused,
+    Terminated,
+    Completed,
+    Blocked,
 }
 
 // ── Destination Attribute Structs ──────────────────────────────────────────
@@ -819,4 +841,147 @@ pub struct Stream {
     pub fix_block_reorgs: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_hash: Option<String>,
+    /// Destination-specific configuration as a JSON string. Shape depends on the destination type.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_as_optional_json_string"
+    )]
+    pub destination_attributes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub elastic_batch_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qn_account_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub charge_min_cap: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address_book_config: Option<AddressBookConfig>,
+}
+
+// ── New Request/Response Types ─────────────────────────────────────────────
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PageInfo {
+    pub limit: i64,
+    pub offset: i64,
+    pub total: i64,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListStreamsResponse {
+    pub data: Vec<Stream>,
+    #[serde(rename = "pageInfo")]
+    pub page_info: PageInfo,
+}
+
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(not(feature = "node"), derive(Clone))]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ListStreamsParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order_by: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order_direction: Option<String>,
+}
+
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(not(feature = "node"), derive(Clone))]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct UpdateStreamParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub region: Option<StreamRegion>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dataset: Option<StreamDataset>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_range: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_range: Option<i64>,
+    #[serde(skip)]
+    pub destination_attributes: Option<DestinationAttributes>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plan: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub threshold_fetch_buffer: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dataset_batch_size: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_batch_size: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_buffer_range_size: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_buffer_processing_workers: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub keep_distance_from_tip: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter_function: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter_language: Option<FilterLanguage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address_book_config: Option<AddressBookConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_stream_metadata: Option<StreamMetadataLocation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notification_email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub charge_min_cap: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fix_block_reorgs: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub elastic_batch_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<StreamStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memo: Option<String>,
+}
+
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(not(feature = "node"), derive(Clone))]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TestFilterParams {
+    pub network: String,
+    pub dataset: StreamDataset,
+    pub block: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter_function: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter_language: Option<FilterLanguage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address_book_config: Option<AddressBookConfig>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestFilterResponse {
+    /// Filter output as a JSON string. Shape depends on the dataset and the user's filter function.
+    #[serde(deserialize_with = "deserialize_as_json_string")]
+    pub result: String,
+    pub logs: Vec<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnabledCountResponse {
+    pub total: i64,
 }

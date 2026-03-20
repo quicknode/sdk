@@ -658,4 +658,90 @@ impl StreamsApiClient {
             .await
             .map_err(|e| Error::from_reason(e.to_string()))
     }
+
+    #[napi]
+    pub async fn list_streams(
+        &self,
+        params: Option<core::streams::ListStreamsParams>,
+    ) -> Result<core::streams::ListStreamsResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .list_streams(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn delete_all_streams(&self) -> Result<()> {
+        self.inner
+            .delete_all_streams()
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_stream(&self, id: String) -> Result<core::streams::Stream> {
+        self.inner
+            .get_stream(&id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn update_stream(
+        &self,
+        id: String,
+        params: core::streams::UpdateStreamParams,
+    ) -> Result<core::streams::Stream> {
+        self.inner
+            .update_stream(&id, &params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn delete_stream(&self, id: String) -> Result<()> {
+        self.inner
+            .delete_stream(&id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn activate_stream(&self, id: String) -> Result<()> {
+        self.inner
+            .activate_stream(&id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn pause_stream(&self, id: String) -> Result<()> {
+        self.inner
+            .pause_stream(&id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn test_filter(
+        &self,
+        params: core::streams::TestFilterParams,
+    ) -> Result<core::streams::TestFilterResponse> {
+        self.inner
+            .test_filter(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_enabled_count(
+        &self,
+        stream_type: Option<String>,
+    ) -> Result<core::streams::EnabledCountResponse> {
+        self.inner
+            .get_enabled_count(stream_type.as_deref())
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
 }

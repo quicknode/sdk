@@ -33,6 +33,7 @@ __all__ = [
     "DeleteTeamData",
     "DeleteTeamResponse",
     "DestinationAttributes",
+    "EnabledCountResponse",
     "Endpoint",
     "EndpointDomainMask",
     "EndpointIp",
@@ -78,6 +79,7 @@ __all__ = [
     "ListInvoicesResponse",
     "ListPaymentsData",
     "ListPaymentsResponse",
+    "ListStreamsResponse",
     "ListTeamEndpointsResponse",
     "ListTeamsResponse",
     "LogDetails",
@@ -85,6 +87,7 @@ __all__ = [
     "MethodUsage",
     "MongoAttributes",
     "MysqlAttributes",
+    "PageInfo",
     "Payment",
     "PostgresAttributes",
     "QuickNodeSdk",
@@ -108,6 +111,7 @@ __all__ = [
     "TeamMessageData",
     "TeamSummary",
     "TeamUser",
+    "TestFilterResponse",
     "UpdateEndpointRequest",
     "UpdateEndpointStatusRequest",
     "UpdateEndpointStatusResponse",
@@ -569,6 +573,13 @@ class DestinationAttributes:
     def kafka(attrs: KafkaAttributes) -> DestinationAttributes: ...
     @staticmethod
     def redis(attrs: RedisAttributes) -> DestinationAttributes: ...
+
+@typing.final
+class EnabledCountResponse:
+    @property
+    def total(self) -> builtins.int: ...
+    @total.setter
+    def total(self, value: builtins.int) -> None: ...
 
 @typing.final
 class Endpoint:
@@ -1280,6 +1291,17 @@ class ListPaymentsResponse:
     def error(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
+class ListStreamsResponse:
+    @property
+    def data(self) -> builtins.list[Stream]: ...
+    @data.setter
+    def data(self, value: builtins.list[Stream]) -> None: ...
+    @property
+    def page_info(self) -> PageInfo: ...
+    @page_info.setter
+    def page_info(self, value: PageInfo) -> None: ...
+
+@typing.final
 class ListTeamEndpointsResponse:
     @property
     def data(self) -> builtins.list[TeamEndpoint]: ...
@@ -1429,6 +1451,21 @@ class MysqlAttributes:
     @retry_interval_sec.setter
     def retry_interval_sec(self, value: builtins.int) -> None: ...
     def __new__(cls, host: builtins.str, port: builtins.int, database: builtins.str, username: builtins.str, password: builtins.str, table_name: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int) -> MysqlAttributes: ...
+
+@typing.final
+class PageInfo:
+    @property
+    def limit(self) -> builtins.int: ...
+    @limit.setter
+    def limit(self, value: builtins.int) -> None: ...
+    @property
+    def offset(self) -> builtins.int: ...
+    @offset.setter
+    def offset(self, value: builtins.int) -> None: ...
+    @property
+    def total(self) -> builtins.int: ...
+    @total.setter
+    def total(self, value: builtins.int) -> None: ...
 
 @typing.final
 class Payment:
@@ -1921,10 +1958,49 @@ class Stream:
     def current_hash(self) -> typing.Optional[builtins.str]: ...
     @current_hash.setter
     def current_hash(self, value: typing.Optional[builtins.str]) -> None: ...
+    @property
+    def destination_attributes(self) -> typing.Optional[builtins.str]:
+        r"""
+        Destination-specific configuration as a JSON string. Shape depends on the destination type.
+        """
+    @destination_attributes.setter
+    def destination_attributes(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Destination-specific configuration as a JSON string. Shape depends on the destination type.
+        """
+    @property
+    def elastic_batch_enabled(self) -> typing.Optional[builtins.bool]: ...
+    @elastic_batch_enabled.setter
+    def elastic_batch_enabled(self, value: typing.Optional[builtins.bool]) -> None: ...
+    @property
+    def qn_account_id(self) -> typing.Optional[builtins.str]: ...
+    @qn_account_id.setter
+    def qn_account_id(self, value: typing.Optional[builtins.str]) -> None: ...
+    @property
+    def charge_min_cap(self) -> typing.Optional[builtins.int]: ...
+    @charge_min_cap.setter
+    def charge_min_cap(self, value: typing.Optional[builtins.int]) -> None: ...
+    @property
+    def memo(self) -> typing.Optional[builtins.str]: ...
+    @memo.setter
+    def memo(self, value: typing.Optional[builtins.str]) -> None: ...
+    @property
+    def address_book_config(self) -> typing.Optional[AddressBookConfig]: ...
+    @address_book_config.setter
+    def address_book_config(self, value: typing.Optional[AddressBookConfig]) -> None: ...
 
 @typing.final
 class StreamsApiClient:
     def create_stream(self, name: builtins.str, network: builtins.str, dataset: builtins.str, region: builtins.str, start_range: builtins.int, end_range: builtins.int, destination_attributes: DestinationAttributes, plan: builtins.str, threshold_fetch_buffer: builtins.int, dataset_batch_size: typing.Optional[builtins.int] = None, max_batch_size: typing.Optional[builtins.int] = None, max_buffer_range_size: typing.Optional[builtins.int] = None, max_buffer_processing_workers: typing.Optional[builtins.int] = None, keep_distance_from_tip: typing.Optional[builtins.int] = None, filter_function: typing.Optional[builtins.str] = None, filter_language: typing.Optional[builtins.str] = None, include_stream_metadata: typing.Optional[builtins.str] = None, product_type: typing.Optional[builtins.str] = None, status: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, charge_min_cap: typing.Optional[builtins.int] = None, fix_block_reorgs: typing.Optional[builtins.int] = None, elastic_batch_enabled: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, Stream]: ...
+    def list_streams(self, stream_type: typing.Optional[builtins.str] = None, offset: typing.Optional[builtins.int] = None, limit: typing.Optional[builtins.int] = None, order_by: typing.Optional[builtins.str] = None, order_direction: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, ListStreamsResponse]: ...
+    def delete_all_streams(self) -> typing.Coroutine[typing.Any, typing.Any, None]: ...
+    def get_stream(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, Stream]: ...
+    def update_stream(self, id: builtins.str, name: typing.Optional[builtins.str] = None, network: typing.Optional[builtins.str] = None, dataset: typing.Optional[builtins.str] = None, region: typing.Optional[builtins.str] = None, start_range: typing.Optional[builtins.int] = None, end_range: typing.Optional[builtins.int] = None, destination_attributes: typing.Optional[DestinationAttributes] = None, plan: typing.Optional[builtins.str] = None, threshold_fetch_buffer: typing.Optional[builtins.int] = None, dataset_batch_size: typing.Optional[builtins.int] = None, max_batch_size: typing.Optional[builtins.int] = None, max_buffer_range_size: typing.Optional[builtins.int] = None, max_buffer_processing_workers: typing.Optional[builtins.int] = None, keep_distance_from_tip: typing.Optional[builtins.int] = None, filter_function: typing.Optional[builtins.str] = None, filter_language: typing.Optional[builtins.str] = None, include_stream_metadata: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, charge_min_cap: typing.Optional[builtins.int] = None, fix_block_reorgs: typing.Optional[builtins.int] = None, elastic_batch_enabled: typing.Optional[builtins.bool] = None, status: typing.Optional[builtins.str] = None, memo: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, Stream]: ...
+    def delete_stream(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, None]: ...
+    def activate_stream(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, None]: ...
+    def pause_stream(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, None]: ...
+    def test_filter(self, network: builtins.str, dataset: builtins.str, block: builtins.str, filter_function: typing.Optional[builtins.str] = None, filter_language: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, TestFilterResponse]: ...
+    def get_enabled_count(self, stream_type: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, EnabledCountResponse]: ...
 
 @typing.final
 class StreamsConfig:
@@ -2040,6 +2116,23 @@ class TeamUser:
     def account_primary_user(self) -> typing.Optional[builtins.bool]: ...
     @account_primary_user.setter
     def account_primary_user(self, value: typing.Optional[builtins.bool]) -> None: ...
+
+@typing.final
+class TestFilterResponse:
+    @property
+    def result(self) -> builtins.str:
+        r"""
+        Filter output as a JSON string. Shape depends on the dataset and the user's filter function.
+        """
+    @result.setter
+    def result(self, value: builtins.str) -> None:
+        r"""
+        Filter output as a JSON string. Shape depends on the dataset and the user's filter function.
+        """
+    @property
+    def logs(self) -> builtins.list[builtins.str]: ...
+    @logs.setter
+    def logs(self, value: builtins.list[builtins.str]) -> None: ...
 
 @typing.final
 class UpdateEndpointRequest:

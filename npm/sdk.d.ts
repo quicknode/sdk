@@ -21,6 +21,13 @@ export type {
   AdminConfig,
   StreamsConfig,
   // streams
+  ListStreamsParams,
+  ListStreamsResponse,
+  PageInfo,
+  UpdateStreamParams,
+  TestFilterParams,
+  TestFilterResponse,
+  EnabledCountResponse,
   WebhookAttributes,
   S3Attributes,
   AzureAttributes,

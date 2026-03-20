@@ -1184,6 +1184,293 @@ impl StreamsApiClient {
                 .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
+
+    #[pyo3(signature = (stream_type=None, offset=None, limit=None, order_by=None, order_direction=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ListStreamsResponse]"
+    ))]
+    fn list_streams<'py>(
+        &self,
+        py: Python<'py>,
+        stream_type: Option<String>,
+        offset: Option<i64>,
+        limit: Option<i64>,
+        order_by: Option<String>,
+        order_direction: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let params = core::streams::ListStreamsParams {
+                stream_type,
+                offset,
+                limit,
+                order_by,
+                order_direction,
+            };
+            client
+                .list_streams(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
+    ))]
+    fn delete_all_streams<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_all_streams()
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, Stream]"
+    ))]
+    fn get_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_stream(&id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (
+        id,
+        name=None,
+        network=None,
+        dataset=None,
+        region=None,
+        start_range=None,
+        end_range=None,
+        destination_attributes=None,
+        plan=None,
+        threshold_fetch_buffer=None,
+        dataset_batch_size=None,
+        max_batch_size=None,
+        max_buffer_range_size=None,
+        max_buffer_processing_workers=None,
+        keep_distance_from_tip=None,
+        filter_function=None,
+        filter_language=None,
+        include_stream_metadata=None,
+        notification_email=None,
+        charge_min_cap=None,
+        fix_block_reorgs=None,
+        elastic_batch_enabled=None,
+        status=None,
+        memo=None,
+    ))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, Stream]"
+    ))]
+    fn update_stream<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        name: Option<String>,
+        network: Option<String>,
+        dataset: Option<String>,
+        region: Option<String>,
+        start_range: Option<i64>,
+        end_range: Option<i64>,
+        destination_attributes: Option<core::streams::DestinationAttributes>,
+        plan: Option<String>,
+        threshold_fetch_buffer: Option<i64>,
+        dataset_batch_size: Option<i64>,
+        max_batch_size: Option<i64>,
+        max_buffer_range_size: Option<i64>,
+        max_buffer_processing_workers: Option<i64>,
+        keep_distance_from_tip: Option<i64>,
+        filter_function: Option<String>,
+        filter_language: Option<String>,
+        include_stream_metadata: Option<String>,
+        notification_email: Option<String>,
+        charge_min_cap: Option<i32>,
+        fix_block_reorgs: Option<i32>,
+        elastic_batch_enabled: Option<bool>,
+        status: Option<String>,
+        memo: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let dataset = dataset
+                .map(|s| {
+                    serde_json::from_value::<core::streams::StreamDataset>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let region = region
+                .map(|s| {
+                    serde_json::from_value::<core::streams::StreamRegion>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let filter_language = filter_language
+                .map(|s| {
+                    serde_json::from_value::<core::streams::FilterLanguage>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let include_stream_metadata = include_stream_metadata
+                .map(|s| {
+                    serde_json::from_value::<core::streams::StreamMetadataLocation>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let status = status
+                .map(|s| {
+                    serde_json::from_value::<core::streams::StreamStatus>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let params = core::streams::UpdateStreamParams {
+                name,
+                network,
+                dataset,
+                region,
+                start_range,
+                end_range,
+                destination_attributes,
+                plan,
+                threshold_fetch_buffer,
+                dataset_batch_size,
+                max_batch_size,
+                max_buffer_range_size,
+                max_buffer_processing_workers,
+                keep_distance_from_tip,
+                filter_function,
+                filter_language,
+                address_book_config: None,
+                include_stream_metadata,
+                notification_email,
+                charge_min_cap,
+                fix_block_reorgs,
+                elastic_batch_enabled,
+                status,
+                memo,
+            };
+            client
+                .update_stream(&id, &params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
+    ))]
+    fn delete_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_stream(&id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
+    ))]
+    fn activate_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .activate_stream(&id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
+    ))]
+    fn pause_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .pause_stream(&id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (network, dataset, block, filter_function=None, filter_language=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, TestFilterResponse]"
+    ))]
+    fn test_filter<'py>(
+        &self,
+        py: Python<'py>,
+        network: String,
+        dataset: String,
+        block: String,
+        filter_function: Option<String>,
+        filter_language: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let dataset = serde_json::from_value::<core::streams::StreamDataset>(
+                serde_json::Value::String(dataset),
+            )
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            let filter_language = filter_language
+                .map(|s| {
+                    serde_json::from_value::<core::streams::FilterLanguage>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let params = core::streams::TestFilterParams {
+                network,
+                dataset,
+                block,
+                filter_function,
+                filter_language,
+                address_book_config: None,
+            };
+            client
+                .test_filter(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (stream_type=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, EnabledCountResponse]"
+    ))]
+    fn get_enabled_count<'py>(
+        &self,
+        py: Python<'py>,
+        stream_type: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_enabled_count(stream_type.as_deref())
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
 }
 
 // ── Module ─────────────────────────────────────────────────────
@@ -1311,6 +1598,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::streams::SnowflakeAttributes>()?;
     m.add_class::<core::streams::KafkaAttributes>()?;
     m.add_class::<core::streams::RedisAttributes>()?;
+    m.add_class::<core::streams::PageInfo>()?;
+    m.add_class::<core::streams::ListStreamsResponse>()?;
+    m.add_class::<core::streams::TestFilterResponse>()?;
+    m.add_class::<core::streams::EnabledCountResponse>()?;
     Ok(())
 }
 

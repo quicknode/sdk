@@ -556,7 +556,10 @@ export const enum ProductType {
 }
 export const enum StreamStatus {
   Active = 'Active',
-  Paused = 'Paused'
+  Paused = 'Paused',
+  Terminated = 'Terminated',
+  Completed = 'Completed',
+  Blocked = 'Blocked'
 }
 export interface WebhookAttributes {
   url: string
@@ -737,6 +740,71 @@ export interface Stream {
   notificationEmail?: string
   fixBlockReorgs?: number
   currentHash?: string
+  /** Destination-specific configuration as a JSON string. Shape depends on the destination type. */
+  destinationAttributes?: string
+  elasticBatchEnabled?: boolean
+  qnAccountId?: string
+  chargeMinCap?: number
+  memo?: string
+  addressBookConfig?: AddressBookConfig
+}
+export interface PageInfo {
+  limit: number
+  offset: number
+  total: number
+}
+export interface ListStreamsResponse {
+  data: Array<Stream>
+  pageInfo: PageInfo
+}
+export interface ListStreamsParams {
+  streamType?: string
+  offset?: number
+  limit?: number
+  orderBy?: string
+  orderDirection?: string
+}
+export interface UpdateStreamParams {
+  name?: string
+  region?: StreamRegion
+  network?: string
+  dataset?: StreamDataset
+  startRange?: number
+  endRange?: number
+  destinationAttributes?: DestinationAttributes
+  plan?: string
+  thresholdFetchBuffer?: number
+  datasetBatchSize?: number
+  maxBatchSize?: number
+  maxBufferRangeSize?: number
+  maxBufferProcessingWorkers?: number
+  keepDistanceFromTip?: number
+  filterFunction?: string
+  filterLanguage?: FilterLanguage
+  addressBookConfig?: AddressBookConfig
+  includeStreamMetadata?: StreamMetadataLocation
+  notificationEmail?: string
+  chargeMinCap?: number
+  fixBlockReorgs?: number
+  elasticBatchEnabled?: boolean
+  status?: StreamStatus
+  memo?: string
+}
+export interface TestFilterParams {
+  network: string
+  dataset: StreamDataset
+  block: string
+  filterFunction?: string
+  filterLanguage?: FilterLanguage
+  addressBookConfig?: AddressBookConfig
+}
+export interface TestFilterResponse {
+  /** Filter output as a JSON string. Shape depends on the dataset and the user's filter function. */
+  result: string
+  logs: Array<string>
+}
+export interface EnabledCountResponse {
+  total: number
 }
 export declare class QuickNodeSdk {
   constructor(config: SdkFullConfig)
@@ -800,4 +868,13 @@ export declare class AdminApiClient {
 }
 export declare class StreamsApiClient {
   createStream(params: CreateStreamParams): Promise<Stream>
+  listStreams(params?: ListStreamsParams | undefined | null): Promise<ListStreamsResponse>
+  deleteAllStreams(): Promise<void>
+  getStream(id: string): Promise<Stream>
+  updateStream(id: string, params: UpdateStreamParams): Promise<Stream>
+  deleteStream(id: string): Promise<void>
+  activateStream(id: string): Promise<void>
+  pauseStream(id: string): Promise<void>
+  testFilter(params: TestFilterParams): Promise<TestFilterResponse>
+  getEnabledCount(streamType?: string | undefined | null): Promise<EnabledCountResponse>
 }
