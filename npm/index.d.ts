@@ -567,7 +567,7 @@ export interface WebhookAttributes {
   retryIntervalSec: number
   postTimeoutSec: number
   securityToken?: string
-  compression?: string
+  compression: string
 }
 export interface S3Attributes {
   endpoint: string

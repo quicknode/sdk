@@ -5,8 +5,8 @@ import {
   StreamMetadataLocation,
   StreamRegion,
   StreamStatus,
-} from "..";
-import type { CreateStreamParams } from "..";
+} from "../sdk";
+import type { CreateStreamParams } from "../sdk";
 
 async function main() {
   const qn = QuickNodeSdk.fromEnv();
@@ -22,6 +22,7 @@ async function main() {
       maxRetry: 3,
       retryIntervalSec: 1,
       postTimeoutSec: 10,
+      compression: "none",
     }),
     plan: "growth_plan",
     thresholdFetchBuffer: 1000,

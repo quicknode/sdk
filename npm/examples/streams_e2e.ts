@@ -5,8 +5,8 @@ import {
   StreamMetadataLocation,
   StreamRegion,
   StreamStatus,
-} from "..";
-import type { CreateStreamParams, UpdateStreamParams } from "..";
+} from "../sdk";
+import type { CreateStreamParams, UpdateStreamParams } from "../sdk";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -40,6 +40,7 @@ async function main() {
       maxRetry: 3,
       retryIntervalSec: 1,
       postTimeoutSec: 10,
+      compression: "none",
     }),
     plan: "growth_plan",
     thresholdFetchBuffer: 1000,
