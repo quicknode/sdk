@@ -7,6 +7,7 @@ use sdk_core as core;
 #[napi]
 pub struct QuickNodeSdk {
     admin: AdminApiClient,
+    streams: StreamsApiClient,
 }
 
 #[napi]
@@ -18,7 +19,10 @@ impl QuickNodeSdk {
             .map_err(|e| Error::from_reason(e.to_string()))?;
         Ok(Self {
             admin: AdminApiClient {
-                inner: core::admin::AdminApiClient::new(sdk_config),
+                inner: core::admin::AdminApiClient::new(sdk_config.clone()),
+            },
+            streams: StreamsApiClient {
+                inner: core::streams::StreamsApiClient::new(sdk_config),
             },
         })
     }
@@ -28,11 +32,17 @@ impl QuickNodeSdk {
         self.admin.clone()
     }
 
+    #[napi(getter)]
+    pub fn streams(&self) -> StreamsApiClient {
+        self.streams.clone()
+    }
+
     #[napi(factory)]
     pub fn from_env() -> Result<Self> {
         core::QuickNodeSdk::from_env()
             .map(|sdk| Self {
                 admin: AdminApiClient { inner: sdk.admin },
+                streams: StreamsApiClient { inner: sdk.streams },
             })
             .map_err(|e| Error::from_reason(e.to_string()))
     }
@@ -623,6 +633,28 @@ impl AdminApiClient {
     ) -> Result<core::admin::ResendTeamInviteResponse> {
         self.inner
             .resend_team_invite(id, user_id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+}
+
+// ── StreamsApiClient ───────────────────────────────────────────────────────
+
+#[derive(Clone)]
+#[napi]
+pub struct StreamsApiClient {
+    inner: core::streams::StreamsApiClient,
+}
+
+#[napi]
+impl StreamsApiClient {
+    #[napi]
+    pub async fn create_stream(
+        &self,
+        params: core::streams::CreateStreamParams,
+    ) -> Result<core::streams::Stream> {
+        self.inner
+            .create_stream(&params)
             .await
             .map_err(|e| Error::from_reason(e.to_string()))
     }

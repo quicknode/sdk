@@ -34,7 +34,11 @@ name = "admin"
 required-features = ["rust"]
 
 [[example]]
-name = "admin_from_env"
+name = "admin_e2e"
+required-features = ["rust"]
+
+[[example]]
+name = "streams"
 required-features = ["rust"]
 
 [dev-dependencies]

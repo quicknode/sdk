@@ -16,6 +16,7 @@ sdk-core = { path = "../core", features = ["node"] }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 napi = { version = "2", features = ["async", "tokio_rt"] }
 napi-derive = "2"
+serde_json = "1.0"
 
 [build-dependencies]
 napi-build = "2"

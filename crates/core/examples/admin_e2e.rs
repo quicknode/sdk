@@ -4,10 +4,9 @@ use sdk_core::{
         CreateMethodRateLimitRequest, CreateOrUpdateIpCustomHeaderRequest, CreateReferrerRequest,
         CreateRequestFilterRequest, CreateTagRequest, CreateTeamRequest, GetAccountMetricsRequest,
         GetEndpointLogsRequest, GetEndpointMetricsRequest, GetEndpointsRequest, GetUsageRequest,
-        InviteTeamMemberRequest, RateLimitSettings, SecurityOptionsUpdate,
-        UpdateEndpointRequest, UpdateEndpointStatusRequest, UpdateMethodRateLimitRequest,
-        UpdateRateLimitsRequest, UpdateRequestFilterRequest, UpdateSecurityOptionsRequest,
-        UpdateTeamEndpointsRequest,
+        InviteTeamMemberRequest, RateLimitSettings, SecurityOptionsUpdate, UpdateEndpointRequest,
+        UpdateEndpointStatusRequest, UpdateMethodRateLimitRequest, UpdateRateLimitsRequest,
+        UpdateRequestFilterRequest, UpdateSecurityOptionsRequest, UpdateTeamEndpointsRequest,
     },
     QuickNodeSdk, SdkFullConfig,
 };
@@ -39,6 +38,7 @@ async fn main() {
         Err(e) => eprintln!("get_usage error: {e}"),
     }
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     match qn
         .admin
         .get_usage_by_endpoint(&GetUsageRequest::default())
@@ -57,6 +57,7 @@ async fn main() {
         Err(e) => eprintln!("get_usage_by_method error: {e}"),
     }
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     match qn
         .admin
         .get_usage_by_chain(&GetUsageRequest::default())
@@ -139,6 +140,7 @@ async fn main() {
         Err(e) => eprintln!("update_endpoint error: {e}"),
     }
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     match qn
         .admin
         .update_endpoint_status(
@@ -183,6 +185,7 @@ async fn main() {
         Err(e) => eprintln!("create_tag error: {e}"),
     }
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     let tag_id = match qn.admin.show_endpoint(&endpoint_id).await {
         Ok(resp) => resp
             .data
@@ -301,6 +304,7 @@ async fn main() {
         Err(e) => eprintln!("create_referrer error: {e}"),
     }
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     let referrer_id = match qn.admin.show_endpoint(&endpoint_id).await {
         Ok(resp) => resp
             .data
@@ -315,11 +319,7 @@ async fn main() {
     };
 
     if let Some(referrer_id) = referrer_id {
-        match qn
-            .admin
-            .delete_referrer(&endpoint_id, &referrer_id)
-            .await
-        {
+        match qn.admin.delete_referrer(&endpoint_id, &referrer_id).await {
             Ok(resp) => println!("delete_referrer: {:?}", resp.data),
             Err(e) => eprintln!("delete_referrer error: {e}"),
         }
@@ -353,6 +353,8 @@ async fn main() {
             None
         }
     };
+
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     if let Some(ip_id) = ip_id {
         match qn.admin.delete_ip(&endpoint_id, &ip_id).await {
@@ -404,7 +406,9 @@ async fn main() {
         .create_jwt(
             &endpoint_id,
             &CreateJwtRequest {
-                public_key: Some("-----BEGIN PUBLIC KEY-----\nPLACEHOLDER\n-----END PUBLIC KEY-----".to_string()),
+                public_key: Some(
+                    "-----BEGIN PUBLIC KEY-----\nPLACEHOLDER\n-----END PUBLIC KEY-----".to_string(),
+                ),
                 kid: Some("kid1".to_string()),
                 name: Some("example-jwt".to_string()),
             },
@@ -473,11 +477,7 @@ async fn main() {
             Err(e) => eprintln!("update_request_filter error: {e}"),
         }
 
-        match qn
-            .admin
-            .delete_request_filter(&endpoint_id, &rf_id)
-            .await
-        {
+        match qn.admin.delete_request_filter(&endpoint_id, &rf_id).await {
             Ok(()) => println!("delete_request_filter: ok"),
             Err(e) => eprintln!("delete_request_filter error: {e}"),
         }

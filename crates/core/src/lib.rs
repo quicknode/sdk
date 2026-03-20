@@ -1,8 +1,9 @@
 pub mod admin;
 pub mod config;
 pub mod errors;
+pub mod streams;
 
-pub use config::{AdminConfig, HttpConfig, SdkFullConfig};
+pub use config::{AdminConfig, HttpConfig, SdkFullConfig, StreamsConfig};
 
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::Client as ReqwestClient;
@@ -21,6 +22,7 @@ impl std::fmt::Debug for SdkConfig {
         f.debug_struct("SdkConfig")
             .field("api_key", &"[redacted]")
             .field("admin_base_url", &self.0.admin.base_url)
+            .field("streams_base_url", &self.0.streams.base_url)
             .finish()
     }
 }
@@ -28,6 +30,7 @@ impl std::fmt::Debug for SdkConfig {
 struct SdkConfigInner {
     http_client: ReqwestClient,
     admin: admin::ResolvedAdminConfig,
+    streams: streams::ResolvedStreamsConfig,
 }
 
 impl SdkConfig {
@@ -69,6 +72,7 @@ impl SdkConfig {
         Ok(Self(Arc::new(SdkConfigInner {
             http_client,
             admin: admin::ResolvedAdminConfig::from_config(config.admin.as_ref())?,
+            streams: streams::ResolvedStreamsConfig::from_config(config.streams.as_ref())?,
         })))
     }
 
@@ -79,17 +83,23 @@ impl SdkConfig {
     pub(crate) fn admin(&self) -> &admin::ResolvedAdminConfig {
         &self.0.admin
     }
+
+    pub(crate) fn streams(&self) -> &streams::ResolvedStreamsConfig {
+        &self.0.streams
+    }
 }
 
 pub struct QuickNodeSdk {
     pub admin: admin::AdminApiClient,
+    pub streams: streams::StreamsApiClient,
 }
 
 impl QuickNodeSdk {
     pub fn new(config: &SdkFullConfig) -> Result<Self, SdkError> {
         let sdk_config = SdkConfig::new(config)?;
         Ok(Self {
-            admin: admin::AdminApiClient::new(sdk_config),
+            admin: admin::AdminApiClient::new(sdk_config.clone()),
+            streams: streams::StreamsApiClient::new(sdk_config),
         })
     }
 

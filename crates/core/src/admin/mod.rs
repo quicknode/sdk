@@ -1366,6 +1366,7 @@ mod tests {
             admin: Some(AdminConfig {
                 base_url: Some(base_url),
             }),
+            streams: None,
         })
         .unwrap()
     }
@@ -2516,6 +2517,7 @@ mod tests {
                 pool_max_idle_per_host: None,
             }),
             admin: None,
+            streams: None,
         });
         assert!(matches!(result, Err(crate::errors::SdkError::Config(_))));
     }

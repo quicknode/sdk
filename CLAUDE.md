@@ -77,6 +77,8 @@ impl Resolved<Name>Config {
 ```
 `SdkConfigInner` holds one field per sub-client (e.g., `admin: admin::ResolvedAdminConfig`), and `SdkConfig` exposes a matching accessor (e.g., `fn admin(&self) -> &admin::ResolvedAdminConfig`). Call sites use `self.config.admin().base_url` instead of a flat `admin_base_url` field. Resolved config structs should be cheaply cloneable — prefer types like `reqwest::Url` (which implements `Clone`) and avoid heap allocations that would make cloning expensive; `SdkConfig` itself is a cheap clone via `Arc<SdkConfigInner>`.
 
+- Any update to types in the core crate need to be checked for updates in the language crates (python, node)
+
 ### Multi-Language Type Annotations
 Data types are defined once in `crates/core/src/` with feature-gated attribute macros:
 ```rust

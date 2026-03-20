@@ -12,6 +12,8 @@ use sdk_core as core;
 pub struct QuickNodeSdk {
     #[pyo3(get)]
     admin: AdminApiClient,
+    #[pyo3(get)]
+    streams: StreamsApiClient,
 }
 
 #[gen_stub_pymethods]
@@ -24,7 +26,10 @@ impl QuickNodeSdk {
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
         Ok(Self {
             admin: AdminApiClient {
-                inner: core::admin::AdminApiClient::new(sdk_config),
+                inner: core::admin::AdminApiClient::new(sdk_config.clone()),
+            },
+            streams: StreamsApiClient {
+                inner: core::streams::StreamsApiClient::new(sdk_config),
             },
         })
     }
@@ -34,6 +39,7 @@ impl QuickNodeSdk {
         core::QuickNodeSdk::from_env()
             .map(|sdk| Self {
                 admin: AdminApiClient { inner: sdk.admin },
+                streams: StreamsApiClient { inner: sdk.streams },
             })
             .map_err(|e| PyValueError::new_err(e.to_string()))
     }
@@ -1036,6 +1042,184 @@ impl AdminApiClient {
     }
 }
 
+// ── StreamsApiClient ───────────────────────────────────────────
+
+#[gen_stub_pyclass]
+#[pyclass]
+#[derive(Clone)]
+pub struct StreamsApiClient {
+    inner: core::streams::StreamsApiClient,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl StreamsApiClient {
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (
+        name,
+        network,
+        dataset,
+        region,
+        start_range,
+        end_range,
+        destination,
+        plan,
+        threshold_fetch_buffer,
+        webhook_attributes=None,
+        s3_attributes=None,
+        azure_attributes=None,
+        postgres_attributes=None,
+        mysql_attributes=None,
+        mongo_attributes=None,
+        clickhouse_attributes=None,
+        snowflake_attributes=None,
+        kafka_attributes=None,
+        redis_attributes=None,
+        dataset_batch_size=None,
+        max_batch_size=None,
+        max_buffer_range_size=None,
+        max_buffer_processing_workers=None,
+        keep_distance_from_tip=None,
+        filter_function=None,
+        filter_language=None,
+        include_stream_metadata=None,
+        product_type=None,
+        status=None,
+        notification_email=None,
+        charge_min_cap=None,
+        fix_block_reorgs=None,
+        elastic_batch_enabled=None
+    ))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, Stream]"
+    ))]
+    fn create_stream<'py>(
+        &self,
+        py: Python<'py>,
+        name: String,
+        network: String,
+        dataset: String,
+        region: String,
+        start_range: i64,
+        end_range: i64,
+        destination: String,
+        plan: String,
+        threshold_fetch_buffer: i64,
+        webhook_attributes: Option<core::streams::WebhookAttributes>,
+        s3_attributes: Option<core::streams::S3Attributes>,
+        azure_attributes: Option<core::streams::AzureAttributes>,
+        postgres_attributes: Option<core::streams::PostgresAttributes>,
+        mysql_attributes: Option<core::streams::MysqlAttributes>,
+        mongo_attributes: Option<core::streams::MongoAttributes>,
+        clickhouse_attributes: Option<core::streams::ClickhouseAttributes>,
+        snowflake_attributes: Option<core::streams::SnowflakeAttributes>,
+        kafka_attributes: Option<core::streams::KafkaAttributes>,
+        redis_attributes: Option<core::streams::RedisAttributes>,
+        dataset_batch_size: Option<i64>,
+        max_batch_size: Option<i64>,
+        max_buffer_range_size: Option<i64>,
+        max_buffer_processing_workers: Option<i64>,
+        keep_distance_from_tip: Option<i64>,
+        filter_function: Option<String>,
+        filter_language: Option<String>,
+        include_stream_metadata: Option<String>,
+        product_type: Option<String>,
+        status: Option<String>,
+        notification_email: Option<String>,
+        charge_min_cap: Option<i32>,
+        fix_block_reorgs: Option<i32>,
+        elastic_batch_enabled: Option<bool>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let dataset = serde_json::from_value::<core::streams::StreamDataset>(
+                serde_json::Value::String(dataset),
+            )
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            let region = serde_json::from_value::<core::streams::StreamRegion>(
+                serde_json::Value::String(region),
+            )
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            let destination = serde_json::from_value::<core::streams::StreamDestination>(
+                serde_json::Value::String(destination),
+            )
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            let filter_language = filter_language
+                .map(|s| {
+                    serde_json::from_value::<core::streams::FilterLanguage>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let include_stream_metadata = include_stream_metadata
+                .map(|s| {
+                    serde_json::from_value::<core::streams::StreamMetadataLocation>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let product_type = product_type
+                .map(|s| {
+                    serde_json::from_value::<core::streams::ProductType>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let status = status
+                .map(|s| {
+                    serde_json::from_value::<core::streams::StreamStatus>(
+                        serde_json::Value::String(s),
+                    )
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
+                .transpose()?;
+            let params = core::streams::CreateStreamParams {
+                name,
+                network,
+                dataset,
+                region,
+                start_range,
+                end_range,
+                destination,
+                webhook_attributes,
+                s3_attributes,
+                azure_attributes,
+                postgres_attributes,
+                mysql_attributes,
+                mongo_attributes,
+                clickhouse_attributes,
+                snowflake_attributes,
+                kafka_attributes,
+                redis_attributes,
+                plan,
+                threshold_fetch_buffer,
+                dataset_batch_size,
+                max_batch_size,
+                max_buffer_range_size,
+                max_buffer_processing_workers,
+                keep_distance_from_tip,
+                filter_function,
+                filter_language,
+                address_book_config: None,
+                include_stream_metadata,
+                product_type,
+                status,
+                notification_email,
+                charge_min_cap,
+                fix_block_reorgs,
+                elastic_batch_enabled,
+            };
+            client
+                .create_stream(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+}
+
 // ── Module ─────────────────────────────────────────────────────
 
 #[pymodule]
@@ -1145,7 +1329,21 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::ResendTeamInviteResponse>()?;
     m.add_class::<core::HttpConfig>()?;
     m.add_class::<core::AdminConfig>()?;
+    m.add_class::<core::StreamsConfig>()?;
     m.add_class::<core::SdkFullConfig>()?;
+    m.add_class::<StreamsApiClient>()?;
+    m.add_class::<core::streams::Stream>()?;
+    m.add_class::<core::streams::AddressBookConfig>()?;
+    m.add_class::<core::streams::WebhookAttributes>()?;
+    m.add_class::<core::streams::S3Attributes>()?;
+    m.add_class::<core::streams::AzureAttributes>()?;
+    m.add_class::<core::streams::PostgresAttributes>()?;
+    m.add_class::<core::streams::MysqlAttributes>()?;
+    m.add_class::<core::streams::MongoAttributes>()?;
+    m.add_class::<core::streams::ClickhouseAttributes>()?;
+    m.add_class::<core::streams::SnowflakeAttributes>()?;
+    m.add_class::<core::streams::KafkaAttributes>()?;
+    m.add_class::<core::streams::RedisAttributes>()?;
     Ok(())
 }
 

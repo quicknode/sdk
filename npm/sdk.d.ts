@@ -5,6 +5,28 @@ export type {
   SdkFullConfig,
   HttpConfig,
   AdminConfig,
+  StreamsConfig,
+  // streams
+  StreamRegion,
+  StreamDataset,
+  StreamDestination,
+  FilterLanguage,
+  StreamMetadataLocation,
+  ProductType,
+  StreamStatus,
+  WebhookAttributes,
+  S3Attributes,
+  AzureAttributes,
+  PostgresAttributes,
+  MysqlAttributes,
+  MongoAttributes,
+  ClickhouseAttributes,
+  SnowflakeAttributes,
+  KafkaAttributes,
+  RedisAttributes,
+  AddressBookConfig,
+  CreateStreamParams,
+  Stream,
   // billing
   InvoiceLine,
   Invoice,
@@ -121,4 +143,5 @@ export class QuickNodeSdk {
   constructor(config: SdkFullConfig);
   static fromEnv(): QuickNodeSdk;
   admin: _QuickNodeSdk["admin"];
+  streams: _QuickNodeSdk["streams"];
 }

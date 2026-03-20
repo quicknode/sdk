@@ -6,12 +6,14 @@ class QuickNodeSdk {
   constructor(config) {
     this._inner = new _QuickNodeSdk(config);
     this.admin = this._inner.admin;
+    this.streams = this._inner.streams;
   }
 
   static fromEnv() {
     const instance = Object.create(QuickNodeSdk.prototype);
     instance._inner = _QuickNodeSdk.fromEnv();
     instance.admin = instance._inner.admin;
+    instance.streams = instance._inner.streams;
     return instance;
   }
 }
