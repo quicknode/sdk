@@ -1062,19 +1062,9 @@ impl StreamsApiClient {
         region,
         start_range,
         end_range,
-        destination,
+        destination_attributes,
         plan,
         threshold_fetch_buffer,
-        webhook_attributes=None,
-        s3_attributes=None,
-        azure_attributes=None,
-        postgres_attributes=None,
-        mysql_attributes=None,
-        mongo_attributes=None,
-        clickhouse_attributes=None,
-        snowflake_attributes=None,
-        kafka_attributes=None,
-        redis_attributes=None,
         dataset_batch_size=None,
         max_batch_size=None,
         max_buffer_range_size=None,
@@ -1102,19 +1092,9 @@ impl StreamsApiClient {
         region: String,
         start_range: i64,
         end_range: i64,
-        destination: String,
+        destination_attributes: core::streams::DestinationAttributes,
         plan: String,
         threshold_fetch_buffer: i64,
-        webhook_attributes: Option<core::streams::WebhookAttributes>,
-        s3_attributes: Option<core::streams::S3Attributes>,
-        azure_attributes: Option<core::streams::AzureAttributes>,
-        postgres_attributes: Option<core::streams::PostgresAttributes>,
-        mysql_attributes: Option<core::streams::MysqlAttributes>,
-        mongo_attributes: Option<core::streams::MongoAttributes>,
-        clickhouse_attributes: Option<core::streams::ClickhouseAttributes>,
-        snowflake_attributes: Option<core::streams::SnowflakeAttributes>,
-        kafka_attributes: Option<core::streams::KafkaAttributes>,
-        redis_attributes: Option<core::streams::RedisAttributes>,
         dataset_batch_size: Option<i64>,
         max_batch_size: Option<i64>,
         max_buffer_range_size: Option<i64>,
@@ -1138,10 +1118,6 @@ impl StreamsApiClient {
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
             let region = serde_json::from_value::<core::streams::StreamRegion>(
                 serde_json::Value::String(region),
-            )
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-            let destination = serde_json::from_value::<core::streams::StreamDestination>(
-                serde_json::Value::String(destination),
             )
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
             let filter_language = filter_language
@@ -1183,17 +1159,7 @@ impl StreamsApiClient {
                 region,
                 start_range,
                 end_range,
-                destination,
-                webhook_attributes,
-                s3_attributes,
-                azure_attributes,
-                postgres_attributes,
-                mysql_attributes,
-                mongo_attributes,
-                clickhouse_attributes,
-                snowflake_attributes,
-                kafka_attributes,
-                redis_attributes,
+                destination_attributes,
                 plan,
                 threshold_fetch_buffer,
                 dataset_batch_size,
@@ -1333,6 +1299,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::SdkFullConfig>()?;
     m.add_class::<StreamsApiClient>()?;
     m.add_class::<core::streams::Stream>()?;
+    m.add_class::<core::streams::DestinationAttributes>()?;
     m.add_class::<core::streams::AddressBookConfig>()?;
     m.add_class::<core::streams::WebhookAttributes>()?;
     m.add_class::<core::streams::S3Attributes>()?;

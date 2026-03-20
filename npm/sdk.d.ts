@@ -1,5 +1,19 @@
 // sdk.d.ts
-import { QuickNodeSdk as _QuickNodeSdk, SdkFullConfig } from "./index";
+import {
+  QuickNodeSdk as _QuickNodeSdk,
+  SdkFullConfig,
+  WebhookAttributes,
+  S3Attributes,
+  AzureAttributes,
+  PostgresAttributes,
+  MysqlAttributes,
+  MongoAttributes,
+  ClickhouseAttributes,
+  SnowflakeAttributes,
+  KafkaAttributes,
+  RedisAttributes,
+  StreamDestination,
+} from "./index";
 
 export type {
   SdkFullConfig,
@@ -149,4 +163,19 @@ export class QuickNodeSdk {
   static fromEnv(): QuickNodeSdk;
   admin: _QuickNodeSdk["admin"];
   streams: _QuickNodeSdk["streams"];
+}
+
+export class DestinationAttributes {
+  destination: StreamDestination;
+  value: string;
+  static webhook(attrs: WebhookAttributes): DestinationAttributes;
+  static s3(attrs: S3Attributes): DestinationAttributes;
+  static azure(attrs: AzureAttributes): DestinationAttributes;
+  static postgres(attrs: PostgresAttributes): DestinationAttributes;
+  static mysql(attrs: MysqlAttributes): DestinationAttributes;
+  static mongo(attrs: MongoAttributes): DestinationAttributes;
+  static clickhouse(attrs: ClickhouseAttributes): DestinationAttributes;
+  static snowflake(attrs: SnowflakeAttributes): DestinationAttributes;
+  static kafka(attrs: KafkaAttributes): DestinationAttributes;
+  static redis(attrs: RedisAttributes): DestinationAttributes;
 }

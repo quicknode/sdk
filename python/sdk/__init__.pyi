@@ -6,6 +6,7 @@ from sdk._core import (
     AdminApiClient,
     StreamsApiClient,
     Stream,
+    DestinationAttributes,
     WebhookAttributes,
     S3Attributes,
     AzureAttributes,

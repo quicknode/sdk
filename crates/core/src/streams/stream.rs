@@ -3,7 +3,7 @@ use bon::Builder;
 #[cfg(feature = "node")]
 use napi_derive::napi;
 #[cfg(feature = "python")]
-use pyo3::{pyclass, pymethods};
+use pyo3::{exceptions::PyValueError, pyclass, pymethods, PyResult};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use serde::{Deserialize, Serialize};
@@ -544,12 +544,184 @@ impl AddressBookConfig {
     }
 }
 
+// ── Destination Attributes ─────────────────────────────────────────────────
+
+// The API expects a `destination` string and a `destination_attributes` object
+// whose shape depends on which destination is selected. The natural Rust model
+// would be an enum with per-variant data, but napi-rs and PyO3 cannot represent
+// Rust discriminated unions at the FFI boundary — they require flat structs.
+// Instead, `DestinationAttributes` is a flat wrapper struct that bundles the
+// destination variant with its pre-serialized JSON value. Callers construct it
+// via typed static factory methods (one per destination), so they never interact
+// with raw JSON. The `CreateStreamParams` holds one `DestinationAttributes`
+// field instead of 10 separate `Option<XAttributes>` fields — making mismatches
+// a compile-time error in Rust and a clear constructor error in Python/Node.
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DestinationAttributes {
+    // pub fields required for napi(object) to expose them in TypeScript.
+    // Callers should use the typed factory methods rather than setting fields
+    // directly — the value field is a pre-serialized JSON string.
+    pub destination: StreamDestination,
+    // Stored as a JSON string so napi(object) can represent it (serde_json::Value
+    // is not supported by napi-rs). Parsed back to Value in create_stream.
+    pub value: String,
+}
+
+// napi(object) on CreateStreamParams requires all fields to implement Default
+// so napi can handle cases where the field is absent in JS. In practice,
+// destination_attributes is always required — the default is never used.
+impl Default for DestinationAttributes {
+    fn default() -> Self {
+        Self {
+            destination: StreamDestination::Webhook,
+            value: "null".to_string(),
+        }
+    }
+}
+
+impl DestinationAttributes {
+    pub fn webhook(attrs: &WebhookAttributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::Webhook,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+
+    pub fn s3(attrs: &S3Attributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::S3,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+
+    pub fn azure(attrs: &AzureAttributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::Azure,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+
+    pub fn postgres(attrs: &PostgresAttributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::Postgres,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+
+    pub fn mysql(attrs: &MysqlAttributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::Mysql,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+
+    pub fn mongo(attrs: &MongoAttributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::Mongo,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+
+    pub fn clickhouse(attrs: &ClickhouseAttributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::Clickhouse,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+
+    pub fn snowflake(attrs: &SnowflakeAttributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::Snowflake,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+
+    pub fn kafka(attrs: &KafkaAttributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::Kafka,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+
+    pub fn redis(attrs: &RedisAttributes) -> Result<Self, SdkError> {
+        Ok(Self {
+            destination: StreamDestination::Redis,
+            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
+        })
+    }
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl DestinationAttributes {
+    #[staticmethod]
+    #[pyo3(name = "webhook")]
+    fn py_webhook(attrs: &WebhookAttributes) -> PyResult<Self> {
+        Self::webhook(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "s3")]
+    fn py_s3(attrs: &S3Attributes) -> PyResult<Self> {
+        Self::s3(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "azure")]
+    fn py_azure(attrs: &AzureAttributes) -> PyResult<Self> {
+        Self::azure(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "postgres")]
+    fn py_postgres(attrs: &PostgresAttributes) -> PyResult<Self> {
+        Self::postgres(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "mysql")]
+    fn py_mysql(attrs: &MysqlAttributes) -> PyResult<Self> {
+        Self::mysql(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "mongo")]
+    fn py_mongo(attrs: &MongoAttributes) -> PyResult<Self> {
+        Self::mongo(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "clickhouse")]
+    fn py_clickhouse(attrs: &ClickhouseAttributes) -> PyResult<Self> {
+        Self::clickhouse(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "snowflake")]
+    fn py_snowflake(attrs: &SnowflakeAttributes) -> PyResult<Self> {
+        Self::snowflake(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "kafka")]
+    fn py_kafka(attrs: &KafkaAttributes) -> PyResult<Self> {
+        Self::kafka(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "redis")]
+    fn py_redis(attrs: &RedisAttributes) -> PyResult<Self> {
+        Self::redis(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+}
+
 // ── Request (public-facing) ────────────────────────────────────────────────
 
-/// Parameters for creating a stream. Set exactly one attribute field matching
-/// `destination`. Only the field corresponding to the chosen destination will be
-/// used; all others must be `None`. Mismatches produce a `SdkError::Config` at
-/// call time.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
@@ -561,35 +733,11 @@ pub struct CreateStreamParams {
     pub dataset: StreamDataset,
     pub start_range: i64,
     pub end_range: i64,
-    pub destination: StreamDestination,
-    // Exactly one of the following attribute fields must be set, corresponding to
-    // the value of `destination`. The API expects a single `destination_attributes`
-    // object whose shape depends on the destination type. Because napi-rs and PyO3
-    // cannot represent a Rust discriminated union directly, these are modeled as
-    // separate optional fields instead. The correct field is selected and validated
-    // at call time in `extract_destination_attributes` — setting the wrong field or
-    // leaving all fields `None` returns a `SdkError::Config` before any HTTP request
-    // is made.
+    // destination and destination_attributes are skipped here and inserted manually
+    // into the request body in StreamsApiClient::create_stream, so serde doesn't
+    // try to serialize them as fields of this struct.
     #[serde(skip)]
-    pub webhook_attributes: Option<WebhookAttributes>,       // use with StreamDestination::Webhook
-    #[serde(skip)]
-    pub s3_attributes: Option<S3Attributes>,                 // use with StreamDestination::S3
-    #[serde(skip)]
-    pub azure_attributes: Option<AzureAttributes>,           // use with StreamDestination::Azure
-    #[serde(skip)]
-    pub postgres_attributes: Option<PostgresAttributes>,     // use with StreamDestination::Postgres
-    #[serde(skip)]
-    pub mysql_attributes: Option<MysqlAttributes>,           // use with StreamDestination::Mysql
-    #[serde(skip)]
-    pub mongo_attributes: Option<MongoAttributes>,           // use with StreamDestination::Mongo
-    #[serde(skip)]
-    pub clickhouse_attributes: Option<ClickhouseAttributes>, // use with StreamDestination::Clickhouse
-    #[serde(skip)]
-    pub snowflake_attributes: Option<SnowflakeAttributes>,   // use with StreamDestination::Snowflake
-    #[serde(skip)]
-    pub kafka_attributes: Option<KafkaAttributes>,           // use with StreamDestination::Kafka
-    #[serde(skip)]
-    pub redis_attributes: Option<RedisAttributes>,           // use with StreamDestination::Redis
+    pub destination_attributes: DestinationAttributes,
     pub plan: String,
     pub threshold_fetch_buffer: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -622,45 +770,6 @@ pub struct CreateStreamParams {
     pub fix_block_reorgs: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elastic_batch_enabled: Option<bool>,
-}
-
-impl CreateStreamParams {
-    pub(crate) fn destination_attributes(&self) -> Result<serde_json::Value, SdkError> {
-        // Enforces: the attribute field matching `destination` must be set.
-        // Returns SdkError::Config with a clear message if the wrong or no field is provided.
-        match self.destination {
-            StreamDestination::Webhook => self.webhook_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("webhook_attributes must be set when destination is Webhook".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-            StreamDestination::S3 => self.s3_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("s3_attributes must be set when destination is S3".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-            StreamDestination::Azure => self.azure_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("azure_attributes must be set when destination is Azure".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-            StreamDestination::Postgres => self.postgres_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("postgres_attributes must be set when destination is Postgres".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-            StreamDestination::Mysql => self.mysql_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("mysql_attributes must be set when destination is Mysql".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-            StreamDestination::Mongo => self.mongo_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("mongo_attributes must be set when destination is Mongo".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-            StreamDestination::Clickhouse => self.clickhouse_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("clickhouse_attributes must be set when destination is Clickhouse".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-            StreamDestination::Snowflake => self.snowflake_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("snowflake_attributes must be set when destination is Snowflake".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-            StreamDestination::Kafka => self.kafka_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("kafka_attributes must be set when destination is Kafka".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-            StreamDestination::Redis => self.redis_attributes.as_ref()
-                .ok_or_else(|| SdkError::Config("redis_attributes must be set when destination is Redis".into()))
-                .and_then(|a| serde_json::to_value(a).map_err(|e| SdkError::Config(e.to_string()))),
-        }
-    }
 }
 
 // ── Response ───────────────────────────────────────────────────────────────

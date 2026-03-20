@@ -32,6 +32,7 @@ __all__ = [
     "DeleteBoolResponse",
     "DeleteTeamData",
     "DeleteTeamResponse",
+    "DestinationAttributes",
     "Endpoint",
     "EndpointDomainMask",
     "EndpointIp",
@@ -545,6 +546,29 @@ class DeleteTeamResponse:
     def error(self) -> typing.Optional[builtins.str]: ...
     @error.setter
     def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
+class DestinationAttributes:
+    @staticmethod
+    def webhook(attrs: WebhookAttributes) -> DestinationAttributes: ...
+    @staticmethod
+    def s3(attrs: S3Attributes) -> DestinationAttributes: ...
+    @staticmethod
+    def azure(attrs: AzureAttributes) -> DestinationAttributes: ...
+    @staticmethod
+    def postgres(attrs: PostgresAttributes) -> DestinationAttributes: ...
+    @staticmethod
+    def mysql(attrs: MysqlAttributes) -> DestinationAttributes: ...
+    @staticmethod
+    def mongo(attrs: MongoAttributes) -> DestinationAttributes: ...
+    @staticmethod
+    def clickhouse(attrs: ClickhouseAttributes) -> DestinationAttributes: ...
+    @staticmethod
+    def snowflake(attrs: SnowflakeAttributes) -> DestinationAttributes: ...
+    @staticmethod
+    def kafka(attrs: KafkaAttributes) -> DestinationAttributes: ...
+    @staticmethod
+    def redis(attrs: RedisAttributes) -> DestinationAttributes: ...
 
 @typing.final
 class Endpoint:
@@ -1900,7 +1924,7 @@ class Stream:
 
 @typing.final
 class StreamsApiClient:
-    def create_stream(self, name: builtins.str, network: builtins.str, dataset: builtins.str, region: builtins.str, start_range: builtins.int, end_range: builtins.int, destination: builtins.str, plan: builtins.str, threshold_fetch_buffer: builtins.int, webhook_attributes: typing.Optional[WebhookAttributes] = None, s3_attributes: typing.Optional[S3Attributes] = None, azure_attributes: typing.Optional[AzureAttributes] = None, postgres_attributes: typing.Optional[PostgresAttributes] = None, mysql_attributes: typing.Optional[MysqlAttributes] = None, mongo_attributes: typing.Optional[MongoAttributes] = None, clickhouse_attributes: typing.Optional[ClickhouseAttributes] = None, snowflake_attributes: typing.Optional[SnowflakeAttributes] = None, kafka_attributes: typing.Optional[KafkaAttributes] = None, redis_attributes: typing.Optional[RedisAttributes] = None, dataset_batch_size: typing.Optional[builtins.int] = None, max_batch_size: typing.Optional[builtins.int] = None, max_buffer_range_size: typing.Optional[builtins.int] = None, max_buffer_processing_workers: typing.Optional[builtins.int] = None, keep_distance_from_tip: typing.Optional[builtins.int] = None, filter_function: typing.Optional[builtins.str] = None, filter_language: typing.Optional[builtins.str] = None, include_stream_metadata: typing.Optional[builtins.str] = None, product_type: typing.Optional[builtins.str] = None, status: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, charge_min_cap: typing.Optional[builtins.int] = None, fix_block_reorgs: typing.Optional[builtins.int] = None, elastic_batch_enabled: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, Stream]: ...
+    def create_stream(self, name: builtins.str, network: builtins.str, dataset: builtins.str, region: builtins.str, start_range: builtins.int, end_range: builtins.int, destination_attributes: DestinationAttributes, plan: builtins.str, threshold_fetch_buffer: builtins.int, dataset_batch_size: typing.Optional[builtins.int] = None, max_batch_size: typing.Optional[builtins.int] = None, max_buffer_range_size: typing.Optional[builtins.int] = None, max_buffer_processing_workers: typing.Optional[builtins.int] = None, keep_distance_from_tip: typing.Optional[builtins.int] = None, filter_function: typing.Optional[builtins.str] = None, filter_language: typing.Optional[builtins.str] = None, include_stream_metadata: typing.Optional[builtins.str] = None, product_type: typing.Optional[builtins.str] = None, status: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, charge_min_cap: typing.Optional[builtins.int] = None, fix_block_reorgs: typing.Optional[builtins.int] = None, elastic_batch_enabled: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, Stream]: ...
 
 @typing.final
 class StreamsConfig:

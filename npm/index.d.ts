@@ -680,12 +680,10 @@ export interface AddressBookConfig {
   objectsFilterPath?: string
   elementsFilterPaths: Array<string>
 }
-/**
- * Parameters for creating a stream. Set exactly one attribute field matching
- * `destination`. Only the field corresponding to the chosen destination will be
- * used; all others must be `None`. Mismatches produce a `SdkError::Config` at
- * call time.
- */
+export interface DestinationAttributes {
+  destination: StreamDestination
+  value: string
+}
 export interface CreateStreamParams {
   name: string
   region: StreamRegion
@@ -693,17 +691,7 @@ export interface CreateStreamParams {
   dataset: StreamDataset
   startRange: number
   endRange: number
-  destination: StreamDestination
-  webhookAttributes?: WebhookAttributes
-  s3Attributes?: S3Attributes
-  azureAttributes?: AzureAttributes
-  postgresAttributes?: PostgresAttributes
-  mysqlAttributes?: MysqlAttributes
-  mongoAttributes?: MongoAttributes
-  clickhouseAttributes?: ClickhouseAttributes
-  snowflakeAttributes?: SnowflakeAttributes
-  kafkaAttributes?: KafkaAttributes
-  redisAttributes?: RedisAttributes
+  destinationAttributes: DestinationAttributes
   plan: string
   thresholdFetchBuffer: number
   datasetBatchSize?: number

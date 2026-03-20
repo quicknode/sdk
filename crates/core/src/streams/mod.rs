@@ -1,10 +1,11 @@
 pub mod stream;
 
 pub use stream::{
-    AddressBookConfig, AzureAttributes, ClickhouseAttributes, CreateStreamParams, FilterLanguage,
-    KafkaAttributes, MongoAttributes, MysqlAttributes, PostgresAttributes, ProductType,
-    RedisAttributes, S3Attributes, SnowflakeAttributes, Stream, StreamDataset, StreamDestination,
-    StreamMetadataLocation, StreamRegion, StreamStatus, WebhookAttributes,
+    AddressBookConfig, AzureAttributes, ClickhouseAttributes, CreateStreamParams,
+    DestinationAttributes, FilterLanguage, KafkaAttributes, MongoAttributes, MysqlAttributes,
+    PostgresAttributes, ProductType, RedisAttributes, S3Attributes, SnowflakeAttributes, Stream,
+    StreamDataset, StreamDestination, StreamMetadataLocation, StreamRegion, StreamStatus,
+    WebhookAttributes,
 };
 
 use crate::{config::StreamsConfig, errors::SdkError, SdkConfig};
@@ -41,11 +42,21 @@ impl StreamsApiClient {
     }
 
     pub async fn create_stream(&self, params: &CreateStreamParams) -> Result<Stream, SdkError> {
-        let destination_attributes = params.destination_attributes()?;
         let mut body = serde_json::to_value(params).map_err(|e| SdkError::Config(e.to_string()))?;
-        body.as_object_mut()
-            .ok_or_else(|| SdkError::Config("failed to serialize request body as JSON object".into()))?
-            .insert("destination_attributes".to_string(), destination_attributes);
+        let obj = body
+            .as_object_mut()
+            .ok_or_else(|| SdkError::Config("failed to serialize request body as JSON object".into()))?;
+        #[allow(clippy::needless_borrows_for_generic_args)]
+        obj.insert(
+            "destination".to_string(),
+            serde_json::to_value(&params.destination_attributes.destination)
+                .map_err(|e| SdkError::Config(e.to_string()))?,
+        );
+        obj.insert(
+            "destination_attributes".to_string(),
+            serde_json::from_str(&params.destination_attributes.value)
+                .map_err(|e| SdkError::Config(e.to_string()))?,
+        );
 
         let url = self.config.streams().base_url.join("streams")?;
         let resp = self
@@ -97,24 +108,14 @@ mod tests {
             dataset: StreamDataset::Block,
             start_range: 17000000,
             end_range: -1,
-            destination: StreamDestination::Webhook,
-            webhook_attributes: Some(WebhookAttributes {
+            destination_attributes: DestinationAttributes::webhook(&WebhookAttributes {
                 url: "https://example.com/webhook".to_string(),
                 max_retry: 3,
                 retry_interval_sec: 1,
                 post_timeout_sec: 10,
                 security_token: None,
                 compression: None,
-            }),
-            s3_attributes: None,
-            azure_attributes: None,
-            postgres_attributes: None,
-            mysql_attributes: None,
-            mongo_attributes: None,
-            clickhouse_attributes: None,
-            snowflake_attributes: None,
-            kafka_attributes: None,
-            redis_attributes: None,
+            }).unwrap(),
             plan: "growth_plan".to_string(),
             threshold_fetch_buffer: 1000,
             dataset_batch_size: None,
@@ -170,15 +171,6 @@ mod tests {
         assert_eq!(resp.status, "active");
         assert_eq!(resp.network, "ethereum-mainnet");
         assert_eq!(resp.dataset, "block");
-    }
-
-    #[tokio::test]
-    async fn create_stream_missing_attributes_returns_config_error() {
-        let sdk = make_sdk("http://localhost/".to_string());
-        let mut params = webhook_params();
-        params.webhook_attributes = None;
-        let err = sdk.streams.create_stream(&params).await.unwrap_err();
-        assert!(matches!(err, SdkError::Config(_)));
     }
 
     #[tokio::test]

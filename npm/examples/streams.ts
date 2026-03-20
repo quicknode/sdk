@@ -1,7 +1,7 @@
 import {
+  DestinationAttributes,
   QuickNodeSdk,
   StreamDataset,
-  StreamDestination,
   StreamMetadataLocation,
   StreamRegion,
   StreamStatus,
@@ -17,15 +17,14 @@ async function main() {
     region: StreamRegion.UsaEast,
     startRange: 24691804,
     endRange: 24691904,
-    destination: StreamDestination.Webhook,
-    plan: "growth_plan",
-    thresholdFetchBuffer: 1000,
-    webhookAttributes: {
+    destinationAttributes: DestinationAttributes.webhook({
       url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
       maxRetry: 3,
       retryIntervalSec: 1,
       postTimeoutSec: 10,
-    },
+    }),
+    plan: "growth_plan",
+    thresholdFetchBuffer: 1000,
     datasetBatchSize: 1,
     includeStreamMetadata: StreamMetadataLocation.Body,
     fixBlockReorgs: 0,

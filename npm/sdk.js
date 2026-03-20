@@ -18,4 +18,55 @@ class QuickNodeSdk {
   }
 }
 
-module.exports = { QuickNodeSdk };
+// DestinationAttributes wraps the napi-rs generated plain object with typed
+// static factory methods. The underlying object has `destination` (string enum)
+// and `value` (JSON string) fields — callers should use the factory methods
+// rather than constructing the object directly.
+class DestinationAttributes {
+  constructor(destination, value) {
+    this.destination = destination;
+    this.value = value;
+  }
+
+  static webhook(attrs) {
+    return new DestinationAttributes("webhook", JSON.stringify(attrs));
+  }
+
+  static s3(attrs) {
+    return new DestinationAttributes("s3", JSON.stringify(attrs));
+  }
+
+  static azure(attrs) {
+    return new DestinationAttributes("azure", JSON.stringify(attrs));
+  }
+
+  static postgres(attrs) {
+    return new DestinationAttributes("postgres", JSON.stringify(attrs));
+  }
+
+  static mysql(attrs) {
+    return new DestinationAttributes("mysql", JSON.stringify(attrs));
+  }
+
+  static mongo(attrs) {
+    return new DestinationAttributes("mongo", JSON.stringify(attrs));
+  }
+
+  static clickhouse(attrs) {
+    return new DestinationAttributes("clickhouse", JSON.stringify(attrs));
+  }
+
+  static snowflake(attrs) {
+    return new DestinationAttributes("snowflake", JSON.stringify(attrs));
+  }
+
+  static kafka(attrs) {
+    return new DestinationAttributes("kafka", JSON.stringify(attrs));
+  }
+
+  static redis(attrs) {
+    return new DestinationAttributes("redis", JSON.stringify(attrs));
+  }
+}
+
+module.exports = { QuickNodeSdk, DestinationAttributes };

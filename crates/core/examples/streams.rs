@@ -1,7 +1,7 @@
 use sdk_core::{
     streams::{
-        CreateStreamParams, StreamDataset, StreamDestination, StreamMetadataLocation, StreamRegion,
-        StreamStatus, WebhookAttributes,
+        CreateStreamParams, DestinationAttributes, StreamDataset, StreamMetadataLocation,
+        StreamRegion, StreamStatus, WebhookAttributes,
     },
     QuickNodeSdk, SdkFullConfig,
 };
@@ -21,15 +21,17 @@ async fn main() {
         .end_range(24691904)
         .dataset_batch_size(1)
         .include_stream_metadata(StreamMetadataLocation::Body)
-        .destination(StreamDestination::Webhook)
-        .webhook_attributes(WebhookAttributes {
-            url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef".to_string(),
-            compression: Some("none".to_string()),
-            max_retry: 3,
-            retry_interval_sec: 1,
-            post_timeout_sec: 10,
-            security_token: None,
-        })
+        .destination_attributes(
+            DestinationAttributes::webhook(&WebhookAttributes {
+                url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef".to_string(),
+                compression: Some("none".to_string()),
+                max_retry: 3,
+                retry_interval_sec: 1,
+                post_timeout_sec: 10,
+                security_token: None,
+            })
+            .expect("webhook attributes are valid"),
+        )
         .fix_block_reorgs(0)
         .keep_distance_from_tip(0)
         .elastic_batch_enabled(true)
