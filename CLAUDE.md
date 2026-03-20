@@ -113,7 +113,9 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 
 ### Polyglot consistency
 - When adding a new public type to `crates/core`, export it across all three layers: Rust re-exports in `lib.rs`, Python `__init__.py` + `init_manual_override.pyi`, and TypeScript `sdk.d.ts`
+- `python/sdk/__init__.py` is **manually maintained** — it is NOT auto-generated. Every new public struct/type must be added to both the `from sdk._core import (...)` block and the `__all__` list in this file
 - When adding a new type with `#[cfg_attr(feature = "node", napi(object))]`, also add it to the named `export type { ... }` block in `npm/sdk.d.ts` — this is the user-facing type file and is not auto-updated by napi-rs
+- When adding a new `#[napi(string_enum)]` Rust enum, it generates a TypeScript `const enum` in `npm/index.d.ts`. In `npm/sdk.d.ts`, these must be re-exported using a regular `export { ... }` (not `export type { ... }`), otherwise TypeScript consumers cannot use them as values (e.g., `StreamDataset.Block`)
 - When updating `sdk.js` wrapper methods, verify the argument types match the underlying napi-rs constructor/method signature (object vs primitive)
 - `python/sdk/__init__.pyi` is overwritten by `just python-build` — edit `init_manual_override.pyi` instead
 

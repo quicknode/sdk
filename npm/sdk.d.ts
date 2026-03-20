@@ -7,13 +7,6 @@ export type {
   AdminConfig,
   StreamsConfig,
   // streams
-  StreamRegion,
-  StreamDataset,
-  StreamDestination,
-  FilterLanguage,
-  StreamMetadataLocation,
-  ProductType,
-  StreamStatus,
   WebhookAttributes,
   S3Attributes,
   AzureAttributes,
@@ -25,6 +18,7 @@ export type {
   KafkaAttributes,
   RedisAttributes,
   AddressBookConfig,
+  StreamsApiClient,
   CreateStreamParams,
   Stream,
   // billing
@@ -137,6 +131,17 @@ export type {
   GetUsageByMethodResponse,
   UsageByChainData,
   GetUsageByChainResponse,
+} from "./index";
+
+// const enums must use `export` (not `export type`) so they are usable as values
+export {
+  StreamRegion,
+  StreamDataset,
+  StreamDestination,
+  FilterLanguage,
+  StreamMetadataLocation,
+  ProductType,
+  StreamStatus,
 } from "./index";
 
 export class QuickNodeSdk {

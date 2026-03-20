@@ -32,7 +32,7 @@ export interface Payment {
   createdAt: string
   currency: string
   status: string
-  marketplaceAmount?: number
+  marketplaceAmount?: string
 }
 export interface ListPaymentsResponse {
   data?: ListPaymentsData
@@ -494,14 +494,266 @@ export interface HttpConfig {
 export interface AdminConfig {
   baseUrl?: string
 }
+export interface StreamsConfig {
+  baseUrl?: string
+}
 export interface SdkFullConfig {
   apiKey: string
   http?: HttpConfig
   admin?: AdminConfig
+  streams?: StreamsConfig
+}
+export const enum StreamRegion {
+  UsaEast = 'UsaEast',
+  EuropeCentral = 'EuropeCentral',
+  AsiaEast = 'AsiaEast'
+}
+export const enum StreamDataset {
+  Block = 'Block',
+  BlockWithReceipts = 'BlockWithReceipts',
+  Transactions = 'Transactions',
+  Logs = 'Logs',
+  Receipts = 'Receipts',
+  TraceBlocks = 'TraceBlocks',
+  DebugTraces = 'DebugTraces',
+  BlockWithReceiptsDebugTrace = 'BlockWithReceiptsDebugTrace',
+  BlockWithReceiptsTraceBlock = 'BlockWithReceiptsTraceBlock',
+  BlobSidecars = 'BlobSidecars',
+  ProgramsWithLogs = 'ProgramsWithLogs',
+  Ledger = 'Ledger',
+  Events = 'Events',
+  Orders = 'Orders',
+  Trades = 'Trades',
+  BookUpdates = 'BookUpdates',
+  Twap = 'Twap',
+  WriterActions = 'WriterActions'
+}
+export const enum StreamDestination {
+  Webhook = 'Webhook',
+  S3 = 'S3',
+  Azure = 'Azure',
+  Postgres = 'Postgres',
+  Clickhouse = 'Clickhouse',
+  Snowflake = 'Snowflake',
+  Mysql = 'Mysql',
+  Mongo = 'Mongo',
+  Kafka = 'Kafka',
+  Redis = 'Redis'
+}
+export const enum FilterLanguage {
+  Javascript = 'Javascript',
+  Go = 'Go',
+  Wasm = 'Wasm'
+}
+export const enum StreamMetadataLocation {
+  Body = 'Body',
+  Header = 'Header',
+  None = 'None'
+}
+export const enum ProductType {
+  Stream = 'Stream',
+  Webhook = 'Webhook'
+}
+export const enum StreamStatus {
+  Active = 'Active',
+  Paused = 'Paused'
+}
+export interface WebhookAttributes {
+  url: string
+  maxRetry: number
+  retryIntervalSec: number
+  postTimeoutSec: number
+  securityToken?: string
+  compression?: string
+}
+export interface S3Attributes {
+  endpoint: string
+  accessKey: string
+  secretKey: string
+  bucket: string
+  objectPrefix: string
+  compression: string
+  fileType: string
+  maxRetry: number
+  retryIntervalSec: number
+  useSsl?: boolean
+}
+export interface AzureAttributes {
+  storageAccount: string
+  sasToken: string
+  container: string
+  compression: string
+  fileType: string
+  maxRetry: number
+  retryIntervalSec: number
+  blobPrefix?: string
+}
+export interface PostgresAttributes {
+  host: string
+  port: number
+  database: string
+  username: string
+  password: string
+  tableName: string
+  sslmode: string
+  maxRetry: number
+  retryIntervalSec: number
+}
+export interface MysqlAttributes {
+  host: string
+  port: number
+  database: string
+  username: string
+  password: string
+  tableName: string
+  maxRetry: number
+  retryIntervalSec: number
+}
+export interface MongoAttributes {
+  host: string
+  database: string
+  username: string
+  password: string
+  collectionName: string
+  maxRetry: number
+  retryIntervalSec: number
+}
+export interface ClickhouseAttributes {
+  hosts: string
+  database: string
+  username: string
+  password: string
+  tableName: string
+  defaultTableEngineOpts: string
+  defaultGranularity: number
+  defaultCompression: string
+  defaultIndexType: string
+  maxRetry: number
+  retryIntervalSec: number
+  disableDatetimePrecision?: boolean
+  dontSupportRenameColumn?: boolean
+  dontSupportEmptyDefaultValue?: boolean
+  skipInitializeWithVersion?: boolean
+}
+export interface SnowflakeAttributes {
+  account: string
+  host: string
+  port: number
+  protocol: string
+  database: string
+  schema: string
+  warehouse: string
+  username: string
+  password: string
+  maxRetry: number
+  retryIntervalSec: number
+  tableName?: string
+}
+export interface KafkaAttributes {
+  bootstrapServers: string
+  topicName: string
+  compressionType: string
+  batchSize: number
+  lingerMs: number
+  maxRequestSize: number
+  timeoutSec: number
+  maxRetry: number
+  retryIntervalSec: number
+  username?: string
+  password?: string
+  protocol?: string
+  mechanisms?: string
+}
+export interface RedisAttributes {
+  host: string
+  port: number
+  database: number
+  username: string
+  password: string
+  keyName: string
+  maxRetry: number
+  retryIntervalSec: number
+  tls?: boolean
+}
+export interface AddressBookConfig {
+  addressBookId: string
+  objectsFilterPath?: string
+  elementsFilterPaths: Array<string>
+}
+/**
+ * Parameters for creating a stream. Set exactly one attribute field matching
+ * `destination`. Only the field corresponding to the chosen destination will be
+ * used; all others must be `None`. Mismatches produce a `SdkError::Config` at
+ * call time.
+ */
+export interface CreateStreamParams {
+  name: string
+  region: StreamRegion
+  network: string
+  dataset: StreamDataset
+  startRange: number
+  endRange: number
+  destination: StreamDestination
+  webhookAttributes?: WebhookAttributes
+  s3Attributes?: S3Attributes
+  azureAttributes?: AzureAttributes
+  postgresAttributes?: PostgresAttributes
+  mysqlAttributes?: MysqlAttributes
+  mongoAttributes?: MongoAttributes
+  clickhouseAttributes?: ClickhouseAttributes
+  snowflakeAttributes?: SnowflakeAttributes
+  kafkaAttributes?: KafkaAttributes
+  redisAttributes?: RedisAttributes
+  plan: string
+  thresholdFetchBuffer: number
+  datasetBatchSize?: number
+  maxBatchSize?: number
+  maxBufferRangeSize?: number
+  maxBufferProcessingWorkers?: number
+  keepDistanceFromTip?: number
+  filterFunction?: string
+  filterLanguage?: FilterLanguage
+  addressBookConfig?: AddressBookConfig
+  includeStreamMetadata?: StreamMetadataLocation
+  productType?: ProductType
+  status?: StreamStatus
+  notificationEmail?: string
+  chargeMinCap?: number
+  fixBlockReorgs?: number
+  elasticBatchEnabled?: boolean
+}
+export interface Stream {
+  id: string
+  name: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  sequence: number
+  network: string
+  dataset: string
+  region: string
+  destination: string
+  startRange: number
+  endRange: number
+  plan?: string
+  thresholdFetchBuffer?: number
+  datasetBatchSize?: number
+  maxBatchSize?: number
+  maxBufferRangeSize?: number
+  maxBufferProcessingWorkers?: number
+  keepDistanceFromTip?: number
+  filterFunction?: string
+  filterLanguage?: string
+  includeStreamMetadata?: string
+  productType?: string
+  notificationEmail?: string
+  fixBlockReorgs?: number
+  currentHash?: string
 }
 export declare class QuickNodeSdk {
   constructor(config: SdkFullConfig)
   get admin(): AdminApiClient
+  get streams(): StreamsApiClient
   static fromEnv(): QuickNodeSdk
 }
 export declare class AdminApiClient {
@@ -557,4 +809,7 @@ export declare class AdminApiClient {
   inviteTeamMember(id: number, params: InviteTeamMemberRequest): Promise<InviteTeamMemberResponse>
   removeTeamMember(id: number, userId: number, params?: RemoveTeamMemberRequest | undefined | null): Promise<RemoveTeamMemberResponse>
   resendTeamInvite(id: number, userId: number): Promise<ResendTeamInviteResponse>
+}
+export declare class StreamsApiClient {
+  createStream(params: CreateStreamParams): Promise<Stream>
 }

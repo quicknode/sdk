@@ -1,4 +1,11 @@
-import { QuickNodeSdk } from "..";
+import {
+  QuickNodeSdk,
+  StreamDataset,
+  StreamDestination,
+  StreamMetadataLocation,
+  StreamRegion,
+  StreamStatus,
+} from "..";
 import type { CreateStreamParams } from "..";
 
 async function main() {
@@ -6,11 +13,11 @@ async function main() {
   const params: CreateStreamParams = {
     name: "My Stream",
     network: "ethereum-mainnet",
-    dataset: "block",
-    region: "usa_east",
+    dataset: StreamDataset.Block,
+    region: StreamRegion.UsaEast,
     startRange: 24691804,
     endRange: 24691904,
-    destination: "webhook",
+    destination: StreamDestination.Webhook,
     plan: "growth_plan",
     thresholdFetchBuffer: 1000,
     webhookAttributes: {
@@ -20,11 +27,11 @@ async function main() {
       postTimeoutSec: 10,
     },
     datasetBatchSize: 1,
-    includeStreamMetadata: "body",
+    includeStreamMetadata: StreamMetadataLocation.Body,
     fixBlockReorgs: 0,
     keepDistanceFromTip: 0,
     elasticBatchEnabled: true,
-    status: "active",
+    status: StreamStatus.Active,
   };
   const stream = await qn.streams.createStream(params);
   console.log(`${stream.id} | ${stream.name} | ${stream.status}`);
