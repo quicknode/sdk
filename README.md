@@ -61,9 +61,11 @@ Runs the Rust unit tests for `sdk-core` using [wiremock](https://github.com/Luke
 
 Examples
 ```bash
-QN_API_KEY=replaceme cargo run --example admin -p sdk-core --features rust
-QN_API_KEY=replaceme uv run example.py
-cd npm && QN_API_KEY=replaceme npx tsx example.ts
+QN_SDK__API_KEY=replaceme cargo run --example admin -p sdk-core --features rust
+QN_SDK__API_KEY=replaceme uv run python/examples/admin.py
+QN_SDK__API_KEY=replaceme uv run python/examples/streams.py
+cd npm && QN_SDK__API_KEY=replaceme npx tsx examples/admin.ts
+cd npm && QN_SDK__API_KEY=replaceme npx tsx examples/streams.ts
 ```
 
 ## Configuration
