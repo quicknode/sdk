@@ -19,6 +19,7 @@ async def main():
             max_retry=3,
             retry_interval_sec=1,
             post_timeout_sec=10,
+            compression="none",
         ),
         dataset_batch_size=1,
         include_stream_metadata="body",

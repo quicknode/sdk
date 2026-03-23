@@ -140,8 +140,7 @@ pub struct WebhookAttributes {
     pub post_timeout_sec: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub security_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub compression: Option<String>,
+    pub compression: String,
 }
 
 #[cfg(feature = "python")]
@@ -149,14 +148,14 @@ pub struct WebhookAttributes {
 #[pymethods]
 impl WebhookAttributes {
     #[new]
-    #[pyo3(signature = (url, max_retry, retry_interval_sec, post_timeout_sec, security_token=None, compression=None))]
+    #[pyo3(signature = (url, max_retry, retry_interval_sec, post_timeout_sec, compression, security_token=None))]
     pub fn new(
         url: String,
         max_retry: i32,
         retry_interval_sec: i32,
         post_timeout_sec: i32,
+        compression: String,
         security_token: Option<String>,
-        compression: Option<String>,
     ) -> Self {
         Self { url, max_retry, retry_interval_sec, post_timeout_sec, security_token, compression }
     }

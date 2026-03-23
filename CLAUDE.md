@@ -132,3 +132,6 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 ### Imports
 - Use direct imports instead of glob imports
 - Keep modules at the top of the files
+
+### Comments
+- When doing anything out of the ordinary or breaking conventions or patterns, add a comment explaining the "why" behind it
