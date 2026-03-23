@@ -497,11 +497,15 @@ export interface AdminConfig {
 export interface StreamsConfig {
   baseUrl?: string
 }
+export interface WebhooksConfig {
+  baseUrl?: string
+}
 export interface SdkFullConfig {
   apiKey: string
   http?: HttpConfig
   admin?: AdminConfig
   streams?: StreamsConfig
+  webhooks?: WebhooksConfig
 }
 export const enum StreamRegion {
   UsaEast = 'UsaEast',
@@ -806,10 +810,103 @@ export interface TestFilterResponse {
 export interface EnabledCountResponse {
   total: number
 }
+export const enum WebhookTemplateId {
+  EvmWalletFilter = 'EvmWalletFilter',
+  EvmContractEvents = 'EvmContractEvents',
+  EvmAbiFilter = 'EvmAbiFilter',
+  SolanaWalletFilter = 'SolanaWalletFilter',
+  BitcoinWalletFilter = 'BitcoinWalletFilter',
+  XrplWalletFilter = 'XrplWalletFilter',
+  HyperliquidWalletEventsFilter = 'HyperliquidWalletEventsFilter',
+  StellarWalletTransactionsSourceAccountFilter = 'StellarWalletTransactionsSourceAccountFilter'
+}
+export const enum WebhookStartFrom {
+  Last = 'Last',
+  Latest = 'Latest'
+}
+export interface EvmWalletFilterTemplate {
+  wallets: Array<string>
+}
+export interface EvmContractEventsTemplate {
+  contracts: Array<string>
+  eventHashes?: Array<string>
+}
+export interface EvmAbiFilterTemplate {
+  abi: string
+  contracts: Array<string>
+}
+export interface SolanaWalletFilterTemplate {
+  accounts: Array<string>
+}
+export interface BitcoinWalletFilterTemplate {
+  wallets: Array<string>
+}
+export interface XrplWalletFilterTemplate {
+  wallets: Array<string>
+}
+export interface HyperliquidWalletEventsFilterTemplate {
+  wallets: Array<string>
+}
+export interface StellarWalletTransactionsFilterTemplate {
+  wallets: Array<string>
+}
+export interface TemplateArgs {
+  templateId: WebhookTemplateId
+  value: string
+}
+export interface WebhookDestinationAttributes {
+  url: string
+  securityToken?: string
+  compression?: string
+}
+export interface GetWebhooksParams {
+  limit?: number
+  offset?: number
+}
+export interface UpdateWebhookParams {
+  name?: string
+  notificationEmail?: string
+  destinationAttributes?: WebhookDestinationAttributes
+}
+export interface ActivateWebhookParams {
+  startFrom: WebhookStartFrom
+}
+export interface CreateWebhookFromTemplateParams {
+  name: string
+  network: string
+  notificationEmail?: string
+  destinationAttributes: WebhookDestinationAttributes
+  templateArgs: TemplateArgs
+}
+export interface UpdateWebhookTemplateParams {
+  name?: string
+  notificationEmail?: string
+  destinationAttributes?: WebhookDestinationAttributes
+  templateArgs: TemplateArgs
+}
+export interface Webhook {
+  id: string
+  name: string
+  status: string
+  network: string
+  createdAt: string
+  updatedAt: string
+  templateId?: string
+  notificationEmail?: string
+  /** Destination-specific configuration as a JSON string. */
+  destinationAttributes?: string
+}
+export interface ListWebhooksResponse {
+  data: Array<Webhook>
+}
+export interface WebhookEnabledCountResponse {
+  total: number
+}
 export declare class QuickNodeSdk {
   constructor(config: SdkFullConfig)
   get admin(): AdminApiClient
   get streams(): StreamsApiClient
+  get webhooks(): WebhooksApiClient
   static fromEnv(): QuickNodeSdk
 }
 export declare class AdminApiClient {
@@ -877,4 +974,16 @@ export declare class StreamsApiClient {
   pauseStream(id: string): Promise<void>
   testFilter(params: TestFilterParams): Promise<TestFilterResponse>
   getEnabledCount(streamType?: string | undefined | null): Promise<EnabledCountResponse>
+}
+export declare class WebhooksApiClient {
+  listWebhooks(params?: GetWebhooksParams | undefined | null): Promise<ListWebhooksResponse>
+  deleteAllWebhooks(): Promise<void>
+  getWebhook(id: string): Promise<Webhook>
+  updateWebhook(id: string, params?: UpdateWebhookParams | undefined | null): Promise<Webhook>
+  deleteWebhook(id: string): Promise<void>
+  pauseWebhook(id: string): Promise<void>
+  activateWebhook(id: string, params: ActivateWebhookParams): Promise<void>
+  getEnabledCount(): Promise<WebhookEnabledCountResponse>
+  createWebhookFromTemplate(params: CreateWebhookFromTemplateParams): Promise<Webhook>
+  updateWebhookTemplate(webhookId: string, params: UpdateWebhookTemplateParams): Promise<Webhook>
 }

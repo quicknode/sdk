@@ -77,17 +77,38 @@ impl StreamsConfig {
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct WebhooksConfig {
+    pub base_url: Option<String>,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl WebhooksConfig {
+    #[new]
+    #[pyo3(signature = (base_url=None))]
+    pub fn new(base_url: Option<String>) -> Self {
+        WebhooksConfig { base_url }
+    }
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct SdkFullConfig {
     pub api_key: String,
     pub http: Option<HttpConfig>,
     pub admin: Option<AdminConfig>,
     pub streams: Option<StreamsConfig>,
+    pub webhooks: Option<WebhooksConfig>,
 }
 
 impl SdkFullConfig {
     pub fn from_api_key(api_key: String) -> Self {
-        SdkFullConfig { api_key, http: None, admin: None, streams: None }
+        SdkFullConfig { api_key, http: None, admin: None, streams: None, webhooks: None }
     }
 
     pub fn from_env() -> Result<Self, SdkError> {
@@ -113,13 +134,14 @@ impl SdkFullConfig {
 #[pymethods]
 impl SdkFullConfig {
     #[new]
-    #[pyo3(signature = (api_key, http=None, admin=None, streams=None))]
-    pub fn new(api_key: String, http: Option<HttpConfig>, admin: Option<AdminConfig>, streams: Option<StreamsConfig>) -> Self {
+    #[pyo3(signature = (api_key, http=None, admin=None, streams=None, webhooks=None))]
+    pub fn new(api_key: String, http: Option<HttpConfig>, admin: Option<AdminConfig>, streams: Option<StreamsConfig>, webhooks: Option<WebhooksConfig>) -> Self {
         SdkFullConfig {
             api_key,
             http,
             admin,
             streams,
+            webhooks,
         }
     }
 }

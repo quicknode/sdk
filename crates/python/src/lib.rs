@@ -14,6 +14,8 @@ pub struct QuickNodeSdk {
     admin: AdminApiClient,
     #[pyo3(get)]
     streams: StreamsApiClient,
+    #[pyo3(get)]
+    webhooks: WebhooksApiClient,
 }
 
 #[gen_stub_pymethods]
@@ -28,6 +30,9 @@ impl QuickNodeSdk {
             admin: AdminApiClient {
                 inner: core::admin::AdminApiClient::new(sdk_config.clone()),
             },
+            webhooks: WebhooksApiClient {
+                inner: core::webhooks::WebhooksApiClient::new(sdk_config.clone()),
+            },
             streams: StreamsApiClient {
                 inner: core::streams::StreamsApiClient::new(sdk_config),
             },
@@ -40,6 +45,7 @@ impl QuickNodeSdk {
             .map(|sdk| Self {
                 admin: AdminApiClient { inner: sdk.admin },
                 streams: StreamsApiClient { inner: sdk.streams },
+                webhooks: WebhooksApiClient { inner: sdk.webhooks },
             })
             .map_err(|e| PyValueError::new_err(e.to_string()))
     }
@@ -1473,6 +1479,182 @@ impl StreamsApiClient {
     }
 }
 
+// ── WebhooksApiClient ──────────────────────────────────────────
+
+#[gen_stub_pyclass]
+#[pyclass]
+#[derive(Clone)]
+pub struct WebhooksApiClient {
+    inner: core::webhooks::WebhooksApiClient,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl WebhooksApiClient {
+    #[pyo3(signature = (limit=None, offset=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ListWebhooksResponse]"
+    ))]
+    fn list_webhooks<'py>(
+        &self,
+        py: Python<'py>,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::webhooks::GetWebhooksParams { limit, offset };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.list_webhooks(&params).await.map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
+    ))]
+    fn delete_all_webhooks<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.delete_all_webhooks().await.map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, Webhook]"
+    ))]
+    fn get_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.get_webhook(&id).await.map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (id, name=None, notification_email=None, destination_attributes=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, Webhook]"
+    ))]
+    fn update_webhook<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        name: Option<String>,
+        notification_email: Option<String>,
+        destination_attributes: Option<core::webhooks::WebhookDestinationAttributes>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::webhooks::UpdateWebhookParams { name, notification_email, destination_attributes };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.update_webhook(&id, &params).await.map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
+    ))]
+    fn delete_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.delete_webhook(&id).await.map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
+    ))]
+    fn pause_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.pause_webhook(&id).await.map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
+    ))]
+    fn activate_webhook<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        start_from: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let start_from = serde_json::from_value::<core::webhooks::WebhookStartFrom>(
+            serde_json::Value::String(start_from),
+        )
+        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        let params = core::webhooks::ActivateWebhookParams { start_from };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.activate_webhook(&id, &params).await.map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, WebhookEnabledCountResponse]"
+    ))]
+    fn get_enabled_count<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.get_enabled_count().await.map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (name, network, destination_attributes, template_args, notification_email=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, Webhook]"
+    ))]
+    fn create_webhook_from_template<'py>(
+        &self,
+        py: Python<'py>,
+        name: String,
+        network: String,
+        destination_attributes: core::webhooks::WebhookDestinationAttributes,
+        template_args: core::webhooks::TemplateArgs,
+        notification_email: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::webhooks::CreateWebhookFromTemplateParams {
+            name,
+            network,
+            notification_email,
+            destination_attributes,
+            template_args,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_webhook_from_template(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (webhook_id, template_args, name=None, notification_email=None, destination_attributes=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, Webhook]"
+    ))]
+    fn update_webhook_template<'py>(
+        &self,
+        py: Python<'py>,
+        webhook_id: String,
+        template_args: core::webhooks::TemplateArgs,
+        name: Option<String>,
+        notification_email: Option<String>,
+        destination_attributes: Option<core::webhooks::WebhookDestinationAttributes>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::webhooks::UpdateWebhookTemplateParams {
+            name,
+            notification_email,
+            destination_attributes,
+            template_args,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .update_webhook_template(&webhook_id, &params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+}
+
 // ── Module ─────────────────────────────────────────────────────
 
 #[pymodule]
@@ -1583,6 +1765,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::HttpConfig>()?;
     m.add_class::<core::AdminConfig>()?;
     m.add_class::<core::StreamsConfig>()?;
+    m.add_class::<core::WebhooksConfig>()?;
     m.add_class::<core::SdkFullConfig>()?;
     m.add_class::<StreamsApiClient>()?;
     m.add_class::<core::streams::Stream>()?;
@@ -1602,6 +1785,22 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::streams::ListStreamsResponse>()?;
     m.add_class::<core::streams::TestFilterResponse>()?;
     m.add_class::<core::streams::EnabledCountResponse>()?;
+    m.add_class::<WebhooksApiClient>()?;
+    m.add_class::<core::webhooks::TemplateArgs>()?;
+    m.add_class::<core::webhooks::WebhookDestinationAttributes>()?;
+    m.add_class::<core::webhooks::Webhook>()?;
+    m.add_class::<core::webhooks::ListWebhooksResponse>()?;
+    m.add_class::<core::webhooks::WebhookEnabledCountResponse>()?;
+    m.add_class::<core::webhooks::GetWebhooksParams>()?;
+    m.add_class::<core::webhooks::UpdateWebhookParams>()?;
+    m.add_class::<core::webhooks::EvmWalletFilterTemplate>()?;
+    m.add_class::<core::webhooks::EvmContractEventsTemplate>()?;
+    m.add_class::<core::webhooks::EvmAbiFilterTemplate>()?;
+    m.add_class::<core::webhooks::SolanaWalletFilterTemplate>()?;
+    m.add_class::<core::webhooks::BitcoinWalletFilterTemplate>()?;
+    m.add_class::<core::webhooks::XrplWalletFilterTemplate>()?;
+    m.add_class::<core::webhooks::HyperliquidWalletEventsFilterTemplate>()?;
+    m.add_class::<core::webhooks::StellarWalletTransactionsFilterTemplate>()?;
     Ok(())
 }
 

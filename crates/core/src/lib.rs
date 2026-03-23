@@ -2,8 +2,9 @@ pub mod admin;
 pub mod config;
 pub mod errors;
 pub mod streams;
+pub mod webhooks;
 
-pub use config::{AdminConfig, HttpConfig, SdkFullConfig, StreamsConfig};
+pub use config::{AdminConfig, HttpConfig, SdkFullConfig, StreamsConfig, WebhooksConfig};
 
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::Client as ReqwestClient;
@@ -23,6 +24,7 @@ impl std::fmt::Debug for SdkConfig {
             .field("api_key", &"[redacted]")
             .field("admin_base_url", &self.0.admin.base_url)
             .field("streams_base_url", &self.0.streams.base_url)
+            .field("webhooks_base_url", &self.0.webhooks.base_url)
             .finish()
     }
 }
@@ -31,6 +33,7 @@ struct SdkConfigInner {
     http_client: ReqwestClient,
     admin: admin::ResolvedAdminConfig,
     streams: streams::ResolvedStreamsConfig,
+    webhooks: webhooks::ResolvedWebhooksConfig,
 }
 
 impl SdkConfig {
@@ -73,6 +76,7 @@ impl SdkConfig {
             http_client,
             admin: admin::ResolvedAdminConfig::from_config(config.admin.as_ref())?,
             streams: streams::ResolvedStreamsConfig::from_config(config.streams.as_ref())?,
+            webhooks: webhooks::ResolvedWebhooksConfig::from_config(config.webhooks.as_ref())?,
         })))
     }
 
@@ -87,11 +91,16 @@ impl SdkConfig {
     pub(crate) fn streams(&self) -> &streams::ResolvedStreamsConfig {
         &self.0.streams
     }
+
+    pub(crate) fn webhooks(&self) -> &webhooks::ResolvedWebhooksConfig {
+        &self.0.webhooks
+    }
 }
 
 pub struct QuickNodeSdk {
     pub admin: admin::AdminApiClient,
     pub streams: streams::StreamsApiClient,
+    pub webhooks: webhooks::WebhooksApiClient,
 }
 
 impl QuickNodeSdk {
@@ -99,7 +108,8 @@ impl QuickNodeSdk {
         let sdk_config = SdkConfig::new(config)?;
         Ok(Self {
             admin: admin::AdminApiClient::new(sdk_config.clone()),
-            streams: streams::StreamsApiClient::new(sdk_config),
+            streams: streams::StreamsApiClient::new(sdk_config.clone()),
+            webhooks: webhooks::WebhooksApiClient::new(sdk_config),
         })
     }
 

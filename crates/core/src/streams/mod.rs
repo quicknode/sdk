@@ -288,6 +288,7 @@ mod tests {
             streams: Some(StreamsConfig {
                 base_url: Some(base_url),
             }),
+            webhooks: None,
         })
         .unwrap()
     }

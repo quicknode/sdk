@@ -41,6 +41,10 @@ required-features = ["rust"]
 name = "streams"
 required-features = ["rust"]
 
+[[example]]
+name = "webhooks_e2e"
+required-features = ["rust"]
+
 [dev-dependencies]
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
 wiremock = "0.6"

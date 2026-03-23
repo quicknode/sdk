@@ -1367,6 +1367,7 @@ mod tests {
                 base_url: Some(base_url),
             }),
             streams: None,
+            webhooks: None,
         })
         .unwrap()
     }
@@ -2518,6 +2519,7 @@ mod tests {
             }),
             admin: None,
             streams: None,
+            webhooks: None,
         });
         assert!(matches!(result, Err(crate::errors::SdkError::Config(_))));
     }

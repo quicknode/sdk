@@ -8,6 +8,7 @@ class QuickNodeSdk {
     this._inner = new _QuickNodeSdk(config);
     this.admin = this._inner.admin;
     this.streams = this._inner.streams;
+    this.webhooks = this._inner.webhooks;
   }
 
   static fromEnv() {
@@ -15,6 +16,7 @@ class QuickNodeSdk {
     instance._inner = _QuickNodeSdk.fromEnv();
     instance.admin = instance._inner.admin;
     instance.streams = instance._inner.streams;
+    instance.webhooks = instance._inner.webhooks;
     return instance;
   }
 }
@@ -86,4 +88,47 @@ class DestinationAttributes {
   }
 }
 
-module.exports = { ..._index, QuickNodeSdk, DestinationAttributes };
+// TemplateArgs wraps the napi-rs generated plain object with typed
+// static factory methods. The underlying object has `templateId` (string enum)
+// and `value` (JSON string) fields — callers should use the factory methods
+// rather than constructing the object directly.
+class TemplateArgs {
+  constructor(templateId, value) {
+    this.templateId = templateId;
+    this.value = value;
+  }
+
+  static evmWalletFilter(attrs) {
+    return new TemplateArgs("EvmWalletFilter", JSON.stringify(keysToSnakeCase(attrs)));
+  }
+
+  static evmContractEvents(attrs) {
+    return new TemplateArgs("EvmContractEvents", JSON.stringify(keysToSnakeCase(attrs)));
+  }
+
+  static evmAbiFilter(attrs) {
+    return new TemplateArgs("EvmAbiFilter", JSON.stringify(keysToSnakeCase(attrs)));
+  }
+
+  static solanaWalletFilter(attrs) {
+    return new TemplateArgs("SolanaWalletFilter", JSON.stringify(keysToSnakeCase(attrs)));
+  }
+
+  static bitcoinWalletFilter(attrs) {
+    return new TemplateArgs("BitcoinWalletFilter", JSON.stringify(keysToSnakeCase(attrs)));
+  }
+
+  static xrplWalletFilter(attrs) {
+    return new TemplateArgs("XrplWalletFilter", JSON.stringify(keysToSnakeCase(attrs)));
+  }
+
+  static hyperliquidWalletEventsFilter(attrs) {
+    return new TemplateArgs("HyperliquidWalletEventsFilter", JSON.stringify(keysToSnakeCase(attrs)));
+  }
+
+  static stellarWalletTransactionsFilter(attrs) {
+    return new TemplateArgs("StellarWalletTransactionsSourceAccountFilter", JSON.stringify(keysToSnakeCase(attrs)));
+  }
+}
+
+module.exports = { ..._index, QuickNodeSdk, DestinationAttributes, TemplateArgs };

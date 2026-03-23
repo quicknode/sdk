@@ -13,6 +13,15 @@ import {
   KafkaAttributes,
   RedisAttributes,
   StreamDestination,
+  WebhookTemplateId,
+  EvmWalletFilterTemplate,
+  EvmContractEventsTemplate,
+  EvmAbiFilterTemplate,
+  SolanaWalletFilterTemplate,
+  BitcoinWalletFilterTemplate,
+  XrplWalletFilterTemplate,
+  HyperliquidWalletEventsFilterTemplate,
+  StellarWalletTransactionsFilterTemplate,
 } from "./index";
 
 export type {
@@ -152,6 +161,26 @@ export type {
   GetUsageByMethodResponse,
   UsageByChainData,
   GetUsageByChainResponse,
+  // webhooks
+  WebhooksConfig,
+  GetWebhooksParams,
+  UpdateWebhookParams,
+  Webhook,
+  ListWebhooksResponse,
+  WebhookEnabledCountResponse,
+  WebhookDestinationAttributes,
+  ActivateWebhookParams,
+  CreateWebhookFromTemplateParams,
+  UpdateWebhookTemplateParams,
+  EvmWalletFilterTemplate,
+  EvmContractEventsTemplate,
+  EvmAbiFilterTemplate,
+  SolanaWalletFilterTemplate,
+  BitcoinWalletFilterTemplate,
+  XrplWalletFilterTemplate,
+  HyperliquidWalletEventsFilterTemplate,
+  StellarWalletTransactionsFilterTemplate,
+  WebhooksApiClient,
 } from "./index";
 
 // const enums must use `export` (not `export type`) so they are usable as values
@@ -163,6 +192,8 @@ export {
   StreamMetadataLocation,
   ProductType,
   StreamStatus,
+  WebhookTemplateId,
+  WebhookStartFrom,
 } from "./index";
 
 export class QuickNodeSdk {
@@ -170,6 +201,7 @@ export class QuickNodeSdk {
   static fromEnv(): QuickNodeSdk;
   admin: _QuickNodeSdk["admin"];
   streams: _QuickNodeSdk["streams"];
+  webhooks: WebhooksApiClient;
 }
 
 export class DestinationAttributes {
@@ -185,4 +217,17 @@ export class DestinationAttributes {
   static snowflake(attrs: SnowflakeAttributes): DestinationAttributes;
   static kafka(attrs: KafkaAttributes): DestinationAttributes;
   static redis(attrs: RedisAttributes): DestinationAttributes;
+}
+
+export class TemplateArgs {
+  templateId: WebhookTemplateId;
+  value: string;
+  static evmWalletFilter(attrs: EvmWalletFilterTemplate): TemplateArgs;
+  static evmContractEvents(attrs: EvmContractEventsTemplate): TemplateArgs;
+  static evmAbiFilter(attrs: EvmAbiFilterTemplate): TemplateArgs;
+  static solanaWalletFilter(attrs: SolanaWalletFilterTemplate): TemplateArgs;
+  static bitcoinWalletFilter(attrs: BitcoinWalletFilterTemplate): TemplateArgs;
+  static xrplWalletFilter(attrs: XrplWalletFilterTemplate): TemplateArgs;
+  static hyperliquidWalletEventsFilter(attrs: HyperliquidWalletEventsFilterTemplate): TemplateArgs;
+  static stellarWalletTransactionsFilter(attrs: StellarWalletTransactionsFilterTemplate): TemplateArgs;
 }

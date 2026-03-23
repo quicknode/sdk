@@ -8,6 +8,7 @@ use sdk_core as core;
 pub struct QuickNodeSdk {
     admin: AdminApiClient,
     streams: StreamsApiClient,
+    webhooks: WebhooksApiClient,
 }
 
 #[napi]
@@ -20,6 +21,9 @@ impl QuickNodeSdk {
         Ok(Self {
             admin: AdminApiClient {
                 inner: core::admin::AdminApiClient::new(sdk_config.clone()),
+            },
+            webhooks: WebhooksApiClient {
+                inner: core::webhooks::WebhooksApiClient::new(sdk_config.clone()),
             },
             streams: StreamsApiClient {
                 inner: core::streams::StreamsApiClient::new(sdk_config),
@@ -37,12 +41,18 @@ impl QuickNodeSdk {
         self.streams.clone()
     }
 
+    #[napi(getter)]
+    pub fn webhooks(&self) -> WebhooksApiClient {
+        self.webhooks.clone()
+    }
+
     #[napi(factory)]
     pub fn from_env() -> Result<Self> {
         core::QuickNodeSdk::from_env()
             .map(|sdk| Self {
                 admin: AdminApiClient { inner: sdk.admin },
                 streams: StreamsApiClient { inner: sdk.streams },
+                webhooks: WebhooksApiClient { inner: sdk.webhooks },
             })
             .map_err(|e| Error::from_reason(e.to_string()))
     }
@@ -741,6 +751,117 @@ impl StreamsApiClient {
     ) -> Result<core::streams::EnabledCountResponse> {
         self.inner
             .get_enabled_count(stream_type.as_deref())
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+}
+
+// ── WebhooksApiClient ───────────────────────────────────────────────────────
+
+#[derive(Clone)]
+#[napi]
+pub struct WebhooksApiClient {
+    inner: core::webhooks::WebhooksApiClient,
+}
+
+#[napi]
+impl WebhooksApiClient {
+    #[napi]
+    pub async fn list_webhooks(
+        &self,
+        params: Option<core::webhooks::GetWebhooksParams>,
+    ) -> Result<core::webhooks::ListWebhooksResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .list_webhooks(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn delete_all_webhooks(&self) -> Result<()> {
+        self.inner
+            .delete_all_webhooks()
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_webhook(&self, id: String) -> Result<core::webhooks::Webhook> {
+        self.inner
+            .get_webhook(&id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn update_webhook(
+        &self,
+        id: String,
+        params: Option<core::webhooks::UpdateWebhookParams>,
+    ) -> Result<core::webhooks::Webhook> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .update_webhook(&id, &params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn delete_webhook(&self, id: String) -> Result<()> {
+        self.inner
+            .delete_webhook(&id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn pause_webhook(&self, id: String) -> Result<()> {
+        self.inner
+            .pause_webhook(&id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn activate_webhook(
+        &self,
+        id: String,
+        params: core::webhooks::ActivateWebhookParams,
+    ) -> Result<()> {
+        self.inner
+            .activate_webhook(&id, &params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_enabled_count(&self) -> Result<core::webhooks::WebhookEnabledCountResponse> {
+        self.inner
+            .get_enabled_count()
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn create_webhook_from_template(
+        &self,
+        params: core::webhooks::CreateWebhookFromTemplateParams,
+    ) -> Result<core::webhooks::Webhook> {
+        self.inner
+            .create_webhook_from_template(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn update_webhook_template(
+        &self,
+        webhook_id: String,
+        params: core::webhooks::UpdateWebhookTemplateParams,
+    ) -> Result<core::webhooks::Webhook> {
+        self.inner
+            .update_webhook_template(&webhook_id, &params)
             .await
             .map_err(|e| Error::from_reason(e.to_string()))
     }
