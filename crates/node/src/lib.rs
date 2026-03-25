@@ -9,6 +9,7 @@ pub struct QuickNodeSdk {
     admin: AdminApiClient,
     streams: StreamsApiClient,
     webhooks: WebhooksApiClient,
+    kvstore: KvStoreApiClient,
 }
 
 #[napi]
@@ -26,7 +27,10 @@ impl QuickNodeSdk {
                 inner: core::webhooks::WebhooksApiClient::new(sdk_config.clone()),
             },
             streams: StreamsApiClient {
-                inner: core::streams::StreamsApiClient::new(sdk_config),
+                inner: core::streams::StreamsApiClient::new(sdk_config.clone()),
+            },
+            kvstore: KvStoreApiClient {
+                inner: core::kvstore::KvStoreApiClient::new(sdk_config),
             },
         })
     }
@@ -46,6 +50,11 @@ impl QuickNodeSdk {
         self.webhooks.clone()
     }
 
+    #[napi(getter)]
+    pub fn kvstore(&self) -> KvStoreApiClient {
+        self.kvstore.clone()
+    }
+
     #[napi(factory)]
     pub fn from_env() -> Result<Self> {
         core::QuickNodeSdk::from_env()
@@ -53,6 +62,7 @@ impl QuickNodeSdk {
                 admin: AdminApiClient { inner: sdk.admin },
                 streams: StreamsApiClient { inner: sdk.streams },
                 webhooks: WebhooksApiClient { inner: sdk.webhooks },
+                kvstore: KvStoreApiClient { inner: sdk.kvstore },
             })
             .map_err(|e| Error::from_reason(e.to_string()))
     }
@@ -862,6 +872,146 @@ impl WebhooksApiClient {
     ) -> Result<core::webhooks::Webhook> {
         self.inner
             .update_webhook_template(&webhook_id, &params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+}
+
+// ── KvStoreApiClient ───────────────────────────────────────────
+
+#[derive(Clone)]
+#[napi]
+pub struct KvStoreApiClient {
+    inner: core::kvstore::KvStoreApiClient,
+}
+
+#[napi]
+impl KvStoreApiClient {
+    #[napi]
+    pub async fn create_set(&self, params: core::kvstore::CreateSetParams) -> Result<()> {
+        self.inner
+            .create_set(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_sets(
+        &self,
+        params: Option<core::kvstore::GetSetsParams>,
+    ) -> Result<core::kvstore::GetSetsResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_sets(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_set(&self, key: String) -> Result<core::kvstore::GetSetResponse> {
+        self.inner
+            .get_set(&key)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn bulk_sets(&self, params: core::kvstore::BulkSetsParams) -> Result<()> {
+        self.inner
+            .bulk_sets(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn delete_set(&self, key: String) -> Result<()> {
+        self.inner
+            .delete_set(&key)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn create_list(&self, params: core::kvstore::CreateListParams) -> Result<()> {
+        self.inner
+            .create_list(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_lists(
+        &self,
+        params: Option<core::kvstore::GetListsParams>,
+    ) -> Result<core::kvstore::GetListsResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_lists(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_list(
+        &self,
+        key: String,
+        params: Option<core::kvstore::GetListParams>,
+    ) -> Result<core::kvstore::GetListResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_list(&key, &params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn update_list(
+        &self,
+        key: String,
+        params: core::kvstore::UpdateListParams,
+    ) -> Result<()> {
+        self.inner
+            .update_list(&key, &params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn add_list_item(
+        &self,
+        key: String,
+        params: core::kvstore::AddListItemParams,
+    ) -> Result<()> {
+        self.inner
+            .add_list_item(&key, &params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn list_contains_item(
+        &self,
+        key: String,
+        item: String,
+    ) -> Result<core::kvstore::ListContainsItemResponse> {
+        self.inner
+            .list_contains_item(&key, &item)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn delete_list_item(&self, key: String, item: String) -> Result<()> {
+        self.inner
+            .delete_list_item(&key, &item)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn delete_list(&self, key: String) -> Result<()> {
+        self.inner
+            .delete_list(&key)
             .await
             .map_err(|e| Error::from_reason(e.to_string()))
     }

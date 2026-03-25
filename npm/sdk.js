@@ -9,6 +9,7 @@ class QuickNodeSdk {
     this.admin = this._inner.admin;
     this.streams = this._inner.streams;
     this.webhooks = this._inner.webhooks;
+    this.kvstore = this._inner.kvstore;
   }
 
   static fromEnv() {
@@ -17,6 +18,7 @@ class QuickNodeSdk {
     instance.admin = instance._inner.admin;
     instance.streams = instance._inner.streams;
     instance.webhooks = instance._inner.webhooks;
+    instance.kvstore = instance._inner.kvstore;
     return instance;
   }
 }

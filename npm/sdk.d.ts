@@ -181,6 +181,25 @@ export type {
   HyperliquidWalletEventsFilterTemplate,
   StellarWalletTransactionsFilterTemplate,
   WebhooksApiClient,
+  // kvstore
+  KvStoreConfig,
+  KvStoreApiClient,
+  KvSetEntry,
+  CreateSetParams,
+  GetSetsParams,
+  GetSetsResponse,
+  GetSetResponse,
+  BulkSetsParams,
+  CreateListParams,
+  GetListsParams,
+  GetListsData,
+  GetListsResponse,
+  GetListParams,
+  GetListData,
+  GetListResponse,
+  UpdateListParams,
+  AddListItemParams,
+  ListContainsItemResponse,
 } from "./index";
 
 // const enums must use `export` (not `export type`) so they are usable as values
@@ -202,6 +221,7 @@ export class QuickNodeSdk {
   admin: _QuickNodeSdk["admin"];
   streams: _QuickNodeSdk["streams"];
   webhooks: WebhooksApiClient;
+  kvstore: KvStoreApiClient;
 }
 
 export class DestinationAttributes {

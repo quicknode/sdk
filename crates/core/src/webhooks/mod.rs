@@ -324,6 +324,7 @@ mod tests {
             webhooks: Some(WebhooksConfig {
                 base_url: Some(base_url),
             }),
+            kvstore: None,
         })
         .unwrap()
     }

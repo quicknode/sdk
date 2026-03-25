@@ -289,6 +289,7 @@ mod tests {
                 base_url: Some(base_url),
             }),
             webhooks: None,
+            kvstore: None,
         })
         .unwrap()
     }

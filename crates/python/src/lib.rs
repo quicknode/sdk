@@ -16,6 +16,8 @@ pub struct QuickNodeSdk {
     streams: StreamsApiClient,
     #[pyo3(get)]
     webhooks: WebhooksApiClient,
+    #[pyo3(get)]
+    kvstore: KvStoreApiClient,
 }
 
 #[gen_stub_pymethods]
@@ -34,7 +36,10 @@ impl QuickNodeSdk {
                 inner: core::webhooks::WebhooksApiClient::new(sdk_config.clone()),
             },
             streams: StreamsApiClient {
-                inner: core::streams::StreamsApiClient::new(sdk_config),
+                inner: core::streams::StreamsApiClient::new(sdk_config.clone()),
+            },
+            kvstore: KvStoreApiClient {
+                inner: core::kvstore::KvStoreApiClient::new(sdk_config),
             },
         })
     }
@@ -46,6 +51,7 @@ impl QuickNodeSdk {
                 admin: AdminApiClient { inner: sdk.admin },
                 streams: StreamsApiClient { inner: sdk.streams },
                 webhooks: WebhooksApiClient { inner: sdk.webhooks },
+                kvstore: KvStoreApiClient { inner: sdk.kvstore },
             })
             .map_err(|e| PyValueError::new_err(e.to_string()))
     }
@@ -1655,6 +1661,196 @@ impl WebhooksApiClient {
     }
 }
 
+// ── KvStoreApiClient ───────────────────────────────────────────
+
+#[gen_stub_pyclass]
+#[pyclass]
+#[derive(Clone)]
+pub struct KvStoreApiClient {
+    inner: core::kvstore::KvStoreApiClient,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl KvStoreApiClient {
+    #[pyo3(signature = (key, value))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn create_set<'py>(&self, py: Python<'py>, key: String, value: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_set(&core::kvstore::CreateSetParams { key, value })
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (limit=None, cursor=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetSetsResponse]"
+    ))]
+    fn get_sets<'py>(&self, py: Python<'py>, limit: Option<i64>, cursor: Option<String>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_sets(&core::kvstore::GetSetsParams { limit, cursor })
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (key))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetSetResponse]"
+    ))]
+    fn get_set<'py>(&self, py: Python<'py>, key: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_set(&key)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (add_sets=None, delete_sets=None))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn bulk_sets<'py>(
+        &self,
+        py: Python<'py>,
+        add_sets: Option<std::collections::HashMap<String, String>>,
+        delete_sets: Option<Vec<String>>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .bulk_sets(&core::kvstore::BulkSetsParams { add_sets, delete_sets })
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (key))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn delete_set<'py>(&self, py: Python<'py>, key: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_set(&key)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (key, items))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn create_list<'py>(&self, py: Python<'py>, key: String, items: Vec<String>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_list(&core::kvstore::CreateListParams { key, items })
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (limit=None, cursor=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetListsResponse]"
+    ))]
+    fn get_lists<'py>(&self, py: Python<'py>, limit: Option<i64>, cursor: Option<String>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_lists(&core::kvstore::GetListsParams { limit, cursor })
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (key, limit=None, cursor=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetListResponse]"
+    ))]
+    fn get_list<'py>(&self, py: Python<'py>, key: String, limit: Option<i64>, cursor: Option<String>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_list(&key, &core::kvstore::GetListParams { limit, cursor })
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (key, add_items=None, remove_items=None))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn update_list<'py>(
+        &self,
+        py: Python<'py>,
+        key: String,
+        add_items: Option<Vec<String>>,
+        remove_items: Option<Vec<String>>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .update_list(&key, &core::kvstore::UpdateListParams { add_items, remove_items })
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (key, item))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn add_list_item<'py>(&self, py: Python<'py>, key: String, item: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .add_list_item(&key, &core::kvstore::AddListItemParams { item })
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (key, item))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ListContainsItemResponse]"
+    ))]
+    fn list_contains_item<'py>(&self, py: Python<'py>, key: String, item: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .list_contains_item(&key, &item)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (key, item))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn delete_list_item<'py>(&self, py: Python<'py>, key: String, item: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_list_item(&key, &item)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (key))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn delete_list<'py>(&self, py: Python<'py>, key: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_list(&key)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+}
+
 // ── Module ─────────────────────────────────────────────────────
 
 #[pymodule]
@@ -1766,6 +1962,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::AdminConfig>()?;
     m.add_class::<core::StreamsConfig>()?;
     m.add_class::<core::WebhooksConfig>()?;
+    m.add_class::<core::KvStoreConfig>()?;
     m.add_class::<core::SdkFullConfig>()?;
     m.add_class::<StreamsApiClient>()?;
     m.add_class::<core::streams::Stream>()?;
@@ -1801,6 +1998,15 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::webhooks::XrplWalletFilterTemplate>()?;
     m.add_class::<core::webhooks::HyperliquidWalletEventsFilterTemplate>()?;
     m.add_class::<core::webhooks::StellarWalletTransactionsFilterTemplate>()?;
+    m.add_class::<KvStoreApiClient>()?;
+    m.add_class::<core::kvstore::KvSetEntry>()?;
+    m.add_class::<core::kvstore::GetSetsResponse>()?;
+    m.add_class::<core::kvstore::GetSetResponse>()?;
+    m.add_class::<core::kvstore::GetListsData>()?;
+    m.add_class::<core::kvstore::GetListsResponse>()?;
+    m.add_class::<core::kvstore::GetListData>()?;
+    m.add_class::<core::kvstore::GetListResponse>()?;
+    m.add_class::<core::kvstore::ListContainsItemResponse>()?;
     Ok(())
 }
 

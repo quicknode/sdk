@@ -1,10 +1,16 @@
 pub mod admin;
 pub mod config;
 pub mod errors;
+pub mod kvstore;
 pub mod streams;
 pub mod webhooks;
 
-pub use config::{AdminConfig, HttpConfig, SdkFullConfig, StreamsConfig, WebhooksConfig};
+pub use config::{AdminConfig, HttpConfig, KvStoreConfig, SdkFullConfig, StreamsConfig, WebhooksConfig};
+pub use kvstore::{
+    AddListItemParams, BulkSetsParams, CreateListParams, CreateSetParams, GetListData, GetListParams,
+    GetListResponse, GetListsData, GetListsParams, GetListsResponse, GetSetResponse, GetSetsParams,
+    GetSetsResponse, KvSetEntry, KvStoreApiClient, ListContainsItemResponse, UpdateListParams,
+};
 
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::Client as ReqwestClient;
@@ -25,6 +31,7 @@ impl std::fmt::Debug for SdkConfig {
             .field("admin_base_url", &self.0.admin.base_url)
             .field("streams_base_url", &self.0.streams.base_url)
             .field("webhooks_base_url", &self.0.webhooks.base_url)
+            .field("kvstore_base_url", &self.0.kvstore.base_url)
             .finish()
     }
 }
@@ -34,6 +41,7 @@ struct SdkConfigInner {
     admin: admin::ResolvedAdminConfig,
     streams: streams::ResolvedStreamsConfig,
     webhooks: webhooks::ResolvedWebhooksConfig,
+    kvstore: kvstore::ResolvedKvStoreConfig,
 }
 
 impl SdkConfig {
@@ -77,6 +85,7 @@ impl SdkConfig {
             admin: admin::ResolvedAdminConfig::from_config(config.admin.as_ref())?,
             streams: streams::ResolvedStreamsConfig::from_config(config.streams.as_ref())?,
             webhooks: webhooks::ResolvedWebhooksConfig::from_config(config.webhooks.as_ref())?,
+            kvstore: kvstore::ResolvedKvStoreConfig::from_config(config.kvstore.as_ref())?,
         })))
     }
 
@@ -95,12 +104,17 @@ impl SdkConfig {
     pub(crate) fn webhooks(&self) -> &webhooks::ResolvedWebhooksConfig {
         &self.0.webhooks
     }
+
+    pub(crate) fn kvstore(&self) -> &kvstore::ResolvedKvStoreConfig {
+        &self.0.kvstore
+    }
 }
 
 pub struct QuickNodeSdk {
     pub admin: admin::AdminApiClient,
     pub streams: streams::StreamsApiClient,
     pub webhooks: webhooks::WebhooksApiClient,
+    pub kvstore: kvstore::KvStoreApiClient,
 }
 
 impl QuickNodeSdk {
@@ -109,7 +123,8 @@ impl QuickNodeSdk {
         Ok(Self {
             admin: admin::AdminApiClient::new(sdk_config.clone()),
             streams: streams::StreamsApiClient::new(sdk_config.clone()),
-            webhooks: webhooks::WebhooksApiClient::new(sdk_config),
+            webhooks: webhooks::WebhooksApiClient::new(sdk_config.clone()),
+            kvstore: kvstore::KvStoreApiClient::new(sdk_config),
         })
     }
 
