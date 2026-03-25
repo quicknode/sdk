@@ -500,12 +500,75 @@ export interface StreamsConfig {
 export interface WebhooksConfig {
   baseUrl?: string
 }
+export interface KvStoreConfig {
+  baseUrl?: string
+}
 export interface SdkFullConfig {
   apiKey: string
   http?: HttpConfig
   admin?: AdminConfig
   streams?: StreamsConfig
   webhooks?: WebhooksConfig
+  kvstore?: KvStoreConfig
+}
+export interface CreateSetParams {
+  key: string
+  value: string
+}
+export interface GetSetsParams {
+  limit?: number
+  cursor?: string
+}
+export interface BulkSetsParams {
+  addSets?: Record<string, string>
+  deleteSets?: Array<string>
+}
+export interface CreateListParams {
+  key: string
+  items: Array<string>
+}
+export interface GetListsParams {
+  limit?: number
+  cursor?: string
+}
+export interface GetListParams {
+  limit?: number
+  cursor?: string
+}
+export interface UpdateListParams {
+  addItems?: Array<string>
+  removeItems?: Array<string>
+}
+export interface AddListItemParams {
+  item: string
+}
+export interface KvSetEntry {
+  key: string
+  value: string
+}
+export interface GetSetsResponse {
+  data: Array<KvSetEntry>
+  cursor: string
+}
+export interface GetSetResponse {
+  value: string
+}
+export interface GetListsData {
+  keys: Array<string>
+}
+export interface GetListsResponse {
+  data: GetListsData
+  cursor: string
+}
+export interface GetListData {
+  items: Array<string>
+}
+export interface GetListResponse {
+  data: GetListData
+  cursor: string
+}
+export interface ListContainsItemResponse {
+  exists: boolean
 }
 export const enum StreamRegion {
   UsaEast = 'UsaEast',
@@ -907,6 +970,7 @@ export declare class QuickNodeSdk {
   get admin(): AdminApiClient
   get streams(): StreamsApiClient
   get webhooks(): WebhooksApiClient
+  get kvstore(): KvStoreApiClient
   static fromEnv(): QuickNodeSdk
 }
 export declare class AdminApiClient {
@@ -986,4 +1050,19 @@ export declare class WebhooksApiClient {
   getEnabledCount(): Promise<WebhookEnabledCountResponse>
   createWebhookFromTemplate(params: CreateWebhookFromTemplateParams): Promise<Webhook>
   updateWebhookTemplate(webhookId: string, params: UpdateWebhookTemplateParams): Promise<Webhook>
+}
+export declare class KvStoreApiClient {
+  createSet(params: CreateSetParams): Promise<void>
+  getSets(params?: GetSetsParams | undefined | null): Promise<GetSetsResponse>
+  getSet(key: string): Promise<GetSetResponse>
+  bulkSets(params: BulkSetsParams): Promise<void>
+  deleteSet(key: string): Promise<void>
+  createList(params: CreateListParams): Promise<void>
+  getLists(params?: GetListsParams | undefined | null): Promise<GetListsResponse>
+  getList(key: string, params?: GetListParams | undefined | null): Promise<GetListResponse>
+  updateList(key: string, params: UpdateListParams): Promise<void>
+  addListItem(key: string, params: AddListItemParams): Promise<void>
+  listContainsItem(key: string, item: string): Promise<ListContainsItemResponse>
+  deleteListItem(key: string, item: string): Promise<void>
+  deleteList(key: string): Promise<void>
 }
