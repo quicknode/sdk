@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path // .tool_response.file_path' | { read -r f; [[ \"$f\" == *.rs ]] && cd /Users/johnmitsch/qn/sdk && cargo fmt --all 2>/dev/null || true; }",
+            "command": "jq -r '.tool_input.file_path // .tool_response.file_path' | { read -r f; [[ \"$f\" == *.rs ]] && cd \"$(git rev-parse --show-toplevel)\" && cargo fmt --all 2>/dev/null || true; }",
             "statusMessage": "Running cargo fmt..."
           }
         ]

@@ -30,6 +30,12 @@ uv pip install maturin
 just node-build                                   # npm install + build + test
 ```
 
+### Ruby
+```bash
+just ruby-build                                   # cargo build + copy .bundle artifact
+```
+The build compiles `crates/ruby` and copies the resulting `libquicknode_sdk.dylib` to `ruby/lib/quicknode_sdk.bundle` (macOS) or equivalent `.so` on Linux.
+
 ## Verification
 
 When verifying changes, use these commands based on what was modified:
@@ -37,7 +43,8 @@ When verifying changes, use these commands based on what was modified:
 - **Rust only** — `cargo check && just lint`
 - **Python crate/bindings** — `just python-setup-env` (first time only), then `just python-build`
 - **Node/npm** — `just node-build`
-- **Full verification** — `cargo check && just lint && just python-build && just node-build && just test`
+- **Ruby** — `just ruby-build`
+- **Full verification** — `cargo check && just lint && just python-build && just node-build && just ruby-build && just test`
 
 > Note: Do not use `cargo build` directly — Python bindings are compiled via maturin (`just python-build`).
 
@@ -45,15 +52,17 @@ if you can't run a just command, see what it's executing and run it manually
 
 ## Architecture
 
-This is a polyglot SDK: one Rust core library with Python and Node.js bindings generated from the same types
+This is a polyglot SDK: one Rust core library with Python, Node.js, and Ruby bindings generated from the same types
 
 ### Workspace Layout
 - `crates/core` — Pure Rust business logic (HTTP client, request/response types, errors)
 - `crates/python` — PyO3 wrapper crate, compiles to `sdk._core` Python extension
 - `crates/node` — napi-rs wrapper crate, compiles to native `.node` module
+- `crates/ruby` — Magnus wrapper crate, compiles to native `.bundle`/`.so` module
 - `crates/python-stubs` — Generates `.pyi` type stub files
 - `python/sdk/` — Python package directory (distributed via maturin)
 - `npm/` — Node.js package directory
+- `ruby/` — Ruby package directory (`lib/quicknode_sdk.rb` entry point, `examples/`)
 
 ### Core Pattern
 - `QuickNodeSdk` is the root entry point holding sub-clients (e.g., `admin: AdminApiClient`). All clients share a `SdkConfig(Arc<SdkConfigInner>)` wrapping one `reqwest` HTTP client and the API key.
@@ -77,7 +86,7 @@ impl Resolved<Name>Config {
 ```
 `SdkConfigInner` holds one field per sub-client (e.g., `admin: admin::ResolvedAdminConfig`), and `SdkConfig` exposes a matching accessor (e.g., `fn admin(&self) -> &admin::ResolvedAdminConfig`). Call sites use `self.config.admin().base_url` instead of a flat `admin_base_url` field. Resolved config structs should be cheaply cloneable — prefer types like `reqwest::Url` (which implements `Clone`) and avoid heap allocations that would make cloning expensive; `SdkConfig` itself is a cheap clone via `Arc<SdkConfigInner>`.
 
-- Any update to types in the core crate need to be checked for updates in the language crates (python, node)
+- Any update to types in the core crate need to be checked for updates in the language crates (python, node, ruby)
 
 ### Multi-Language Type Annotations
 Data types are defined once in `crates/core/src/` with feature-gated attribute macros:
@@ -90,6 +99,7 @@ pub struct SomeRequest { ... }
 ```
 - `python` feature — PyO3 class macros and stub generation via `pyo3-stub-gen`
 - `node` feature — napi-rs object macros and auto-generated TypeScript types in `npm/index.d.ts`
+- `ruby` feature — enables `magnus` dependency (optional); wrapping is done in the Ruby crate rather than via macros on core types
 - `rust` feature — `bon` builder pattern for ergonomic Rust usage
 
 ### Error Handling
@@ -98,7 +108,7 @@ pub struct SomeRequest { ... }
 - `Api` — non-2xx response with status code and raw body
 - `Decode` — JSON parse failure with raw body for debugging
 
-Language bindings convert `SdkError` to native exceptions: `PyValueError` (Python), `napi::Error` (Node.js).
+Language bindings convert `SdkError` to native exceptions: `PyValueError` (Python), `napi::Error` (Node.js), `magnus::Error` / `RuntimeError` (Ruby).
 
 ### Python Binding Pattern
 `crates/python/src/lib.rs` wraps core async methods using `pyo3_async_runtimes::tokio::future_into_py`. The Python API accepts individual keyword arguments instead of structs.
@@ -106,13 +116,16 @@ Language bindings convert `SdkError` to native exceptions: `PyValueError` (Pytho
 ### Node.js Binding Pattern
 `crates/node/src/lib.rs` uses `#[napi(constructor)]` and `#[napi(getter)]` macros. napi handles async conversion automatically.
 
+### Ruby Binding Pattern
+`crates/ruby/src/lib.rs` uses the `magnus` crate. All async SDK calls are wrapped via a single shared `tokio::runtime` (static `OnceLock`) using `.block_on()` to produce a synchronous Ruby API. Methods returning data return **JSON strings** — callers must parse with `JSON.parse()`. Complex parameters are passed as Ruby Hashes with symbol keys; required keys throw `ArgumentError` if missing. Methods with more than 15 parameters use a Hash due to a magnus arity limit — a comment in the source notes this design decision. Classes are exposed under the `QuickNodeSdk` module and registered via `#[magnus::init(name = "quicknode_sdk")]`.
+
 ### Testing
 Core clients are tested using mocked API calls with wiremock. All functions making external http calls should be tested this way and test the happy path, errors, with params, and with bad params. Keep testing focused and flexible, avoid overtesting
 
 ## SDK-Specific Guidelines
 
 ### Polyglot consistency
-- When adding a new public type to `crates/core`, export it across all three layers: Rust re-exports in `lib.rs`, Python `__init__.py` + `init_manual_override.pyi`, and TypeScript `sdk.d.ts`
+- When adding a new public type to `crates/core`, export it across all four layers: Rust re-exports in `lib.rs`, Python `__init__.py` + `init_manual_override.pyi`, TypeScript `sdk.d.ts`, and the Ruby binding in `crates/ruby/src/lib.rs`
 - `python/sdk/__init__.py` is **manually maintained** — it is NOT auto-generated. Every new public struct/type must be added to both the `from sdk._core import (...)` block and the `__all__` list in this file
 - When adding a new type with `#[cfg_attr(feature = "node", napi(object))]`, also add it to the named `export type { ... }` block in `npm/sdk.d.ts` — this is the user-facing type file and is not auto-updated by napi-rs
 - When adding a new `#[napi(string_enum)]` Rust enum, it generates a TypeScript `const enum` in `npm/index.d.ts`. In `npm/sdk.d.ts`, these must be re-exported using a regular `export { ... }` (not `export type { ... }`), otherwise TypeScript consumers cannot use them as values (e.g., `StreamDataset.Block`)
