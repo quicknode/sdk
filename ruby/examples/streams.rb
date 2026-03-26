@@ -3,13 +3,13 @@ require_relative "../lib/quicknode_sdk"
 
 qn = QuickNodeSdk::SDK.from_env
 
-dest = QuickNodeSdk::DestinationAttributes.webhook(JSON.generate({
+dest = QuickNodeSdk::DestinationAttributes.webhook(
   url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
   max_retry: 3,
   retry_interval_sec: 1,
   post_timeout_sec: 10,
   compression: "none"
-}))
+)
 
 stream_json = qn.streams.create_stream({
   name: "My Stream",

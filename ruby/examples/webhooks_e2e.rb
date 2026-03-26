@@ -10,12 +10,13 @@ count = JSON.parse(qn.webhooks.get_enabled_count)
 puts "enabled count: #{count["total"]}"
 
 destination_attributes = JSON.generate({
-  url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef"
+  url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
+  compression: "none"
 })
 
 template_args = JSON.generate({
   template_id: "evmWalletFilter",
-  wallets: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"]
+  value: JSON.generate({ wallets: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"] })
 })
 
 webhook = JSON.parse(qn.webhooks.create_webhook_from_template(

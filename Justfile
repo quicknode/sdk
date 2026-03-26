@@ -15,6 +15,7 @@ node-build:
 
 ruby-build:
   cargo build -p sdk-ruby --release
+  cp target/release/libquicknode_sdk.dylib ruby/lib/quicknode_sdk.bundle
 
 test:
   cargo test -p sdk-core --lib

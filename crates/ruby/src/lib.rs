@@ -763,18 +763,182 @@ pub struct DestinationAttributes {
 
 #[allow(clippy::needless_pass_by_value)]
 impl DestinationAttributes {
-    fn webhook(attrs_json: String) -> Result<Self, Error> {
-        let attrs: core::streams::WebhookAttributes =
-            serde_json::from_str(&attrs_json).map_err(parse_err)?;
+    fn webhook(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::WebhookAttributes {
+            url: hash_require_string(&opts, "url")?,
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+            post_timeout_sec: hash_get_i32(&opts, "post_timeout_sec")?.unwrap_or(0),
+            security_token: hash_get_string(&opts, "security_token")?,
+            compression: hash_require_string(&opts, "compression")?,
+        };
         core::streams::DestinationAttributes::webhook(&attrs)
             .map(|inner| Self { inner })
             .map_err(map_err)
     }
 
-    fn s3(attrs_json: String) -> Result<Self, Error> {
-        let attrs: core::streams::S3Attributes =
-            serde_json::from_str(&attrs_json).map_err(parse_err)?;
+    fn s3(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::S3Attributes {
+            endpoint: hash_require_string(&opts, "endpoint")?,
+            access_key: hash_require_string(&opts, "access_key")?,
+            secret_key: hash_require_string(&opts, "secret_key")?,
+            bucket: hash_require_string(&opts, "bucket")?,
+            object_prefix: hash_require_string(&opts, "object_prefix")?,
+            compression: hash_require_string(&opts, "compression")?,
+            file_type: hash_require_string(&opts, "file_type")?,
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+            use_ssl: hash_get_bool(&opts, "use_ssl")?,
+        };
         core::streams::DestinationAttributes::s3(&attrs)
+            .map(|inner| Self { inner })
+            .map_err(map_err)
+    }
+
+    fn azure(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::AzureAttributes {
+            storage_account: hash_require_string(&opts, "storage_account")?,
+            sas_token: hash_require_string(&opts, "sas_token")?,
+            container: hash_require_string(&opts, "container")?,
+            compression: hash_require_string(&opts, "compression")?,
+            file_type: hash_require_string(&opts, "file_type")?,
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+            blob_prefix: hash_get_string(&opts, "blob_prefix")?,
+        };
+        core::streams::DestinationAttributes::azure(&attrs)
+            .map(|inner| Self { inner })
+            .map_err(map_err)
+    }
+
+    fn postgres(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::PostgresAttributes {
+            host: hash_require_string(&opts, "host")?,
+            port: hash_get_i32(&opts, "port")?.unwrap_or(5432),
+            database: hash_require_string(&opts, "database")?,
+            username: hash_require_string(&opts, "username")?,
+            password: hash_require_string(&opts, "password")?,
+            table_name: hash_require_string(&opts, "table_name")?,
+            sslmode: hash_require_string(&opts, "sslmode")?,
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+        };
+        core::streams::DestinationAttributes::postgres(&attrs)
+            .map(|inner| Self { inner })
+            .map_err(map_err)
+    }
+
+    fn mysql(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::MysqlAttributes {
+            host: hash_require_string(&opts, "host")?,
+            port: hash_get_i32(&opts, "port")?.unwrap_or(3306),
+            database: hash_require_string(&opts, "database")?,
+            username: hash_require_string(&opts, "username")?,
+            password: hash_require_string(&opts, "password")?,
+            table_name: hash_require_string(&opts, "table_name")?,
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+        };
+        core::streams::DestinationAttributes::mysql(&attrs)
+            .map(|inner| Self { inner })
+            .map_err(map_err)
+    }
+
+    fn mongo(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::MongoAttributes {
+            host: hash_require_string(&opts, "host")?,
+            database: hash_require_string(&opts, "database")?,
+            username: hash_require_string(&opts, "username")?,
+            password: hash_require_string(&opts, "password")?,
+            collection_name: hash_require_string(&opts, "collection_name")?,
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+        };
+        core::streams::DestinationAttributes::mongo(&attrs)
+            .map(|inner| Self { inner })
+            .map_err(map_err)
+    }
+
+    fn clickhouse(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::ClickhouseAttributes {
+            hosts: hash_require_string(&opts, "hosts")?,
+            database: hash_require_string(&opts, "database")?,
+            username: hash_require_string(&opts, "username")?,
+            password: hash_require_string(&opts, "password")?,
+            table_name: hash_require_string(&opts, "table_name")?,
+            default_table_engine_opts: hash_require_string(&opts, "default_table_engine_opts")?,
+            default_granularity: hash_get_i32(&opts, "default_granularity")?.unwrap_or(0),
+            default_compression: hash_require_string(&opts, "default_compression")?,
+            default_index_type: hash_require_string(&opts, "default_index_type")?,
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+            disable_datetime_precision: hash_get_bool(&opts, "disable_datetime_precision")?,
+            dont_support_rename_column: hash_get_bool(&opts, "dont_support_rename_column")?,
+            dont_support_empty_default_value: hash_get_bool(
+                &opts,
+                "dont_support_empty_default_value",
+            )?,
+            skip_initialize_with_version: hash_get_bool(&opts, "skip_initialize_with_version")?,
+        };
+        core::streams::DestinationAttributes::clickhouse(&attrs)
+            .map(|inner| Self { inner })
+            .map_err(map_err)
+    }
+
+    fn snowflake(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::SnowflakeAttributes {
+            account: hash_require_string(&opts, "account")?,
+            host: hash_require_string(&opts, "host")?,
+            port: hash_get_i32(&opts, "port")?.unwrap_or(443),
+            protocol: hash_require_string(&opts, "protocol")?,
+            database: hash_require_string(&opts, "database")?,
+            schema: hash_require_string(&opts, "schema")?,
+            warehouse: hash_require_string(&opts, "warehouse")?,
+            username: hash_require_string(&opts, "username")?,
+            password: hash_require_string(&opts, "password")?,
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+            table_name: hash_get_string(&opts, "table_name")?,
+        };
+        core::streams::DestinationAttributes::snowflake(&attrs)
+            .map(|inner| Self { inner })
+            .map_err(map_err)
+    }
+
+    fn kafka(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::KafkaAttributes {
+            bootstrap_servers: hash_require_string(&opts, "bootstrap_servers")?,
+            topic_name: hash_require_string(&opts, "topic_name")?,
+            compression_type: hash_require_string(&opts, "compression_type")?,
+            batch_size: hash_get_i32(&opts, "batch_size")?.unwrap_or(0),
+            linger_ms: hash_get_i32(&opts, "linger_ms")?.unwrap_or(0),
+            max_request_size: hash_get_i32(&opts, "max_request_size")?.unwrap_or(0),
+            timeout_sec: hash_get_i32(&opts, "timeout_sec")?.unwrap_or(0),
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+            username: hash_get_string(&opts, "username")?,
+            password: hash_get_string(&opts, "password")?,
+            protocol: hash_get_string(&opts, "protocol")?,
+            mechanisms: hash_get_string(&opts, "mechanisms")?,
+        };
+        core::streams::DestinationAttributes::kafka(&attrs)
+            .map(|inner| Self { inner })
+            .map_err(map_err)
+    }
+
+    fn redis(opts: RHash) -> Result<Self, Error> {
+        let attrs = core::streams::RedisAttributes {
+            host: hash_require_string(&opts, "host")?,
+            port: hash_get_i32(&opts, "port")?.unwrap_or(6379),
+            database: hash_get_i32(&opts, "database")?.unwrap_or(0),
+            username: hash_require_string(&opts, "username")?,
+            password: hash_require_string(&opts, "password")?,
+            key_name: hash_require_string(&opts, "key_name")?,
+            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
+            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
+            tls: hash_get_bool(&opts, "tls")?,
+        };
+        core::streams::DestinationAttributes::redis(&attrs)
             .map(|inner| Self { inner })
             .map_err(map_err)
     }
@@ -1258,7 +1422,7 @@ impl KvStoreApiClient {
 
 // ── Extension init ──────────────────────────────────────────────────────────
 
-#[magnus::init]
+#[magnus::init(name = "quicknode_sdk")]
 fn init(ruby: &Ruby) -> Result<(), Error> {
     let module = ruby.define_module("QuickNodeSdk")?;
 
@@ -1431,6 +1595,21 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     let dest_attrs = module.define_class("DestinationAttributes", ruby.class_object())?;
     dest_attrs.define_singleton_method("webhook", function!(DestinationAttributes::webhook, 1))?;
     dest_attrs.define_singleton_method("s3", function!(DestinationAttributes::s3, 1))?;
+    dest_attrs.define_singleton_method("azure", function!(DestinationAttributes::azure, 1))?;
+    dest_attrs
+        .define_singleton_method("postgres", function!(DestinationAttributes::postgres, 1))?;
+    dest_attrs.define_singleton_method("mysql", function!(DestinationAttributes::mysql, 1))?;
+    dest_attrs.define_singleton_method("mongo", function!(DestinationAttributes::mongo, 1))?;
+    dest_attrs.define_singleton_method(
+        "clickhouse",
+        function!(DestinationAttributes::clickhouse, 1),
+    )?;
+    dest_attrs.define_singleton_method(
+        "snowflake",
+        function!(DestinationAttributes::snowflake, 1),
+    )?;
+    dest_attrs.define_singleton_method("kafka", function!(DestinationAttributes::kafka, 1))?;
+    dest_attrs.define_singleton_method("redis", function!(DestinationAttributes::redis, 1))?;
 
     // ── Streams ───────────────────────────────────────────────
     let streams = module.define_class("Streams", ruby.class_object())?;

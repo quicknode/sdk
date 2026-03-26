@@ -1,1 +1,1 @@
-require_relative "../../target/release/quicknode_sdk"
+require_relative "quicknode_sdk.bundle"

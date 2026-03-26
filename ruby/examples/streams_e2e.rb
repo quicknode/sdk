@@ -4,7 +4,7 @@ require_relative "../lib/quicknode_sdk"
 qn = QuickNodeSdk::SDK.from_env
 
 before = JSON.parse(qn.streams.list_streams(nil, nil, nil, nil, nil))
-puts "streams before: #{before["page_info"]["total"]}"
+puts "streams before: #{before["pageInfo"]["total"]}"
 
 count = JSON.parse(qn.streams.get_enabled_count(nil))
 puts "enabled count: #{count["total"]}"
@@ -19,13 +19,13 @@ filter_result = JSON.parse(qn.streams.test_filter(
 puts "filter logs: #{filter_result["logs"]}"
 sleep 1
 
-dest = QuickNodeSdk::DestinationAttributes.webhook(JSON.generate({
+dest = QuickNodeSdk::DestinationAttributes.webhook(
   url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
   max_retry: 3,
   retry_interval_sec: 1,
   post_timeout_sec: 10,
   compression: "none"
-}))
+)
 
 stream = JSON.parse(qn.streams.create_stream({
   name: "E2E Test Stream",
@@ -65,4 +65,4 @@ puts "deleted: #{stream_id}"
 sleep 1
 
 after = JSON.parse(qn.streams.list_streams(nil, nil, nil, nil, nil))
-puts "streams after: #{after["page_info"]["total"]}"
+puts "streams after: #{after["pageInfo"]["total"]}"

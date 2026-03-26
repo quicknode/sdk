@@ -475,6 +475,7 @@ impl UpdateWebhookParams {
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ActivateWebhookParams {
     pub start_from: WebhookStartFrom,
 }
@@ -546,7 +547,8 @@ pub struct Webhook {
     pub status: String,
     pub network: String,
     pub created_at: String,
-    pub updated_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub template_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

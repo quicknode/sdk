@@ -2,7 +2,7 @@
 
 A unified SDK for building on QuickNode.
 
-Rust SDK with Python and Node.js bindings.
+Rust SDK with Python, Node.js, and Ruby bindings.
 
 ## Project Structure
 
@@ -11,9 +11,11 @@ sdk/
 ├── crates/
 │   ├── core/          # Pure Rust business logic
 │   ├── python/        # PyO3 bindings
-│   └── node/          # napi-rs bindings
+│   ├── node/          # napi-rs bindings
+│   └── ruby/          # magnus bindings
 ├── python/sdk/        # Python package with type hints
 ├── npm/               # Node.js package with TypeScript types
+├── ruby/              # Ruby package
 └── pyproject.toml     # maturin build config
 ```
 
@@ -23,6 +25,8 @@ sdk/
 
 **Node.js:** `npm install quicknode-sdk`
 
+**Ruby:** `gem install quicknode-sdk` _(not yet published — see Development below)_
+
 ## Development
 
 ### Prerequisites
@@ -30,6 +34,7 @@ sdk/
 - Rust (stable)
 - Python 3.8+ with [uv](https://docs.astral.sh/uv/)
 - Node.js 18+
+- Ruby 3.0+
 - [just](https://github.com/casey/just)
 
 ### Build Commands
@@ -47,6 +52,9 @@ just python-build
 # Node.js (from npm/)
 just node-build
 
+# Ruby
+just ruby-build
+
 # Rust
 cargo build -p sdk-core
 ```
@@ -61,11 +69,22 @@ Runs the Rust unit tests for `sdk-core` using [wiremock](https://github.com/Luke
 
 Examples
 ```bash
+# Rust
 QN_SDK__API_KEY=replaceme cargo run --example admin -p sdk-core --features rust
+
+# Python
 QN_SDK__API_KEY=replaceme uv run python/examples/admin.py
 QN_SDK__API_KEY=replaceme uv run python/examples/streams.py
+
+# Node.js
 cd npm && QN_SDK__API_KEY=replaceme npx tsx examples/admin.ts
 cd npm && QN_SDK__API_KEY=replaceme npx tsx examples/streams.ts
+
+# Ruby (build first, then run)
+just ruby-build
+QN_SDK__API_KEY=replaceme ruby ruby/examples/admin.rb
+QN_SDK__API_KEY=replaceme ruby ruby/examples/admin_e2e.rb
+QN_SDK__API_KEY=replaceme ruby ruby/examples/streams.rb
 ```
 
 ## Configuration
@@ -98,6 +117,9 @@ qn = QuickNodeSdk.from_env()
 ```
 ```typescript
 const qn = QuickNodeSdk.fromEnv();
+```
+```ruby
+qn = QuickNodeSdk::SDK.from_env
 ```
 ```rust
 let qn = QuickNodeSdk::from_env()?;
