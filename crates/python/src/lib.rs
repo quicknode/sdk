@@ -26,8 +26,8 @@ impl QuickNodeSdk {
     #[new]
     #[allow(clippy::needless_pass_by_value)]
     fn new(config: core::SdkFullConfig) -> PyResult<Self> {
-        let sdk_config = core::SdkConfig::new(&config)
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        let sdk_config =
+            core::SdkConfig::new(&config).map_err(|e| PyValueError::new_err(e.to_string()))?;
         Ok(Self {
             admin: AdminApiClient {
                 inner: core::admin::AdminApiClient::new(sdk_config.clone()),
@@ -50,7 +50,9 @@ impl QuickNodeSdk {
             .map(|sdk| Self {
                 admin: AdminApiClient { inner: sdk.admin },
                 streams: StreamsApiClient { inner: sdk.streams },
-                webhooks: WebhooksApiClient { inner: sdk.webhooks },
+                webhooks: WebhooksApiClient {
+                    inner: sdk.webhooks,
+                },
                 kvstore: KvStoreApiClient { inner: sdk.kvstore },
             })
             .map_err(|e| PyValueError::new_err(e.to_string()))
@@ -136,9 +138,7 @@ impl AdminApiClient {
     }
 
     #[pyo3(signature = (id, label=None))]
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_endpoint<'py>(
         &self,
         py: Python<'py>,
@@ -155,9 +155,7 @@ impl AdminApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn archive_endpoint<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -188,9 +186,7 @@ impl AdminApiClient {
     }
 
     #[pyo3(signature = (id, label=None))]
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_tag<'py>(
         &self,
         py: Python<'py>,
@@ -207,9 +203,7 @@ impl AdminApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_tag<'py>(
         &self,
         py: Python<'py>,
@@ -236,7 +230,10 @@ impl AdminApiClient {
         end_time: Option<i64>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::GetUsageRequest { start_time, end_time };
+        let params = core::admin::GetUsageRequest {
+            start_time,
+            end_time,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .get_usage(&params)
@@ -256,7 +253,10 @@ impl AdminApiClient {
         end_time: Option<i64>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::GetUsageRequest { start_time, end_time };
+        let params = core::admin::GetUsageRequest {
+            start_time,
+            end_time,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .get_usage_by_endpoint(&params)
@@ -276,7 +276,10 @@ impl AdminApiClient {
         end_time: Option<i64>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::GetUsageRequest { start_time, end_time };
+        let params = core::admin::GetUsageRequest {
+            start_time,
+            end_time,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .get_usage_by_method(&params)
@@ -296,7 +299,10 @@ impl AdminApiClient {
         end_time: Option<i64>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::GetUsageRequest { start_time, end_time };
+        let params = core::admin::GetUsageRequest {
+            start_time,
+            end_time,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .get_usage_by_chain(&params)
@@ -393,7 +399,15 @@ impl AdminApiClient {
         let client = self.inner.clone();
         let params = core::admin::UpdateSecurityOptionsRequest {
             options: core::admin::SecurityOptionsUpdate {
-                tokens, referrers, jwts, ips, domain_masks, hsts, cors, request_filters, ip_custom_header,
+                tokens,
+                referrers,
+                jwts,
+                ips,
+                domain_masks,
+                hsts,
+                cors,
+                request_filters,
+                ip_custom_header,
             },
         };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -404,9 +418,7 @@ impl AdminApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_token<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -436,9 +448,7 @@ impl AdminApiClient {
     }
 
     #[pyo3(signature = (id, referrer=None))]
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_referrer<'py>(
         &self,
         py: Python<'py>,
@@ -474,9 +484,7 @@ impl AdminApiClient {
     }
 
     #[pyo3(signature = (id, ip=None))]
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_ip<'py>(
         &self,
         py: Python<'py>,
@@ -512,9 +520,7 @@ impl AdminApiClient {
     }
 
     #[pyo3(signature = (id, domain_mask=None))]
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_domain_mask<'py>(
         &self,
         py: Python<'py>,
@@ -550,9 +556,7 @@ impl AdminApiClient {
     }
 
     #[pyo3(signature = (id, public_key=None, kid=None, name=None))]
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_jwt<'py>(
         &self,
         py: Python<'py>,
@@ -562,7 +566,11 @@ impl AdminApiClient {
         name: Option<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::CreateJwtRequest { public_key, kid, name };
+        let params = core::admin::CreateJwtRequest {
+            public_key,
+            kid,
+            name,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .create_jwt(&id, &params)
@@ -571,9 +579,7 @@ impl AdminApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_jwt<'py>(
         &self,
         py: Python<'py>,
@@ -610,9 +616,7 @@ impl AdminApiClient {
     }
 
     #[pyo3(signature = (id, request_filter_id, method=None))]
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_request_filter<'py>(
         &self,
         py: Python<'py>,
@@ -630,9 +634,7 @@ impl AdminApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_request_filter<'py>(
         &self,
         py: Python<'py>,
@@ -648,14 +650,8 @@ impl AdminApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
-    fn enable_multichain<'py>(
-        &self,
-        py: Python<'py>,
-        id: String,
-    ) -> PyResult<Bound<'py, PyAny>> {
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn enable_multichain<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -665,14 +661,8 @@ impl AdminApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
-    fn disable_multichain<'py>(
-        &self,
-        py: Python<'py>,
-        id: String,
-    ) -> PyResult<Bound<'py, PyAny>> {
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn disable_multichain<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -747,7 +737,11 @@ impl AdminApiClient {
         rate: i32,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::CreateMethodRateLimitRequest { interval, methods, rate };
+        let params = core::admin::CreateMethodRateLimitRequest {
+            interval,
+            methods,
+            rate,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .create_method_rate_limit(&id, &params)
@@ -770,7 +764,11 @@ impl AdminApiClient {
         rate: Option<i32>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::UpdateMethodRateLimitRequest { methods, status, rate };
+        let params = core::admin::UpdateMethodRateLimitRequest {
+            methods,
+            status,
+            rate,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .update_method_rate_limit(&id, &method_rate_limit_id, &params)
@@ -779,9 +777,7 @@ impl AdminApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_method_rate_limit<'py>(
         &self,
         py: Python<'py>,
@@ -798,9 +794,7 @@ impl AdminApiClient {
     }
 
     #[pyo3(signature = (id, rps=None, rpm=None, rpd=None))]
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_rate_limits<'py>(
         &self,
         py: Python<'py>,
@@ -853,7 +847,11 @@ impl AdminApiClient {
         percentile: Option<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::GetAccountMetricsRequest { period, metric, percentile };
+        let params = core::admin::GetAccountMetricsRequest {
+            period,
+            metric,
+            percentile,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .get_account_metrics(&params)
@@ -1004,7 +1002,11 @@ impl AdminApiClient {
         role: Option<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::InviteTeamMemberRequest { email, full_name, role };
+        let params = core::admin::InviteTeamMemberRequest {
+            email,
+            full_name,
+            role,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .invite_team_member(id, &params)
@@ -1150,9 +1152,9 @@ impl StreamsApiClient {
                 .transpose()?;
             let product_type = product_type
                 .map(|s| {
-                    serde_json::from_value::<core::streams::ProductType>(
-                        serde_json::Value::String(s),
-                    )
+                    serde_json::from_value::<core::streams::ProductType>(serde_json::Value::String(
+                        s,
+                    ))
                     .map_err(|e| PyValueError::new_err(e.to_string()))
                 })
                 .transpose()?;
@@ -1226,9 +1228,7 @@ impl StreamsApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_all_streams<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -1385,9 +1385,7 @@ impl StreamsApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -1398,9 +1396,7 @@ impl StreamsApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn activate_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -1411,9 +1407,7 @@ impl StreamsApiClient {
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn pause_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -1510,17 +1504,21 @@ impl WebhooksApiClient {
         let client = self.inner.clone();
         let params = core::webhooks::GetWebhooksParams { limit, offset };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client.list_webhooks(&params).await.map_err(|e| PyValueError::new_err(e.to_string()))
+            client
+                .list_webhooks(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_all_webhooks<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client.delete_all_webhooks().await.map_err(|e| PyValueError::new_err(e.to_string()))
+            client
+                .delete_all_webhooks()
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
 
@@ -1530,7 +1528,10 @@ impl WebhooksApiClient {
     fn get_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client.get_webhook(&id).await.map_err(|e| PyValueError::new_err(e.to_string()))
+            client
+                .get_webhook(&id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
 
@@ -1547,35 +1548,42 @@ impl WebhooksApiClient {
         destination_attributes: Option<core::webhooks::WebhookDestinationAttributes>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::webhooks::UpdateWebhookParams { name, notification_email, destination_attributes };
+        let params = core::webhooks::UpdateWebhookParams {
+            name,
+            notification_email,
+            destination_attributes,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client.update_webhook(&id, &params).await.map_err(|e| PyValueError::new_err(e.to_string()))
+            client
+                .update_webhook(&id, &params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client.delete_webhook(&id).await.map_err(|e| PyValueError::new_err(e.to_string()))
+            client
+                .delete_webhook(&id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn pause_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client.pause_webhook(&id).await.map_err(|e| PyValueError::new_err(e.to_string()))
+            client
+                .pause_webhook(&id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
 
-    #[gen_stub(override_return_type(
-        type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"
-    ))]
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn activate_webhook<'py>(
         &self,
         py: Python<'py>,
@@ -1589,7 +1597,10 @@ impl WebhooksApiClient {
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
         let params = core::webhooks::ActivateWebhookParams { start_from };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client.activate_webhook(&id, &params).await.map_err(|e| PyValueError::new_err(e.to_string()))
+            client
+                .activate_webhook(&id, &params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
 
@@ -1599,7 +1610,10 @@ impl WebhooksApiClient {
     fn get_enabled_count<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client.get_enabled_count().await.map_err(|e| PyValueError::new_err(e.to_string()))
+            client
+                .get_enabled_count()
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
 
@@ -1675,7 +1689,12 @@ pub struct KvStoreApiClient {
 impl KvStoreApiClient {
     #[pyo3(signature = (key, value))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
-    fn create_set<'py>(&self, py: Python<'py>, key: String, value: String) -> PyResult<Bound<'py, PyAny>> {
+    fn create_set<'py>(
+        &self,
+        py: Python<'py>,
+        key: String,
+        value: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -1689,7 +1708,12 @@ impl KvStoreApiClient {
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetSetsResponse]"
     ))]
-    fn get_sets<'py>(&self, py: Python<'py>, limit: Option<i64>, cursor: Option<String>) -> PyResult<Bound<'py, PyAny>> {
+    fn get_sets<'py>(
+        &self,
+        py: Python<'py>,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -1724,7 +1748,10 @@ impl KvStoreApiClient {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
-                .bulk_sets(&core::kvstore::BulkSetsParams { add_sets, delete_sets })
+                .bulk_sets(&core::kvstore::BulkSetsParams {
+                    add_sets,
+                    delete_sets,
+                })
                 .await
                 .map_err(|e| PyValueError::new_err(e.to_string()))
         })
@@ -1744,7 +1771,12 @@ impl KvStoreApiClient {
 
     #[pyo3(signature = (key, items))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
-    fn create_list<'py>(&self, py: Python<'py>, key: String, items: Vec<String>) -> PyResult<Bound<'py, PyAny>> {
+    fn create_list<'py>(
+        &self,
+        py: Python<'py>,
+        key: String,
+        items: Vec<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -1758,7 +1790,12 @@ impl KvStoreApiClient {
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetListsResponse]"
     ))]
-    fn get_lists<'py>(&self, py: Python<'py>, limit: Option<i64>, cursor: Option<String>) -> PyResult<Bound<'py, PyAny>> {
+    fn get_lists<'py>(
+        &self,
+        py: Python<'py>,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -1772,7 +1809,13 @@ impl KvStoreApiClient {
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetListResponse]"
     ))]
-    fn get_list<'py>(&self, py: Python<'py>, key: String, limit: Option<i64>, cursor: Option<String>) -> PyResult<Bound<'py, PyAny>> {
+    fn get_list<'py>(
+        &self,
+        py: Python<'py>,
+        key: String,
+        limit: Option<i64>,
+        cursor: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -1794,7 +1837,13 @@ impl KvStoreApiClient {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
-                .update_list(&key, &core::kvstore::UpdateListParams { add_items, remove_items })
+                .update_list(
+                    &key,
+                    &core::kvstore::UpdateListParams {
+                        add_items,
+                        remove_items,
+                    },
+                )
                 .await
                 .map_err(|e| PyValueError::new_err(e.to_string()))
         })
@@ -1802,7 +1851,12 @@ impl KvStoreApiClient {
 
     #[pyo3(signature = (key, item))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
-    fn add_list_item<'py>(&self, py: Python<'py>, key: String, item: String) -> PyResult<Bound<'py, PyAny>> {
+    fn add_list_item<'py>(
+        &self,
+        py: Python<'py>,
+        key: String,
+        item: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -1816,7 +1870,12 @@ impl KvStoreApiClient {
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListContainsItemResponse]"
     ))]
-    fn list_contains_item<'py>(&self, py: Python<'py>, key: String, item: String) -> PyResult<Bound<'py, PyAny>> {
+    fn list_contains_item<'py>(
+        &self,
+        py: Python<'py>,
+        key: String,
+        item: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -1828,7 +1887,12 @@ impl KvStoreApiClient {
 
     #[pyo3(signature = (key, item))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
-    fn delete_list_item<'py>(&self, py: Python<'py>, key: String, item: String) -> PyResult<Bound<'py, PyAny>> {
+    fn delete_list_item<'py>(
+        &self,
+        py: Python<'py>,
+        key: String,
+        item: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client

@@ -25,7 +25,8 @@ impl ResolvedKvStoreConfig {
         let url_str = config
             .and_then(|s| s.base_url.as_deref())
             .unwrap_or(KV_STORE_BASE_URL);
-        let mut base_url = reqwest::Url::parse(url_str).map_err(|e| SdkError::Config(e.to_string()))?;
+        let mut base_url =
+            reqwest::Url::parse(url_str).map_err(|e| SdkError::Config(e.to_string()))?;
         if !base_url.path().ends_with('/') {
             base_url.set_path(&format!("{}/", base_url.path()));
         }
@@ -275,7 +276,7 @@ impl ListContainsItemResponse {
 
 // ── API response wrapper ───────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct ApiResponse<T> {
     data: T,
 }
@@ -339,7 +340,11 @@ impl KvStoreApiClient {
     }
 
     pub async fn get_set(&self, key: &str) -> Result<GetSetResponse, SdkError> {
-        let url = self.config.kvstore().base_url.join(&format!("sets/{key}"))?;
+        let url = self
+            .config
+            .kvstore()
+            .base_url
+            .join(&format!("sets/{key}"))?;
         let resp = self
             .config
             .http_client()
@@ -376,7 +381,11 @@ impl KvStoreApiClient {
     }
 
     pub async fn delete_set(&self, key: &str) -> Result<(), SdkError> {
-        let url = self.config.kvstore().base_url.join(&format!("sets/{key}"))?;
+        let url = self
+            .config
+            .kvstore()
+            .base_url
+            .join(&format!("sets/{key}"))?;
         let resp = self
             .config
             .http_client()
@@ -438,8 +447,16 @@ impl KvStoreApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
-    pub async fn get_list(&self, key: &str, params: &GetListParams) -> Result<GetListResponse, SdkError> {
-        let mut url = self.config.kvstore().base_url.join(&format!("lists/{key}"))?;
+    pub async fn get_list(
+        &self,
+        key: &str,
+        params: &GetListParams,
+    ) -> Result<GetListResponse, SdkError> {
+        let mut url = self
+            .config
+            .kvstore()
+            .base_url
+            .join(&format!("lists/{key}"))?;
         {
             let mut pairs = url.query_pairs_mut();
             if let Some(v) = params.limit {
@@ -465,7 +482,11 @@ impl KvStoreApiClient {
     }
 
     pub async fn update_list(&self, key: &str, params: &UpdateListParams) -> Result<(), SdkError> {
-        let url = self.config.kvstore().base_url.join(&format!("lists/{key}"))?;
+        let url = self
+            .config
+            .kvstore()
+            .base_url
+            .join(&format!("lists/{key}"))?;
         let resp = self
             .config
             .http_client()
@@ -482,8 +503,16 @@ impl KvStoreApiClient {
         Ok(())
     }
 
-    pub async fn add_list_item(&self, key: &str, params: &AddListItemParams) -> Result<(), SdkError> {
-        let url = self.config.kvstore().base_url.join(&format!("lists/{key}/items"))?;
+    pub async fn add_list_item(
+        &self,
+        key: &str,
+        params: &AddListItemParams,
+    ) -> Result<(), SdkError> {
+        let url = self
+            .config
+            .kvstore()
+            .base_url
+            .join(&format!("lists/{key}/items"))?;
         let resp = self
             .config
             .http_client()
@@ -500,7 +529,11 @@ impl KvStoreApiClient {
         Ok(())
     }
 
-    pub async fn list_contains_item(&self, key: &str, item: &str) -> Result<ListContainsItemResponse, SdkError> {
+    pub async fn list_contains_item(
+        &self,
+        key: &str,
+        item: &str,
+    ) -> Result<ListContainsItemResponse, SdkError> {
         let url = self
             .config
             .kvstore()
@@ -545,7 +578,11 @@ impl KvStoreApiClient {
     }
 
     pub async fn delete_list(&self, key: &str) -> Result<(), SdkError> {
-        let url = self.config.kvstore().base_url.join(&format!("lists/{key}"))?;
+        let url = self
+            .config
+            .kvstore()
+            .base_url
+            .join(&format!("lists/{key}"))?;
         let resp = self
             .config
             .http_client()
@@ -579,7 +616,9 @@ mod tests {
             admin: None,
             streams: None,
             webhooks: None,
-            kvstore: Some(KvStoreConfig { base_url: Some(base_url) }),
+            kvstore: Some(KvStoreConfig {
+                base_url: Some(base_url),
+            }),
         })
         .unwrap()
     }
@@ -591,11 +630,20 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/sets"))
-            .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        sdk.kvstore.create_set(&CreateSetParams { key: "k".to_string(), value: "v".to_string() }).await.unwrap();
+        sdk.kvstore
+            .create_set(&CreateSetParams {
+                key: "k".to_string(),
+                value: "v".to_string(),
+            })
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -607,7 +655,14 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.create_set(&CreateSetParams { key: "k".to_string(), value: "v".to_string() }).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .create_set(&CreateSetParams {
+                key: "k".to_string(),
+                value: "v".to_string(),
+            })
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -620,7 +675,14 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.create_set(&CreateSetParams { key: "k".to_string(), value: "v".to_string() }).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .create_set(&CreateSetParams {
+                key: "k".to_string(),
+                value: "v".to_string(),
+            })
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -633,7 +695,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let resp = sdk.kvstore.get_sets(&GetSetsParams::default()).await.unwrap();
+        let resp = sdk
+            .kvstore
+            .get_sets(&GetSetsParams::default())
+            .await
+            .unwrap();
         assert_eq!(resp.data.len(), 2);
         assert_eq!(resp.data[0].key, "k1");
     }
@@ -647,7 +713,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.get_sets(&GetSetsParams::default()).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .get_sets(&GetSetsParams::default())
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -660,7 +730,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.get_sets(&GetSetsParams::default()).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .get_sets(&GetSetsParams::default())
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -669,7 +743,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/sets/my-key"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"data": {"value": "my-value"}})))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"data": {"value": "my-value"}})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
@@ -708,13 +785,22 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/sets/bulk"))
-            .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
         let mut add = HashMap::new();
         add.insert("k1".to_string(), "v1".to_string());
-        sdk.kvstore.bulk_sets(&BulkSetsParams { add_sets: Some(add), delete_sets: None }).await.unwrap();
+        sdk.kvstore
+            .bulk_sets(&BulkSetsParams {
+                add_sets: Some(add),
+                delete_sets: None,
+            })
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -726,7 +812,14 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.bulk_sets(&BulkSetsParams { add_sets: None, delete_sets: None }).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .bulk_sets(&BulkSetsParams {
+                add_sets: None,
+                delete_sets: None,
+            })
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -739,7 +832,14 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.bulk_sets(&BulkSetsParams { add_sets: None, delete_sets: None }).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .bulk_sets(&BulkSetsParams {
+                add_sets: None,
+                delete_sets: None,
+            })
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -748,7 +848,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("DELETE"))
             .and(path("/sets/my-key"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
@@ -788,12 +891,18 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/lists"))
-            .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
         sdk.kvstore
-            .create_list(&CreateListParams { key: "my-list".to_string(), items: vec!["item1".to_string()] })
+            .create_list(&CreateListParams {
+                key: "my-list".to_string(),
+                items: vec!["item1".to_string()],
+            })
             .await
             .unwrap();
     }
@@ -807,8 +916,12 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore
-            .create_list(&CreateListParams { key: "my-list".to_string(), items: vec![] })
+        let err = sdk
+            .kvstore
+            .create_list(&CreateListParams {
+                key: "my-list".to_string(),
+                items: vec![],
+            })
             .await
             .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
@@ -823,8 +936,12 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore
-            .create_list(&CreateListParams { key: "my-list".to_string(), items: vec![] })
+        let err = sdk
+            .kvstore
+            .create_list(&CreateListParams {
+                key: "my-list".to_string(),
+                items: vec![],
+            })
             .await
             .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
@@ -835,11 +952,17 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/lists"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"data": {"keys": ["list1", "list2"]}, "cursor": ""})))
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({"data": {"keys": ["list1", "list2"]}, "cursor": ""}),
+            ))
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let resp = sdk.kvstore.get_lists(&GetListsParams::default()).await.unwrap();
+        let resp = sdk
+            .kvstore
+            .get_lists(&GetListsParams::default())
+            .await
+            .unwrap();
         assert_eq!(resp.data.keys, vec!["list1", "list2"]);
     }
 
@@ -852,7 +975,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.get_lists(&GetListsParams::default()).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .get_lists(&GetListsParams::default())
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -865,7 +992,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.get_lists(&GetListsParams::default()).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .get_lists(&GetListsParams::default())
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -874,11 +1005,17 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/lists/my-list"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"data": {"items": ["item1", "item2"]}, "cursor": ""})))
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({"data": {"items": ["item1", "item2"]}, "cursor": ""}),
+            ))
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let resp = sdk.kvstore.get_list("my-list", &GetListParams::default()).await.unwrap();
+        let resp = sdk
+            .kvstore
+            .get_list("my-list", &GetListParams::default())
+            .await
+            .unwrap();
         assert_eq!(resp.data.items, vec!["item1", "item2"]);
     }
 
@@ -891,7 +1028,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.get_list("my-list", &GetListParams::default()).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .get_list("my-list", &GetListParams::default())
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -904,7 +1045,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.get_list("my-list", &GetListParams::default()).await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .get_list("my-list", &GetListParams::default())
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -913,12 +1058,21 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("PATCH"))
             .and(path("/lists/my-list"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
         sdk.kvstore
-            .update_list("my-list", &UpdateListParams { add_items: Some(vec!["item3".to_string()]), remove_items: None })
+            .update_list(
+                "my-list",
+                &UpdateListParams {
+                    add_items: Some(vec!["item3".to_string()]),
+                    remove_items: None,
+                },
+            )
             .await
             .unwrap();
     }
@@ -932,7 +1086,8 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore
+        let err = sdk
+            .kvstore
             .update_list("my-list", &UpdateListParams::default())
             .await
             .unwrap_err();
@@ -948,7 +1103,8 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore
+        let err = sdk
+            .kvstore
             .update_list("my-list", &UpdateListParams::default())
             .await
             .unwrap_err();
@@ -960,12 +1116,20 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/lists/my-list/items"))
-            .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
         sdk.kvstore
-            .add_list_item("my-list", &AddListItemParams { item: "item1".to_string() })
+            .add_list_item(
+                "my-list",
+                &AddListItemParams {
+                    item: "item1".to_string(),
+                },
+            )
             .await
             .unwrap();
     }
@@ -979,8 +1143,14 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore
-            .add_list_item("my-list", &AddListItemParams { item: "item1".to_string() })
+        let err = sdk
+            .kvstore
+            .add_list_item(
+                "my-list",
+                &AddListItemParams {
+                    item: "item1".to_string(),
+                },
+            )
             .await
             .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
@@ -995,8 +1165,14 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore
-            .add_list_item("my-list", &AddListItemParams { item: "item1".to_string() })
+        let err = sdk
+            .kvstore
+            .add_list_item(
+                "my-list",
+                &AddListItemParams {
+                    item: "item1".to_string(),
+                },
+            )
             .await
             .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
@@ -1007,11 +1183,18 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/lists/my-list/contains/item1"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"data": {"exists": true}})))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"data": {"exists": true}})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let resp = sdk.kvstore.list_contains_item("my-list", "item1").await.unwrap();
+        let resp = sdk
+            .kvstore
+            .list_contains_item("my-list", "item1")
+            .await
+            .unwrap();
         assert!(resp.exists);
     }
 
@@ -1024,7 +1207,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.list_contains_item("my-list", "item1").await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .list_contains_item("my-list", "item1")
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -1037,7 +1224,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.list_contains_item("my-list", "item1").await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .list_contains_item("my-list", "item1")
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -1046,11 +1237,17 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("DELETE"))
             .and(path("/lists/my-list/items/item1"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        sdk.kvstore.delete_list_item("my-list", "item1").await.unwrap();
+        sdk.kvstore
+            .delete_list_item("my-list", "item1")
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -1062,7 +1259,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.delete_list_item("my-list", "item1").await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .delete_list_item("my-list", "item1")
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -1075,7 +1276,11 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let err = sdk.kvstore.delete_list_item("my-list", "item1").await.unwrap_err();
+        let err = sdk
+            .kvstore
+            .delete_list_item("my-list", "item1")
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
@@ -1084,7 +1289,10 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("DELETE"))
             .and(path("/lists/my-list"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));

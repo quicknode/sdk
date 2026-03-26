@@ -5,11 +5,14 @@ pub mod kvstore;
 pub mod streams;
 pub mod webhooks;
 
-pub use config::{AdminConfig, HttpConfig, KvStoreConfig, SdkFullConfig, StreamsConfig, WebhooksConfig};
+pub use config::{
+    AdminConfig, HttpConfig, KvStoreConfig, SdkFullConfig, StreamsConfig, WebhooksConfig,
+};
 pub use kvstore::{
-    AddListItemParams, BulkSetsParams, CreateListParams, CreateSetParams, GetListData, GetListParams,
-    GetListResponse, GetListsData, GetListsParams, GetListsResponse, GetSetResponse, GetSetsParams,
-    GetSetsResponse, KvSetEntry, KvStoreApiClient, ListContainsItemResponse, UpdateListParams,
+    AddListItemParams, BulkSetsParams, CreateListParams, CreateSetParams, GetListData,
+    GetListParams, GetListResponse, GetListsData, GetListsParams, GetListsResponse, GetSetResponse,
+    GetSetsParams, GetSetsResponse, KvSetEntry, KvStoreApiClient, ListContainsItemResponse,
+    UpdateListParams,
 };
 
 use reqwest::header::{HeaderMap, HeaderValue};
@@ -67,12 +70,17 @@ impl SdkConfig {
         }
 
         let mut default_headers = HeaderMap::new();
-        default_headers.insert(reqwest::header::ACCEPT, HeaderValue::from_static("application/json"));
-        default_headers.insert(reqwest::header::CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        default_headers.insert(
+            reqwest::header::ACCEPT,
+            HeaderValue::from_static("application/json"),
+        );
+        default_headers.insert(
+            reqwest::header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json"),
+        );
         default_headers.insert(
             "x-api-key",
-            HeaderValue::from_str(&config.api_key)
-                .map_err(|e| SdkError::Config(e.to_string()))?,
+            HeaderValue::from_str(&config.api_key).map_err(|e| SdkError::Config(e.to_string()))?,
         );
         builder = builder.default_headers(default_headers);
 

@@ -15,10 +15,18 @@ async fn main() {
     let config = SdkFullConfig::from_env().expect("Config from env failed");
     let qn = QuickNodeSdk::new(&config).expect("sdk failed to initialize");
 
-    let before = qn.streams.list_streams(&ListStreamsParams::default()).await.expect("list_streams failed");
+    let before = qn
+        .streams
+        .list_streams(&ListStreamsParams::default())
+        .await
+        .expect("list_streams failed");
     println!("streams before: {}", before.page_info.total);
 
-    let count = qn.streams.get_enabled_count(None).await.expect("get_enabled_count failed");
+    let count = qn
+        .streams
+        .get_enabled_count(None)
+        .await
+        .expect("get_enabled_count failed");
     println!("enabled count: {}", count.total);
 
     let filter_params = TestFilterParams {
@@ -29,7 +37,11 @@ async fn main() {
         filter_language: None,
         address_book_config: None,
     };
-    let filter_result = qn.streams.test_filter(&filter_params).await.expect("test_filter failed");
+    let filter_result = qn
+        .streams
+        .test_filter(&filter_params)
+        .await
+        .expect("test_filter failed");
     println!("filter logs: {:?}", filter_result.logs);
     thread::sleep(Duration::from_secs(1));
 
@@ -61,28 +73,52 @@ async fn main() {
         .threshold_fetch_buffer(1000)
         .build();
 
-    let stream = qn.streams.create_stream(&create_params).await.expect("create_stream failed");
+    let stream = qn
+        .streams
+        .create_stream(&create_params)
+        .await
+        .expect("create_stream failed");
     let id = stream.id.clone();
     println!("created: {} | {}", id, stream.status);
 
     let fetched = qn.streams.get_stream(&id).await.expect("get_stream failed");
     println!("fetched: {} | {}", fetched.id, fetched.name);
 
-    let update_params = UpdateStreamParams { name: Some("E2E Test Stream Updated".to_string()), ..Default::default() };
-    let updated = qn.streams.update_stream(&id, &update_params).await.expect("update_stream failed");
+    let update_params = UpdateStreamParams {
+        name: Some("E2E Test Stream Updated".to_string()),
+        ..Default::default()
+    };
+    let updated = qn
+        .streams
+        .update_stream(&id, &update_params)
+        .await
+        .expect("update_stream failed");
     println!("updated name: {}", updated.name);
     thread::sleep(Duration::from_secs(1));
 
-    qn.streams.pause_stream(&id).await.expect("pause_stream failed");
+    qn.streams
+        .pause_stream(&id)
+        .await
+        .expect("pause_stream failed");
     println!("paused");
 
-    qn.streams.activate_stream(&id).await.expect("activate_stream failed");
+    qn.streams
+        .activate_stream(&id)
+        .await
+        .expect("activate_stream failed");
     println!("activated");
 
-    qn.streams.delete_stream(&id).await.expect("delete_stream failed");
+    qn.streams
+        .delete_stream(&id)
+        .await
+        .expect("delete_stream failed");
     println!("deleted: {id}");
     thread::sleep(Duration::from_secs(1));
 
-    let after = qn.streams.list_streams(&ListStreamsParams::default()).await.expect("list_streams failed");
+    let after = qn
+        .streams
+        .list_streams(&ListStreamsParams::default())
+        .await
+        .expect("list_streams failed");
     println!("streams after: {}", after.page_info.total);
 }

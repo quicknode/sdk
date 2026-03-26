@@ -4,12 +4,12 @@ use napi_derive::napi;
 use pyo3::pyclass;
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::gen_stub_pyclass;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainNetwork {
     pub slug: String,
     pub name: String,
@@ -19,7 +19,7 @@ pub struct ChainNetwork {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Chain {
     pub slug: String,
     #[serde(default)]
@@ -30,7 +30,7 @@ pub struct Chain {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListChainsResponse {
     #[serde(default)]
     pub data: Vec<Chain>,

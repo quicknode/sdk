@@ -29,7 +29,7 @@ pub struct GetAccountMetricsRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointMetric {
     pub data: Vec<Vec<i64>>,
     pub tag: String,
@@ -38,7 +38,7 @@ pub struct EndpointMetric {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetEndpointMetricsResponse {
     #[serde(default)]
     pub data: Vec<EndpointMetric>,
@@ -48,7 +48,7 @@ pub struct GetEndpointMetricsResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetAccountMetricsResponse {
     #[serde(default)]
     pub data: Vec<EndpointMetric>,

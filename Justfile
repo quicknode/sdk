@@ -13,6 +13,9 @@ python-build:
 node-build:
   cd ./npm && npm install && npm run build && npm run test && cd ..
 
+ruby-build:
+  cargo build -p sdk-ruby --release
+
 test:
   cargo test -p sdk-core --lib
 

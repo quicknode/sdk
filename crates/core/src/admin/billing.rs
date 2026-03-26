@@ -4,12 +4,12 @@ use napi_derive::napi;
 use pyo3::pyclass;
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::gen_stub_pyclass;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InvoiceLine {
     pub description: String,
     pub amount: i64,
@@ -18,7 +18,7 @@ pub struct InvoiceLine {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Invoice {
     pub id: String,
     pub status: String,
@@ -36,7 +36,7 @@ pub struct Invoice {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListInvoicesResponse {
     pub data: Option<ListInvoicesData>,
     pub error: Option<String>,
@@ -45,7 +45,7 @@ pub struct ListInvoicesResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListInvoicesData {
     #[serde(default)]
     pub invoices: Vec<Invoice>,
@@ -54,7 +54,7 @@ pub struct ListInvoicesData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Payment {
     pub amount: String,
     pub card_last_4: Option<String>,
@@ -67,7 +67,7 @@ pub struct Payment {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListPaymentsResponse {
     pub data: Option<ListPaymentsData>,
     pub error: Option<String>,
@@ -76,7 +76,7 @@ pub struct ListPaymentsResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListPaymentsData {
     #[serde(default)]
     pub payments: Vec<Payment>,

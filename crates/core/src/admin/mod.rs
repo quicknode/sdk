@@ -54,11 +54,7 @@ pub use usage::{
     UsageByEndpointData, UsageByMethodData, UsageData,
 };
 
-use crate::{
-    config::AdminConfig,
-    errors::SdkError,
-    SdkConfig,
-};
+use crate::{config::AdminConfig, errors::SdkError, SdkConfig};
 
 const ADMIN_BASE_URL: &str = "https://api.quicknode.com/v0/";
 
@@ -138,7 +134,8 @@ impl AdminApiClient {
     pub async fn show_endpoint(&self, id: &str) -> Result<ShowEndpointResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}", id))?;
         let resp = self
             .config
@@ -164,7 +161,8 @@ impl AdminApiClient {
     ) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}", id))?;
         let resp = self
             .config
@@ -187,7 +185,8 @@ impl AdminApiClient {
     pub async fn archive_endpoint(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}", id))?;
         let resp = self
             .config
@@ -213,7 +212,8 @@ impl AdminApiClient {
     ) -> Result<UpdateEndpointStatusResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/status", id))?;
         let resp = self
             .config
@@ -236,7 +236,8 @@ impl AdminApiClient {
     pub async fn create_tag(&self, id: &str, params: &CreateTagRequest) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/tags", id))?;
         let resp = self
             .config
@@ -259,7 +260,8 @@ impl AdminApiClient {
     pub async fn delete_tag(&self, id: &str, tag_id: &str) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/tags/{}", id, tag_id))?;
         let resp = self
             .config
@@ -323,7 +325,8 @@ impl AdminApiClient {
     pub async fn get_team(&self, id: i64) -> Result<GetTeamResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("teams/{}", id))?;
         let resp = self
             .config
@@ -345,7 +348,8 @@ impl AdminApiClient {
     pub async fn delete_team(&self, id: i64) -> Result<DeleteTeamResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("teams/{}", id))?;
         let resp = self
             .config
@@ -370,7 +374,8 @@ impl AdminApiClient {
     ) -> Result<ListTeamEndpointsResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("teams/{}/endpoints", id))?;
         let resp = self
             .config
@@ -396,7 +401,8 @@ impl AdminApiClient {
     ) -> Result<UpdateTeamEndpointsResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("teams/{}/endpoints", id))?;
         let resp = self
             .config
@@ -423,7 +429,8 @@ impl AdminApiClient {
     ) -> Result<InviteTeamMemberResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("teams/{}/members", id))?;
         let resp = self
             .config
@@ -451,7 +458,8 @@ impl AdminApiClient {
     ) -> Result<RemoveTeamMemberResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("teams/{}/members/{}", id, user_id))?;
         let resp = self
             .config
@@ -478,7 +486,8 @@ impl AdminApiClient {
     ) -> Result<ResendTeamInviteResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("teams/{}/members/{}/resend_invite", id, user_id))?;
         let resp = self
             .config
@@ -593,7 +602,8 @@ impl AdminApiClient {
     ) -> Result<GetEndpointLogsResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/logs", id))?;
         let resp = self
             .config
@@ -620,7 +630,8 @@ impl AdminApiClient {
     ) -> Result<GetLogDetailsResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/log_details", id))?;
         let resp = self
             .config
@@ -646,7 +657,8 @@ impl AdminApiClient {
     ) -> Result<GetSecurityOptionsResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security_options", id))?;
         let resp = self
             .config
@@ -672,7 +684,8 @@ impl AdminApiClient {
     ) -> Result<UpdateSecurityOptionsResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security_options", id))?;
         let resp = self
             .config
@@ -695,7 +708,8 @@ impl AdminApiClient {
     pub async fn create_token(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security/tokens", id))?;
         let resp = self
             .config
@@ -721,7 +735,8 @@ impl AdminApiClient {
     ) -> Result<DeleteBoolResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security/tokens/{}", id, token_id))?;
         let resp = self
             .config
@@ -747,7 +762,8 @@ impl AdminApiClient {
     ) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security/referrers", id))?;
         let resp = self
             .config
@@ -796,7 +812,8 @@ impl AdminApiClient {
     pub async fn create_ip(&self, id: &str, params: &CreateIpRequest) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security/ips", id))?;
         let resp = self
             .config
@@ -819,7 +836,8 @@ impl AdminApiClient {
     pub async fn delete_ip(&self, id: &str, ip_id: &str) -> Result<DeleteBoolResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security/ips/{}", id, ip_id))?;
         let resp = self
             .config
@@ -845,7 +863,8 @@ impl AdminApiClient {
     ) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security/domain_masks", id))?;
         let resp = self
             .config
@@ -894,7 +913,8 @@ impl AdminApiClient {
     pub async fn create_jwt(&self, id: &str, params: &CreateJwtRequest) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security/jwts", id))?;
         let resp = self
             .config
@@ -917,7 +937,8 @@ impl AdminApiClient {
     pub async fn delete_jwt(&self, id: &str, jwt_id: &str) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security/jwts/{}", id, jwt_id))?;
         let resp = self
             .config
@@ -943,7 +964,8 @@ impl AdminApiClient {
     ) -> Result<CreateRequestFilterResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/security/request_filters", id))?;
         let resp = self
             .config
@@ -1020,7 +1042,8 @@ impl AdminApiClient {
     pub async fn enable_multichain(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/enable_multichain", id))?;
         let resp = self
             .config
@@ -1042,7 +1065,8 @@ impl AdminApiClient {
     pub async fn disable_multichain(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/disable_multichain", id))?;
         let resp = self
             .config
@@ -1068,7 +1092,8 @@ impl AdminApiClient {
     ) -> Result<CreateOrUpdateIpCustomHeaderResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/ip_custom_header", id))?;
         let resp = self
             .config
@@ -1091,7 +1116,8 @@ impl AdminApiClient {
     pub async fn delete_ip_custom_header(&self, id: &str) -> Result<DeleteBoolResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/ip_custom_header", id))?;
         let resp = self
             .config
@@ -1116,7 +1142,8 @@ impl AdminApiClient {
     ) -> Result<GetMethodRateLimitsResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/method-rate-limits", id))?;
         let resp = self
             .config
@@ -1142,7 +1169,8 @@ impl AdminApiClient {
     ) -> Result<CreateMethodRateLimitResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/method-rate-limits", id))?;
         let resp = self
             .config
@@ -1223,7 +1251,8 @@ impl AdminApiClient {
     ) -> Result<(), SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/rate-limits", id))?;
         let resp = self
             .config
@@ -1250,7 +1279,8 @@ impl AdminApiClient {
     ) -> Result<GetEndpointMetricsResponse, SdkError> {
         let url = self
             .config
-            .admin().base_url
+            .admin()
+            .base_url
             .join(&format!("endpoints/{}/metrics", id))?;
         let resp = self
             .config

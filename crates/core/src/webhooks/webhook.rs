@@ -57,7 +57,6 @@ impl WebhookTemplateId {
     }
 }
 
-
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]

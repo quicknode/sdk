@@ -25,7 +25,9 @@ where
     let value = Option::<serde_json::Value>::deserialize(deserializer)?;
     match value {
         None => Ok(None),
-        Some(v) => serde_json::to_string(&v).map(Some).map_err(serde::de::Error::custom),
+        Some(v) => serde_json::to_string(&v)
+            .map(Some)
+            .map_err(serde::de::Error::custom),
     }
 }
 
@@ -157,7 +159,14 @@ impl WebhookAttributes {
         compression: String,
         security_token: Option<String>,
     ) -> Self {
-        Self { url, max_retry, retry_interval_sec, post_timeout_sec, security_token, compression }
+        Self {
+            url,
+            max_retry,
+            retry_interval_sec,
+            post_timeout_sec,
+            security_token,
+            compression,
+        }
     }
 }
 
@@ -198,7 +207,18 @@ impl S3Attributes {
         retry_interval_sec: i32,
         use_ssl: Option<bool>,
     ) -> Self {
-        Self { endpoint, access_key, secret_key, bucket, object_prefix, compression, file_type, max_retry, retry_interval_sec, use_ssl }
+        Self {
+            endpoint,
+            access_key,
+            secret_key,
+            bucket,
+            object_prefix,
+            compression,
+            file_type,
+            max_retry,
+            retry_interval_sec,
+            use_ssl,
+        }
     }
 }
 
@@ -235,7 +255,16 @@ impl AzureAttributes {
         retry_interval_sec: i32,
         blob_prefix: Option<String>,
     ) -> Self {
-        Self { storage_account, sas_token, container, compression, file_type, max_retry, retry_interval_sec, blob_prefix }
+        Self {
+            storage_account,
+            sas_token,
+            container,
+            compression,
+            file_type,
+            max_retry,
+            retry_interval_sec,
+            blob_prefix,
+        }
     }
 }
 
@@ -272,7 +301,17 @@ impl PostgresAttributes {
         max_retry: i32,
         retry_interval_sec: i32,
     ) -> Self {
-        Self { host, port, database, username, password, table_name, sslmode, max_retry, retry_interval_sec }
+        Self {
+            host,
+            port,
+            database,
+            username,
+            password,
+            table_name,
+            sslmode,
+            max_retry,
+            retry_interval_sec,
+        }
     }
 }
 
@@ -307,7 +346,16 @@ impl MysqlAttributes {
         max_retry: i32,
         retry_interval_sec: i32,
     ) -> Self {
-        Self { host, port, database, username, password, table_name, max_retry, retry_interval_sec }
+        Self {
+            host,
+            port,
+            database,
+            username,
+            password,
+            table_name,
+            max_retry,
+            retry_interval_sec,
+        }
     }
 }
 
@@ -339,7 +387,15 @@ impl MongoAttributes {
         max_retry: i32,
         retry_interval_sec: i32,
     ) -> Self {
-        Self { host, database, username, password, collection_name, max_retry, retry_interval_sec }
+        Self {
+            host,
+            database,
+            username,
+            password,
+            collection_name,
+            max_retry,
+            retry_interval_sec,
+        }
     }
 }
 
@@ -394,11 +450,21 @@ impl ClickhouseAttributes {
         skip_initialize_with_version: Option<bool>,
     ) -> Self {
         Self {
-            hosts, database, username, password, table_name,
-            default_table_engine_opts, default_granularity, default_compression,
-            default_index_type, max_retry, retry_interval_sec,
-            disable_datetime_precision, dont_support_rename_column,
-            dont_support_empty_default_value, skip_initialize_with_version,
+            hosts,
+            database,
+            username,
+            password,
+            table_name,
+            default_table_engine_opts,
+            default_granularity,
+            default_compression,
+            default_index_type,
+            max_retry,
+            retry_interval_sec,
+            disable_datetime_precision,
+            dont_support_rename_column,
+            dont_support_empty_default_value,
+            skip_initialize_with_version,
         }
     }
 }
@@ -444,7 +510,20 @@ impl SnowflakeAttributes {
         retry_interval_sec: i32,
         table_name: Option<String>,
     ) -> Self {
-        Self { account, host, port, protocol, database, schema, warehouse, username, password, max_retry, retry_interval_sec, table_name }
+        Self {
+            account,
+            host,
+            port,
+            protocol,
+            database,
+            schema,
+            warehouse,
+            username,
+            password,
+            max_retry,
+            retry_interval_sec,
+            table_name,
+        }
     }
 }
 
@@ -494,7 +573,21 @@ impl KafkaAttributes {
         protocol: Option<String>,
         mechanisms: Option<String>,
     ) -> Self {
-        Self { bootstrap_servers, topic_name, compression_type, batch_size, linger_ms, max_request_size, timeout_sec, max_retry, retry_interval_sec, username, password, protocol, mechanisms }
+        Self {
+            bootstrap_servers,
+            topic_name,
+            compression_type,
+            batch_size,
+            linger_ms,
+            max_request_size,
+            timeout_sec,
+            max_retry,
+            retry_interval_sec,
+            username,
+            password,
+            protocol,
+            mechanisms,
+        }
     }
 }
 
@@ -533,7 +626,17 @@ impl RedisAttributes {
         retry_interval_sec: i32,
         tls: Option<bool>,
     ) -> Self {
-        Self { host, port, database, username, password, key_name, max_retry, retry_interval_sec, tls }
+        Self {
+            host,
+            port,
+            database,
+            username,
+            password,
+            key_name,
+            max_retry,
+            retry_interval_sec,
+            tls,
+        }
     }
 }
 
@@ -561,7 +664,11 @@ impl AddressBookConfig {
         elements_filter_paths: Vec<String>,
         objects_filter_path: Option<String>,
     ) -> Self {
-        Self { address_book_id, objects_filter_path, elements_filter_paths }
+        Self {
+            address_book_id,
+            objects_filter_path,
+            elements_filter_paths,
+        }
     }
 }
 

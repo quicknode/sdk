@@ -17,8 +17,8 @@ impl QuickNodeSdk {
     #[napi(constructor)]
     #[allow(clippy::needless_pass_by_value)]
     pub fn new(config: core::SdkFullConfig) -> Result<Self> {
-        let sdk_config = core::SdkConfig::new(&config)
-            .map_err(|e| Error::from_reason(e.to_string()))?;
+        let sdk_config =
+            core::SdkConfig::new(&config).map_err(|e| Error::from_reason(e.to_string()))?;
         Ok(Self {
             admin: AdminApiClient {
                 inner: core::admin::AdminApiClient::new(sdk_config.clone()),
@@ -61,7 +61,9 @@ impl QuickNodeSdk {
             .map(|sdk| Self {
                 admin: AdminApiClient { inner: sdk.admin },
                 streams: StreamsApiClient { inner: sdk.streams },
-                webhooks: WebhooksApiClient { inner: sdk.webhooks },
+                webhooks: WebhooksApiClient {
+                    inner: sdk.webhooks,
+                },
                 kvstore: KvStoreApiClient { inner: sdk.kvstore },
             })
             .map_err(|e| Error::from_reason(e.to_string()))
@@ -403,11 +405,7 @@ impl AdminApiClient {
     }
 
     #[napi]
-    pub async fn delete_request_filter(
-        &self,
-        id: String,
-        request_filter_id: String,
-    ) -> Result<()> {
+    pub async fn delete_request_filter(&self, id: String, request_filter_id: String) -> Result<()> {
         self.inner
             .delete_request_filter(&id, &request_filter_id)
             .await

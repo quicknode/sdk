@@ -23,7 +23,7 @@ pub struct GetUsageRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UsageData {
     pub credits_used: i64,
     pub credits_remaining: Option<i64>,
@@ -36,7 +36,7 @@ pub struct UsageData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetUsageResponse {
     pub data: Option<UsageData>,
     pub error: Option<String>,
@@ -45,7 +45,7 @@ pub struct GetUsageResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointUsage {
     pub name: String,
     pub chain: Option<String>,
@@ -61,7 +61,7 @@ pub struct EndpointUsage {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MethodUsage {
     pub method_name: String,
     pub credits_used: i64,
@@ -73,7 +73,7 @@ pub struct MethodUsage {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainUsage {
     pub name: String,
     pub credits_used: i64,
@@ -82,7 +82,7 @@ pub struct ChainUsage {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UsageByEndpointData {
     #[serde(default)]
     pub endpoints: Vec<EndpointUsage>,
@@ -93,7 +93,7 @@ pub struct UsageByEndpointData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetUsageByEndpointResponse {
     pub data: Option<UsageByEndpointData>,
     pub error: Option<String>,
@@ -102,7 +102,7 @@ pub struct GetUsageByEndpointResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UsageByMethodData {
     #[serde(default)]
     pub methods: Vec<MethodUsage>,
@@ -113,7 +113,7 @@ pub struct UsageByMethodData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetUsageByMethodResponse {
     pub data: Option<UsageByMethodData>,
     pub error: Option<String>,
@@ -122,7 +122,7 @@ pub struct GetUsageByMethodResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UsageByChainData {
     #[serde(default)]
     pub chains: Vec<ChainUsage>,
@@ -133,7 +133,7 @@ pub struct UsageByChainData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetUsageByChainResponse {
     pub data: Option<UsageByChainData>,
     pub error: Option<String>,

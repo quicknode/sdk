@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MethodRateLimiter {
     pub id: String,
     pub interval: String,
@@ -25,7 +25,7 @@ pub struct MethodRateLimiter {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetMethodRateLimitsData {
     #[serde(default)]
     pub rate_limiters: Vec<MethodRateLimiter>,
@@ -34,7 +34,7 @@ pub struct GetMethodRateLimitsData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetMethodRateLimitsResponse {
     pub data: Option<GetMethodRateLimitsData>,
     pub error: Option<String>,
@@ -54,7 +54,7 @@ pub struct CreateMethodRateLimitRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateMethodRateLimitResponse {
     pub data: Option<MethodRateLimiter>,
     pub error: Option<String>,
@@ -77,7 +77,7 @@ pub struct UpdateMethodRateLimitRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateMethodRateLimitResponse {
     pub data: Option<MethodRateLimiter>,
     pub error: Option<String>,
