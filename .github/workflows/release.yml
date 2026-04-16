@@ -1,0 +1,246 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Package crate
+        run: cargo package -p sdk-core --allow-dirty
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rust-crate
+          path: target/package/sdk-core-*.crate
+
+  build-python:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14']
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+        # Placeholder for future macOS support:
+        # - aarch64-apple-darwin
+        include:
+          - target: x86_64-unknown-linux-gnu
+            cross: false
+          - target: aarch64-unknown-linux-gnu
+            cross: true
+          - target: x86_64-unknown-linux-musl
+            cross: true
+          - target: aarch64-unknown-linux-musl
+            cross: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install maturin
+        run: pip install "maturin>=1.5,<2.0"
+
+      - name: Install Zig
+        if: matrix.cross
+        uses: goto-bus-stop/setup-zig@v2
+
+      - name: Build wheel
+        run: |
+          maturin build --release \
+            --strip \
+            --target ${{ matrix.target }} \
+            ${{ matrix.cross && '--zig' || '' }} \
+            -i python${{ matrix.python-version }} \
+            --out dist/
+
+      - name: Build sdist
+        if: matrix.target == 'x86_64-unknown-linux-gnu' && matrix.python-version == '3.11'
+        run: maturin sdist --out dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-${{ matrix.target }}-py${{ matrix.python-version }}
+          path: dist/*
+
+  build-node:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+        # Placeholder for future macOS support:
+        # - aarch64-apple-darwin
+        include:
+          - target: x86_64-unknown-linux-gnu
+            cross: false
+          - target: aarch64-unknown-linux-gnu
+            cross: true
+          - target: x86_64-unknown-linux-musl
+            cross: true
+          - target: aarch64-unknown-linux-musl
+            cross: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Zig
+        if: matrix.cross
+        uses: goto-bus-stop/setup-zig@v2
+
+      - name: Install npm dependencies
+        working-directory: npm
+        run: npm install
+
+      - name: Build native module
+        working-directory: npm
+        run: |
+          npx napi build --release \
+            --platform \
+            --target ${{ matrix.target }} \
+            --cargo-cwd ../crates/node
+
+      - name: Strip debug symbols
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            sudo apt-get install -y llvm
+            llvm-strip npm/index.*.node
+          else
+            strip npm/index.*.node
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: node-${{ matrix.target }}
+          path: npm/index.*.node
+
+  build-ruby:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            cross: false
+            gem_platform: x86_64-linux
+          - target: aarch64-unknown-linux-gnu
+            cross: true
+            gem_platform: aarch64-linux
+          # musl targets are excluded: Rust cdylib is incompatible with musl (no dynamic linker).
+          # Users on musl Linux (e.g. Alpine) will use the source gem which compiles on install.
+          # Placeholder for future macOS support:
+          # - target: aarch64-apple-darwin
+          #   cross: false
+          #   gem_platform: arm64-darwin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install Zig
+        if: matrix.cross
+        uses: goto-bus-stop/setup-zig@v2
+
+      - name: Install cargo-zigbuild
+        if: matrix.cross
+        run: cargo install cargo-zigbuild
+
+      - name: Build native extension (cross)
+        if: matrix.cross
+        run: |
+          cargo zigbuild --release -p sdk-ruby --target ${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/libquicknode_sdk.so ruby/lib/quicknode_sdk.so
+
+      - name: Build native extension (native)
+        if: '!matrix.cross'
+        run: |
+          cargo build --release -p sdk-ruby
+          cp target/release/libquicknode_sdk.so ruby/lib/quicknode_sdk.so
+
+      - name: Strip debug symbols
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            sudo apt-get install -y llvm
+            llvm-strip ruby/lib/quicknode_sdk.so
+          else
+            strip ruby/lib/quicknode_sdk.so
+          fi
+
+      - name: Build platform gem
+        working-directory: ruby
+        run: |
+          ruby -e "
+            spec = Gem::Specification.load('quicknode_sdk.gemspec')
+            spec.platform = Gem::Platform.new('${{ matrix.gem_platform }}')
+            spec.extensions = []
+            spec.files += ['lib/quicknode_sdk.so']
+            File.write('quicknode_sdk_platform.gemspec', spec.to_ruby)
+          "
+          gem build quicknode_sdk_platform.gemspec
+          rm quicknode_sdk_platform.gemspec
+
+      - name: Build source gem
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        working-directory: ruby
+        run: gem build quicknode_sdk.gemspec
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ruby-${{ matrix.target }}
+          path: ruby/*.gem
+
+  release:
+    needs: [build-rust, build-python, build-node, build-ruby]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

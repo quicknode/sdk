@@ -953,7 +953,7 @@ export interface Webhook {
   status: string
   network: string
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
   templateId?: string
   notificationEmail?: string
   /** Destination-specific configuration as a JSON string. */
