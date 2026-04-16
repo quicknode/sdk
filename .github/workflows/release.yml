@@ -63,6 +63,7 @@ jobs:
           maturin build --release \
             --target ${{ matrix.target }} \
             ${{ matrix.cross && '--zig' || '' }} \
+            -i python3.11 \
             --out dist/
 
       - name: Build sdist
