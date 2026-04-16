@@ -131,6 +131,15 @@ jobs:
             --target ${{ matrix.target }} \
             --cargo-cwd ../crates/node
 
+      - name: Strip debug symbols
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            # Use llvm-strip for cross-compiled targets (available on ubuntu runners)
+            llvm-strip npm/index.*.node
+          else
+            strip npm/index.*.node
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: node-${{ matrix.target }}
