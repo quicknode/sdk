@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Core library for quicknode sdk"
+repository = "https://github.com/quiknode-labs/sdk"
+keywords = ["quicknode", "blockchain", "web3", "sdk"]
+categories = ["api-bindings", "web-programming"]
 
 [lints]
 workspace = true
