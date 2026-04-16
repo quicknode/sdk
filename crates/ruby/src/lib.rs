@@ -1,5 +1,5 @@
 #![allow(clippy::expect_used)]
-use magnus::{function, method, prelude::*, Error, RHash, Ruby};
+use magnus::{function, method, prelude::*, r_hash::ForEach, symbol::Symbol, Error, RHash, Ruby};
 use sdk_core as core;
 
 // ── Tokio runtime ───────────────────────────────────────────────────────────
@@ -98,6 +98,50 @@ fn hash_get_bool(h: &RHash, key: &str) -> Result<Option<bool>, Error> {
     }
 }
 
+fn hash_require_i32(h: &RHash, key: &str) -> Result<i32, Error> {
+    hash_get_i32(h, key)?.ok_or_else(|| {
+        Error::new(
+            ruby().exception_arg_error(),
+            format!("missing required key: {key}"),
+        )
+    })
+}
+
+fn hash_get_vec_string(h: &RHash, key: &str) -> Result<Option<Vec<String>>, Error> {
+    let r = ruby();
+    match h.get(r.to_symbol(key)) {
+        Some(v) if !v.is_nil() => Vec::<String>::try_convert(v)
+            .map(Some)
+            .map_err(|e| Error::new(r.exception_type_error(), format!("{key}: {e}"))),
+        _ => Ok(None),
+    }
+}
+
+fn hash_require_vec_string(h: &RHash, key: &str) -> Result<Vec<String>, Error> {
+    hash_get_vec_string(h, key)?.ok_or_else(|| {
+        Error::new(
+            ruby().exception_arg_error(),
+            format!("missing required key: {key}"),
+        )
+    })
+}
+
+fn validate_keys(h: &RHash, allowed: &[&str]) -> Result<(), Error> {
+    let r = ruby();
+    h.foreach(|key: Symbol, _val: magnus::Value| {
+        let key_str = key
+            .name()
+            .map_err(|e| Error::new(r.exception_arg_error(), e.to_string()))?;
+        if !allowed.contains(&key_str.as_ref()) {
+            return Err(Error::new(
+                r.exception_arg_error(),
+                format!("unknown key: {key_str} (allowed: {})", allowed.join(", ")),
+            ));
+        }
+        Ok(ForEach::Continue)
+    })
+}
+
 fn hash_get_dest_attrs(
     h: &RHash,
     key: &str,
@@ -162,19 +206,14 @@ pub struct AdminApiClient {
 
 #[allow(clippy::needless_pass_by_value)]
 impl AdminApiClient {
-    fn get_endpoints(
-        &self,
-        limit: Option<i32>,
-        offset: Option<i32>,
-        tag_ids: Option<Vec<i32>>,
-        tag_labels: Option<Vec<String>>,
-    ) -> Result<String, Error> {
+    fn get_endpoints(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["limit", "offset", "tag_labels"])?;
         let client = self.inner.clone();
         let params = core::admin::GetEndpointsRequest {
-            limit,
-            offset,
-            tag_ids,
-            tag_labels,
+            limit: hash_get_i32(&opts, "limit")?,
+            offset: hash_get_i32(&opts, "offset")?,
+            tag_ids: None,
+            tag_labels: hash_get_vec_string(&opts, "tag_labels")?,
         };
         runtime()
             .block_on(client.get_endpoints(&params))
@@ -182,71 +221,91 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn create_endpoint(
-        &self,
-        chain: Option<String>,
-        network: Option<String>,
-    ) -> Result<String, Error> {
+    fn create_endpoint(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["chain", "network"])?;
         let client = self.inner.clone();
-        let params = core::admin::CreateEndpointRequest { chain, network };
+        let params = core::admin::CreateEndpointRequest {
+            chain: hash_get_string(&opts, "chain")?,
+            network: hash_get_string(&opts, "network")?,
+        };
         runtime()
             .block_on(client.create_endpoint(&params))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn show_endpoint(&self, id: String) -> Result<String, Error> {
+    fn show_endpoint(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.show_endpoint(&id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn update_endpoint(&self, id: String, label: Option<String>) -> Result<(), Error> {
+    fn update_endpoint(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "label"])?;
         let client = self.inner.clone();
-        let params = core::admin::UpdateEndpointRequest { label };
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::UpdateEndpointRequest {
+            label: hash_get_string(&opts, "label")?,
+        };
         runtime()
             .block_on(client.update_endpoint(&id, &params))
             .map_err(map_err)
     }
 
-    fn archive_endpoint(&self, id: String) -> Result<(), Error> {
+    fn archive_endpoint(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.archive_endpoint(&id))
             .map_err(map_err)
     }
 
-    fn update_endpoint_status(&self, id: String, status: String) -> Result<String, Error> {
+    fn update_endpoint_status(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "status"])?;
         let client = self.inner.clone();
-        let params = core::admin::UpdateEndpointStatusRequest { status };
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::UpdateEndpointStatusRequest {
+            status: hash_require_string(&opts, "status")?,
+        };
         runtime()
             .block_on(client.update_endpoint_status(&id, &params))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn create_tag(&self, id: String, label: Option<String>) -> Result<(), Error> {
+    fn create_tag(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "label"])?;
         let client = self.inner.clone();
-        let params = core::admin::CreateTagRequest { label };
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateTagRequest {
+            label: hash_get_string(&opts, "label")?,
+        };
         runtime()
             .block_on(client.create_tag(&id, &params))
             .map_err(map_err)
     }
 
-    fn delete_tag(&self, id: String, tag_id: String) -> Result<(), Error> {
+    fn delete_tag(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "tag_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let tag_id = hash_require_string(&opts, "tag_id")?;
         runtime()
             .block_on(client.delete_tag(&id, &tag_id))
             .map_err(map_err)
     }
 
-    fn get_usage(&self, start_time: Option<i64>, end_time: Option<i64>) -> Result<String, Error> {
+    fn get_usage(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["start_time", "end_time"])?;
         let client = self.inner.clone();
         let params = core::admin::GetUsageRequest {
-            start_time,
-            end_time,
+            start_time: hash_get_i64(&opts, "start_time")?,
+            end_time: hash_get_i64(&opts, "end_time")?,
         };
         runtime()
             .block_on(client.get_usage(&params))
@@ -254,15 +313,12 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn get_usage_by_endpoint(
-        &self,
-        start_time: Option<i64>,
-        end_time: Option<i64>,
-    ) -> Result<String, Error> {
+    fn get_usage_by_endpoint(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["start_time", "end_time"])?;
         let client = self.inner.clone();
         let params = core::admin::GetUsageRequest {
-            start_time,
-            end_time,
+            start_time: hash_get_i64(&opts, "start_time")?,
+            end_time: hash_get_i64(&opts, "end_time")?,
         };
         runtime()
             .block_on(client.get_usage_by_endpoint(&params))
@@ -270,15 +326,12 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn get_usage_by_method(
-        &self,
-        start_time: Option<i64>,
-        end_time: Option<i64>,
-    ) -> Result<String, Error> {
+    fn get_usage_by_method(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["start_time", "end_time"])?;
         let client = self.inner.clone();
         let params = core::admin::GetUsageRequest {
-            start_time,
-            end_time,
+            start_time: hash_get_i64(&opts, "start_time")?,
+            end_time: hash_get_i64(&opts, "end_time")?,
         };
         runtime()
             .block_on(client.get_usage_by_method(&params))
@@ -286,15 +339,12 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn get_usage_by_chain(
-        &self,
-        start_time: Option<i64>,
-        end_time: Option<i64>,
-    ) -> Result<String, Error> {
+    fn get_usage_by_chain(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["start_time", "end_time"])?;
         let client = self.inner.clone();
         let params = core::admin::GetUsageRequest {
-            start_time,
-            end_time,
+            start_time: hash_get_i64(&opts, "start_time")?,
+            end_time: hash_get_i64(&opts, "end_time")?,
         };
         runtime()
             .block_on(client.get_usage_by_chain(&params))
@@ -302,23 +352,26 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn get_endpoint_logs(
-        &self,
-        id: String,
-        from_time: String,
-        to_time: String,
-        include_details: Option<bool>,
-        limit: Option<i32>,
-        next_at: Option<String>,
-    ) -> Result<String, Error> {
+    fn get_endpoint_logs(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "id",
+                "from_time",
+                "to_time",
+                "include_details",
+                "limit",
+                "next_at",
+            ],
+        )?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         let params = core::admin::GetEndpointLogsRequest {
-            from: from_time,
-            to: to_time,
-            include_details,
-            limit,
-            next_at,
+            from: hash_require_string(&opts, "from_time")?,
+            to: hash_require_string(&opts, "to_time")?,
+            include_details: hash_get_bool(&opts, "include_details")?,
+            limit: hash_get_i32(&opts, "limit")?,
+            next_at: hash_get_string(&opts, "next_at")?,
         };
         runtime()
             .block_on(client.get_endpoint_logs(&id, &params))
@@ -326,48 +379,56 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn get_log_details(&self, id: String, request_id: String) -> Result<String, Error> {
+    fn get_log_details(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "request_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let request_id = hash_require_string(&opts, "request_id")?;
         runtime()
             .block_on(client.get_log_details(&id, &request_id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn get_security_options(&self, id: String) -> Result<String, Error> {
+    fn get_security_options(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.get_security_options(&id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn update_security_options(
-        &self,
-        id: String,
-        tokens: Option<String>,
-        referrers: Option<String>,
-        jwts: Option<String>,
-        ips: Option<String>,
-        domain_masks: Option<String>,
-        hsts: Option<String>,
-        cors: Option<String>,
-        request_filters: Option<String>,
-        ip_custom_header: Option<String>,
-    ) -> Result<String, Error> {
+    fn update_security_options(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "id",
+                "tokens",
+                "referrers",
+                "jwts",
+                "ips",
+                "domain_masks",
+                "hsts",
+                "cors",
+                "request_filters",
+                "ip_custom_header",
+            ],
+        )?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         let params = core::admin::UpdateSecurityOptionsRequest {
             options: core::admin::SecurityOptionsUpdate {
-                tokens,
-                referrers,
-                jwts,
-                ips,
-                domain_masks,
-                hsts,
-                cors,
-                request_filters,
-                ip_custom_header,
+                tokens: hash_get_string(&opts, "tokens")?,
+                referrers: hash_get_string(&opts, "referrers")?,
+                jwts: hash_get_string(&opts, "jwts")?,
+                ips: hash_get_string(&opts, "ips")?,
+                domain_masks: hash_get_string(&opts, "domain_masks")?,
+                hsts: hash_get_string(&opts, "hsts")?,
+                cors: hash_get_string(&opts, "cors")?,
+                request_filters: hash_get_string(&opts, "request_filters")?,
+                ip_custom_header: hash_get_string(&opts, "ip_custom_header")?,
             },
         };
         runtime()
@@ -376,182 +437,214 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn create_token(&self, id: String) -> Result<(), Error> {
+    fn create_token(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.create_token(&id))
             .map_err(map_err)
     }
 
-    fn delete_token(&self, id: String, token_id: String) -> Result<String, Error> {
+    fn delete_token(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "token_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let token_id = hash_require_string(&opts, "token_id")?;
         runtime()
             .block_on(client.delete_token(&id, &token_id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn create_referrer(&self, id: String, referrer: Option<String>) -> Result<(), Error> {
+    fn create_referrer(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "referrer"])?;
         let client = self.inner.clone();
-        let params = core::admin::CreateReferrerRequest { referrer };
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateReferrerRequest {
+            referrer: hash_get_string(&opts, "referrer")?,
+        };
         runtime()
             .block_on(client.create_referrer(&id, &params))
             .map_err(map_err)
     }
 
-    fn delete_referrer(&self, id: String, referrer_id: String) -> Result<String, Error> {
+    fn delete_referrer(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "referrer_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let referrer_id = hash_require_string(&opts, "referrer_id")?;
         runtime()
             .block_on(client.delete_referrer(&id, &referrer_id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn create_ip(&self, id: String, ip: Option<String>) -> Result<(), Error> {
+    fn create_ip(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "ip"])?;
         let client = self.inner.clone();
-        let params = core::admin::CreateIpRequest { ip };
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateIpRequest {
+            ip: hash_get_string(&opts, "ip")?,
+        };
         runtime()
             .block_on(client.create_ip(&id, &params))
             .map_err(map_err)
     }
 
-    fn delete_ip(&self, id: String, ip_id: String) -> Result<String, Error> {
+    fn delete_ip(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "ip_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let ip_id = hash_require_string(&opts, "ip_id")?;
         runtime()
             .block_on(client.delete_ip(&id, &ip_id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn create_domain_mask(&self, id: String, domain_mask: Option<String>) -> Result<(), Error> {
+    fn create_domain_mask(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "domain_mask"])?;
         let client = self.inner.clone();
-        let params = core::admin::CreateDomainMaskRequest { domain_mask };
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateDomainMaskRequest {
+            domain_mask: hash_get_string(&opts, "domain_mask")?,
+        };
         runtime()
             .block_on(client.create_domain_mask(&id, &params))
             .map_err(map_err)
     }
 
-    fn delete_domain_mask(&self, id: String, domain_mask_id: String) -> Result<String, Error> {
+    fn delete_domain_mask(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "domain_mask_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let domain_mask_id = hash_require_string(&opts, "domain_mask_id")?;
         runtime()
             .block_on(client.delete_domain_mask(&id, &domain_mask_id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn create_jwt(
-        &self,
-        id: String,
-        public_key: Option<String>,
-        kid: Option<String>,
-        name: Option<String>,
-    ) -> Result<(), Error> {
+    fn create_jwt(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "public_key", "kid", "name"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         let params = core::admin::CreateJwtRequest {
-            public_key,
-            kid,
-            name,
+            public_key: hash_get_string(&opts, "public_key")?,
+            kid: hash_get_string(&opts, "kid")?,
+            name: hash_get_string(&opts, "name")?,
         };
         runtime()
             .block_on(client.create_jwt(&id, &params))
             .map_err(map_err)
     }
 
-    fn delete_jwt(&self, id: String, jwt_id: String) -> Result<(), Error> {
+    fn delete_jwt(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "jwt_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let jwt_id = hash_require_string(&opts, "jwt_id")?;
         runtime()
             .block_on(client.delete_jwt(&id, &jwt_id))
             .map_err(map_err)
     }
 
-    fn create_request_filter(
-        &self,
-        id: String,
-        methods: Option<Vec<String>>,
-    ) -> Result<String, Error> {
+    fn create_request_filter(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "methods"])?;
         let client = self.inner.clone();
-        let params = core::admin::CreateRequestFilterRequest { method: methods };
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateRequestFilterRequest {
+            method: hash_get_vec_string(&opts, "methods")?,
+        };
         runtime()
             .block_on(client.create_request_filter(&id, &params))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn update_request_filter(
-        &self,
-        id: String,
-        request_filter_id: String,
-        methods: Option<Vec<String>>,
-    ) -> Result<(), Error> {
+    fn update_request_filter(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "request_filter_id", "methods"])?;
         let client = self.inner.clone();
-        let params = core::admin::UpdateRequestFilterRequest { method: methods };
+        let id = hash_require_string(&opts, "id")?;
+        let request_filter_id = hash_require_string(&opts, "request_filter_id")?;
+        let params = core::admin::UpdateRequestFilterRequest {
+            method: hash_get_vec_string(&opts, "methods")?,
+        };
         runtime()
             .block_on(client.update_request_filter(&id, &request_filter_id, &params))
             .map_err(map_err)
     }
 
-    fn delete_request_filter(&self, id: String, request_filter_id: String) -> Result<(), Error> {
+    fn delete_request_filter(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "request_filter_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let request_filter_id = hash_require_string(&opts, "request_filter_id")?;
         runtime()
             .block_on(client.delete_request_filter(&id, &request_filter_id))
             .map_err(map_err)
     }
 
-    fn enable_multichain(&self, id: String) -> Result<(), Error> {
+    fn enable_multichain(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.enable_multichain(&id))
             .map_err(map_err)
     }
 
-    fn disable_multichain(&self, id: String) -> Result<(), Error> {
+    fn disable_multichain(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.disable_multichain(&id))
             .map_err(map_err)
     }
 
-    fn create_or_update_ip_custom_header(
-        &self,
-        id: String,
-        header_name: String,
-    ) -> Result<String, Error> {
+    fn create_or_update_ip_custom_header(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "header_name"])?;
         let client = self.inner.clone();
-        let params = core::admin::CreateOrUpdateIpCustomHeaderRequest { header_name };
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateOrUpdateIpCustomHeaderRequest {
+            header_name: hash_require_string(&opts, "header_name")?,
+        };
         runtime()
             .block_on(client.create_or_update_ip_custom_header(&id, &params))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn delete_ip_custom_header(&self, id: String) -> Result<String, Error> {
+    fn delete_ip_custom_header(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.delete_ip_custom_header(&id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn get_method_rate_limits(&self, id: String) -> Result<String, Error> {
+    fn get_method_rate_limits(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.get_method_rate_limits(&id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn create_method_rate_limit(
-        &self,
-        id: String,
-        interval: String,
-        methods: Vec<String>,
-        rate: i32,
-    ) -> Result<String, Error> {
+    fn create_method_rate_limit(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "interval", "methods", "rate"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         let params = core::admin::CreateMethodRateLimitRequest {
-            interval,
-            methods,
-            rate,
+            interval: hash_require_string(&opts, "interval")?,
+            methods: hash_require_vec_string(&opts, "methods")?,
+            rate: hash_require_i32(&opts, "rate")?,
         };
         runtime()
             .block_on(client.create_method_rate_limit(&id, &params))
@@ -559,19 +652,18 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn update_method_rate_limit(
-        &self,
-        id: String,
-        method_rate_limit_id: String,
-        methods: Option<Vec<String>>,
-        status: Option<String>,
-        rate: Option<i32>,
-    ) -> Result<String, Error> {
+    fn update_method_rate_limit(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(
+            &opts,
+            &["id", "method_rate_limit_id", "methods", "status", "rate"],
+        )?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let method_rate_limit_id = hash_require_string(&opts, "method_rate_limit_id")?;
         let params = core::admin::UpdateMethodRateLimitRequest {
-            methods,
-            status,
-            rate,
+            methods: hash_get_vec_string(&opts, "methods")?,
+            status: hash_get_string(&opts, "status")?,
+            rate: hash_get_i32(&opts, "rate")?,
         };
         runtime()
             .block_on(client.update_method_rate_limit(&id, &method_rate_limit_id, &params))
@@ -579,58 +671,53 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn delete_method_rate_limit(
-        &self,
-        id: String,
-        method_rate_limit_id: String,
-    ) -> Result<(), Error> {
+    fn delete_method_rate_limit(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "method_rate_limit_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let method_rate_limit_id = hash_require_string(&opts, "method_rate_limit_id")?;
         runtime()
             .block_on(client.delete_method_rate_limit(&id, &method_rate_limit_id))
             .map_err(map_err)
     }
 
-    fn update_rate_limits(
-        &self,
-        id: String,
-        rps: Option<i32>,
-        rpm: Option<i32>,
-        rpd: Option<i32>,
-    ) -> Result<(), Error> {
+    fn update_rate_limits(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "rps", "rpm", "rpd"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         let params = core::admin::UpdateRateLimitsRequest {
-            rate_limits: core::admin::RateLimitSettings { rps, rpm, rpd },
+            rate_limits: core::admin::RateLimitSettings {
+                rps: hash_get_i32(&opts, "rps")?,
+                rpm: hash_get_i32(&opts, "rpm")?,
+                rpd: hash_get_i32(&opts, "rpd")?,
+            },
         };
         runtime()
             .block_on(client.update_rate_limits(&id, &params))
             .map_err(map_err)
     }
 
-    fn get_endpoint_metrics(
-        &self,
-        id: String,
-        period: String,
-        metric: String,
-    ) -> Result<String, Error> {
+    fn get_endpoint_metrics(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "period", "metric"])?;
         let client = self.inner.clone();
-        let params = core::admin::GetEndpointMetricsRequest { period, metric };
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::GetEndpointMetricsRequest {
+            period: hash_require_string(&opts, "period")?,
+            metric: hash_require_string(&opts, "metric")?,
+        };
         runtime()
             .block_on(client.get_endpoint_metrics(&id, &params))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn get_account_metrics(
-        &self,
-        period: String,
-        metric: String,
-        percentile: Option<String>,
-    ) -> Result<String, Error> {
+    fn get_account_metrics(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["period", "metric", "percentile"])?;
         let client = self.inner.clone();
         let params = core::admin::GetAccountMetricsRequest {
-            period,
-            metric,
-            percentile,
+            period: hash_require_string(&opts, "period")?,
+            metric: hash_require_string(&opts, "metric")?,
+            percentile: hash_get_string(&opts, "percentile")?,
         };
         runtime()
             .block_on(client.get_account_metrics(&params))
@@ -670,60 +757,69 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn create_team(&self, name: String) -> Result<String, Error> {
+    fn create_team(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["name"])?;
         let client = self.inner.clone();
-        let params = core::admin::CreateTeamRequest { name };
+        let params = core::admin::CreateTeamRequest {
+            name: hash_require_string(&opts, "name")?,
+        };
         runtime()
             .block_on(client.create_team(&params))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn get_team(&self, id: i64) -> Result<String, Error> {
+    fn get_team(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_i64(&opts, "id")?;
         runtime()
             .block_on(client.get_team(id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn delete_team(&self, id: i64) -> Result<String, Error> {
+    fn delete_team(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_i64(&opts, "id")?;
         runtime()
             .block_on(client.delete_team(id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn list_team_endpoints(&self, id: i64) -> Result<String, Error> {
+    fn list_team_endpoints(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_i64(&opts, "id")?;
         runtime()
             .block_on(client.list_team_endpoints(id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn update_team_endpoints(&self, id: i64, endpoint_ids: Vec<String>) -> Result<String, Error> {
+    fn update_team_endpoints(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "endpoint_ids"])?;
         let client = self.inner.clone();
-        let params = core::admin::UpdateTeamEndpointsRequest { endpoint_ids };
+        let id = hash_require_i64(&opts, "id")?;
+        let params = core::admin::UpdateTeamEndpointsRequest {
+            endpoint_ids: hash_require_vec_string(&opts, "endpoint_ids")?,
+        };
         runtime()
             .block_on(client.update_team_endpoints(id, &params))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn invite_team_member(
-        &self,
-        id: i64,
-        email: String,
-        full_name: Option<String>,
-        role: Option<String>,
-    ) -> Result<String, Error> {
+    fn invite_team_member(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "email", "full_name", "role"])?;
         let client = self.inner.clone();
+        let id = hash_require_i64(&opts, "id")?;
         let params = core::admin::InviteTeamMemberRequest {
-            email,
-            full_name,
-            role,
+            email: hash_require_string(&opts, "email")?,
+            full_name: hash_get_string(&opts, "full_name")?,
+            role: hash_get_string(&opts, "role")?,
         };
         runtime()
             .block_on(client.invite_team_member(id, &params))
@@ -731,22 +827,25 @@ impl AdminApiClient {
             .and_then(to_json)
     }
 
-    fn remove_team_member(
-        &self,
-        id: i64,
-        user_id: i64,
-        destroy_user: Option<bool>,
-    ) -> Result<String, Error> {
+    fn remove_team_member(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "user_id", "destroy_user"])?;
         let client = self.inner.clone();
-        let params = core::admin::RemoveTeamMemberRequest { destroy_user };
+        let id = hash_require_i64(&opts, "id")?;
+        let user_id = hash_require_i64(&opts, "user_id")?;
+        let params = core::admin::RemoveTeamMemberRequest {
+            destroy_user: hash_get_bool(&opts, "destroy_user")?,
+        };
         runtime()
             .block_on(client.remove_team_member(id, user_id, &params))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn resend_team_invite(&self, id: i64, user_id: i64) -> Result<String, Error> {
+    fn resend_team_invite(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "user_id"])?;
         let client = self.inner.clone();
+        let id = hash_require_i64(&opts, "id")?;
+        let user_id = hash_require_i64(&opts, "user_id")?;
         runtime()
             .block_on(client.resend_team_invite(id, user_id))
             .map_err(map_err)
@@ -1019,21 +1118,24 @@ impl StreamsApiClient {
             .and_then(to_json)
     }
 
-    fn list_streams(
-        &self,
-        stream_type: Option<String>,
-        offset: Option<i64>,
-        limit: Option<i64>,
-        order_by: Option<String>,
-        order_direction: Option<String>,
-    ) -> Result<String, Error> {
+    fn list_streams(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "stream_type",
+                "offset",
+                "limit",
+                "order_by",
+                "order_direction",
+            ],
+        )?;
         let client = self.inner.clone();
         let params = core::streams::ListStreamsParams {
-            stream_type,
-            offset,
-            limit,
-            order_by,
-            order_direction,
+            stream_type: hash_get_string(&opts, "stream_type")?,
+            offset: hash_get_i64(&opts, "offset")?,
+            limit: hash_get_i64(&opts, "limit")?,
+            order_by: hash_get_string(&opts, "order_by")?,
+            order_direction: hash_get_string(&opts, "order_direction")?,
         };
         runtime()
             .block_on(client.list_streams(&params))
@@ -1048,8 +1150,10 @@ impl StreamsApiClient {
             .map_err(map_err)
     }
 
-    fn get_stream(&self, id: String) -> Result<String, Error> {
+    fn get_stream(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.get_stream(&id))
             .map_err(map_err)
@@ -1105,43 +1209,56 @@ impl StreamsApiClient {
             .and_then(to_json)
     }
 
-    fn delete_stream(&self, id: String) -> Result<(), Error> {
+    fn delete_stream(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.delete_stream(&id))
             .map_err(map_err)
     }
 
-    fn activate_stream(&self, id: String) -> Result<(), Error> {
+    fn activate_stream(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.activate_stream(&id))
             .map_err(map_err)
     }
 
-    fn pause_stream(&self, id: String) -> Result<(), Error> {
+    fn pause_stream(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.pause_stream(&id))
             .map_err(map_err)
     }
 
-    fn test_filter(
-        &self,
-        network: String,
-        dataset: String,
-        block: String,
-        filter_function: Option<String>,
-        filter_language: Option<String>,
-    ) -> Result<String, Error> {
+    fn test_filter(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "network",
+                "dataset",
+                "block",
+                "filter_function",
+                "filter_language",
+            ],
+        )?;
         let client = self.inner.clone();
-        let dataset = parse_enum::<core::streams::StreamDataset>(dataset)?;
-        let filter_language = parse_enum_opt::<core::streams::FilterLanguage>(filter_language)?;
+        let dataset =
+            parse_enum::<core::streams::StreamDataset>(hash_require_string(&opts, "dataset")?)?;
+        let filter_language = parse_enum_opt::<core::streams::FilterLanguage>(hash_get_string(
+            &opts,
+            "filter_language",
+        )?)?;
         let params = core::streams::TestFilterParams {
-            network,
+            network: hash_require_string(&opts, "network")?,
             dataset,
-            block,
-            filter_function,
+            block: hash_require_string(&opts, "block")?,
+            filter_function: hash_get_string(&opts, "filter_function")?,
             filter_language,
             address_book_config: None,
         };
@@ -1151,8 +1268,10 @@ impl StreamsApiClient {
             .and_then(to_json)
     }
 
-    fn get_enabled_count(&self, stream_type: Option<String>) -> Result<String, Error> {
+    fn get_enabled_count(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["stream_type"])?;
         let client = self.inner.clone();
+        let stream_type = hash_get_string(&opts, "stream_type")?;
         runtime()
             .block_on(client.get_enabled_count(stream_type.as_deref()))
             .map_err(map_err)
@@ -1170,9 +1289,13 @@ pub struct WebhooksApiClient {
 
 #[allow(clippy::needless_pass_by_value)]
 impl WebhooksApiClient {
-    fn list_webhooks(&self, limit: Option<i64>, offset: Option<i64>) -> Result<String, Error> {
+    fn list_webhooks(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["limit", "offset"])?;
         let client = self.inner.clone();
-        let params = core::webhooks::GetWebhooksParams { limit, offset };
+        let params = core::webhooks::GetWebhooksParams {
+            limit: hash_get_i64(&opts, "limit")?,
+            offset: hash_get_i64(&opts, "offset")?,
+        };
         runtime()
             .block_on(client.list_webhooks(&params))
             .map_err(map_err)
@@ -1186,24 +1309,23 @@ impl WebhooksApiClient {
             .map_err(map_err)
     }
 
-    fn get_webhook(&self, id: String) -> Result<String, Error> {
+    fn get_webhook(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.get_webhook(&id))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn update_webhook(
-        &self,
-        id: String,
-        name: Option<String>,
-        notification_email: Option<String>,
-    ) -> Result<String, Error> {
+    fn update_webhook(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "name", "notification_email"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         let params = core::webhooks::UpdateWebhookParams {
-            name,
-            notification_email,
+            name: hash_get_string(&opts, "name")?,
+            notification_email: hash_get_string(&opts, "notification_email")?,
             destination_attributes: None,
         };
         runtime()
@@ -1212,23 +1334,32 @@ impl WebhooksApiClient {
             .and_then(to_json)
     }
 
-    fn delete_webhook(&self, id: String) -> Result<(), Error> {
+    fn delete_webhook(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.delete_webhook(&id))
             .map_err(map_err)
     }
 
-    fn pause_webhook(&self, id: String) -> Result<(), Error> {
+    fn pause_webhook(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.pause_webhook(&id))
             .map_err(map_err)
     }
 
-    fn activate_webhook(&self, id: String, start_from: String) -> Result<(), Error> {
+    fn activate_webhook(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "start_from"])?;
         let client = self.inner.clone();
-        let start_from = parse_enum::<core::webhooks::WebhookStartFrom>(start_from)?;
+        let id = hash_require_string(&opts, "id")?;
+        let start_from = parse_enum::<core::webhooks::WebhookStartFrom>(hash_require_string(
+            &opts,
+            "start_from",
+        )?)?;
         let params = core::webhooks::ActivateWebhookParams { start_from };
         runtime()
             .block_on(client.activate_webhook(&id, &params))
@@ -1243,23 +1374,29 @@ impl WebhooksApiClient {
             .and_then(to_json)
     }
 
-    fn create_webhook_from_template(
-        &self,
-        name: String,
-        network: String,
-        destination_attributes_json: String,
-        template_args_json: String,
-        notification_email: Option<String>,
-    ) -> Result<String, Error> {
+    fn create_webhook_from_template(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "name",
+                "network",
+                "destination_attributes_json",
+                "template_args_json",
+                "notification_email",
+            ],
+        )?;
         let client = self.inner.clone();
+        let destination_attributes_json =
+            hash_require_string(&opts, "destination_attributes_json")?;
+        let template_args_json = hash_require_string(&opts, "template_args_json")?;
         let destination_attributes: core::webhooks::WebhookDestinationAttributes =
             serde_json::from_str(&destination_attributes_json).map_err(parse_err)?;
         let template_args: core::webhooks::TemplateArgs =
             serde_json::from_str(&template_args_json).map_err(parse_err)?;
         let params = core::webhooks::CreateWebhookFromTemplateParams {
-            name,
-            network,
-            notification_email,
+            name: hash_require_string(&opts, "name")?,
+            network: hash_require_string(&opts, "network")?,
+            notification_email: hash_get_string(&opts, "notification_email")?,
             destination_attributes,
             template_args,
         };
@@ -1269,19 +1406,24 @@ impl WebhooksApiClient {
             .and_then(to_json)
     }
 
-    fn update_webhook_template(
-        &self,
-        webhook_id: String,
-        template_args_json: String,
-        name: Option<String>,
-        notification_email: Option<String>,
-    ) -> Result<String, Error> {
+    fn update_webhook_template(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "webhook_id",
+                "template_args_json",
+                "name",
+                "notification_email",
+            ],
+        )?;
         let client = self.inner.clone();
+        let webhook_id = hash_require_string(&opts, "webhook_id")?;
+        let template_args_json = hash_require_string(&opts, "template_args_json")?;
         let template_args: core::webhooks::TemplateArgs =
             serde_json::from_str(&template_args_json).map_err(parse_err)?;
         let params = core::webhooks::UpdateWebhookTemplateParams {
-            name,
-            notification_email,
+            name: hash_get_string(&opts, "name")?,
+            notification_email: hash_get_string(&opts, "notification_email")?,
             destination_attributes: None,
             template_args,
         };
@@ -1302,118 +1444,150 @@ pub struct KvStoreApiClient {
 
 #[allow(clippy::needless_pass_by_value)]
 impl KvStoreApiClient {
-    fn create_set(&self, key: String, value: String) -> Result<(), Error> {
+    fn create_set(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["key", "value"])?;
         let client = self.inner.clone();
         runtime()
-            .block_on(client.create_set(&core::kvstore::CreateSetParams { key, value }))
+            .block_on(client.create_set(&core::kvstore::CreateSetParams {
+                key: hash_require_string(&opts, "key")?,
+                value: hash_require_string(&opts, "value")?,
+            }))
             .map_err(map_err)
     }
 
-    fn get_sets(&self, limit: Option<i64>, cursor: Option<String>) -> Result<String, Error> {
+    fn get_sets(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["limit", "cursor"])?;
         let client = self.inner.clone();
         runtime()
-            .block_on(client.get_sets(&core::kvstore::GetSetsParams { limit, cursor }))
+            .block_on(client.get_sets(&core::kvstore::GetSetsParams {
+                limit: hash_get_i64(&opts, "limit")?,
+                cursor: hash_get_string(&opts, "cursor")?,
+            }))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn get_set(&self, key: String) -> Result<String, Error> {
+    fn get_set(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["key"])?;
         let client = self.inner.clone();
+        let key = hash_require_string(&opts, "key")?;
         runtime()
             .block_on(client.get_set(&key))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn bulk_sets(
-        &self,
-        add_sets: Option<std::collections::HashMap<String, String>>,
-        delete_sets: Option<Vec<String>>,
-    ) -> Result<(), Error> {
+    fn bulk_sets(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["add_sets", "delete_sets"])?;
         let client = self.inner.clone();
         runtime()
             .block_on(client.bulk_sets(&core::kvstore::BulkSetsParams {
-                add_sets,
-                delete_sets,
+                add_sets: None,
+                delete_sets: hash_get_vec_string(&opts, "delete_sets")?,
             }))
             .map_err(map_err)
     }
 
-    fn delete_set(&self, key: String) -> Result<(), Error> {
+    fn delete_set(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["key"])?;
         let client = self.inner.clone();
+        let key = hash_require_string(&opts, "key")?;
         runtime().block_on(client.delete_set(&key)).map_err(map_err)
     }
 
-    fn create_list(&self, key: String, items: Vec<String>) -> Result<(), Error> {
+    fn create_list(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["key", "items"])?;
         let client = self.inner.clone();
         runtime()
-            .block_on(client.create_list(&core::kvstore::CreateListParams { key, items }))
+            .block_on(client.create_list(&core::kvstore::CreateListParams {
+                key: hash_require_string(&opts, "key")?,
+                items: hash_require_vec_string(&opts, "items")?,
+            }))
             .map_err(map_err)
     }
 
-    fn get_lists(&self, limit: Option<i64>, cursor: Option<String>) -> Result<String, Error> {
+    fn get_lists(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["limit", "cursor"])?;
         let client = self.inner.clone();
         runtime()
-            .block_on(client.get_lists(&core::kvstore::GetListsParams { limit, cursor }))
-            .map_err(map_err)
-            .and_then(to_json)
-    }
-
-    fn get_list(
-        &self,
-        key: String,
-        limit: Option<i64>,
-        cursor: Option<String>,
-    ) -> Result<String, Error> {
-        let client = self.inner.clone();
-        runtime()
-            .block_on(client.get_list(&key, &core::kvstore::GetListParams { limit, cursor }))
+            .block_on(client.get_lists(&core::kvstore::GetListsParams {
+                limit: hash_get_i64(&opts, "limit")?,
+                cursor: hash_get_string(&opts, "cursor")?,
+            }))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn update_list(
-        &self,
-        key: String,
-        add_items: Option<Vec<String>>,
-        remove_items: Option<Vec<String>>,
-    ) -> Result<(), Error> {
+    fn get_list(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["key", "limit", "cursor"])?;
         let client = self.inner.clone();
+        let key = hash_require_string(&opts, "key")?;
+        runtime()
+            .block_on(client.get_list(
+                &key,
+                &core::kvstore::GetListParams {
+                    limit: hash_get_i64(&opts, "limit")?,
+                    cursor: hash_get_string(&opts, "cursor")?,
+                },
+            ))
+            .map_err(map_err)
+            .and_then(to_json)
+    }
+
+    fn update_list(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["key", "add_items", "remove_items"])?;
+        let client = self.inner.clone();
+        let key = hash_require_string(&opts, "key")?;
         runtime()
             .block_on(client.update_list(
                 &key,
                 &core::kvstore::UpdateListParams {
-                    add_items,
-                    remove_items,
+                    add_items: hash_get_vec_string(&opts, "add_items")?,
+                    remove_items: hash_get_vec_string(&opts, "remove_items")?,
                 },
             ))
             .map_err(map_err)
     }
 
-    fn add_list_item(&self, key: String, item: String) -> Result<(), Error> {
+    fn add_list_item(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["key", "item"])?;
         let client = self.inner.clone();
+        let key = hash_require_string(&opts, "key")?;
         runtime()
-            .block_on(client.add_list_item(&key, &core::kvstore::AddListItemParams { item }))
+            .block_on(client.add_list_item(
+                &key,
+                &core::kvstore::AddListItemParams {
+                    item: hash_require_string(&opts, "item")?,
+                },
+            ))
             .map_err(map_err)
     }
 
-    fn list_contains_item(&self, key: String, item: String) -> Result<String, Error> {
+    fn list_contains_item(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["key", "item"])?;
         let client = self.inner.clone();
+        let key = hash_require_string(&opts, "key")?;
+        let item = hash_require_string(&opts, "item")?;
         runtime()
             .block_on(client.list_contains_item(&key, &item))
             .map_err(map_err)
             .and_then(to_json)
     }
 
-    fn delete_list_item(&self, key: String, item: String) -> Result<(), Error> {
+    fn delete_list_item(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["key", "item"])?;
         let client = self.inner.clone();
+        let key = hash_require_string(&opts, "key")?;
+        let item = hash_require_string(&opts, "item")?;
         runtime()
             .block_on(client.delete_list_item(&key, &item))
             .map_err(map_err)
     }
 
-    fn delete_list(&self, key: String) -> Result<(), Error> {
+    fn delete_list(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["key"])?;
         let client = self.inner.clone();
+        let key = hash_require_string(&opts, "key")?;
         runtime()
             .block_on(client.delete_list(&key))
             .map_err(map_err)
@@ -1436,15 +1610,15 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
 
     // ── Admin ─────────────────────────────────────────────────
     let admin = module.define_class("Admin", ruby.class_object())?;
-    admin.define_method("get_endpoints", method!(AdminApiClient::get_endpoints, 4))?;
+    admin.define_method("get_endpoints", method!(AdminApiClient::get_endpoints, 1))?;
     admin.define_method(
         "create_endpoint",
-        method!(AdminApiClient::create_endpoint, 2),
+        method!(AdminApiClient::create_endpoint, 1),
     )?;
     admin.define_method("show_endpoint", method!(AdminApiClient::show_endpoint, 1))?;
     admin.define_method(
         "update_endpoint",
-        method!(AdminApiClient::update_endpoint, 2),
+        method!(AdminApiClient::update_endpoint, 1),
     )?;
     admin.define_method(
         "archive_endpoint",
@@ -1452,30 +1626,30 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     admin.define_method(
         "update_endpoint_status",
-        method!(AdminApiClient::update_endpoint_status, 2),
+        method!(AdminApiClient::update_endpoint_status, 1),
     )?;
-    admin.define_method("create_tag", method!(AdminApiClient::create_tag, 2))?;
-    admin.define_method("delete_tag", method!(AdminApiClient::delete_tag, 2))?;
-    admin.define_method("get_usage", method!(AdminApiClient::get_usage, 2))?;
+    admin.define_method("create_tag", method!(AdminApiClient::create_tag, 1))?;
+    admin.define_method("delete_tag", method!(AdminApiClient::delete_tag, 1))?;
+    admin.define_method("get_usage", method!(AdminApiClient::get_usage, 1))?;
     admin.define_method(
         "get_usage_by_endpoint",
-        method!(AdminApiClient::get_usage_by_endpoint, 2),
+        method!(AdminApiClient::get_usage_by_endpoint, 1),
     )?;
     admin.define_method(
         "get_usage_by_method",
-        method!(AdminApiClient::get_usage_by_method, 2),
+        method!(AdminApiClient::get_usage_by_method, 1),
     )?;
     admin.define_method(
         "get_usage_by_chain",
-        method!(AdminApiClient::get_usage_by_chain, 2),
+        method!(AdminApiClient::get_usage_by_chain, 1),
     )?;
     admin.define_method(
         "get_endpoint_logs",
-        method!(AdminApiClient::get_endpoint_logs, 6),
+        method!(AdminApiClient::get_endpoint_logs, 1),
     )?;
     admin.define_method(
         "get_log_details",
-        method!(AdminApiClient::get_log_details, 2),
+        method!(AdminApiClient::get_log_details, 1),
     )?;
     admin.define_method(
         "get_security_options",
@@ -1483,41 +1657,41 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     admin.define_method(
         "update_security_options",
-        method!(AdminApiClient::update_security_options, 10),
+        method!(AdminApiClient::update_security_options, 1),
     )?;
     admin.define_method("create_token", method!(AdminApiClient::create_token, 1))?;
-    admin.define_method("delete_token", method!(AdminApiClient::delete_token, 2))?;
+    admin.define_method("delete_token", method!(AdminApiClient::delete_token, 1))?;
     admin.define_method(
         "create_referrer",
-        method!(AdminApiClient::create_referrer, 2),
+        method!(AdminApiClient::create_referrer, 1),
     )?;
     admin.define_method(
         "delete_referrer",
-        method!(AdminApiClient::delete_referrer, 2),
+        method!(AdminApiClient::delete_referrer, 1),
     )?;
-    admin.define_method("create_ip", method!(AdminApiClient::create_ip, 2))?;
-    admin.define_method("delete_ip", method!(AdminApiClient::delete_ip, 2))?;
+    admin.define_method("create_ip", method!(AdminApiClient::create_ip, 1))?;
+    admin.define_method("delete_ip", method!(AdminApiClient::delete_ip, 1))?;
     admin.define_method(
         "create_domain_mask",
-        method!(AdminApiClient::create_domain_mask, 2),
+        method!(AdminApiClient::create_domain_mask, 1),
     )?;
     admin.define_method(
         "delete_domain_mask",
-        method!(AdminApiClient::delete_domain_mask, 2),
+        method!(AdminApiClient::delete_domain_mask, 1),
     )?;
-    admin.define_method("create_jwt", method!(AdminApiClient::create_jwt, 4))?;
-    admin.define_method("delete_jwt", method!(AdminApiClient::delete_jwt, 2))?;
+    admin.define_method("create_jwt", method!(AdminApiClient::create_jwt, 1))?;
+    admin.define_method("delete_jwt", method!(AdminApiClient::delete_jwt, 1))?;
     admin.define_method(
         "create_request_filter",
-        method!(AdminApiClient::create_request_filter, 2),
+        method!(AdminApiClient::create_request_filter, 1),
     )?;
     admin.define_method(
         "update_request_filter",
-        method!(AdminApiClient::update_request_filter, 3),
+        method!(AdminApiClient::update_request_filter, 1),
     )?;
     admin.define_method(
         "delete_request_filter",
-        method!(AdminApiClient::delete_request_filter, 2),
+        method!(AdminApiClient::delete_request_filter, 1),
     )?;
     admin.define_method(
         "enable_multichain",
@@ -1529,7 +1703,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     admin.define_method(
         "create_or_update_ip_custom_header",
-        method!(AdminApiClient::create_or_update_ip_custom_header, 2),
+        method!(AdminApiClient::create_or_update_ip_custom_header, 1),
     )?;
     admin.define_method(
         "delete_ip_custom_header",
@@ -1541,27 +1715,27 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     admin.define_method(
         "create_method_rate_limit",
-        method!(AdminApiClient::create_method_rate_limit, 4),
+        method!(AdminApiClient::create_method_rate_limit, 1),
     )?;
     admin.define_method(
         "update_method_rate_limit",
-        method!(AdminApiClient::update_method_rate_limit, 5),
+        method!(AdminApiClient::update_method_rate_limit, 1),
     )?;
     admin.define_method(
         "delete_method_rate_limit",
-        method!(AdminApiClient::delete_method_rate_limit, 2),
+        method!(AdminApiClient::delete_method_rate_limit, 1),
     )?;
     admin.define_method(
         "update_rate_limits",
-        method!(AdminApiClient::update_rate_limits, 4),
+        method!(AdminApiClient::update_rate_limits, 1),
     )?;
     admin.define_method(
         "get_endpoint_metrics",
-        method!(AdminApiClient::get_endpoint_metrics, 3),
+        method!(AdminApiClient::get_endpoint_metrics, 1),
     )?;
     admin.define_method(
         "get_account_metrics",
-        method!(AdminApiClient::get_account_metrics, 3),
+        method!(AdminApiClient::get_account_metrics, 1),
     )?;
     admin.define_method("list_chains", method!(AdminApiClient::list_chains, 0))?;
     admin.define_method("list_invoices", method!(AdminApiClient::list_invoices, 0))?;
@@ -1576,19 +1750,19 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     admin.define_method(
         "update_team_endpoints",
-        method!(AdminApiClient::update_team_endpoints, 2),
+        method!(AdminApiClient::update_team_endpoints, 1),
     )?;
     admin.define_method(
         "invite_team_member",
-        method!(AdminApiClient::invite_team_member, 4),
+        method!(AdminApiClient::invite_team_member, 1),
     )?;
     admin.define_method(
         "remove_team_member",
-        method!(AdminApiClient::remove_team_member, 3),
+        method!(AdminApiClient::remove_team_member, 1),
     )?;
     admin.define_method(
         "resend_team_invite",
-        method!(AdminApiClient::resend_team_invite, 2),
+        method!(AdminApiClient::resend_team_invite, 1),
     )?;
 
     // ── DestinationAttributes ─────────────────────────────────
@@ -1604,24 +1778,21 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
         "clickhouse",
         function!(DestinationAttributes::clickhouse, 1),
     )?;
-    dest_attrs.define_singleton_method(
-        "snowflake",
-        function!(DestinationAttributes::snowflake, 1),
-    )?;
+    dest_attrs
+        .define_singleton_method("snowflake", function!(DestinationAttributes::snowflake, 1))?;
     dest_attrs.define_singleton_method("kafka", function!(DestinationAttributes::kafka, 1))?;
     dest_attrs.define_singleton_method("redis", function!(DestinationAttributes::redis, 1))?;
 
     // ── Streams ───────────────────────────────────────────────
     let streams = module.define_class("Streams", ruby.class_object())?;
-    // create_stream takes a Hash (opts) because the param count exceeds magnus arity limit of 15
     streams.define_method("create_stream", method!(StreamsApiClient::create_stream, 1))?;
-    streams.define_method("list_streams", method!(StreamsApiClient::list_streams, 5))?;
+    streams.define_method("list_streams", method!(StreamsApiClient::list_streams, 1))?;
     streams.define_method(
         "delete_all_streams",
         method!(StreamsApiClient::delete_all_streams, 0),
     )?;
     streams.define_method("get_stream", method!(StreamsApiClient::get_stream, 1))?;
-    // update_stream takes id + a Hash (opts)
+    // update_stream takes id + a Hash (opts) because id is positional
     streams.define_method("update_stream", method!(StreamsApiClient::update_stream, 2))?;
     streams.define_method("delete_stream", method!(StreamsApiClient::delete_stream, 1))?;
     streams.define_method(
@@ -1629,7 +1800,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
         method!(StreamsApiClient::activate_stream, 1),
     )?;
     streams.define_method("pause_stream", method!(StreamsApiClient::pause_stream, 1))?;
-    streams.define_method("test_filter", method!(StreamsApiClient::test_filter, 5))?;
+    streams.define_method("test_filter", method!(StreamsApiClient::test_filter, 1))?;
     streams.define_method(
         "get_enabled_count",
         method!(StreamsApiClient::get_enabled_count, 1),
@@ -1639,7 +1810,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     let webhooks = module.define_class("Webhooks", ruby.class_object())?;
     webhooks.define_method(
         "list_webhooks",
-        method!(WebhooksApiClient::list_webhooks, 2),
+        method!(WebhooksApiClient::list_webhooks, 1),
     )?;
     webhooks.define_method(
         "delete_all_webhooks",
@@ -1648,7 +1819,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     webhooks.define_method("get_webhook", method!(WebhooksApiClient::get_webhook, 1))?;
     webhooks.define_method(
         "update_webhook",
-        method!(WebhooksApiClient::update_webhook, 3),
+        method!(WebhooksApiClient::update_webhook, 1),
     )?;
     webhooks.define_method(
         "delete_webhook",
@@ -1660,7 +1831,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     webhooks.define_method(
         "activate_webhook",
-        method!(WebhooksApiClient::activate_webhook, 2),
+        method!(WebhooksApiClient::activate_webhook, 1),
     )?;
     webhooks.define_method(
         "get_enabled_count",
@@ -1668,32 +1839,32 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     webhooks.define_method(
         "create_webhook_from_template",
-        method!(WebhooksApiClient::create_webhook_from_template, 5),
+        method!(WebhooksApiClient::create_webhook_from_template, 1),
     )?;
     webhooks.define_method(
         "update_webhook_template",
-        method!(WebhooksApiClient::update_webhook_template, 4),
+        method!(WebhooksApiClient::update_webhook_template, 1),
     )?;
 
     // ── KvStore ───────────────────────────────────────────────
     let kvstore = module.define_class("KvStore", ruby.class_object())?;
-    kvstore.define_method("create_set", method!(KvStoreApiClient::create_set, 2))?;
-    kvstore.define_method("get_sets", method!(KvStoreApiClient::get_sets, 2))?;
+    kvstore.define_method("create_set", method!(KvStoreApiClient::create_set, 1))?;
+    kvstore.define_method("get_sets", method!(KvStoreApiClient::get_sets, 1))?;
     kvstore.define_method("get_set", method!(KvStoreApiClient::get_set, 1))?;
-    kvstore.define_method("bulk_sets", method!(KvStoreApiClient::bulk_sets, 2))?;
+    kvstore.define_method("bulk_sets", method!(KvStoreApiClient::bulk_sets, 1))?;
     kvstore.define_method("delete_set", method!(KvStoreApiClient::delete_set, 1))?;
-    kvstore.define_method("create_list", method!(KvStoreApiClient::create_list, 2))?;
-    kvstore.define_method("get_lists", method!(KvStoreApiClient::get_lists, 2))?;
-    kvstore.define_method("get_list", method!(KvStoreApiClient::get_list, 3))?;
-    kvstore.define_method("update_list", method!(KvStoreApiClient::update_list, 3))?;
-    kvstore.define_method("add_list_item", method!(KvStoreApiClient::add_list_item, 2))?;
+    kvstore.define_method("create_list", method!(KvStoreApiClient::create_list, 1))?;
+    kvstore.define_method("get_lists", method!(KvStoreApiClient::get_lists, 1))?;
+    kvstore.define_method("get_list", method!(KvStoreApiClient::get_list, 1))?;
+    kvstore.define_method("update_list", method!(KvStoreApiClient::update_list, 1))?;
+    kvstore.define_method("add_list_item", method!(KvStoreApiClient::add_list_item, 1))?;
     kvstore.define_method(
         "list_contains_item",
-        method!(KvStoreApiClient::list_contains_item, 2),
+        method!(KvStoreApiClient::list_contains_item, 1),
     )?;
     kvstore.define_method(
         "delete_list_item",
-        method!(KvStoreApiClient::delete_list_item, 2),
+        method!(KvStoreApiClient::delete_list_item, 1),
     )?;
     kvstore.define_method("delete_list", method!(KvStoreApiClient::delete_list, 1))?;
 

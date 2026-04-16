@@ -12,7 +12,12 @@ async function main() {
 
   // ── Sets ──────────────────────────────────────────────────────────────────
 
-  const createSetParams: CreateSetParams = { key: "e2e-set-key", value: "e2e-value" };
+  await qn.kvstore.createSet({ key: "e2e-set-key1", value: "e2e-value" });
+
+  const createSetParams: CreateSetParams = {
+    key: "e2e-set-key",
+    value: "e2e-value",
+  };
   await qn.kvstore.createSet(createSetParams);
   console.log("created set: e2e-set-key");
 
@@ -23,7 +28,10 @@ async function main() {
   console.log(`all sets: ${JSON.stringify(sets.data.map((e) => e.key))}`);
 
   const bulkParams: BulkSetsParams = {
-    addSets: { "e2e-bulk-key-1": "bulk-value-1", "e2e-bulk-key-2": "bulk-value-2" },
+    addSets: {
+      "e2e-bulk-key-1": "bulk-value-1",
+      "e2e-bulk-key-2": "bulk-value-2",
+    },
     deleteSets: ["e2e-set-key"],
   };
   await qn.kvstore.bulkSets(bulkParams);
@@ -35,7 +43,10 @@ async function main() {
 
   // ── Lists ─────────────────────────────────────────────────────────────────
 
-  const createListParams: CreateListParams = { key: "e2e-list-key", items: ["0xabc", "0xdef"] };
+  const createListParams: CreateListParams = {
+    key: "e2e-list-key",
+    items: ["0xabc", "0xdef"],
+  };
   await qn.kvstore.createList(createListParams);
   console.log("created list: e2e-list-key");
 
@@ -52,7 +63,10 @@ async function main() {
   const contains = await qn.kvstore.listContainsItem("e2e-list-key", "0x123");
   console.log(`list contains 0x123: ${contains.exists}`);
 
-  const updateParams: UpdateListParams = { addItems: ["0x456"], removeItems: ["0xabc"] };
+  const updateParams: UpdateListParams = {
+    addItems: ["0x456"],
+    removeItems: ["0xabc"],
+  };
   await qn.kvstore.updateList("e2e-list-key", updateParams);
   console.log("updated list: added 0x456, removed 0xabc");
 

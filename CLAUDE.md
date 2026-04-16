@@ -117,7 +117,13 @@ Language bindings convert `SdkError` to native exceptions: `PyValueError` (Pytho
 `crates/node/src/lib.rs` uses `#[napi(constructor)]` and `#[napi(getter)]` macros. napi handles async conversion automatically.
 
 ### Ruby Binding Pattern
-`crates/ruby/src/lib.rs` uses the `magnus` crate. All async SDK calls are wrapped via a single shared `tokio::runtime` (static `OnceLock`) using `.block_on()` to produce a synchronous Ruby API. Methods returning data return **JSON strings** — callers must parse with `JSON.parse()`. Complex parameters are passed as Ruby Hashes with symbol keys; required keys throw `ArgumentError` if missing. Methods with more than 15 parameters use a Hash due to a magnus arity limit — a comment in the source notes this design decision. Classes are exposed under the `QuickNodeSdk` module and registered via `#[magnus::init(name = "quicknode_sdk")]`.
+`crates/ruby/src/lib.rs` uses the `magnus` crate. All async SDK calls are wrapped via a single shared `tokio::runtime` (static `OnceLock`) using `.block_on()` to produce a synchronous Ruby API. Methods returning data return **JSON strings** — callers must parse with `JSON.parse()`. All parameters are passed as a single Ruby Hash with symbol keys (e.g. `get_endpoints(limit: 20)`). Required keys throw `ArgumentError` if missing; unknown keys also throw `ArgumentError` (validated via `validate_keys`). The magnus arity limit of 15 is why this pattern is used uniformly — all methods are registered with arity `1` (or `0` for zero-param methods). Classes are exposed under the `QuickNodeSdk` module and registered via `#[magnus::init(name = "quicknode_sdk")]`.
+
+When adding a new Ruby method:
+1. Accept `opts: RHash` as the single parameter
+2. Call `validate_keys(&opts, &["key1", "key2", ...])?;` as the first line
+3. Use `hash_require_string/i64/i32/bool/vec_string` for required fields and `hash_get_*` for optional fields
+4. Register with `method!(ClassName::method_name, 1)` in the `init` function
 
 ### Testing
 Core clients are tested using mocked API calls with wiremock. All functions making external http calls should be tested this way and test the happy path, errors, with params, and with bad params. Keep testing focused and flexible, avoid overtesting

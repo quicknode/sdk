@@ -3,7 +3,7 @@ require_relative "../lib/quicknode_sdk"
 
 qn = QuickNodeSdk::SDK.from_env
 
-before = JSON.parse(qn.webhooks.list_webhooks(nil, nil))
+before = JSON.parse(qn.webhooks.list_webhooks({}))
 puts "webhooks before: #{before["data"].length}"
 
 count = JSON.parse(qn.webhooks.get_enabled_count)
@@ -20,30 +20,29 @@ template_args = JSON.generate({
 })
 
 webhook = JSON.parse(qn.webhooks.create_webhook_from_template(
-  "E2E Test Webhook",
-  "ethereum-mainnet",
-  destination_attributes,
-  template_args,
-  nil
+  name: "E2E Test Webhook",
+  network: "ethereum-mainnet",
+  destination_attributes_json: destination_attributes,
+  template_args_json: template_args
 ))
 id = webhook["id"]
 puts "created: #{id} | #{webhook["status"]}"
 
-fetched = JSON.parse(qn.webhooks.get_webhook(id))
+fetched = JSON.parse(qn.webhooks.get_webhook(id: id))
 puts "fetched: #{fetched["id"]} | #{fetched["name"]}"
 
-updated = JSON.parse(qn.webhooks.update_webhook(id, "E2E Test Webhook Updated", nil))
+updated = JSON.parse(qn.webhooks.update_webhook(id: id, name: "E2E Test Webhook Updated"))
 puts "updated name: #{updated["name"]}"
 
-qn.webhooks.pause_webhook(id)
+qn.webhooks.pause_webhook(id: id)
 puts "paused"
 
-qn.webhooks.activate_webhook(id, "latest")
+qn.webhooks.activate_webhook(id: id, start_from: "latest")
 puts "activated"
 
-qn.webhooks.delete_webhook(id)
+qn.webhooks.delete_webhook(id: id)
 puts "deleted: #{id}"
 sleep 1
 
-after = JSON.parse(qn.webhooks.list_webhooks(nil, nil))
+after = JSON.parse(qn.webhooks.list_webhooks({}))
 puts "webhooks after: #{after["data"].length}"
