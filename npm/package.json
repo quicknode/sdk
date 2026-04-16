@@ -4,11 +4,21 @@
   "description": "Quicknode SDK",
   "main": "sdk.js",
   "types": "sdk.d.ts",
+  "exports": {
+    ".": {
+      "import": "./sdk.mjs",
+      "require": "./sdk.js",
+      "types": "./sdk.d.ts"
+    }
+  },
+  "browser": "./browser.js",
   "files": [
     "index.js",
     "index.d.ts",
     "sdk.js",
     "sdk.d.ts",
+    "sdk.mjs",
+    "browser.js",
     "*.node"
   ],
   "napi": {

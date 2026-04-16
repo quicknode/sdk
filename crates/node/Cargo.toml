@@ -3,7 +3,7 @@ name = "sdk-node"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Node.js bindings for my-sdk"
+description = "Node.js bindings for quicknode sdk"
 
 [lints]
 workspace = true
