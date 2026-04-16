@@ -1,0 +1,12 @@
+[package]
+name = "sdk-python-stubs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+sdk-python = { path = "../python", default-features = false }
+pyo3-stub-gen = { workspace = true }

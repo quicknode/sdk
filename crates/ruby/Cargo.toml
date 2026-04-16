@@ -1,0 +1,23 @@
+[package]
+name = "sdk-ruby"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Ruby bindings for quicknode sdk"
+
+[lints]
+workspace = true
+
+[lib]
+name = "quicknode_sdk"
+crate-type = ["cdylib"]
+
+[dependencies]
+sdk-core = { path = "../core", features = ["ruby"] }
+magnus = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread"] }
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+[build-dependencies]
+rb-sys-build = "0.9"

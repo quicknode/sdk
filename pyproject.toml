@@ -1,0 +1,17 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "sdk"
+version = "0.1.0"
+description = "Quicknode SDK"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+[tool.maturin]
+manifest-path = "crates/python/Cargo.toml"
+module-name = "sdk._core"
+python-source = "python"
+features = ["extension-module"]

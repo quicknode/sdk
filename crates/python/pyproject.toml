@@ -1,0 +1,6 @@
+[project]
+name = "sdk"
+
+[tool.maturin]
+module-name = "sdk._core"
+python-source = "../../python"
