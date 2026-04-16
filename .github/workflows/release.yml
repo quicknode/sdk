@@ -65,6 +65,7 @@ jobs:
       - name: Build wheel
         run: |
           maturin build --release \
+            --strip \
             --target ${{ matrix.target }} \
             ${{ matrix.cross && '--zig' || '' }} \
             -i python${{ matrix.python-version }} \
