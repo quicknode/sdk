@@ -131,8 +131,10 @@ jobs:
       - name: Strip debug symbols
         run: |
           if [ "${{ matrix.cross }}" = "true" ]; then
-            # Use llvm-strip for cross-compiled targets (available on ubuntu runners)
-            llvm-strip npm/index.*.node
+            # zig objcopy is available when zig is on PATH and handles foreign architectures
+            for f in npm/index.*.node; do
+              zig objcopy --strip-all "$f" "$f"
+            done
           else
             strip npm/index.*.node
           fi
