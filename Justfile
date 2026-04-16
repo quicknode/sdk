@@ -29,7 +29,7 @@ release version:
   sed -i.bak 's/^version = ".*"/version = "{{version}}"/' Cargo.toml && rm Cargo.toml.bak
   sed -i.bak 's/^version = ".*"/version = "{{version}}"/' pyproject.toml && rm pyproject.toml.bak
   sed -i.bak 's/"version": ".*"/"version": "{{version}}"/' npm/package.json && rm npm/package.json.bak
-  cd npm && npm install --package-lock-only
+  cd npm && npm install --package-lock-only && cd ..
   sed -i.bak 's/s\.version *= *".*"/s.version = "{{version}}"/' ruby/quicknode_sdk.gemspec && rm ruby/quicknode_sdk.gemspec.bak
   git add Cargo.toml pyproject.toml npm/package.json npm/package-lock.json ruby/quicknode_sdk.gemspec
   git commit -m "chore: release v{{version}}"
