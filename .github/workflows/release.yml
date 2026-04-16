@@ -130,6 +130,7 @@ jobs:
           npx napi build --release \
             --platform \
             --target ${{ matrix.target }} \
+            ${{ matrix.cross && '--cross-compile' || '' }} \
             --cargo-cwd ../crates/node
 
       - name: Strip debug symbols
