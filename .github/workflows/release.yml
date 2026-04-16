@@ -116,10 +116,6 @@ jobs:
         if: matrix.cross
         uses: goto-bus-stop/setup-zig@v2
 
-      - name: Install cargo-zigbuild
-        if: matrix.cross
-        run: cargo install cargo-zigbuild
-
       - name: Install npm dependencies
         working-directory: npm
         run: npm install
