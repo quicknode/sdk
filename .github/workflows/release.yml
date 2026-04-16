@@ -131,10 +131,8 @@ jobs:
       - name: Strip debug symbols
         run: |
           if [ "${{ matrix.cross }}" = "true" ]; then
-            # zig objcopy is available when zig is on PATH and handles foreign architectures
-            for f in npm/index.*.node; do
-              zig objcopy --strip-all "$f" "$f"
-            done
+            sudo apt-get install -y llvm
+            llvm-strip npm/index.*.node
           else
             strip npm/index.*.node
           fi
