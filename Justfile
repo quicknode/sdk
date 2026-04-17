@@ -17,16 +17,16 @@ ruby-build:
   cargo build -p sdk-ruby --release
   cp target/release/libquicknode_sdk.dylib ruby/lib/quicknode_sdk.bundle
 
+# Requires: maturin on PATH (e.g. pipx install maturin or brew install maturin)
 macos-dist-python:
   uv python install 3.11 3.12 3.13 3.14
   mkdir -p dist
   maturin build --release \
     --target aarch64-apple-darwin \
-    --interpreter \
-      $(uv python find 3.11) \
-      $(uv python find 3.12) \
-      $(uv python find 3.13) \
-      $(uv python find 3.14) \
+    --interpreter $(uv python find 3.11) \
+    --interpreter $(uv python find 3.12) \
+    --interpreter $(uv python find 3.13) \
+    --interpreter $(uv python find 3.14) \
     --out dist/
   @echo "Built wheels:"
   @ls dist/*macosx*arm64*.whl
