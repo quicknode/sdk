@@ -39,6 +39,13 @@ macos-dist-node:
   @echo "Built Node module:"
   @file dist/index.darwin-arm64.node
 
+macos-dist-ruby:
+  cargo build -p sdk-ruby --release --target aarch64-apple-darwin
+  mkdir -p dist
+  cp target/aarch64-apple-darwin/release/libquicknode_sdk.dylib dist/quicknode_sdk.bundle
+  @echo "Built Ruby bundle:"
+  @file dist/quicknode_sdk.bundle
+
 test:
   cargo test -p sdk-core --lib
 
