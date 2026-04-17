@@ -31,6 +31,14 @@ macos-dist-python:
   @echo "Built wheels:"
   @ls dist/*macosx*arm64*.whl
 
+macos-dist-node:
+  cd npm && npm install
+  cd npm && npx napi build --release --platform --target aarch64-apple-darwin --cargo-cwd ../crates/node
+  mkdir -p dist
+  cp npm/index.darwin-arm64.node dist/
+  @echo "Built Node module:"
+  @file dist/index.darwin-arm64.node
+
 test:
   cargo test -p sdk-core --lib
 
