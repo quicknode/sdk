@@ -1,9 +1,9 @@
 import asyncio
 import time
 from sdk import (
-    DestinationAttributes,
     QuickNodeSdk,
     WebhookAttributes,
+    StreamWebhookDestination,
 )
 
 
@@ -32,7 +32,7 @@ async def main():
         region="usa_east",
         start_range=24691804,
         end_range=24691904,
-        destination_attributes=DestinationAttributes.webhook(
+        destination_attributes=StreamWebhookDestination(
             WebhookAttributes(
                 url="https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
                 max_retry=3,

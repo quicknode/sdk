@@ -5,6 +5,8 @@ use pyo3_stub_gen::{
 };
 use sdk_core as core;
 
+mod streams_destination;
+
 // ── Top-level SDK ──────────────────────────────────────────────
 
 #[gen_stub_pyclass]
@@ -1106,7 +1108,7 @@ impl StreamsApiClient {
         region: String,
         start_range: i64,
         end_range: i64,
-        destination_attributes: core::streams::DestinationAttributes,
+        destination_attributes: Bound<'py, PyAny>,
         plan: String,
         threshold_fetch_buffer: i64,
         dataset_batch_size: Option<i64>,
@@ -1125,47 +1127,45 @@ impl StreamsApiClient {
         elastic_batch_enabled: Option<bool>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
+        let destination_attributes =
+            streams_destination::extract_destination_attributes(&destination_attributes)?;
+        let dataset = serde_json::from_value::<core::streams::StreamDataset>(
+            serde_json::Value::String(dataset),
+        )
+        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        let region = serde_json::from_value::<core::streams::StreamRegion>(
+            serde_json::Value::String(region),
+        )
+        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        let filter_language = filter_language
+            .map(|s| {
+                serde_json::from_value::<core::streams::FilterLanguage>(serde_json::Value::String(
+                    s,
+                ))
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+            })
+            .transpose()?;
+        let include_stream_metadata = include_stream_metadata
+            .map(|s| {
+                serde_json::from_value::<core::streams::StreamMetadataLocation>(
+                    serde_json::Value::String(s),
+                )
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+            })
+            .transpose()?;
+        let product_type = product_type
+            .map(|s| {
+                serde_json::from_value::<core::streams::ProductType>(serde_json::Value::String(s))
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+            })
+            .transpose()?;
+        let status = status
+            .map(|s| {
+                serde_json::from_value::<core::streams::StreamStatus>(serde_json::Value::String(s))
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+            })
+            .transpose()?;
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let dataset = serde_json::from_value::<core::streams::StreamDataset>(
-                serde_json::Value::String(dataset),
-            )
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-            let region = serde_json::from_value::<core::streams::StreamRegion>(
-                serde_json::Value::String(region),
-            )
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-            let filter_language = filter_language
-                .map(|s| {
-                    serde_json::from_value::<core::streams::FilterLanguage>(
-                        serde_json::Value::String(s),
-                    )
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
-                })
-                .transpose()?;
-            let include_stream_metadata = include_stream_metadata
-                .map(|s| {
-                    serde_json::from_value::<core::streams::StreamMetadataLocation>(
-                        serde_json::Value::String(s),
-                    )
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
-                })
-                .transpose()?;
-            let product_type = product_type
-                .map(|s| {
-                    serde_json::from_value::<core::streams::ProductType>(serde_json::Value::String(
-                        s,
-                    ))
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
-                })
-                .transpose()?;
-            let status = status
-                .map(|s| {
-                    serde_json::from_value::<core::streams::StreamStatus>(
-                        serde_json::Value::String(s),
-                    )
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
-                })
-                .transpose()?;
             let params = core::streams::CreateStreamParams {
                 name,
                 network,
@@ -1192,10 +1192,11 @@ impl StreamsApiClient {
                 fix_block_reorgs,
                 elastic_batch_enabled,
             };
-            client
+            let stream = client
                 .create_stream(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            Python::attach(|py| streams_destination::PyStream::from_core(stream, py))
         })
     }
 
@@ -1221,10 +1222,11 @@ impl StreamsApiClient {
                 order_by,
                 order_direction,
             };
-            client
+            let resp = client
                 .list_streams(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            Python::attach(|py| streams_destination::PyListStreamsResponse::from_core(resp, py))
         })
     }
 
@@ -1245,10 +1247,11 @@ impl StreamsApiClient {
     fn get_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
+            let stream = client
                 .get_stream(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            Python::attach(|py| streams_destination::PyStream::from_core(stream, py))
         })
     }
 
@@ -1292,7 +1295,7 @@ impl StreamsApiClient {
         region: Option<String>,
         start_range: Option<i64>,
         end_range: Option<i64>,
-        destination_attributes: Option<core::streams::DestinationAttributes>,
+        destination_attributes: Option<Bound<'py, PyAny>>,
         plan: Option<String>,
         threshold_fetch_buffer: Option<i64>,
         dataset_batch_size: Option<i64>,
@@ -1311,47 +1314,44 @@ impl StreamsApiClient {
         memo: Option<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
+        let destination_attributes = destination_attributes
+            .map(|obj| streams_destination::extract_destination_attributes(&obj))
+            .transpose()?;
+        let dataset = dataset
+            .map(|s| {
+                serde_json::from_value::<core::streams::StreamDataset>(serde_json::Value::String(s))
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+            })
+            .transpose()?;
+        let region = region
+            .map(|s| {
+                serde_json::from_value::<core::streams::StreamRegion>(serde_json::Value::String(s))
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+            })
+            .transpose()?;
+        let filter_language = filter_language
+            .map(|s| {
+                serde_json::from_value::<core::streams::FilterLanguage>(serde_json::Value::String(
+                    s,
+                ))
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+            })
+            .transpose()?;
+        let include_stream_metadata = include_stream_metadata
+            .map(|s| {
+                serde_json::from_value::<core::streams::StreamMetadataLocation>(
+                    serde_json::Value::String(s),
+                )
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+            })
+            .transpose()?;
+        let status = status
+            .map(|s| {
+                serde_json::from_value::<core::streams::StreamStatus>(serde_json::Value::String(s))
+                    .map_err(|e| PyValueError::new_err(e.to_string()))
+            })
+            .transpose()?;
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let dataset = dataset
-                .map(|s| {
-                    serde_json::from_value::<core::streams::StreamDataset>(
-                        serde_json::Value::String(s),
-                    )
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
-                })
-                .transpose()?;
-            let region = region
-                .map(|s| {
-                    serde_json::from_value::<core::streams::StreamRegion>(
-                        serde_json::Value::String(s),
-                    )
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
-                })
-                .transpose()?;
-            let filter_language = filter_language
-                .map(|s| {
-                    serde_json::from_value::<core::streams::FilterLanguage>(
-                        serde_json::Value::String(s),
-                    )
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
-                })
-                .transpose()?;
-            let include_stream_metadata = include_stream_metadata
-                .map(|s| {
-                    serde_json::from_value::<core::streams::StreamMetadataLocation>(
-                        serde_json::Value::String(s),
-                    )
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
-                })
-                .transpose()?;
-            let status = status
-                .map(|s| {
-                    serde_json::from_value::<core::streams::StreamStatus>(
-                        serde_json::Value::String(s),
-                    )
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
-                })
-                .transpose()?;
             let params = core::streams::UpdateStreamParams {
                 name,
                 network,
@@ -1378,10 +1378,11 @@ impl StreamsApiClient {
                 status,
                 memo,
             };
-            client
+            let stream = client
                 .update_stream(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            Python::attach(|py| streams_destination::PyStream::from_core(stream, py))
         })
     }
 
@@ -2029,8 +2030,18 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::KvStoreConfig>()?;
     m.add_class::<core::SdkFullConfig>()?;
     m.add_class::<StreamsApiClient>()?;
-    m.add_class::<core::streams::Stream>()?;
-    m.add_class::<core::streams::DestinationAttributes>()?;
+    m.add_class::<streams_destination::PyStream>()?;
+    m.add_class::<streams_destination::PyListStreamsResponse>()?;
+    m.add_class::<streams_destination::StreamWebhookDestination>()?;
+    m.add_class::<streams_destination::StreamS3Destination>()?;
+    m.add_class::<streams_destination::StreamAzureDestination>()?;
+    m.add_class::<streams_destination::StreamPostgresDestination>()?;
+    m.add_class::<streams_destination::StreamMysqlDestination>()?;
+    m.add_class::<streams_destination::StreamMongoDestination>()?;
+    m.add_class::<streams_destination::StreamClickhouseDestination>()?;
+    m.add_class::<streams_destination::StreamSnowflakeDestination>()?;
+    m.add_class::<streams_destination::StreamKafkaDestination>()?;
+    m.add_class::<streams_destination::StreamRedisDestination>()?;
     m.add_class::<core::streams::AddressBookConfig>()?;
     m.add_class::<core::streams::WebhookAttributes>()?;
     m.add_class::<core::streams::S3Attributes>()?;
@@ -2043,7 +2054,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::streams::KafkaAttributes>()?;
     m.add_class::<core::streams::RedisAttributes>()?;
     m.add_class::<core::streams::PageInfo>()?;
-    m.add_class::<core::streams::ListStreamsResponse>()?;
     m.add_class::<core::streams::TestFilterResponse>()?;
     m.add_class::<core::streams::EnabledCountResponse>()?;
     m.add_class::<WebhooksApiClient>()?;
