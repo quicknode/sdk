@@ -407,6 +407,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn create_stream_sends_typed_webhook_destination() {
+        use wiremock::matchers::body_partial_json;
+        let server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/streams"))
+            .and(body_partial_json(serde_json::json!({
+                "destination": "webhook",
+                "destination_attributes": {
+                    "url": "https://example.com/webhook",
+                    "max_retry": 3,
+                    "retry_interval_sec": 1,
+                    "post_timeout_sec": 10,
+                    "compression": "none"
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(stream_response_json()))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = CreateStreamParams {
+            destination_attributes: DestinationAttributes::Webhook(WebhookAttributes {
+                url: "https://example.com/webhook".to_string(),
+                max_retry: 3,
+                retry_interval_sec: 1,
+                post_timeout_sec: 10,
+                compression: "none".to_string(),
+                security_token: None,
+            }),
+            ..webhook_params()
+        };
+        sdk.streams.create_stream(&params).await.unwrap();
+    }
+
+    #[tokio::test]
     async fn create_stream_api_error() {
         let server = MockServer::start().await;
 
