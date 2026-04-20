@@ -936,3 +936,208 @@ pub struct TestFilterResponse {
 pub struct EnabledCountResponse {
     pub total: i64,
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod destination_attributes_tests {
+    use super::*;
+
+    #[test]
+    fn webhook_roundtrip() {
+        let attrs = DestinationAttributes::Webhook(WebhookAttributes {
+            url: "https://x.example/hook".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 5,
+            post_timeout_sec: 10,
+            compression: "none".to_string(),
+            security_token: None,
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"webhook""#));
+        assert!(json.contains(r#""url":"https://x.example/hook""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::Webhook(_)));
+        assert!(matches!(parsed.tag(), StreamDestination::Webhook));
+    }
+
+    #[test]
+    fn s3_roundtrip() {
+        let attrs = DestinationAttributes::S3(S3Attributes {
+            endpoint: "s3.amazonaws.com".to_string(),
+            access_key: "AK".to_string(),
+            secret_key: "SK".to_string(),
+            bucket: "b".to_string(),
+            object_prefix: "p".to_string(),
+            compression: "none".to_string(),
+            file_type: "json".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 5,
+            use_ssl: Some(true),
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"s3""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::S3(_)));
+    }
+
+    #[test]
+    fn azure_roundtrip() {
+        let attrs = DestinationAttributes::Azure(AzureAttributes {
+            storage_account: "acct".to_string(),
+            sas_token: "tok".to_string(),
+            container: "c".to_string(),
+            compression: "none".to_string(),
+            file_type: "json".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 5,
+            blob_prefix: None,
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"azure""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::Azure(_)));
+    }
+
+    #[test]
+    fn postgres_roundtrip() {
+        let attrs = DestinationAttributes::Postgres(PostgresAttributes {
+            host: "h".to_string(),
+            port: 5432,
+            database: "db".to_string(),
+            username: "u".to_string(),
+            password: "p".to_string(),
+            table_name: "t".to_string(),
+            sslmode: "disable".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 5,
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"postgres""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::Postgres(_)));
+    }
+
+    #[test]
+    fn mysql_roundtrip() {
+        let attrs = DestinationAttributes::Mysql(MysqlAttributes {
+            host: "h".to_string(),
+            port: 3306,
+            database: "db".to_string(),
+            username: "u".to_string(),
+            password: "p".to_string(),
+            table_name: "t".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 5,
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"mysql""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::Mysql(_)));
+    }
+
+    #[test]
+    fn mongo_roundtrip() {
+        let attrs = DestinationAttributes::Mongo(MongoAttributes {
+            host: "h".to_string(),
+            database: "db".to_string(),
+            username: "u".to_string(),
+            password: "p".to_string(),
+            collection_name: "c".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 5,
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"mongo""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::Mongo(_)));
+    }
+
+    #[test]
+    fn clickhouse_roundtrip() {
+        let attrs = DestinationAttributes::Clickhouse(ClickhouseAttributes {
+            hosts: "h".to_string(),
+            database: "db".to_string(),
+            username: "u".to_string(),
+            password: "p".to_string(),
+            table_name: "t".to_string(),
+            default_table_engine_opts: "()".to_string(),
+            default_granularity: 8192,
+            default_compression: "lz4".to_string(),
+            default_index_type: "minmax".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 5,
+            disable_datetime_precision: None,
+            dont_support_rename_column: None,
+            dont_support_empty_default_value: None,
+            skip_initialize_with_version: None,
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"clickhouse""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::Clickhouse(_)));
+    }
+
+    #[test]
+    fn snowflake_roundtrip() {
+        let attrs = DestinationAttributes::Snowflake(SnowflakeAttributes {
+            account: "acct".to_string(),
+            host: "h".to_string(),
+            port: 443,
+            protocol: "https".to_string(),
+            database: "db".to_string(),
+            schema: "s".to_string(),
+            warehouse: "w".to_string(),
+            username: "u".to_string(),
+            password: "p".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 5,
+            table_name: Some("t".to_string()),
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"snowflake""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::Snowflake(_)));
+    }
+
+    #[test]
+    fn kafka_roundtrip() {
+        let attrs = DestinationAttributes::Kafka(KafkaAttributes {
+            bootstrap_servers: "host:9092".to_string(),
+            topic_name: "t".to_string(),
+            compression_type: "gzip".to_string(),
+            batch_size: 100,
+            linger_ms: 10,
+            max_request_size: 1024,
+            timeout_sec: 30,
+            max_retry: 3,
+            retry_interval_sec: 5,
+            username: None,
+            password: None,
+            protocol: None,
+            mechanisms: None,
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"kafka""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::Kafka(_)));
+    }
+
+    #[test]
+    fn redis_roundtrip() {
+        let attrs = DestinationAttributes::Redis(RedisAttributes {
+            host: "h".to_string(),
+            port: 6379,
+            database: 0,
+            username: "u".to_string(),
+            password: "p".to_string(),
+            key_name: "k".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 5,
+            tls: Some(false),
+        });
+        let json = serde_json::to_string(&attrs).unwrap();
+        assert!(json.contains(r#""destination":"redis""#));
+        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, DestinationAttributes::Redis(_)));
+    }
+}
