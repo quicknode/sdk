@@ -10,6 +10,57 @@ use sdk_core as core;
 // avoid `destinationAttributes.destinationAttributes.url` in TypeScript.
 // node_da_to_core() renames it back before deserializing. Responses keep the
 // wire shape (no rename) since consumers usually just read them.
+//
+// Keys in the inner attributes object also need case conversion: TypeScript
+// callers write camelCase (maxRetry), but core's serde structs expect
+// snake_case (max_retry). napi does this automatically for #[napi(object)]
+// structs, but a raw serde_json::Value bypasses that — so we walk the inner
+// object here.
+
+fn camel_to_snake(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    for (i, c) in s.chars().enumerate() {
+        if c.is_ascii_uppercase() {
+            if i != 0 {
+                out.push('_');
+            }
+            out.push(c.to_ascii_lowercase());
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+fn snake_to_camel(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut upper_next = false;
+    for c in s.chars() {
+        if c == '_' {
+            upper_next = true;
+        } else if upper_next {
+            out.push(c.to_ascii_uppercase());
+            upper_next = false;
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+fn convert_keys<F: Fn(&str) -> String + Copy>(v: serde_json::Value, f: F) -> serde_json::Value {
+    match v {
+        serde_json::Value::Object(o) => serde_json::Value::Object(
+            o.into_iter()
+                .map(|(k, v)| (f(&k), convert_keys(v, f)))
+                .collect(),
+        ),
+        serde_json::Value::Array(a) => {
+            serde_json::Value::Array(a.into_iter().map(|v| convert_keys(v, f)).collect())
+        }
+        other => other,
+    }
+}
 
 fn node_da_to_core(v: serde_json::Value) -> Result<core::streams::DestinationAttributes> {
     let mut obj = match v {
@@ -23,6 +74,10 @@ fn node_da_to_core(v: serde_json::Value) -> Result<core::streams::DestinationAtt
     let attrs = obj.remove("attributes").ok_or_else(|| {
         Error::from_reason("destination_attributes.attributes is required".to_string())
     })?;
+    // Convert attribute keys (camelCase → snake_case) so they match the core
+    // struct field names. The outer `destination` key is already a string enum
+    // tag and does not need conversion.
+    let attrs = convert_keys(attrs, camel_to_snake);
     obj.insert("destination_attributes".to_string(), attrs);
     let wire = serde_json::Value::Object(obj);
     serde_json::from_value::<core::streams::DestinationAttributes>(wire)
@@ -30,8 +85,22 @@ fn node_da_to_core(v: serde_json::Value) -> Result<core::streams::DestinationAtt
 }
 
 fn core_da_to_node(attrs: &core::streams::DestinationAttributes) -> Result<serde_json::Value> {
-    serde_json::to_value(attrs)
-        .map_err(|e| Error::from_reason(format!("failed to serialize destination_attributes: {e}")))
+    let v = serde_json::to_value(attrs).map_err(|e| {
+        Error::from_reason(format!("failed to serialize destination_attributes: {e}"))
+    })?;
+    // Convert only the inner `destination_attributes` object's keys to
+    // camelCase. The outer `destination` tag is a string value; its key stays
+    // snake_case because it matches the wire format the TS type documents.
+    let serde_json::Value::Object(mut obj) = v else {
+        return Ok(v);
+    };
+    if let Some(inner) = obj.remove("destination_attributes") {
+        obj.insert(
+            "destination_attributes".to_string(),
+            convert_keys(inner, snake_to_camel),
+        );
+    }
+    Ok(serde_json::Value::Object(obj))
 }
 
 #[napi(object)]
