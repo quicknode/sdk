@@ -26,6 +26,14 @@ dest = QuickNodeSdk::DestinationAttributes.webhook(
   compression: "none"
 )
 
+extra_dest = QuickNodeSdk::DestinationAttributes.webhook(
+  url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
+  max_retry: 3,
+  retry_interval_sec: 1,
+  post_timeout_sec: 10,
+  compression: "none"
+)
+
 stream = JSON.parse(qn.streams.create_stream({
   name: "E2E Test Stream",
   network: "ethereum-mainnet",
@@ -34,6 +42,7 @@ stream = JSON.parse(qn.streams.create_stream({
   start_range: 24691804,
   end_range: 24691904,
   destination_attributes: dest,
+  extra_destinations: [extra_dest],
   plan: "growth_plan",
   threshold_fetch_buffer: 1000,
   dataset_batch_size: 1,

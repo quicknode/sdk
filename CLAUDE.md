@@ -139,6 +139,7 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 - When updating `sdk.js` wrapper methods, verify the argument types match the underlying napi-rs constructor/method signature (object vs primitive)
 - When adding a new export to `sdk.js`, also add it to the named exports in `npm/sdk.mjs` — ESM named exports cannot be spread dynamically and must be listed explicitly
 - `python/sdk/__init__.pyi` is overwritten by `just python-build` — edit `init_manual_override.pyi` instead
+- Always update examples alongside the code changes
 
 ### Security
 - Never derive `Debug` on types containing sensitive values (API keys, tokens) without redaction — use `secrecy::SecretString` in internal structs, or a manual `Debug` impl that prints `[redacted]`

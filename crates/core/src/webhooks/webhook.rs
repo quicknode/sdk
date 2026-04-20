@@ -25,6 +25,7 @@ where
 
 // ── Enums ──────────────────────────────────────────────────────────────────
 
+/// Identifier of a predefined webhook filter template.
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
@@ -57,23 +58,29 @@ impl WebhookTemplateId {
     }
 }
 
+/// Position a webhook begins (or resumes) delivering from when activated.
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum WebhookStartFrom {
+    /// Resume from the last-delivered block.
     Last,
+    /// Start from the newest available block.
     Latest,
 }
 
 // ── Template Arg Structs ───────────────────────────────────────────────────
 
+/// Template arguments for an EVM wallet filter: matches activity for a list of
+/// wallet addresses.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvmWalletFilterTemplate {
+    /// Wallet addresses to match against.
     pub wallets: Vec<String>,
 }
 
@@ -87,13 +94,17 @@ impl EvmWalletFilterTemplate {
     }
 }
 
+/// Template arguments for filtering EVM contract events, optionally scoped to
+/// a specific set of event topic hashes.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvmContractEventsTemplate {
+    /// Contract addresses to watch for events.
     pub contracts: Vec<String>,
+    /// Optional list of event topic hashes to restrict the filter to specific events.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub event_hashes: Option<Vec<String>>,
 }
@@ -112,13 +123,17 @@ impl EvmContractEventsTemplate {
     }
 }
 
+/// Template arguments for an EVM ABI filter: decodes and filters events for a
+/// set of contracts using a provided ABI.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvmAbiFilterTemplate {
+    /// JSON-encoded contract ABI used to decode event data.
     pub abi: String,
+    /// Contract addresses to watch for events.
     pub contracts: Vec<String>,
 }
 
@@ -132,12 +147,15 @@ impl EvmAbiFilterTemplate {
     }
 }
 
+/// Template arguments for a Solana wallet filter: matches activity for a list
+/// of Solana account addresses.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SolanaWalletFilterTemplate {
+    /// Solana account addresses to match against.
     pub accounts: Vec<String>,
 }
 
@@ -151,12 +169,14 @@ impl SolanaWalletFilterTemplate {
     }
 }
 
+/// Template arguments for a Bitcoin wallet filter.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BitcoinWalletFilterTemplate {
+    /// Bitcoin wallet addresses to match against.
     pub wallets: Vec<String>,
 }
 
@@ -170,12 +190,14 @@ impl BitcoinWalletFilterTemplate {
     }
 }
 
+/// Template arguments for an XRPL wallet filter.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XrplWalletFilterTemplate {
+    /// XRPL wallet addresses to match against.
     pub wallets: Vec<String>,
 }
 
@@ -189,12 +211,14 @@ impl XrplWalletFilterTemplate {
     }
 }
 
+/// Template arguments for a Hyperliquid wallet-events filter.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HyperliquidWalletEventsFilterTemplate {
+    /// Hyperliquid wallet addresses to match against.
     pub wallets: Vec<String>,
 }
 
@@ -208,12 +232,15 @@ impl HyperliquidWalletEventsFilterTemplate {
     }
 }
 
+/// Template arguments for a Stellar wallet-transactions filter, matching
+/// transactions where the given wallets are the source account.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StellarWalletTransactionsFilterTemplate {
+    /// Stellar wallet addresses to match against.
     pub wallets: Vec<String>,
 }
 
@@ -238,15 +265,21 @@ impl StellarWalletTransactionsFilterTemplate {
 // static factory methods (one per template), so they never interact with raw
 // JSON.
 
+/// Template identifier paired with its arguments, consumed by
+/// `create_webhook_from_template` and `update_webhook_template`. Construct via
+/// the typed static factory methods (one per template); do not set fields
+/// directly.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass)]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemplateArgs {
+    /// Which filter template these arguments correspond to.
     // pub fields required for napi(object) to expose them in TypeScript.
     // Callers should use the typed factory methods rather than setting fields
     // directly — the value field is a pre-serialized JSON string.
     pub template_id: WebhookTemplateId,
+    /// Template arguments, pre-serialized as a JSON string.
     // Stored as a JSON string so napi(object) can represent it (serde_json::Value
     // is not supported by napi-rs). Parsed back to Value in the client.
     pub value: String,
@@ -387,14 +420,18 @@ impl TemplateArgs {
 
 // ── Webhook Destination Attributes ─────────────────────────────────────────
 
+/// Destination configuration for a webhook.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookDestinationAttributes {
+    /// Target URL that receives webhook payloads.
     pub url: String,
+    /// Optional token sent with each payload so the receiver can verify authenticity; generated automatically when omitted.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub security_token: Option<String>,
+    /// Optional payload compression (`gzip` or `none`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compression: Option<String>,
 }
@@ -416,14 +453,17 @@ impl WebhookDestinationAttributes {
 
 // ── Request Types ──────────────────────────────────────────────────────────
 
+/// Parameters for `list_webhooks`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GetWebhooksParams {
+    /// Maximum number of webhooks returned.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
+    /// Starting index into the result set.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i64>,
 }
@@ -439,16 +479,21 @@ impl GetWebhooksParams {
     }
 }
 
+/// Parameters for `update_webhook`. All fields are optional; only set fields
+/// are modified.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct UpdateWebhookParams {
+    /// New human-readable name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// New notification email.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notification_email: Option<String>,
+    /// New destination configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub destination_attributes: Option<WebhookDestinationAttributes>,
 }
@@ -472,42 +517,55 @@ impl UpdateWebhookParams {
     }
 }
 
+/// Parameters for `activate_webhook`.
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivateWebhookParams {
+    /// Position to begin (or resume) delivery from.
     pub start_from: WebhookStartFrom,
 }
 
+/// Parameters for `create_webhook_from_template`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateWebhookFromTemplateParams {
+    /// Human-readable label for the webhook.
     pub name: String,
+    /// Blockchain network to watch (e.g. `ethereum-mainnet`).
     pub network: String,
+    /// Optional email that receives alerts if the webhook terminates.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notification_email: Option<String>,
+    /// Destination configuration for delivered payloads.
     pub destination_attributes: WebhookDestinationAttributes,
+    /// Filter template identifier and its arguments.
     // template_args is skipped here and inserted manually into the request body
     // in the client, so serde doesn't try to serialize it as a field of this struct.
     #[serde(skip)]
     pub template_args: TemplateArgs,
 }
 
+/// Parameters for `update_webhook_template`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct UpdateWebhookTemplateParams {
+    /// New human-readable name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// New notification email.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notification_email: Option<String>,
+    /// New destination configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub destination_attributes: Option<WebhookDestinationAttributes>,
+    /// New template identifier and arguments.
     // template_id and template_args are skipped here and inserted manually into
     // the request body in the client.
     #[serde(skip)]
@@ -537,20 +595,29 @@ impl UpdateWebhookTemplateParams {
 
 // ── Response Types ─────────────────────────────────────────────────────────
 
+/// A webhook's full configuration and current state.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Webhook {
+    /// Unique webhook identifier.
     pub id: String,
+    /// Human-readable webhook name.
     pub name: String,
+    /// Current operational state (e.g. `active`, `paused`).
     pub status: String,
+    /// Blockchain network the webhook is watching.
     pub network: String,
+    /// Timestamp when the webhook was created.
     pub created_at: String,
+    /// Timestamp of the most recent modification.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
+    /// Template identifier used to create the webhook, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub template_id: Option<String>,
+    /// Email address notified of webhook terminations or failures.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notification_email: Option<String>,
     /// Destination-specific configuration as a JSON string.
@@ -562,18 +629,22 @@ pub struct Webhook {
     pub destination_attributes: Option<String>,
 }
 
+/// Response from `list_webhooks`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListWebhooksResponse {
+    /// Webhooks on the current page.
     pub data: Vec<Webhook>,
 }
 
+/// Response from `get_enabled_count` for webhooks.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookEnabledCountResponse {
+    /// Total count of enabled webhooks on the account.
     pub total: i64,
 }

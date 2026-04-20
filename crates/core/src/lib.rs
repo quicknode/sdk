@@ -118,14 +118,23 @@ impl SdkConfig {
     }
 }
 
+/// Top-level entry point for the QuickNode SDK. Holds sub-clients for each
+/// product area; all share a single HTTP client and API key.
 pub struct QuickNodeSdk {
+    /// Admin API client: manages endpoints, tags, teams, billing, usage,
+    /// metrics, security, and rate limits.
     pub admin: admin::AdminApiClient,
+    /// Streams API client: creates and manages blockchain data streams.
     pub streams: streams::StreamsApiClient,
+    /// Webhooks API client: creates and manages filter-template webhooks.
     pub webhooks: webhooks::WebhooksApiClient,
+    /// Key-Value Store client: manages sets (single values) and lists
+    /// (ordered collections) under string keys.
     pub kvstore: kvstore::KvStoreApiClient,
 }
 
 impl QuickNodeSdk {
+    /// Creates a new SDK instance from an explicit configuration.
     pub fn new(config: &SdkFullConfig) -> Result<Self, SdkError> {
         let sdk_config = SdkConfig::new(config)?;
         Ok(Self {
@@ -136,6 +145,7 @@ impl QuickNodeSdk {
         })
     }
 
+    /// Creates a new SDK instance using configuration from environment variables.
     pub fn from_env() -> Result<Self, SdkError> {
         Self::new(&SdkFullConfig::from_env()?)
     }

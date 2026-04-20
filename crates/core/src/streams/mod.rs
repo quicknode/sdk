@@ -32,6 +32,9 @@ impl ResolvedStreamsConfig {
 
 // ── Client ─────────────────────────────────────────────────────────────────
 
+/// Client for the QuickNode Streams REST API. Create, list, update, and control
+/// blockchain data streams that deliver filtered on-chain events to configured
+/// destinations.
 #[derive(Debug, Clone)]
 pub struct StreamsApiClient {
     config: SdkConfig,
@@ -42,6 +45,13 @@ impl StreamsApiClient {
         Self { config }
     }
 
+    /// Creates a new Stream on a given blockchain network and dataset, delivering
+    /// batches to the configured destination. Start from a specific block for
+    /// backfills or from the tip for real-time streaming, and optionally attach
+    /// a base64-encoded JavaScript filter to transform data before delivery.
+    /// The stream can be created in an active or paused state and supports
+    /// reorg handling, distance-from-tip, elastic batching, notification emails,
+    /// and extra destinations for multi-destination delivery.
     pub async fn create_stream(&self, params: &CreateStreamParams) -> Result<Stream, SdkError> {
         let url = self.config.streams().base_url.join("streams")?;
         let resp = self
@@ -62,6 +72,14 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns a paginated list of streams on the account. Each stream includes
+    /// its full configuration — identifiers, timestamps, network and dataset,
+    /// filter, block range, destination settings, and operational status — and
+    /// surfaces advanced features such as elastic batching and extra
+    /// destinations, where batches must be delivered to every configured
+    /// destination before the stream advances. Supports pagination via
+    /// `offset`/`limit` and sorting via `order_by`/`order_direction`, and can
+    /// filter by stream type.
     pub async fn list_streams(
         &self,
         params: &ListStreamsParams,
@@ -100,6 +118,8 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes every stream on the account. Takes no filters and cannot be
+    /// undone.
     pub async fn delete_all_streams(&self) -> Result<(), SdkError> {
         let url = self.config.streams().base_url.join("streams")?;
         let resp = self
@@ -117,6 +137,8 @@ impl StreamsApiClient {
         Ok(())
     }
 
+    /// Returns a single stream by ID, including its full configuration and
+    /// current status.
     pub async fn get_stream(&self, id: &str) -> Result<Stream, SdkError> {
         let url = self
             .config
@@ -138,6 +160,8 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates an existing stream's configuration. Only fields present on
+    /// `params` are modified; omitted fields are left unchanged.
     pub async fn update_stream(
         &self,
         id: &str,
@@ -164,6 +188,7 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Deletes a single stream by ID.
     pub async fn delete_stream(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -185,6 +210,7 @@ impl StreamsApiClient {
         Ok(())
     }
 
+    /// Activates a stream by ID, resuming delivery from its current position.
     pub async fn activate_stream(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -206,6 +232,7 @@ impl StreamsApiClient {
         Ok(())
     }
 
+    /// Pauses a stream by ID, halting delivery until it is activated again.
     pub async fn pause_stream(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -227,6 +254,9 @@ impl StreamsApiClient {
         Ok(())
     }
 
+    /// Runs a filter function against a specified block on a given network and
+    /// dataset, returning the filter's output so it can be validated before
+    /// being attached to a live stream.
     pub async fn test_filter(
         &self,
         params: &TestFilterParams,
@@ -248,6 +278,8 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the total count of currently enabled (active) streams on the
+    /// account, optionally filtered by stream type.
     pub async fn get_enabled_count(
         &self,
         stream_type: Option<&str>,
@@ -333,6 +365,7 @@ mod tests {
             charge_min_cap: None,
             fix_block_reorgs: None,
             elastic_batch_enabled: None,
+            extra_destinations: None,
         }
     }
 
@@ -424,6 +457,149 @@ mod tests {
             ..webhook_params()
         };
         sdk.streams.create_stream(&params).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn create_stream_sends_extra_destinations() {
+        use wiremock::matchers::body_partial_json;
+        let server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/streams"))
+            .and(body_partial_json(serde_json::json!({
+                "extra_destinations": [
+                    {
+                        "destination": "webhook",
+                        "destination_attributes": {
+                            "url": "https://example.com/extra-hook",
+                            "max_retry": 5,
+                            "retry_interval_sec": 2,
+                            "post_timeout_sec": 15,
+                            "compression": "none"
+                        }
+                    },
+                    {
+                        "destination": "s3",
+                        "destination_attributes": {
+                            "endpoint": "s3.example.com",
+                            "access_key": "AKIA",
+                            "secret_key": "secret",
+                            "bucket": "my-bucket",
+                            "object_prefix": "streams/",
+                            "compression": "gzip",
+                            "file_type": ".json",
+                            "max_retry": 3,
+                            "retry_interval_sec": 1
+                        }
+                    }
+                ]
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(stream_response_json()))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = CreateStreamParams {
+            extra_destinations: Some(vec![
+                DestinationAttributes::Webhook(WebhookAttributes {
+                    url: "https://example.com/extra-hook".to_string(),
+                    max_retry: 5,
+                    retry_interval_sec: 2,
+                    post_timeout_sec: 15,
+                    compression: "none".to_string(),
+                    security_token: None,
+                }),
+                DestinationAttributes::S3(S3Attributes {
+                    endpoint: "s3.example.com".to_string(),
+                    access_key: "AKIA".to_string(),
+                    secret_key: "secret".to_string(),
+                    bucket: "my-bucket".to_string(),
+                    object_prefix: "streams/".to_string(),
+                    compression: "gzip".to_string(),
+                    file_type: ".json".to_string(),
+                    max_retry: 3,
+                    retry_interval_sec: 1,
+                    use_ssl: None,
+                }),
+            ]),
+            ..webhook_params()
+        };
+        sdk.streams.create_stream(&params).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn update_stream_sends_extra_destinations() {
+        use wiremock::matchers::body_partial_json;
+        let server = MockServer::start().await;
+
+        Mock::given(method("PATCH"))
+            .and(path("/streams/test-id"))
+            .and(body_partial_json(serde_json::json!({
+                "extra_destinations": [
+                    {
+                        "destination": "webhook",
+                        "destination_attributes": {
+                            "url": "https://example.com/patched-hook",
+                            "max_retry": 1,
+                            "retry_interval_sec": 1,
+                            "post_timeout_sec": 5,
+                            "compression": "none"
+                        }
+                    }
+                ]
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(stream_response_json()))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = UpdateStreamParams {
+            extra_destinations: Some(vec![DestinationAttributes::Webhook(WebhookAttributes {
+                url: "https://example.com/patched-hook".to_string(),
+                max_retry: 1,
+                retry_interval_sec: 1,
+                post_timeout_sec: 5,
+                compression: "none".to_string(),
+                security_token: None,
+            })]),
+            ..Default::default()
+        };
+        sdk.streams.update_stream("test-id", &params).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn get_stream_parses_extra_destinations() {
+        let server = MockServer::start().await;
+        let mut body = stream_response_json();
+        body["extra_destinations"] = serde_json::json!([
+            {
+                "destination": "webhook",
+                "destination_attributes": {
+                    "url": "https://example.com/extra",
+                    "max_retry": 2,
+                    "retry_interval_sec": 1,
+                    "post_timeout_sec": 10,
+                    "compression": "none"
+                }
+            }
+        ]);
+        Mock::given(method("GET"))
+            .and(path("/streams/test-id"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.streams.get_stream("test-id").await.unwrap();
+        let extras = resp.extra_destinations.expect("extra_destinations present");
+        assert_eq!(extras.len(), 1);
+        match &extras[0] {
+            DestinationAttributes::Webhook(w) => {
+                assert_eq!(w.url, "https://example.com/extra");
+                assert_eq!(w.max_retry, 2);
+            }
+            other => panic!("expected Webhook, got {other:?}"),
+        }
     }
 
     #[tokio::test]

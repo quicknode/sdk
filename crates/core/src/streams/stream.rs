@@ -18,6 +18,7 @@ where
 
 // ── Enums ──────────────────────────────────────────────────────────────────
 
+/// Geographic region where a stream runs.
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
@@ -28,6 +29,7 @@ pub enum StreamRegion {
     AsiaEast,
 }
 
+/// Type of on-chain data a stream delivers (blocks, transactions, logs, etc.).
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
@@ -53,6 +55,7 @@ pub enum StreamDataset {
     WriterActions,
 }
 
+/// Destination kind a stream delivers to (webhook, S3, Postgres, etc.).
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
@@ -70,6 +73,7 @@ pub enum StreamDestination {
     Redis,
 }
 
+/// Language a stream's filter function is written in.
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
@@ -80,6 +84,7 @@ pub enum FilterLanguage {
     Wasm,
 }
 
+/// Where stream metadata is included in delivered payloads.
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
@@ -90,6 +95,7 @@ pub enum StreamMetadataLocation {
     None,
 }
 
+/// Billing product type the stream is associated with.
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
@@ -99,6 +105,7 @@ pub enum ProductType {
     Webhook,
 }
 
+/// Operational state of a stream.
 #[cfg_attr(feature = "node", napi(string_enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
@@ -116,17 +123,24 @@ pub enum StreamStatus {
 // Each struct corresponds to one StreamDestination variant. Set exactly one
 // on CreateStreamParams — see that struct's documentation for details.
 
+/// Configuration for delivering stream batches to an HTTP webhook endpoint.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookAttributes {
+    /// Destination URL that receives batched stream payloads.
     pub url: String,
+    /// Maximum number of retry attempts for a failed delivery.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
+    /// Timeout in seconds for each POST request.
     pub post_timeout_sec: i32,
+    /// Optional token included with each request so the receiver can verify authenticity.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub security_token: Option<String>,
+    /// Compression applied to the payload (e.g. `none`, `gzip`).
     pub compression: String,
 }
 
@@ -155,20 +169,31 @@ impl WebhookAttributes {
     }
 }
 
+/// Configuration for delivering stream batches to an S3-compatible object store.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct S3Attributes {
+    /// S3 service endpoint (e.g. `s3.amazonaws.com`).
     pub endpoint: String,
+    /// Access key used to authenticate with the S3 endpoint.
     pub access_key: String,
+    /// Secret key used to authenticate with the S3 endpoint.
     pub secret_key: String,
+    /// Target bucket name.
     pub bucket: String,
+    /// Key prefix prepended to each written object.
     pub object_prefix: String,
+    /// Compression applied to written objects (e.g. `none`, `gzip`).
     pub compression: String,
+    /// File format/extension for written objects (e.g. `.json`).
     pub file_type: String,
+    /// Maximum number of retry attempts for a failed write.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
+    /// Whether to use TLS when connecting to the endpoint.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_ssl: Option<bool>,
 }
@@ -207,18 +232,27 @@ impl S3Attributes {
     }
 }
 
+/// Configuration for delivering stream batches to Azure Blob Storage.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AzureAttributes {
+    /// Azure storage account name.
     pub storage_account: String,
+    /// SAS token used to authorize writes.
     pub sas_token: String,
+    /// Container that receives written blobs.
     pub container: String,
+    /// Compression applied to written blobs (e.g. `none`, `gzip`).
     pub compression: String,
+    /// File format/extension for written blobs (e.g. `.json`).
     pub file_type: String,
+    /// Maximum number of retry attempts for a failed write.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
+    /// Optional name prefix prepended to each written blob.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blob_prefix: Option<String>,
 }
@@ -253,19 +287,29 @@ impl AzureAttributes {
     }
 }
 
+/// Configuration for delivering stream batches to a PostgreSQL database.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostgresAttributes {
+    /// Database host.
     pub host: String,
+    /// Database port.
     pub port: i32,
+    /// Database name.
     pub database: String,
+    /// Username used to authenticate.
     pub username: String,
+    /// Password used to authenticate.
     pub password: String,
+    /// Destination table for inserted rows.
     pub table_name: String,
+    /// Postgres SSL mode (e.g. `disable`, `require`, `verify-full`).
     pub sslmode: String,
+    /// Maximum number of retry attempts for a failed write.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
 }
 
@@ -300,18 +344,27 @@ impl PostgresAttributes {
     }
 }
 
+/// Configuration for delivering stream batches to a MySQL database.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MysqlAttributes {
+    /// Database host.
     pub host: String,
+    /// Database port.
     pub port: i32,
+    /// Database name.
     pub database: String,
+    /// Username used to authenticate.
     pub username: String,
+    /// Password used to authenticate.
     pub password: String,
+    /// Destination table for inserted rows.
     pub table_name: String,
+    /// Maximum number of retry attempts for a failed write.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
 }
 
@@ -344,17 +397,25 @@ impl MysqlAttributes {
     }
 }
 
+/// Configuration for delivering stream batches to a MongoDB database.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MongoAttributes {
+    /// Database host (connection string or hostname).
     pub host: String,
+    /// Database name.
     pub database: String,
+    /// Username used to authenticate.
     pub username: String,
+    /// Password used to authenticate.
     pub password: String,
+    /// Destination collection for inserted documents.
     pub collection_name: String,
+    /// Maximum number of retry attempts for a failed write.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
 }
 
@@ -384,28 +445,44 @@ impl MongoAttributes {
     }
 }
 
+/// Configuration for delivering stream batches to a ClickHouse cluster.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClickhouseAttributes {
+    /// Comma-separated list of ClickHouse hosts.
     pub hosts: String,
+    /// Database name.
     pub database: String,
+    /// Username used to authenticate.
     pub username: String,
+    /// Password used to authenticate.
     pub password: String,
+    /// Destination table for inserted rows.
     pub table_name: String,
+    /// Default table engine options applied when a table is created.
     pub default_table_engine_opts: String,
+    /// Default index granularity for created tables.
     pub default_granularity: i32,
+    /// Default compression codec for created tables.
     pub default_compression: String,
+    /// Default secondary index type for created tables.
     pub default_index_type: String,
+    /// Maximum number of retry attempts for a failed write.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
+    /// Disable datetime precision for older ClickHouse versions that don't support it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub disable_datetime_precision: Option<bool>,
+    /// Enable when the target ClickHouse server does not support `RENAME COLUMN`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dont_support_rename_column: Option<bool>,
+    /// Enable when the target ClickHouse server does not support empty default values.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dont_support_empty_default_value: Option<bool>,
+    /// Skip writing version metadata during initialization.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub skip_initialize_with_version: Option<bool>,
 }
@@ -454,22 +531,35 @@ impl ClickhouseAttributes {
     }
 }
 
+/// Configuration for delivering stream batches to a Snowflake data warehouse.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SnowflakeAttributes {
+    /// Snowflake account identifier.
     pub account: String,
+    /// Snowflake host.
     pub host: String,
+    /// Snowflake port.
     pub port: i32,
+    /// Connection protocol (e.g. `https`).
     pub protocol: String,
+    /// Database name.
     pub database: String,
+    /// Schema within the database.
     pub schema: String,
+    /// Warehouse used to run inserts.
     pub warehouse: String,
+    /// Username used to authenticate.
     pub username: String,
+    /// Password used to authenticate.
     pub password: String,
+    /// Maximum number of retry attempts for a failed write.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
+    /// Optional destination table for inserted rows.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub table_name: Option<String>,
 }
@@ -512,26 +602,40 @@ impl SnowflakeAttributes {
     }
 }
 
+/// Configuration for delivering stream batches to a Kafka topic.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KafkaAttributes {
+    /// Comma-separated list of Kafka broker addresses (host:port).
     pub bootstrap_servers: String,
+    /// Destination topic.
     pub topic_name: String,
+    /// Compression codec applied to produced messages (e.g. `none`, `gzip`).
     pub compression_type: String,
+    /// Maximum number of messages grouped per produce request.
     pub batch_size: i32,
+    /// Milliseconds the producer waits to batch additional messages.
     pub linger_ms: i32,
+    /// Maximum request size in bytes.
     pub max_request_size: i32,
+    /// Request timeout in seconds.
     pub timeout_sec: i32,
+    /// Maximum number of retry attempts for a failed produce.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
+    /// Optional SASL username.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
+    /// Optional SASL password.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
+    /// Optional security protocol (e.g. `SASL_SSL`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protocol: Option<String>,
+    /// Optional SASL mechanism (e.g. `PLAIN`, `SCRAM-SHA-256`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mechanisms: Option<String>,
 }
@@ -576,19 +680,29 @@ impl KafkaAttributes {
     }
 }
 
+/// Configuration for delivering stream batches to a Redis instance.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RedisAttributes {
+    /// Redis host.
     pub host: String,
+    /// Redis port.
     pub port: i32,
+    /// Redis logical database index.
     pub database: i32,
+    /// Username used to authenticate.
     pub username: String,
+    /// Password used to authenticate.
     pub password: String,
+    /// Redis key that receives written payloads.
     pub key_name: String,
+    /// Maximum number of retry attempts for a failed write.
     pub max_retry: i32,
+    /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
+    /// Whether to connect over TLS.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tls: Option<bool>,
 }
@@ -627,14 +741,19 @@ impl RedisAttributes {
 
 // ── Address Book Config ────────────────────────────────────────────────────
 
+/// Links a stream's filter to an address book so JSON paths resolve against its
+/// managed address set.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddressBookConfig {
+    /// Identifier of the address book to use.
     pub address_book_id: String,
+    /// Optional JSON path that resolves to an object whose fields are matched against the book.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub objects_filter_path: Option<String>,
+    /// JSON paths whose resolved values are matched against the book's addresses.
     pub elements_filter_paths: Vec<String>,
 }
 
@@ -659,6 +778,8 @@ impl AddressBookConfig {
 
 // ── Destination Attributes ─────────────────────────────────────────────────
 
+/// Destination-specific configuration for a stream. Exactly one variant
+/// selects where and how batches are delivered.
 // Pure-Rust discriminated union; no #[pyclass] / #[napi(object)] because PyO3
 // and napi-rs cannot represent enum-with-data. Each language binding crate
 // wraps this type for its own FFI surface.
@@ -671,15 +792,25 @@ impl AddressBookConfig {
     rename_all = "snake_case"
 )]
 pub enum DestinationAttributes {
+    /// HTTP webhook endpoint that receives batches in real time.
     Webhook(WebhookAttributes),
+    /// S3-compatible object storage for archival or batch processing.
     S3(S3Attributes),
+    /// Azure Blob Storage destination.
     Azure(AzureAttributes),
+    /// PostgreSQL database destination.
     Postgres(PostgresAttributes),
+    /// MySQL database destination.
     Mysql(MysqlAttributes),
+    /// MongoDB database destination.
     Mongo(MongoAttributes),
+    /// ClickHouse analytics database destination.
     Clickhouse(ClickhouseAttributes),
+    /// Snowflake data warehouse destination.
     Snowflake(SnowflakeAttributes),
+    /// Kafka topic destination.
     Kafka(KafkaAttributes),
+    /// Redis in-memory data store destination.
     Redis(RedisAttributes),
 }
 
@@ -702,213 +833,327 @@ impl DestinationAttributes {
 
 // ── Request (public-facing) ────────────────────────────────────────────────
 
+/// Parameters for creating a new stream.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateStreamParams {
+    /// Human-readable label identifying the stream.
     pub name: String,
+    /// Geographic region where the stream runs.
     pub region: StreamRegion,
+    /// Blockchain network to stream from (e.g. `ethereum-mainnet`).
     pub network: String,
+    /// Type of on-chain data to stream.
     pub dataset: StreamDataset,
+    /// Block number to begin streaming from.
     pub start_range: i64,
+    /// Block number to stop streaming at; `-1` for continuous operation.
     pub end_range: i64,
+    /// Destination-specific configuration (webhook URL, S3 bucket, DB credentials, etc.).
     // Flattening the enum's tag/content produces { destination, destination_attributes }.
     #[serde(flatten)]
     pub destination_attributes: DestinationAttributes,
+    /// Billing plan associated with the stream.
     pub plan: String,
+    /// Buffer size used by the stream fetcher before delivery.
     pub threshold_fetch_buffer: i64,
+    /// Number of blocks grouped together per delivered batch.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dataset_batch_size: Option<i64>,
+    /// Upper bound on batch size when elastic batching is enabled.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_batch_size: Option<i64>,
+    /// Maximum number of buffered blocks waiting to be processed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_buffer_range_size: Option<i64>,
+    /// Maximum number of worker threads processing buffered batches.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_buffer_processing_workers: Option<i64>,
+    /// Number of blocks to stay behind the chain tip to reduce exposure to reorgs.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keep_distance_from_tip: Option<i64>,
+    /// Base64-encoded filter function applied to each batch before delivery.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter_function: Option<String>,
+    /// Language the filter function is written in.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter_language: Option<FilterLanguage>,
+    /// Optional address book to evaluate the filter against.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address_book_config: Option<AddressBookConfig>,
+    /// Where to include stream metadata in delivered payloads.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_stream_metadata: Option<StreamMetadataLocation>,
+    /// Billing product type the stream is associated with.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub product_type: Option<ProductType>,
+    /// Initial stream state (`active` or `paused`). Defaults to `active` when omitted.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<StreamStatus>,
+    /// Email address that receives stream termination or failure alerts.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notification_email: Option<String>,
+    /// Minimum charge cap applied to the stream's billing.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub charge_min_cap: Option<i32>,
+    /// Flag (0 or 1) enabling automatic re-streaming of blocks affected by chain reorganizations.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fix_block_reorgs: Option<i32>,
+    /// When enabled, batch size is reduced toward 1 as the stream catches up to the chain tip.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elastic_batch_enabled: Option<bool>,
+    /// Additional destinations that receive the same batches alongside the primary.
+    // Not flattened: each element serializes as its own {destination, destination_attributes} pair.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra_destinations: Option<Vec<DestinationAttributes>>,
 }
 
 // ── Response ───────────────────────────────────────────────────────────────
 
+/// A stream's full configuration and current state, as returned by the API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stream {
+    /// Unique stream identifier.
     pub id: String,
+    /// Human-readable stream name.
     pub name: String,
+    /// Current operational state (e.g. `active`, `paused`).
     pub status: String,
+    /// Timestamp when the stream was created.
     pub created_at: String,
+    /// Timestamp of the most recent modification.
     pub updated_at: String,
+    /// Sequence number tracking stream progress.
     pub sequence: i64,
+    /// Blockchain network the stream is reading from.
     pub network: String,
+    /// Dataset being streamed.
     pub dataset: String,
+    /// Geographic region where the stream runs.
     pub region: String,
+    /// Starting block for the stream.
     pub start_range: i64,
+    /// Ending block for the stream; `-1` indicates continuous operation.
     pub end_range: i64,
+    /// Billing plan associated with the stream.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plan: Option<String>,
+    /// Buffer size used by the stream fetcher before delivery.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold_fetch_buffer: Option<i64>,
+    /// Number of blocks grouped together per delivered batch.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dataset_batch_size: Option<i64>,
+    /// Upper bound on batch size when elastic batching is enabled.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_batch_size: Option<i64>,
+    /// Maximum number of buffered blocks waiting to be processed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_buffer_range_size: Option<i64>,
+    /// Maximum number of worker threads processing buffered batches.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_buffer_processing_workers: Option<i64>,
+    /// Number of blocks the stream stays behind the chain tip.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keep_distance_from_tip: Option<i64>,
+    /// Base64-encoded filter function applied to each batch.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter_function: Option<String>,
+    /// Language the filter function is written in.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter_language: Option<String>,
+    /// Where stream metadata is included in delivered payloads.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_stream_metadata: Option<String>,
+    /// Billing product type the stream is associated with.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub product_type: Option<String>,
+    /// Email address notified of stream termination or failure.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notification_email: Option<String>,
+    /// Whether chain-reorg handling is enabled (0 or 1).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fix_block_reorgs: Option<i32>,
+    /// Most recent block hash processed by the stream.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_hash: Option<String>,
+    /// Destination-specific configuration (present on single-stream responses).
     // Optional because partial responses (e.g. list) may omit the destination pair.
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub destination_attributes: Option<DestinationAttributes>,
+    /// Whether elastic batching is active.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elastic_batch_enabled: Option<bool>,
+    /// QuickNode account ID that owns the stream.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub qn_account_id: Option<String>,
+    /// Minimum charge cap applied to the stream's billing.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub charge_min_cap: Option<i32>,
+    /// Free-text memo attached to the stream.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<String>,
+    /// Address book linked to the stream's filter, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address_book_config: Option<AddressBookConfig>,
+    /// Additional destinations receiving the same batches alongside the primary.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extra_destinations: Option<Vec<DestinationAttributes>>,
 }
 
 // ── New Request/Response Types ─────────────────────────────────────────────
 
+/// Pagination metadata returned alongside a paginated result set.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageInfo {
+    /// Page size used for this response.
     pub limit: i64,
+    /// Starting index of this page within the full result set.
     pub offset: i64,
+    /// Total number of items matching the query across all pages.
     pub total: i64,
 }
 
+/// Paginated response from `list_streams`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListStreamsResponse {
+    /// Streams on the current page.
     pub data: Vec<Stream>,
+    /// Pagination metadata for the response.
     #[serde(rename = "pageInfo")]
     pub page_info: PageInfo,
 }
 
+/// Parameters for `list_streams`.
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ListStreamsParams {
+    /// Filter results by stream type.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream_type: Option<String>,
+    /// Starting index into the result set; defaults to 0.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i64>,
+    /// Maximum number of streams returned.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
+    /// Field to sort results by.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order_by: Option<String>,
+    /// Sort direction (`asc` or `desc`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order_direction: Option<String>,
 }
 
+/// Parameters for `update_stream`. Only fields that are set are modified;
+/// omitted fields leave the current value unchanged.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct UpdateStreamParams {
+    /// New human-readable name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// New region.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub region: Option<StreamRegion>,
+    /// New blockchain network.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<String>,
+    /// New dataset.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dataset: Option<StreamDataset>,
+    /// New start block.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start_range: Option<i64>,
+    /// New end block; `-1` for continuous operation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_range: Option<i64>,
+    /// New primary destination configuration.
     // Flattening Option<enum> omits the keys entirely when None.
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub destination_attributes: Option<DestinationAttributes>,
+    /// New billing plan.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plan: Option<String>,
+    /// New fetcher buffer threshold.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold_fetch_buffer: Option<i64>,
+    /// New batch size.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dataset_batch_size: Option<i64>,
+    /// New upper bound on elastic batch size.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_batch_size: Option<i64>,
+    /// New maximum buffered block range.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_buffer_range_size: Option<i64>,
+    /// New maximum number of buffer-processing workers.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_buffer_processing_workers: Option<i64>,
+    /// New distance from the chain tip.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keep_distance_from_tip: Option<i64>,
+    /// New base64-encoded filter function.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter_function: Option<String>,
+    /// New filter function language.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter_language: Option<FilterLanguage>,
+    /// New address book configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address_book_config: Option<AddressBookConfig>,
+    /// New stream-metadata location.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_stream_metadata: Option<StreamMetadataLocation>,
+    /// New notification email.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notification_email: Option<String>,
+    /// New minimum charge cap.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub charge_min_cap: Option<i32>,
+    /// New reorg-handling flag (0 or 1).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fix_block_reorgs: Option<i32>,
+    /// Whether elastic batching is enabled.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elastic_batch_enabled: Option<bool>,
+    /// New operational state.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<StreamStatus>,
+    /// Free-text memo to attach to the stream.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<String>,
+    /// New set of extra destinations.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra_destinations: Option<Vec<DestinationAttributes>>,
 }
 
+/// Parameters for `test_filter`.
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TestFilterParams {
+    /// Blockchain network to run the test against (e.g. `ethereum-mainnet`).
     pub network: String,
+    /// Dataset the filter operates on.
     pub dataset: StreamDataset,
+    /// Specific block number to feed into the filter for the test.
     pub block: String,
+    /// Base64-encoded filter function to evaluate.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter_function: Option<String>,
+    /// Language the filter function is written in.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter_language: Option<FilterLanguage>,
+    /// Address book linked to the filter, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address_book_config: Option<AddressBookConfig>,
 }
 
+/// Result of a `test_filter` call.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
@@ -917,14 +1162,17 @@ pub struct TestFilterResponse {
     /// Filter output as a JSON string. Shape depends on the dataset and the user's filter function.
     #[serde(deserialize_with = "deserialize_as_json_string")]
     pub result: String,
+    /// Log lines emitted by the filter function during evaluation.
     pub logs: Vec<String>,
 }
 
+/// Result of `get_enabled_count`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnabledCountResponse {
+    /// Total count of currently enabled streams.
     pub total: i64,
 }
 

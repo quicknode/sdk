@@ -108,6 +108,35 @@ pub fn extract_destination_attributes(obj: &Bound<'_, PyAny>) -> PyResult<Destin
     )))
 }
 
+pub fn extract_extra_destinations(
+    obj: Option<Bound<'_, PyAny>>,
+) -> PyResult<Option<Vec<DestinationAttributes>>> {
+    let Some(obj) = obj else { return Ok(None) };
+    if obj.is_none() {
+        return Ok(None);
+    }
+    let iter = obj.try_iter()?;
+    let mut out = Vec::new();
+    for item in iter {
+        let item = item?;
+        out.push(extract_destination_attributes(&item)?);
+    }
+    Ok(Some(out))
+}
+
+pub fn extra_destinations_to_py(
+    py: Python<'_>,
+    items: Option<Vec<DestinationAttributes>>,
+) -> PyResult<Option<Vec<Py<PyAny>>>> {
+    items
+        .map(|v| {
+            v.into_iter()
+                .map(|a| destination_attributes_to_py(py, a))
+                .collect::<PyResult<Vec<_>>>()
+        })
+        .transpose()
+}
+
 pub fn destination_attributes_to_py(
     py: Python<'_>,
     attrs: DestinationAttributes,
@@ -215,6 +244,9 @@ pub struct PyStream {
     pub memo: Option<String>,
     #[pyo3(get)]
     pub address_book_config: Option<AddressBookConfig>,
+    // Exposed via a #[getter] below so the stub can override the list element
+    // type to the typed Union over destination wrappers.
+    pub extra_destinations: Option<Vec<Py<PyAny>>>,
 }
 
 impl PyStream {
@@ -223,6 +255,7 @@ impl PyStream {
             Some(attrs) => Some(destination_attributes_to_py(py, attrs)?),
             None => None,
         };
+        let extra_destinations = extra_destinations_to_py(py, s.extra_destinations)?;
         Ok(Self {
             id: s.id,
             name: s.name,
@@ -255,6 +288,7 @@ impl PyStream {
             charge_min_cap: s.charge_min_cap,
             memo: s.memo,
             address_book_config: s.address_book_config,
+            extra_destinations,
         })
     }
 }
@@ -273,6 +307,18 @@ impl PyStream {
         self.destination_attributes
             .as_ref()
             .map(|v| v.clone_ref(py))
+    }
+
+    // Typed Union list so IDEs can see the 10 destination classes inside the
+    // list, rather than `Optional[List[Any]]`.
+    #[getter]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Optional[typing.List[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamMysqlDestination, StreamMongoDestination, StreamClickhouseDestination, StreamSnowflakeDestination, StreamKafkaDestination, StreamRedisDestination]]]"
+    ))]
+    fn extra_destinations<'py>(&self, py: Python<'py>) -> Option<Vec<Py<PyAny>>> {
+        self.extra_destinations
+            .as_ref()
+            .map(|v| v.iter().map(|item| item.clone_ref(py)).collect())
     }
 }
 

@@ -27,6 +27,12 @@ sleep 0.5
 resp = JSON.parse(qn.admin.get_usage_by_chain({}))
 puts "get_usage_by_chain: #{resp["data"].inspect}"
 
+resp = JSON.parse(qn.admin.get_usage_by_tag({}))
+puts "get_usage_by_tag: #{resp["data"].inspect}"
+
+resp = JSON.parse(qn.admin.list_tags)
+puts "list_tags: #{resp.dig("data", "tags")&.length || 0} tags"
+
 resp = JSON.parse(qn.admin.get_account_metrics(period: "day", metric: "requests"))
 puts "get_account_metrics: #{resp["data"].length} series"
 
@@ -96,6 +102,9 @@ puts "get_endpoint_metrics: #{resp["data"].length} series"
 
 resp = JSON.parse(qn.admin.get_security_options(id: endpoint_id))
 puts "get_security_options: #{resp["data"].length} options"
+
+resp = JSON.parse(qn.admin.get_endpoint_security(id: endpoint_id))
+puts "get_endpoint_security: has_data=#{!resp["data"].nil?}"
 
 resp = JSON.parse(qn.admin.update_security_options(id: endpoint_id, tokens: "enabled"))
 puts "update_security_options: #{resp["data"].length} options"
@@ -225,6 +234,33 @@ puts "enable_multichain: ok"
 
 qn.admin.disable_multichain(id: endpoint_id)
 puts "disable_multichain: ok"
+
+sleep 0.5
+
+# ── Bulk endpoint ops (single-endpoint batch) ────────────────────────────────
+
+resp = JSON.parse(qn.admin.bulk_update_endpoint_status(ids: [endpoint_id], status: "paused"))
+puts "bulk_update_endpoint_status paused: #{resp["data"]}"
+
+resp = JSON.parse(qn.admin.bulk_update_endpoint_status(ids: [endpoint_id], status: "active"))
+puts "bulk_update_endpoint_status active: #{resp["data"]}"
+
+# ── Account-level tags (bulk_add/remove + rename/delete) ─────────────────────
+
+resp = JSON.parse(qn.admin.bulk_add_tag(ids: [endpoint_id], label: "sdk-bulk-tag"))
+puts "bulk_add_tag: #{resp["data"]}"
+bulk_tag_id = resp.dig("data", "tag", "tag_id")
+
+if bulk_tag_id
+  resp = JSON.parse(qn.admin.rename_tag(id: bulk_tag_id, label: "sdk-bulk-tag-renamed"))
+  puts "rename_tag: #{resp["data"]}"
+
+  resp = JSON.parse(qn.admin.bulk_remove_tag(ids: [endpoint_id], tag_id: bulk_tag_id))
+  puts "bulk_remove_tag: #{resp["data"]}"
+
+  resp = JSON.parse(qn.admin.delete_account_tag(id: bulk_tag_id))
+  puts "delete_account_tag: #{resp["data"]}"
+end
 
 sleep 0.5
 

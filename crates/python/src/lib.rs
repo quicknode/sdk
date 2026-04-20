@@ -25,6 +25,7 @@ pub struct QuickNodeSdk {
 #[gen_stub_pymethods]
 #[pymethods]
 impl QuickNodeSdk {
+    /// Creates a new SDK instance from an explicit configuration.
     #[new]
     #[allow(clippy::needless_pass_by_value)]
     fn new(config: core::SdkFullConfig) -> PyResult<Self> {
@@ -46,6 +47,7 @@ impl QuickNodeSdk {
         })
     }
 
+    /// Creates a new SDK instance using configuration from environment variables.
     #[staticmethod]
     fn from_env() -> PyResult<Self> {
         core::QuickNodeSdk::from_env()
@@ -73,7 +75,25 @@ pub struct AdminApiClient {
 #[gen_stub_pymethods]
 #[pymethods]
 impl AdminApiClient {
-    #[pyo3(signature = (limit=None, offset=None, tag_ids=None, tag_labels=None))]
+    /// Returns a paginated list of endpoints on the account. Supports searching
+    /// by subdomain or label, filtering by networks, statuses, labels, and
+    /// tags, and sorting. The response includes endpoint metadata (id, label,
+    /// status, chain/network, HTTP and WebSocket URLs, tags) plus
+    /// total/limit/offset pagination info.
+    #[pyo3(signature = (
+        limit=None,
+        offset=None,
+        search=None,
+        sort_by=None,
+        sort_direction=None,
+        networks=None,
+        statuses=None,
+        labels=None,
+        dedicated=None,
+        is_flat_rate=None,
+        tag_ids=None,
+        tag_labels=None,
+    ))]
     // We are using pyo3_async_runtimes::tokio::future_into_py, so we need an override of the
     // return type generation because it will always return PyResult<Bound<'py, PyAny>>.
     // The async wrapper future_into_py returns a generic "any Python object" type because Python's
@@ -83,11 +103,20 @@ impl AdminApiClient {
     ))]
     // Need to take arguments here so the client doesn't have to initalize a class for the param. If it was
     // params: GetEndpointsRequest, that class needs to be initalized and passed in as param
+    #[allow(clippy::too_many_arguments)]
     fn get_endpoints<'py>(
         &self,
         py: Python<'py>,
         limit: Option<i32>,
         offset: Option<i32>,
+        search: Option<String>,
+        sort_by: Option<String>,
+        sort_direction: Option<String>,
+        networks: Option<Vec<String>>,
+        statuses: Option<Vec<String>>,
+        labels: Option<Vec<String>>,
+        dedicated: Option<bool>,
+        is_flat_rate: Option<bool>,
         tag_ids: Option<Vec<i32>>,
         tag_labels: Option<Vec<String>>,
     ) -> PyResult<Bound<'py, PyAny>> {
@@ -95,6 +124,14 @@ impl AdminApiClient {
         let params = core::admin::GetEndpointsRequest {
             limit,
             offset,
+            search,
+            sort_by,
+            sort_direction,
+            networks,
+            statuses,
+            labels,
+            dedicated,
+            is_flat_rate,
             tag_ids,
             tag_labels,
         };
@@ -106,6 +143,10 @@ impl AdminApiClient {
         })
     }
 
+    /// Creates a new endpoint for a given blockchain and network. Requires
+    /// `chain` and `network`; returns the new endpoint with its HTTP and
+    /// WebSocket URLs, default security configuration (tokens, JWTs, IPs,
+    /// domain masks, CORS), and rate limits.
     #[pyo3(signature = (chain=None, network=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateEndpointResponse]"
@@ -126,6 +167,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns details for a specific endpoint by ID.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ShowEndpointResponse]"
     ))]
@@ -139,6 +181,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Updates editable fields on an endpoint (e.g. its label). Returns a
+    /// boolean indicating whether the update succeeded.
     #[pyo3(signature = (id, label=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_endpoint<'py>(
@@ -157,6 +201,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Archives an endpoint. The API uses `DELETE` but the effect is archival
+    /// rather than permanent deletion.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn archive_endpoint<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -168,6 +214,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Pauses or unpauses an endpoint by setting its status to `active` or
+    /// `paused`.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateEndpointStatusResponse]"
     ))]
@@ -187,6 +235,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Creates a new tag on a specific endpoint from a label. Returns the new
+    /// tag with its id, account info, and timestamps.
     #[pyo3(signature = (id, label=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_tag<'py>(
@@ -205,6 +255,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Removes a tag from a specific endpoint by tag id.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_tag<'py>(
         &self,
@@ -221,6 +272,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns account RPC usage totals for an optional time range. The
+    /// response includes `credits_used`, `credits_remaining`, the account
+    /// `limit`, any `overages`, and the queried time window.
     #[pyo3(signature = (start_time=None, end_time=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageResponse]"
@@ -244,6 +298,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns RPC usage broken down per endpoint over an optional time range.
+    /// Each entry includes endpoint metadata, aggregate `credits_used` and
+    /// `requests`, and a per-method credit breakdown.
     #[pyo3(signature = (start_time=None, end_time=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageByEndpointResponse]"
@@ -267,6 +324,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns RPC usage grouped by method over an optional time range. Each
+    /// entry includes the method name, credits consumed, and archival status.
+    /// Ranges longer than one week are rounded to midnight UTC.
     #[pyo3(signature = (start_time=None, end_time=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageByMethodResponse]"
@@ -290,6 +350,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns RPC usage grouped by chain over an optional time range. Each
+    /// entry includes the chain and its credit consumption.
     #[pyo3(signature = (start_time=None, end_time=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageByChainResponse]"
@@ -313,6 +375,10 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns activity logs for a specific endpoint. Supports filtering by
+    /// timestamp range and pagination. Each log entry includes timestamp,
+    /// HTTP method, network, status code, and error data; full request/response
+    /// bodies can be included when requested.
     #[pyo3(signature = (id, from_time, to_time, include_details=None, limit=None, next_at=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetEndpointLogsResponse]"
@@ -344,6 +410,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns the raw request and response payloads for a specific log entry
+    /// on an endpoint, identified by request UUID. Both payloads are
+    /// JSON-encoded strings and are truncated at 2KB.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetLogDetailsResponse]"
     ))]
@@ -362,6 +431,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns the security options for an endpoint — an object of security
+    /// feature toggles with their current enabled/disabled status.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetSecurityOptionsResponse]"
     ))]
@@ -379,6 +450,10 @@ impl AdminApiClient {
         })
     }
 
+    /// Updates which security features are enabled on an endpoint. Each option
+    /// in the submitted object can be toggled `enabled` or `disabled` —
+    /// examples include token auth, JWT validation, IP restrictions, CORS,
+    /// HSTS, referrer validation, and domain masking.
     #[pyo3(signature = (id, tokens=None, referrers=None, jwts=None, ips=None, domain_masks=None, hsts=None, cors=None, request_filters=None, ip_custom_header=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateSecurityOptionsResponse]"
@@ -420,6 +495,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Generates a new authentication token for an endpoint.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_token<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -431,6 +507,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Revokes a token on an endpoint by token id.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteBoolResponse]"
     ))]
@@ -449,6 +526,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Adds a referrer to an endpoint's security settings, specifying which
+    /// external URL or domain is permitted to call the endpoint.
     #[pyo3(signature = (id, referrer=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_referrer<'py>(
@@ -467,6 +546,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Removes a referrer from an endpoint's security settings by referrer id.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteBoolResponse]"
     ))]
@@ -485,6 +565,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Adds an IP address to an endpoint's security whitelist.
     #[pyo3(signature = (id, ip=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_ip<'py>(
@@ -503,6 +584,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Removes an IP address from an endpoint's security whitelist by ip id.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteBoolResponse]"
     ))]
@@ -521,6 +603,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Adds a domain mask to an endpoint — a custom domain used to hide the
+    /// endpoint's QuickNode URL so requests can be routed through your own
+    /// domain.
     #[pyo3(signature = (id, domain_mask=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_domain_mask<'py>(
@@ -539,6 +624,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Removes a domain mask from an endpoint by domain mask id.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteBoolResponse]"
     ))]
@@ -557,6 +643,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Creates a new JWT for endpoint authentication. Accepts a public key,
+    /// key id (`kid`), and token name.
     #[pyo3(signature = (id, public_key=None, kid=None, name=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_jwt<'py>(
@@ -581,6 +669,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Removes a JWT from an endpoint's security configuration by jwt id,
+    /// revoking its access.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_jwt<'py>(
         &self,
@@ -597,6 +687,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Creates a request filter on an endpoint — a method whitelist that
+    /// restricts which RPC methods may be called. Accepts an array of method
+    /// names; other methods are blocked.
     #[pyo3(signature = (id, method=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateRequestFilterResponse]"
@@ -617,6 +710,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Updates an existing request filter on an endpoint, replacing the
+    /// whitelisted method list.
     #[pyo3(signature = (id, request_filter_id, method=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_request_filter<'py>(
@@ -636,6 +731,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Removes a request filter from an endpoint's security configuration by
+    /// request filter id.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_request_filter<'py>(
         &self,
@@ -652,6 +749,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Enables multichain functionality on an endpoint, allowing a single
+    /// endpoint to serve multiple chains.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn enable_multichain<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -663,6 +762,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Disables multichain functionality on an endpoint.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn disable_multichain<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -674,6 +774,10 @@ impl AdminApiClient {
         })
     }
 
+    /// Sets the custom HTTP header used to identify the client IP for an
+    /// endpoint (for example, `X-Forwarded-For`). This header is used by
+    /// IP-based security features to resolve the real client address when
+    /// requests are proxied.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateOrUpdateIpCustomHeaderResponse]"
     ))]
@@ -693,6 +797,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Removes the custom IP header configuration from an endpoint.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteBoolResponse]"
     ))]
@@ -710,6 +815,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns the method rate limits configured on an endpoint, including
+    /// each limiter's interval, methods, rate, and status.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetMethodRateLimitsResponse]"
     ))]
@@ -727,6 +834,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Creates a per-method rate limit on an endpoint. A method rate limit
+    /// caps specific RPC methods rather than the endpoint as a whole, defined
+    /// by an `interval` (e.g. `second`), the target `methods`, and a `rate`.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateMethodRateLimitResponse]"
     ))]
@@ -752,6 +862,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Updates an existing method rate limit on an endpoint. Accepts the
+    /// methods to apply the limit to, the desired `status`, and the `rate`.
     #[pyo3(signature = (id, method_rate_limit_id, methods=None, status=None, rate=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateMethodRateLimitResponse]"
@@ -779,6 +891,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Removes a method rate limit from an endpoint by method rate limit id.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_method_rate_limit<'py>(
         &self,
@@ -795,6 +908,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Updates the overall rate limits on an endpoint. Accepts `rps`
+    /// (requests per second), `rpm` (requests per minute), and `rpd` (requests
+    /// per day).
     #[pyo3(signature = (id, rps=None, rpm=None, rpd=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_rate_limits<'py>(
@@ -817,6 +933,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns time-series metrics for a specific endpoint. Requires a
+    /// `period` (`hour`, `day`, `week`, or `month`) and a metric type such as
+    /// `method_calls_over_time` or `response_status_breakdown`.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetEndpointMetricsResponse]"
     ))]
@@ -837,6 +956,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns aggregated metrics across all endpoints on the account. Accepts
+    /// a `period` (`hour`, `day`, `week`, or `month`) and a metric type such
+    /// as `method_calls_over_time` or `credits_over_time`.
     #[pyo3(signature = (period, metric, percentile=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetAccountMetricsResponse]"
@@ -862,6 +984,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns all chains supported by QuickNode along with their networks.
+    /// Each entry includes the chain slug and its network slugs and names.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListChainsResponse]"
     ))]
@@ -875,6 +999,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns the account's invoices, including id, status, billing reason,
+    /// amounts due and paid, line items with descriptions and billing periods,
+    /// and creation timestamps.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListInvoicesResponse]"
     ))]
@@ -888,6 +1015,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns all payments on the account, including amount, status, card
+    /// last-four, timestamp, currency, and marketplace spending.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListPaymentsResponse]"
     ))]
@@ -901,6 +1030,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns all teams on the account. Each team includes its id, name,
+    /// member count, and member details (roles, contact info, account status).
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListTeamsResponse]"
     ))]
@@ -914,6 +1045,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Creates a new team. Requires a `name`; returns the new team with its
+    /// id, name, default role, and member count.
     #[pyo3(signature = (name))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateTeamResponse]"
@@ -929,6 +1062,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns a specific team by id, including active members with their
+    /// roles and contact info plus any pending invites.
     #[pyo3(signature = (id))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetTeamResponse]"
@@ -943,6 +1078,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Deletes a team by id. The team must have no members before it can be
+    /// deleted.
     #[pyo3(signature = (id))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteTeamResponse]"
@@ -957,6 +1094,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns the endpoints accessible to a given team. Each entry includes
+    /// the endpoint id, subdomain, chain, and network.
     #[pyo3(signature = (id))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListTeamEndpointsResponse]"
@@ -971,6 +1110,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Assigns or unassigns endpoints for a team. Pass an array of endpoint ids
+    /// to set the team's accessible endpoints; pass an empty array to remove
+    /// all associations.
     #[pyo3(signature = (id, endpoint_ids))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateTeamEndpointsResponse]"
@@ -991,6 +1133,9 @@ impl AdminApiClient {
         })
     }
 
+    /// Invites a user to a team by email. For new users, `full_name` and
+    /// `role` (`admin`, `viewer`, or `billing`) are also required. Returns the
+    /// invited user's profile and invitation status.
     #[pyo3(signature = (id, email, full_name=None, role=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, InviteTeamMemberResponse]"
@@ -1017,6 +1162,7 @@ impl AdminApiClient {
         })
     }
 
+    /// Removes a user from a team by team id and user id.
     #[pyo3(signature = (id, user_id, destroy_user=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, RemoveTeamMemberResponse]"
@@ -1038,6 +1184,8 @@ impl AdminApiClient {
         })
     }
 
+    /// Resends the invitation email to a pending team member, identified by
+    /// team id and user id.
     #[pyo3(signature = (id, user_id))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ResendTeamInviteResponse]"
@@ -1056,6 +1204,169 @@ impl AdminApiClient {
                 .map_err(|e| PyValueError::new_err(e.to_string()))
         })
     }
+
+    /// Pauses or unpauses multiple endpoints in a single call. Accepts an
+    /// array of endpoint ids and a target status (`active` or `paused`);
+    /// returns per-endpoint success/failure results plus totals.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, BulkUpdateEndpointStatusResponse]"
+    ))]
+    fn bulk_update_endpoint_status<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Vec<String>,
+        status: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::BulkUpdateEndpointStatusRequest { ids, status };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .bulk_update_endpoint_status(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    /// Applies a single tag label to multiple endpoints in one call. Returns
+    /// totals for affected endpoints, successes, and failures, plus the tag
+    /// that was applied.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, BulkAddTagResponse]"
+    ))]
+    fn bulk_add_tag<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Vec<String>,
+        label: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::BulkAddTagRequest { ids, label };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .bulk_add_tag(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    /// Removes a tag from multiple endpoints in one call, identified by an
+    /// array of endpoint ids and a tag id.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, BulkRemoveTagResponse]"
+    ))]
+    fn bulk_remove_tag<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Vec<String>,
+        tag_id: i32,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::BulkRemoveTagRequest { ids, tag_id };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .bulk_remove_tag(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    /// Returns all account-level tags, including tags with zero associated
+    /// endpoints. Each tag includes its id, label, and endpoint usage count.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ListTagsResponse]"
+    ))]
+    fn list_tags<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .list_tags()
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    /// Updates the label of an account tag. Because the tag is shared across
+    /// endpoints, all associated endpoints reflect the new label immediately.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, RenameTagResponse]"
+    ))]
+    fn rename_tag<'py>(
+        &self,
+        py: Python<'py>,
+        id: i32,
+        label: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::RenameTagRequest { label };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .rename_tag(id, &params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    /// Deletes an account-level tag. The tag must first be removed from all
+    /// endpoints before it can be deleted.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteAccountTagResponse]"
+    ))]
+    fn delete_account_tag<'py>(&self, py: Python<'py>, id: i32) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_account_tag(id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    /// Returns RPC usage grouped by endpoint tag over an optional time range.
+    /// Each entry includes the tag id, label, credits consumed, and request
+    /// count.
+    #[pyo3(signature = (start_time=None, end_time=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageByTagResponse]"
+    ))]
+    fn get_usage_by_tag<'py>(
+        &self,
+        py: Python<'py>,
+        start_time: Option<i64>,
+        end_time: Option<i64>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetUsageRequest {
+            start_time,
+            end_time,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_usage_by_tag(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    /// Returns the full security configuration for an endpoint in a single
+    /// call, without loading the entire endpoint object. The response includes
+    /// tokens, JWTs, referrers, domain masks, IPs, and a security options
+    /// object describing which features are enabled.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetEndpointSecurityResponse]"
+    ))]
+    fn get_endpoint_security<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_endpoint_security(&id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
 }
 
 // ── StreamsApiClient ───────────────────────────────────────────
@@ -1070,6 +1381,13 @@ pub struct StreamsApiClient {
 #[gen_stub_pymethods]
 #[pymethods]
 impl StreamsApiClient {
+    /// Creates a new Stream on a given blockchain network and dataset, delivering
+    /// batches to the configured destination. Start from a specific block for
+    /// backfills or from the tip for real-time streaming, and optionally attach
+    /// a base64-encoded JavaScript filter to transform data before delivery.
+    /// The stream can be created in an active or paused state and supports
+    /// reorg handling, distance-from-tip, elastic batching, notification emails,
+    /// and extra destinations for multi-destination delivery.
     #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (
         name,
@@ -1094,7 +1412,8 @@ impl StreamsApiClient {
         notification_email=None,
         charge_min_cap=None,
         fix_block_reorgs=None,
-        elastic_batch_enabled=None
+        elastic_batch_enabled=None,
+        extra_destinations=None
     ))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, Stream]"
@@ -1125,10 +1444,13 @@ impl StreamsApiClient {
         charge_min_cap: Option<i32>,
         fix_block_reorgs: Option<i32>,
         elastic_batch_enabled: Option<bool>,
+        extra_destinations: Option<Bound<'py, PyAny>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let destination_attributes =
             streams_destination::extract_destination_attributes(destination_attributes)?;
+        let extra_destinations =
+            streams_destination::extract_extra_destinations(extra_destinations)?;
         let dataset = serde_json::from_value::<core::streams::StreamDataset>(
             serde_json::Value::String(dataset),
         )
@@ -1191,6 +1513,7 @@ impl StreamsApiClient {
                 charge_min_cap,
                 fix_block_reorgs,
                 elastic_batch_enabled,
+                extra_destinations,
             };
             let stream = client
                 .create_stream(&params)
@@ -1200,6 +1523,14 @@ impl StreamsApiClient {
         })
     }
 
+    /// Returns a paginated list of streams on the account. Each stream includes
+    /// its full configuration — identifiers, timestamps, network and dataset,
+    /// filter, block range, destination settings, and operational status — and
+    /// surfaces advanced features such as elastic batching and extra
+    /// destinations, where batches must be delivered to every configured
+    /// destination before the stream advances. Supports pagination via
+    /// `offset`/`limit` and sorting via `order_by`/`order_direction`, and can
+    /// filter by stream type.
     #[pyo3(signature = (stream_type=None, offset=None, limit=None, order_by=None, order_direction=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListStreamsResponse]"
@@ -1230,6 +1561,8 @@ impl StreamsApiClient {
         })
     }
 
+    /// Removes every stream on the account. Takes no filters and cannot be
+    /// undone.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_all_streams<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -1241,6 +1574,8 @@ impl StreamsApiClient {
         })
     }
 
+    /// Returns a single stream by ID, including its full configuration and
+    /// current status.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, Stream]"
     ))]
@@ -1255,6 +1590,8 @@ impl StreamsApiClient {
         })
     }
 
+    /// Updates an existing stream's configuration. Only fields present on
+    /// `params` are modified; omitted fields are left unchanged.
     #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (
         id,
@@ -1281,6 +1618,7 @@ impl StreamsApiClient {
         elastic_batch_enabled=None,
         status=None,
         memo=None,
+        extra_destinations=None,
     ))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, Stream]"
@@ -1312,11 +1650,14 @@ impl StreamsApiClient {
         elastic_batch_enabled: Option<bool>,
         status: Option<String>,
         memo: Option<String>,
+        extra_destinations: Option<Bound<'py, PyAny>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let destination_attributes = destination_attributes
             .map(|obj| streams_destination::extract_destination_attributes(&obj))
             .transpose()?;
+        let extra_destinations =
+            streams_destination::extract_extra_destinations(extra_destinations)?;
         let dataset = dataset
             .map(|s| {
                 serde_json::from_value::<core::streams::StreamDataset>(serde_json::Value::String(s))
@@ -1377,6 +1718,7 @@ impl StreamsApiClient {
                 elastic_batch_enabled,
                 status,
                 memo,
+                extra_destinations,
             };
             let stream = client
                 .update_stream(&id, &params)
@@ -1386,6 +1728,7 @@ impl StreamsApiClient {
         })
     }
 
+    /// Deletes a single stream by ID.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -1397,6 +1740,7 @@ impl StreamsApiClient {
         })
     }
 
+    /// Activates a stream by ID, resuming delivery from its current position.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn activate_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -1408,6 +1752,7 @@ impl StreamsApiClient {
         })
     }
 
+    /// Pauses a stream by ID, halting delivery until it is activated again.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn pause_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -1419,6 +1764,9 @@ impl StreamsApiClient {
         })
     }
 
+    /// Runs a filter function against a specified block on a given network and
+    /// dataset, returning the filter's output so it can be validated before
+    /// being attached to a live stream.
     #[pyo3(signature = (network, dataset, block, filter_function=None, filter_language=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, TestFilterResponse]"
@@ -1461,6 +1809,8 @@ impl StreamsApiClient {
         })
     }
 
+    /// Returns the total count of currently enabled (active) streams on the
+    /// account, optionally filtered by stream type.
     #[pyo3(signature = (stream_type=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, EnabledCountResponse]"
@@ -1492,6 +1842,11 @@ pub struct WebhooksApiClient {
 #[gen_stub_pymethods]
 #[pymethods]
 impl WebhooksApiClient {
+    /// Returns a paginated list of webhooks on the account. Each entry includes
+    /// the webhook's identifier, creation timestamp, name, network, notification
+    /// email, destination configuration (URL, security token, compression),
+    /// current status, and any associated template. The response also includes
+    /// a `pageInfo` object with the applied limit, offset, and total count.
     #[pyo3(signature = (limit=None, offset=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListWebhooksResponse]"
@@ -1512,6 +1867,8 @@ impl WebhooksApiClient {
         })
     }
 
+    /// Removes every webhook on the account. Destructive and takes no
+    /// parameters.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_all_webhooks<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -1523,6 +1880,11 @@ impl WebhooksApiClient {
         })
     }
 
+    /// Fetches a single webhook's full configuration and status by ID. Returns
+    /// creation timestamp, name, network, notification email, destination
+    /// configuration (URL, security token, compression), the sequence number
+    /// of the last successfully delivered block, the current status, and the
+    /// associated template with its arguments.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, Webhook]"
     ))]
@@ -1536,6 +1898,12 @@ impl WebhooksApiClient {
         })
     }
 
+    /// Modifies an existing webhook's configuration. Supports updating the
+    /// webhook's name, notification email, and destination attributes (URL,
+    /// security token, and compression — `none` or `gzip`). All fields are
+    /// optional, so partial updates are supported; if the security token is
+    /// omitted on update, one is generated automatically. Returns the
+    /// webhook's full updated configuration.
     #[pyo3(signature = (id, name=None, notification_email=None, destination_attributes=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, Webhook]"
@@ -1562,6 +1930,7 @@ impl WebhooksApiClient {
         })
     }
 
+    /// Permanently removes a single webhook by ID.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -1573,6 +1942,7 @@ impl WebhooksApiClient {
         })
     }
 
+    /// Pauses a webhook by ID so it stops delivering events until reactivated.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn pause_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -1584,6 +1954,10 @@ impl WebhooksApiClient {
         })
     }
 
+    /// Activates a previously created or paused webhook so it begins (or
+    /// resumes) delivering events. `start_from` determines where processing
+    /// resumes: `Latest` begins from the newest available block; other values
+    /// replay from an earlier point.
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn activate_webhook<'py>(
         &self,
@@ -1605,6 +1979,8 @@ impl WebhooksApiClient {
         })
     }
 
+    /// Returns the total number of enabled webhooks currently configured on
+    /// the account.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, WebhookEnabledCountResponse]"
     ))]
@@ -1618,6 +1994,13 @@ impl WebhooksApiClient {
         })
     }
 
+    /// Creates a new webhook from a predefined filter template. Requires a
+    /// descriptive name, a target blockchain network, and destination
+    /// attributes (URL, optional security token — auto-generated when omitted,
+    /// and optional compression — `gzip` or `none`). `template_args` carries
+    /// template-specific configuration such as wallet addresses or contract
+    /// filters. An optional `notification_email` receives alerts if the
+    /// webhook terminates.
     #[pyo3(signature = (name, network, destination_attributes, template_args, notification_email=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, Webhook]"
@@ -1647,6 +2030,12 @@ impl WebhooksApiClient {
         })
     }
 
+    /// Updates an existing template-backed webhook, modifying its template
+    /// arguments and optionally its name, notification email, and destination
+    /// attributes (URL, security token, compression — `none` or `gzip`).
+    /// All optional fields support partial updates; a security token is
+    /// generated automatically if not provided. Templates cover EVM chains,
+    /// Solana, Bitcoin, XRPL, Hyperliquid, and Stellar.
     #[pyo3(signature = (webhook_id, template_args, name=None, notification_email=None, destination_attributes=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, Webhook]"
@@ -1688,6 +2077,7 @@ pub struct KvStoreApiClient {
 #[gen_stub_pymethods]
 #[pymethods]
 impl KvStoreApiClient {
+    /// Creates a new set, storing a single string value under the given key.
     #[pyo3(signature = (key, value))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_set<'py>(
@@ -1705,6 +2095,8 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Returns a paginated page of key/value entries from the store. Use the
+    /// response `cursor` to fetch subsequent pages.
     #[pyo3(signature = (limit=None, cursor=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetSetsResponse]"
@@ -1724,6 +2116,7 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Returns the string value stored for a single set by key.
     #[pyo3(signature = (key))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetSetResponse]"
@@ -1738,6 +2131,8 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Adds and removes multiple sets in a single request. Either `add_sets`,
+    /// `delete_sets`, or both may be supplied.
     #[pyo3(signature = (add_sets=None, delete_sets=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn bulk_sets<'py>(
@@ -1758,6 +2153,7 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Removes a single set by key.
     #[pyo3(signature = (key))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_set<'py>(&self, py: Python<'py>, key: String) -> PyResult<Bound<'py, PyAny>> {
@@ -1770,6 +2166,7 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Creates a new list under the given key, seeded with the provided items.
     #[pyo3(signature = (key, items))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_list<'py>(
@@ -1787,6 +2184,8 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Returns a paginated page of list keys from the store. Use the response
+    /// `cursor` to fetch subsequent pages.
     #[pyo3(signature = (limit=None, cursor=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetListsResponse]"
@@ -1806,6 +2205,8 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Returns a paginated page of items from the list identified by `key`.
+    /// Use the response `cursor` to fetch subsequent pages.
     #[pyo3(signature = (key, limit=None, cursor=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetListResponse]"
@@ -1826,6 +2227,8 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Updates an existing list by adding and/or removing items in a single
+    /// operation. Either `add_items`, `remove_items`, or both may be supplied.
     #[pyo3(signature = (key, add_items=None, remove_items=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_list<'py>(
@@ -1850,6 +2253,7 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Appends a single item to the list identified by `key`.
     #[pyo3(signature = (key, item))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn add_list_item<'py>(
@@ -1867,6 +2271,7 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Checks whether the specified list contains the given item.
     #[pyo3(signature = (key, item))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListContainsItemResponse]"
@@ -1886,6 +2291,7 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Removes a specific item from the list identified by `key`.
     #[pyo3(signature = (key, item))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_list_item<'py>(
@@ -1903,6 +2309,7 @@ impl KvStoreApiClient {
         })
     }
 
+    /// Removes a list and all of its items by key.
     #[pyo3(signature = (key))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn delete_list<'py>(&self, py: Python<'py>, key: String) -> PyResult<Bound<'py, PyAny>> {
@@ -2023,6 +2430,29 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::TeamMessageData>()?;
     m.add_class::<core::admin::RemoveTeamMemberResponse>()?;
     m.add_class::<core::admin::ResendTeamInviteResponse>()?;
+    m.add_class::<core::admin::Pagination>()?;
+    m.add_class::<core::admin::GetEndpointSecurityResponse>()?;
+    m.add_class::<core::admin::BulkOperationResult>()?;
+    m.add_class::<core::admin::BulkUpdateEndpointStatusRequest>()?;
+    m.add_class::<core::admin::BulkUpdateEndpointStatusData>()?;
+    m.add_class::<core::admin::BulkUpdateEndpointStatusResponse>()?;
+    m.add_class::<core::admin::BulkTag>()?;
+    m.add_class::<core::admin::BulkAddTagRequest>()?;
+    m.add_class::<core::admin::BulkAddTagData>()?;
+    m.add_class::<core::admin::BulkAddTagResponse>()?;
+    m.add_class::<core::admin::BulkRemoveTagRequest>()?;
+    m.add_class::<core::admin::BulkRemoveTagData>()?;
+    m.add_class::<core::admin::BulkRemoveTagResponse>()?;
+    m.add_class::<core::admin::AccountTag>()?;
+    m.add_class::<core::admin::ListTagsData>()?;
+    m.add_class::<core::admin::ListTagsResponse>()?;
+    m.add_class::<core::admin::RenameTagRequest>()?;
+    m.add_class::<core::admin::RenameTagResponse>()?;
+    m.add_class::<core::admin::DeleteAccountTagData>()?;
+    m.add_class::<core::admin::DeleteAccountTagResponse>()?;
+    m.add_class::<core::admin::TagUsage>()?;
+    m.add_class::<core::admin::UsageByTagData>()?;
+    m.add_class::<core::admin::GetUsageByTagResponse>()?;
     m.add_class::<core::HttpConfig>()?;
     m.add_class::<core::AdminConfig>()?;
     m.add_class::<core::StreamsConfig>()?;

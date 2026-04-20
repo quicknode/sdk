@@ -1,16 +1,23 @@
 pub mod billing;
+pub mod bulk;
 pub mod chains;
 pub mod endpoint_metrics;
 pub mod endpoint_rate_limits;
 pub mod endpoint_security;
 pub mod endpoints;
 pub mod logs;
+pub mod tags;
 pub mod teams;
 pub mod usage;
 
 pub use billing::{
     Invoice, InvoiceLine, ListInvoicesData, ListInvoicesResponse, ListPaymentsData,
     ListPaymentsResponse, Payment,
+};
+pub use bulk::{
+    BulkAddTagData, BulkAddTagRequest, BulkAddTagResponse, BulkOperationResult, BulkRemoveTagData,
+    BulkRemoveTagRequest, BulkRemoveTagResponse, BulkTag, BulkUpdateEndpointStatusData,
+    BulkUpdateEndpointStatusRequest, BulkUpdateEndpointStatusResponse,
 };
 pub use chains::{Chain, ChainNetwork, ListChainsResponse};
 pub use endpoint_metrics::{
@@ -34,11 +41,16 @@ pub use endpoints::{
     CreateEndpointRequest, CreateEndpointResponse, CreateTagRequest, Endpoint, EndpointDomainMask,
     EndpointIp, EndpointIpCustomHeaderOption, EndpointJwt, EndpointRateLimits, EndpointReferrer,
     EndpointRequestFilter, EndpointSecurity, EndpointSecurityOptions, EndpointTag, EndpointToken,
-    GetEndpointsRequest, GetEndpointsResponse, ShowEndpointResponse, SingleEndpoint,
-    UpdateEndpointRequest, UpdateEndpointStatusRequest, UpdateEndpointStatusResponse,
+    GetEndpointSecurityResponse, GetEndpointsRequest, GetEndpointsResponse, Pagination,
+    ShowEndpointResponse, SingleEndpoint, UpdateEndpointRequest, UpdateEndpointStatusRequest,
+    UpdateEndpointStatusResponse,
 };
 pub use logs::{
     EndpointLog, GetEndpointLogsRequest, GetEndpointLogsResponse, GetLogDetailsResponse, LogDetails,
+};
+pub use tags::{
+    AccountTag, DeleteAccountTagData, DeleteAccountTagResponse, ListTagsData, ListTagsResponse,
+    RenameTagRequest, RenameTagResponse,
 };
 pub use teams::{
     CreateTeamData, CreateTeamRequest, CreateTeamResponse, DeleteTeamData, DeleteTeamResponse,
@@ -50,8 +62,9 @@ pub use teams::{
 
 pub use usage::{
     ChainUsage, EndpointUsage, GetUsageByChainResponse, GetUsageByEndpointResponse,
-    GetUsageByMethodResponse, GetUsageRequest, GetUsageResponse, MethodUsage, UsageByChainData,
-    UsageByEndpointData, UsageByMethodData, UsageData,
+    GetUsageByMethodResponse, GetUsageByTagResponse, GetUsageRequest, GetUsageResponse,
+    MethodUsage, TagUsage, UsageByChainData, UsageByEndpointData, UsageByMethodData,
+    UsageByTagData, UsageData,
 };
 
 use crate::{config::AdminConfig, errors::SdkError, SdkConfig};
@@ -75,6 +88,8 @@ impl ResolvedAdminConfig {
     }
 }
 
+/// Client for the QuickNode Admin API. Manage endpoints, tags, teams, billing,
+/// usage/metrics, security, and rate limits on the account.
 #[derive(Debug, Clone)]
 pub struct AdminApiClient {
     config: SdkConfig,
@@ -85,16 +100,25 @@ impl AdminApiClient {
         Self { config }
     }
 
+    /// Returns a paginated list of endpoints on the account. Supports searching
+    /// by subdomain or label, filtering by networks, statuses, labels, and
+    /// tags, and sorting. The response includes endpoint metadata (id, label,
+    /// status, chain/network, HTTP and WebSocket URLs, tags) plus
+    /// total/limit/offset pagination info.
     pub async fn get_endpoints(
         &self,
         params: &GetEndpointsRequest,
     ) -> Result<GetEndpointsResponse, SdkError> {
         let url = self.config.admin().base_url.join("endpoints")?;
+        // Build query manually: serde_urlencoded (used by reqwest's .query())
+        // rejects Vec<T> fields, but the API expects array params like
+        // networks[]=mainnet for the filter/list query string.
+        let query = endpoints_query(params);
         let resp = self
             .config
             .http_client()
             .get(url)
-            .query(params)
+            .query(&query)
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -108,6 +132,10 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a new endpoint for a given blockchain and network. Requires
+    /// `chain` and `network`; returns the new endpoint with its HTTP and
+    /// WebSocket URLs, default security configuration (tokens, JWTs, IPs,
+    /// domain masks, CORS), and rate limits.
     pub async fn create_endpoint(
         &self,
         params: &CreateEndpointRequest,
@@ -131,6 +159,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns details for a specific endpoint by ID.
     pub async fn show_endpoint(&self, id: &str) -> Result<ShowEndpointResponse, SdkError> {
         let url = self
             .config
@@ -154,6 +183,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates editable fields on an endpoint (e.g. its label). Returns a
+    /// boolean indicating whether the update succeeded.
     pub async fn update_endpoint(
         &self,
         id: &str,
@@ -182,6 +213,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Archives an endpoint. The API uses `DELETE` but the effect is archival
+    /// rather than permanent deletion.
     pub async fn archive_endpoint(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -205,6 +238,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Pauses or unpauses an endpoint by setting its status to `active` or
+    /// `paused`.
     pub async fn update_endpoint_status(
         &self,
         id: &str,
@@ -233,6 +268,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a new tag on a specific endpoint from a label. Returns the new
+    /// tag with its id, account info, and timestamps.
     pub async fn create_tag(&self, id: &str, params: &CreateTagRequest) -> Result<(), SdkError> {
         let url = self
             .config
@@ -257,6 +294,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a tag from a specific endpoint by tag id.
     pub async fn delete_tag(&self, id: &str, tag_id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -280,6 +318,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Returns all teams on the account. Each team includes its id, name,
+    /// member count, and member details (roles, contact info, account status).
     pub async fn list_teams(&self) -> Result<ListTeamsResponse, SdkError> {
         let url = self.config.admin().base_url.join("teams")?;
         let resp = self
@@ -299,6 +339,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a new team. Requires a `name`; returns the new team with its
+    /// id, name, default role, and member count.
     pub async fn create_team(
         &self,
         params: &CreateTeamRequest,
@@ -322,6 +364,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns a specific team by id, including active members with their
+    /// roles and contact info plus any pending invites.
     pub async fn get_team(&self, id: i64) -> Result<GetTeamResponse, SdkError> {
         let url = self
             .config
@@ -345,6 +389,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Deletes a team by id. The team must have no members before it can be
+    /// deleted.
     pub async fn delete_team(&self, id: i64) -> Result<DeleteTeamResponse, SdkError> {
         let url = self
             .config
@@ -368,6 +414,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the endpoints accessible to a given team. Each entry includes
+    /// the endpoint id, subdomain, chain, and network.
     pub async fn list_team_endpoints(
         &self,
         id: i64,
@@ -394,6 +442,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Assigns or unassigns endpoints for a team. Pass an array of endpoint ids
+    /// to set the team's accessible endpoints; pass an empty array to remove
+    /// all associations.
     pub async fn update_team_endpoints(
         &self,
         id: i64,
@@ -422,6 +473,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Invites a user to a team by email. For new users, `full_name` and
+    /// `role` (`admin`, `viewer`, or `billing`) are also required. Returns the
+    /// invited user's profile and invitation status.
     pub async fn invite_team_member(
         &self,
         id: i64,
@@ -450,6 +504,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes a user from a team by team id and user id.
     pub async fn remove_team_member(
         &self,
         id: i64,
@@ -479,6 +534,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Resends the invitation email to a pending team member, identified by
+    /// team id and user id.
     pub async fn resend_team_invite(
         &self,
         id: i64,
@@ -506,6 +563,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns account RPC usage totals for an optional time range. The
+    /// response includes `credits_used`, `credits_remaining`, the account
+    /// `limit`, any `overages`, and the queried time window.
     pub async fn get_usage(&self, params: &GetUsageRequest) -> Result<GetUsageResponse, SdkError> {
         let url = self.config.admin().base_url.join("usage/rpc")?;
         let resp = self
@@ -526,6 +586,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns RPC usage broken down per endpoint over an optional time range.
+    /// Each entry includes endpoint metadata, aggregate `credits_used` and
+    /// `requests`, and a per-method credit breakdown.
     pub async fn get_usage_by_endpoint(
         &self,
         params: &GetUsageRequest,
@@ -549,6 +612,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns RPC usage grouped by method over an optional time range. Each
+    /// entry includes the method name, credits consumed, and archival status.
+    /// Ranges longer than one week are rounded to midnight UTC.
     pub async fn get_usage_by_method(
         &self,
         params: &GetUsageRequest,
@@ -572,6 +638,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns RPC usage grouped by chain over an optional time range. Each
+    /// entry includes the chain and its credit consumption.
     pub async fn get_usage_by_chain(
         &self,
         params: &GetUsageRequest,
@@ -595,6 +663,10 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns activity logs for a specific endpoint. Supports filtering by
+    /// timestamp range and pagination. Each log entry includes timestamp,
+    /// HTTP method, network, status code, and error data; full request/response
+    /// bodies can be included when requested.
     pub async fn get_endpoint_logs(
         &self,
         id: &str,
@@ -623,6 +695,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the raw request and response payloads for a specific log entry
+    /// on an endpoint, identified by request UUID. Both payloads are
+    /// JSON-encoded strings and are truncated at 2KB.
     pub async fn get_log_details(
         &self,
         id: &str,
@@ -651,6 +726,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the security options for an endpoint — an object of security
+    /// feature toggles with their current enabled/disabled status.
     pub async fn get_security_options(
         &self,
         id: &str,
@@ -677,6 +754,10 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates which security features are enabled on an endpoint. Each option
+    /// in the submitted object can be toggled `enabled` or `disabled` —
+    /// examples include token auth, JWT validation, IP restrictions, CORS,
+    /// HSTS, referrer validation, and domain masking.
     pub async fn update_security_options(
         &self,
         id: &str,
@@ -705,6 +786,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Generates a new authentication token for an endpoint.
     pub async fn create_token(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -728,6 +810,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Revokes a token on an endpoint by token id.
     pub async fn delete_token(
         &self,
         id: &str,
@@ -755,6 +838,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Adds a referrer to an endpoint's security settings, specifying which
+    /// external URL or domain is permitted to call the endpoint.
     pub async fn create_referrer(
         &self,
         id: &str,
@@ -783,6 +868,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a referrer from an endpoint's security settings by referrer id.
     pub async fn delete_referrer(
         &self,
         id: &str,
@@ -809,6 +895,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Adds an IP address to an endpoint's security whitelist.
     pub async fn create_ip(&self, id: &str, params: &CreateIpRequest) -> Result<(), SdkError> {
         let url = self
             .config
@@ -833,6 +920,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes an IP address from an endpoint's security whitelist by ip id.
     pub async fn delete_ip(&self, id: &str, ip_id: &str) -> Result<DeleteBoolResponse, SdkError> {
         let url = self
             .config
@@ -856,6 +944,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Adds a domain mask to an endpoint — a custom domain used to hide the
+    /// endpoint's QuickNode URL so requests can be routed through your own
+    /// domain.
     pub async fn create_domain_mask(
         &self,
         id: &str,
@@ -884,6 +975,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a domain mask from an endpoint by domain mask id.
     pub async fn delete_domain_mask(
         &self,
         id: &str,
@@ -910,6 +1002,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a new JWT for endpoint authentication. Accepts a public key,
+    /// key id (`kid`), and token name.
     pub async fn create_jwt(&self, id: &str, params: &CreateJwtRequest) -> Result<(), SdkError> {
         let url = self
             .config
@@ -934,6 +1028,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a JWT from an endpoint's security configuration by jwt id,
+    /// revoking its access.
     pub async fn delete_jwt(&self, id: &str, jwt_id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -957,6 +1053,9 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Creates a request filter on an endpoint — a method whitelist that
+    /// restricts which RPC methods may be called. Accepts an array of method
+    /// names; other methods are blocked.
     pub async fn create_request_filter(
         &self,
         id: &str,
@@ -985,6 +1084,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates an existing request filter on an endpoint, replacing the
+    /// whitelisted method list.
     pub async fn update_request_filter(
         &self,
         id: &str,
@@ -1013,6 +1114,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a request filter from an endpoint's security configuration by
+    /// request filter id.
     pub async fn delete_request_filter(
         &self,
         id: &str,
@@ -1039,6 +1142,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Enables multichain functionality on an endpoint, allowing a single
+    /// endpoint to serve multiple chains.
     pub async fn enable_multichain(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -1062,6 +1167,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Disables multichain functionality on an endpoint.
     pub async fn disable_multichain(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -1085,6 +1191,10 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Sets the custom HTTP header used to identify the client IP for an
+    /// endpoint (for example, `X-Forwarded-For`). This header is used by
+    /// IP-based security features to resolve the real client address when
+    /// requests are proxied.
     pub async fn create_or_update_ip_custom_header(
         &self,
         id: &str,
@@ -1113,6 +1223,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes the custom IP header configuration from an endpoint.
     pub async fn delete_ip_custom_header(&self, id: &str) -> Result<DeleteBoolResponse, SdkError> {
         let url = self
             .config
@@ -1136,6 +1247,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the method rate limits configured on an endpoint, including
+    /// each limiter's interval, methods, rate, and status.
     pub async fn get_method_rate_limits(
         &self,
         id: &str,
@@ -1162,6 +1275,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a per-method rate limit on an endpoint. A method rate limit
+    /// caps specific RPC methods rather than the endpoint as a whole, defined
+    /// by an `interval` (e.g. `second`), the target `methods`, and a `rate`.
     pub async fn create_method_rate_limit(
         &self,
         id: &str,
@@ -1190,6 +1306,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates an existing method rate limit on an endpoint. Accepts the
+    /// methods to apply the limit to, the desired `status`, and the `rate`.
     pub async fn update_method_rate_limit(
         &self,
         id: &str,
@@ -1218,6 +1336,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes a method rate limit from an endpoint by method rate limit id.
     pub async fn delete_method_rate_limit(
         &self,
         id: &str,
@@ -1244,6 +1363,9 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Updates the overall rate limits on an endpoint. Accepts `rps`
+    /// (requests per second), `rpm` (requests per minute), and `rpd` (requests
+    /// per day).
     pub async fn update_rate_limits(
         &self,
         id: &str,
@@ -1272,6 +1394,9 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Returns time-series metrics for a specific endpoint. Requires a
+    /// `period` (`hour`, `day`, `week`, or `month`) and a metric type such as
+    /// `method_calls_over_time` or `response_status_breakdown`.
     pub async fn get_endpoint_metrics(
         &self,
         id: &str,
@@ -1300,6 +1425,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns aggregated metrics across all endpoints on the account. Accepts
+    /// a `period` (`hour`, `day`, `week`, or `month`) and a metric type such
+    /// as `method_calls_over_time` or `credits_over_time`.
     pub async fn get_account_metrics(
         &self,
         params: &GetAccountMetricsRequest,
@@ -1323,6 +1451,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns all chains supported by QuickNode along with their networks.
+    /// Each entry includes the chain slug and its network slugs and names.
     pub async fn list_chains(&self) -> Result<ListChainsResponse, SdkError> {
         let url = self.config.admin().base_url.join("chains")?;
         let resp = self
@@ -1342,6 +1472,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the account's invoices, including id, status, billing reason,
+    /// amounts due and paid, line items with descriptions and billing periods,
+    /// and creation timestamps.
     pub async fn list_invoices(&self) -> Result<ListInvoicesResponse, SdkError> {
         let url = self.config.admin().base_url.join("billing/invoices")?;
         let resp = self
@@ -1361,6 +1494,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns all payments on the account, including amount, status, card
+    /// last-four, timestamp, currency, and marketplace spending.
     pub async fn list_payments(&self) -> Result<ListPaymentsResponse, SdkError> {
         let url = self.config.admin().base_url.join("billing/payments")?;
         let resp = self
@@ -1379,6 +1514,286 @@ impl AdminApiClient {
         }
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
+
+    /// Pauses or unpauses multiple endpoints in a single call. Accepts an
+    /// array of endpoint ids and a target status (`active` or `paused`);
+    /// returns per-endpoint success/failure results plus totals.
+    pub async fn bulk_update_endpoint_status(
+        &self,
+        params: &BulkUpdateEndpointStatusRequest,
+    ) -> Result<BulkUpdateEndpointStatusResponse, SdkError> {
+        if params.ids.is_empty() {
+            return Err(SdkError::Config(
+                "bulk_update_endpoint_status requires at least one id".into(),
+            ));
+        }
+        let url = self.config.admin().base_url.join("endpoints/bulk/status")?;
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Applies a single tag label to multiple endpoints in one call. Returns
+    /// totals for affected endpoints, successes, and failures, plus the tag
+    /// that was applied.
+    pub async fn bulk_add_tag(
+        &self,
+        params: &BulkAddTagRequest,
+    ) -> Result<BulkAddTagResponse, SdkError> {
+        if params.ids.is_empty() {
+            return Err(SdkError::Config(
+                "bulk_add_tag requires at least one id".into(),
+            ));
+        }
+        let url = self.config.admin().base_url.join("endpoints/bulk/tags")?;
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Removes a tag from multiple endpoints in one call, identified by an
+    /// array of endpoint ids and a tag id.
+    pub async fn bulk_remove_tag(
+        &self,
+        params: &BulkRemoveTagRequest,
+    ) -> Result<BulkRemoveTagResponse, SdkError> {
+        // Empty ids on a DELETE-with-body is high blast radius: some proxies
+        // strip DELETE bodies, and an empty batch could be misinterpreted by
+        // the server. Fail fast client-side before firing the request.
+        if params.ids.is_empty() {
+            return Err(SdkError::Config(
+                "bulk_remove_tag requires at least one id".into(),
+            ));
+        }
+        let url = self.config.admin().base_url.join("endpoints/bulk/tags")?;
+        let resp = self
+            .config
+            .http_client()
+            .delete(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Returns all account-level tags, including tags with zero associated
+    /// endpoints. Each tag includes its id, label, and endpoint usage count.
+    pub async fn list_tags(&self) -> Result<ListTagsResponse, SdkError> {
+        let url = self.config.admin().base_url.join("endpoints/tags")?;
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Updates the label of an account tag. Because the tag is shared across
+    /// endpoints, all associated endpoints reflect the new label immediately.
+    pub async fn rename_tag(
+        &self,
+        id: i32,
+        params: &RenameTagRequest,
+    ) -> Result<RenameTagResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/tags/{}", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .patch(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    // Named delete_account_tag to avoid collision with the existing per-endpoint
+    // delete_tag(id, tag_id). OpenAPI reuses the deleteTag operationId for both.
+    /// Deletes an account-level tag. The tag must first be removed from all
+    /// endpoints before it can be deleted.
+    pub async fn delete_account_tag(&self, id: i32) -> Result<DeleteAccountTagResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/tags/{}", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .delete(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Returns RPC usage grouped by endpoint tag over an optional time range.
+    /// Each entry includes the tag id, label, credits consumed, and request
+    /// count.
+    pub async fn get_usage_by_tag(
+        &self,
+        params: &GetUsageRequest,
+    ) -> Result<GetUsageByTagResponse, SdkError> {
+        let url = self.config.admin().base_url.join("usage/rpc/by-tag")?;
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .query(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Returns the full security configuration for an endpoint in a single
+    /// call, without loading the entire endpoint object. The response includes
+    /// tokens, JWTs, referrers, domain masks, IPs, and a security options
+    /// object describing which features are enabled.
+    pub async fn get_endpoint_security(
+        &self,
+        id: &str,
+    ) -> Result<GetEndpointSecurityResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/security", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+}
+
+fn endpoints_query(params: &GetEndpointsRequest) -> Vec<(&'static str, String)> {
+    let mut q: Vec<(&'static str, String)> = Vec::new();
+    if let Some(v) = params.limit {
+        q.push(("limit", v.to_string()));
+    }
+    if let Some(v) = params.offset {
+        q.push(("offset", v.to_string()));
+    }
+    if let Some(ref v) = params.search {
+        q.push(("search", v.clone()));
+    }
+    if let Some(ref v) = params.sort_by {
+        q.push(("sort_by", v.clone()));
+    }
+    if let Some(ref v) = params.sort_direction {
+        q.push(("sort_direction", v.clone()));
+    }
+    if let Some(ref list) = params.networks {
+        for item in list {
+            q.push(("networks[]", item.clone()));
+        }
+    }
+    if let Some(ref list) = params.statuses {
+        for item in list {
+            q.push(("statuses[]", item.clone()));
+        }
+    }
+    if let Some(ref list) = params.labels {
+        for item in list {
+            q.push(("labels[]", item.clone()));
+        }
+    }
+    if let Some(v) = params.dedicated {
+        q.push(("dedicated", v.to_string()));
+    }
+    if let Some(v) = params.is_flat_rate {
+        q.push(("is_flat_rate", v.to_string()));
+    }
+    if let Some(ref list) = params.tag_ids {
+        for item in list {
+            q.push(("tag_ids[]", item.to_string()));
+        }
+    }
+    if let Some(ref list) = params.tag_labels {
+        for item in list {
+            q.push(("tag_labels[]", item.clone()));
+        }
+    }
+    q
 }
 
 #[cfg(test)]
@@ -1413,14 +1828,23 @@ mod tests {
                 "data": [
                     {
                         "id": "abc123",
+                        "name": "aged-intensive-patron",
                         "label": "My Endpoint",
+                        "status": "active",
                         "chain": "ethereum",
                         "network": "mainnet",
+                        "is_dedicated": false,
+                        "is_flat_rate": true,
                         "http_url": "https://example.quicknode.pro/abc123",
                         "wss_url": null,
                         "tags": []
                     }
                 ],
+                "pagination": {
+                    "total": 1,
+                    "limit": 20,
+                    "offset": 0
+                },
                 "error": null
             })))
             .mount(&server)
@@ -1435,7 +1859,45 @@ mod tests {
 
         assert_eq!(resp.data.len(), 1);
         assert_eq!(resp.data[0].id, "abc123");
+        assert_eq!(resp.data[0].name, "aged-intensive-patron");
+        assert_eq!(resp.data[0].status, "active");
         assert_eq!(resp.data[0].chain, "ethereum");
+        assert!(!resp.data[0].is_dedicated);
+        assert!(resp.data[0].is_flat_rate);
+        let pagination = resp.pagination.expect("pagination present");
+        assert_eq!(pagination.total, 1);
+        assert_eq!(pagination.limit, 20);
+        assert_eq!(pagination.offset, 0);
+    }
+
+    #[tokio::test]
+    async fn get_endpoints_sends_search_and_filter_params() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/endpoints"))
+            .and(query_param("search", "intensive"))
+            .and(query_param("networks[]", "mainnet"))
+            .and(query_param("statuses[]", "active"))
+            .and(query_param("dedicated", "true"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": [],
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = GetEndpointsRequest {
+            search: Some("intensive".to_string()),
+            networks: Some(vec!["mainnet".to_string()]),
+            statuses: Some(vec!["active".to_string()]),
+            dedicated: Some(true),
+            ..Default::default()
+        };
+        let resp = sdk.admin.get_endpoints(&params).await.unwrap();
+
+        assert_eq!(resp.data.len(), 0);
     }
 
     #[tokio::test]
@@ -2537,6 +2999,365 @@ mod tests {
         let sdk = make_sdk(format!("{}/", server.uri()));
         let resp = sdk.admin.resend_team_invite(1, 99).await.unwrap();
         assert!(resp.data.is_some());
+    }
+
+    #[tokio::test]
+    async fn bulk_update_endpoint_status_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/endpoints/bulk/status"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "total": 2,
+                    "updated_count": 2,
+                    "failed_count": 0,
+                    "results": [
+                        { "id": "a", "success": true },
+                        { "id": "b", "success": true }
+                    ]
+                }
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = BulkUpdateEndpointStatusRequest {
+            ids: vec!["a".to_string(), "b".to_string()],
+            status: "paused".to_string(),
+        };
+        let resp = sdk
+            .admin
+            .bulk_update_endpoint_status(&params)
+            .await
+            .unwrap();
+        let data = resp.data.expect("data present");
+        assert_eq!(data.total, 2);
+        assert_eq!(data.updated_count, 2);
+        assert_eq!(data.results.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn bulk_update_endpoint_status_api_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/endpoints/bulk/status"))
+            .respond_with(ResponseTemplate::new(400).set_body_string("bad request"))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = BulkUpdateEndpointStatusRequest {
+            ids: vec!["a".to_string()],
+            status: "paused".to_string(),
+        };
+        let err = sdk
+            .admin
+            .bulk_update_endpoint_status(&params)
+            .await
+            .unwrap_err();
+        match err {
+            SdkError::Api { status, .. } => assert_eq!(status.as_u16(), 400),
+            other => panic!("expected Api, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn bulk_add_tag_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/endpoints/bulk/tags"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "total": 1,
+                    "updated_count": 1,
+                    "failed_count": 0,
+                    "results": [{ "id": "a", "success": true }],
+                    "tag": { "tag_id": 7, "label": "prod" }
+                }
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = BulkAddTagRequest {
+            ids: vec!["a".to_string()],
+            label: "prod".to_string(),
+        };
+        let resp = sdk.admin.bulk_add_tag(&params).await.unwrap();
+        let data = resp.data.expect("data present");
+        assert_eq!(data.tag.tag_id, 7);
+        assert_eq!(data.tag.label, "prod");
+    }
+
+    #[tokio::test]
+    async fn bulk_remove_tag_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path("/endpoints/bulk/tags"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "total": 2,
+                    "updated_count": 2,
+                    "failed_count": 0,
+                    "results": [
+                        { "id": "a", "success": true },
+                        { "id": "b", "success": true }
+                    ]
+                }
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = BulkRemoveTagRequest {
+            ids: vec!["a".to_string(), "b".to_string()],
+            tag_id: 42,
+        };
+        let resp = sdk.admin.bulk_remove_tag(&params).await.unwrap();
+        assert_eq!(resp.data.expect("data").updated_count, 2);
+    }
+
+    #[test]
+    fn endpoint_token_debug_is_redacted() {
+        let t = EndpointToken {
+            id: "tok_1".to_string(),
+            token: "super-secret".to_string(),
+        };
+        let dbg = format!("{t:?}");
+        assert!(dbg.contains("tok_1"));
+        assert!(!dbg.contains("super-secret"));
+        assert!(dbg.contains("[redacted]"));
+    }
+
+    #[test]
+    fn endpoint_jwt_debug_redacts_public_key() {
+        let j = EndpointJwt {
+            id: "jwt_1".to_string(),
+            public_key: "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----".to_string(),
+            kid: "kid1".to_string(),
+            name: "myjwt".to_string(),
+        };
+        let dbg = format!("{j:?}");
+        assert!(dbg.contains("jwt_1"));
+        assert!(dbg.contains("kid1"));
+        assert!(!dbg.contains("BEGIN PUBLIC KEY"));
+        assert!(dbg.contains("[redacted]"));
+    }
+
+    #[tokio::test]
+    async fn bulk_methods_reject_empty_ids() {
+        // No MockServer: the guards must fail before any HTTP request fires.
+        let sdk = make_sdk("http://127.0.0.1:1/".to_string());
+
+        let err = sdk
+            .admin
+            .bulk_update_endpoint_status(&BulkUpdateEndpointStatusRequest {
+                ids: vec![],
+                status: "paused".to_string(),
+            })
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SdkError::Config(_)));
+
+        let err = sdk
+            .admin
+            .bulk_add_tag(&BulkAddTagRequest {
+                ids: vec![],
+                label: "x".to_string(),
+            })
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SdkError::Config(_)));
+
+        let err = sdk
+            .admin
+            .bulk_remove_tag(&BulkRemoveTagRequest {
+                ids: vec![],
+                tag_id: 1,
+            })
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SdkError::Config(_)));
+    }
+
+    #[tokio::test]
+    async fn list_tags_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/endpoints/tags"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "tags": [
+                        { "id": 1, "label": "prod", "usage_count": 3 },
+                        { "id": 2, "label": "staging", "usage_count": 0 }
+                    ]
+                },
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.admin.list_tags().await.unwrap();
+        let data = resp.data.expect("data present");
+        assert_eq!(data.tags.len(), 2);
+        assert_eq!(data.tags[0].label, "prod");
+        assert_eq!(data.tags[1].usage_count, 0);
+    }
+
+    #[tokio::test]
+    async fn list_tags_api_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/endpoints/tags"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("oops"))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk.admin.list_tags().await.unwrap_err();
+        match err {
+            SdkError::Api { status, .. } => assert_eq!(status.as_u16(), 500),
+            other => panic!("expected Api, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn rename_tag_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/endpoints/tags/7"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": { "id": 7, "label": "prod-v2", "usage_count": 3 },
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = RenameTagRequest {
+            label: "prod-v2".to_string(),
+        };
+        let resp = sdk.admin.rename_tag(7, &params).await.unwrap();
+        let tag = resp.data.expect("tag present");
+        assert_eq!(tag.id, 7);
+        assert_eq!(tag.label, "prod-v2");
+    }
+
+    #[tokio::test]
+    async fn delete_account_tag_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path("/endpoints/tags/7"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": { "success": true },
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.admin.delete_account_tag(7).await.unwrap();
+        assert!(resp.data.expect("data").success);
+    }
+
+    #[tokio::test]
+    async fn delete_account_tag_still_in_use() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path("/endpoints/tags/7"))
+            .respond_with(ResponseTemplate::new(400).set_body_string("tag still in use"))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk.admin.delete_account_tag(7).await.unwrap_err();
+        match err {
+            SdkError::Api { status, .. } => assert_eq!(status.as_u16(), 400),
+            other => panic!("expected Api, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn get_usage_by_tag_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/usage/rpc/by-tag"))
+            .and(query_param("start_time", "1700000000"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "tags": [
+                        { "tag_id": 1, "label": "prod", "credits_used": 1234, "requests": 10 },
+                        { "tag_id": null, "label": "untagged", "credits_used": 50, "requests": 2 }
+                    ],
+                    "start_time": 1700000000,
+                    "end_time": 1700003600
+                },
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = GetUsageRequest {
+            start_time: Some(1_700_000_000),
+            ..Default::default()
+        };
+        let resp = sdk.admin.get_usage_by_tag(&params).await.unwrap();
+        let data = resp.data.expect("data present");
+        assert_eq!(data.tags.len(), 2);
+        assert_eq!(data.tags[0].tag_id, Some(1));
+        assert_eq!(data.tags[1].tag_id, None);
+        assert_eq!(data.tags[1].label, "untagged");
+    }
+
+    #[tokio::test]
+    async fn get_endpoint_security_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/endpoints/abc123/security"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "options": { "tokens": true, "ips": false },
+                    "tokens": [{ "id": "tok_1", "token": "secret" }],
+                    "jwts": [],
+                    "referrers": [],
+                    "domain_masks": [],
+                    "ips": [],
+                    "request_filters": []
+                },
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.admin.get_endpoint_security("abc123").await.unwrap();
+        let data = resp.data.expect("data present");
+        let tokens = data.tokens.expect("tokens present");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].id, "tok_1");
+    }
+
+    #[tokio::test]
+    async fn get_endpoint_security_not_found() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/endpoints/missing/security"))
+            .respond_with(ResponseTemplate::new(404).set_body_string("not found"))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk
+            .admin
+            .get_endpoint_security("missing")
+            .await
+            .unwrap_err();
+        match err {
+            SdkError::Api { status, .. } => assert_eq!(status.as_u16(), 404),
+            other => panic!("expected Api, got {:?}", other),
+        }
     }
 
     #[test]

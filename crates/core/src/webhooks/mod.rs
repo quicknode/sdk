@@ -32,6 +32,8 @@ impl ResolvedWebhooksConfig {
 
 // ── Client ─────────────────────────────────────────────────────────────────
 
+/// Client for the QuickNode Webhooks REST API. Create webhooks from filter
+/// templates, manage their lifecycle, and update their destinations.
 #[derive(Debug, Clone)]
 pub struct WebhooksApiClient {
     config: SdkConfig,
@@ -42,6 +44,11 @@ impl WebhooksApiClient {
         Self { config }
     }
 
+    /// Returns a paginated list of webhooks on the account. Each entry includes
+    /// the webhook's identifier, creation timestamp, name, network, notification
+    /// email, destination configuration (URL, security token, compression),
+    /// current status, and any associated template. The response also includes
+    /// a `pageInfo` object with the applied limit, offset, and total count.
     pub async fn list_webhooks(
         &self,
         params: &GetWebhooksParams,
@@ -71,6 +78,8 @@ impl WebhooksApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes every webhook on the account. Destructive and takes no
+    /// parameters.
     pub async fn delete_all_webhooks(&self) -> Result<(), SdkError> {
         let url = self.config.webhooks().base_url.join("webhooks")?;
         let resp = self
@@ -88,6 +97,11 @@ impl WebhooksApiClient {
         Ok(())
     }
 
+    /// Fetches a single webhook's full configuration and status by ID. Returns
+    /// creation timestamp, name, network, notification email, destination
+    /// configuration (URL, security token, compression), the sequence number
+    /// of the last successfully delivered block, the current status, and the
+    /// associated template with its arguments.
     pub async fn get_webhook(&self, id: &str) -> Result<Webhook, SdkError> {
         let url = self
             .config
@@ -109,6 +123,12 @@ impl WebhooksApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Modifies an existing webhook's configuration. Supports updating the
+    /// webhook's name, notification email, and destination attributes (URL,
+    /// security token, and compression — `none` or `gzip`). All fields are
+    /// optional, so partial updates are supported; if the security token is
+    /// omitted on update, one is generated automatically. Returns the
+    /// webhook's full updated configuration.
     pub async fn update_webhook(
         &self,
         id: &str,
@@ -135,6 +155,7 @@ impl WebhooksApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Permanently removes a single webhook by ID.
     pub async fn delete_webhook(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -156,6 +177,7 @@ impl WebhooksApiClient {
         Ok(())
     }
 
+    /// Pauses a webhook by ID so it stops delivering events until reactivated.
     pub async fn pause_webhook(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -177,6 +199,10 @@ impl WebhooksApiClient {
         Ok(())
     }
 
+    /// Activates a previously created or paused webhook so it begins (or
+    /// resumes) delivering events. `start_from` determines where processing
+    /// resumes: `Latest` begins from the newest available block; other values
+    /// replay from an earlier point.
     pub async fn activate_webhook(
         &self,
         id: &str,
@@ -203,6 +229,8 @@ impl WebhooksApiClient {
         Ok(())
     }
 
+    /// Returns the total number of enabled webhooks currently configured on
+    /// the account.
     pub async fn get_enabled_count(&self) -> Result<WebhookEnabledCountResponse, SdkError> {
         let url = self
             .config
@@ -224,6 +252,13 @@ impl WebhooksApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a new webhook from a predefined filter template. Requires a
+    /// descriptive name, a target blockchain network, and destination
+    /// attributes (URL, optional security token — auto-generated when omitted,
+    /// and optional compression — `gzip` or `none`). `template_args` carries
+    /// template-specific configuration such as wallet addresses or contract
+    /// filters. An optional `notification_email` receives alerts if the
+    /// webhook terminates.
     pub async fn create_webhook_from_template(
         &self,
         params: &CreateWebhookFromTemplateParams,
@@ -263,6 +298,12 @@ impl WebhooksApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates an existing template-backed webhook, modifying its template
+    /// arguments and optionally its name, notification email, and destination
+    /// attributes (URL, security token, compression — `none` or `gzip`).
+    /// All optional fields support partial updates; a security token is
+    /// generated automatically if not provided. Templates cover EVM chains,
+    /// Solana, Bitcoin, XRPL, Hyperliquid, and Stellar.
     pub async fn update_webhook_template(
         &self,
         webhook_id: &str,

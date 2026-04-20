@@ -8,61 +8,85 @@ use pyo3::pyclass;
 use pyo3_stub_gen::derive::gen_stub_pyclass;
 use serde::{Deserialize, Serialize};
 
+/// Parameters for `get_endpoint_logs`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetEndpointLogsRequest {
+    /// Start of the query window (timestamp).
     pub from: String,
+    /// End of the query window (timestamp).
     pub to: String,
+    /// When true, include full request/response payloads in each entry.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_details: Option<bool>,
+    /// Maximum number of log entries returned.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
+    /// Cursor returned by a previous page; pass to fetch the next page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_at: Option<String>,
 }
 
+/// Raw request/response payloads attached to a log entry.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogDetails {
+    /// JSON-encoded request body (truncated at 2KB).
     pub request: Option<String>,
+    /// JSON-encoded response body (truncated at 2KB).
     pub response: Option<String>,
 }
 
+/// A single endpoint log entry.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointLog {
+    /// Time the request was received.
     pub timestamp: String,
+    /// RPC method called (e.g. `eth_blockNumber`).
     pub method: Option<String>,
+    /// Network the request was routed to.
     pub network: Option<String>,
+    /// HTTP verb (e.g. `POST`).
     pub http_method: Option<String>,
+    /// Response HTTP status code.
     pub status: Option<i32>,
+    /// JSON-RPC error code, when present.
     pub error_code: Option<i64>,
+    /// Request URL.
     pub url: Option<String>,
+    /// Request UUID used to fetch full log details.
     pub request_id: Option<String>,
+    /// Full payloads, included when requested.
     pub details: Option<LogDetails>,
 }
 
+/// Response from `get_endpoint_logs`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetEndpointLogsResponse {
+    /// Log entries on the current page.
     #[serde(default)]
     pub data: Vec<EndpointLog>,
+    /// Cursor for the next page; `None` when there are no more entries.
     pub next_at: Option<String>,
 }
 
+/// Response from `get_log_details`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetLogDetailsResponse {
+    /// Raw request and response payloads for the log entry.
     pub data: Option<LogDetails>,
 }

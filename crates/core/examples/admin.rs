@@ -6,12 +6,28 @@ async fn main() {
     let config = SdkFullConfig::from_env().expect("Config from env failed");
     let qn = QuickNodeSdk::new(&config).expect("sdk failed to initialize");
 
-    let params = GetEndpointsRequest::builder().limit(20).build();
+    let params = GetEndpointsRequest::builder()
+        .limit(20)
+        .sort_by("created_at".to_string())
+        .sort_direction("desc".to_string())
+        .build();
 
     match qn.admin.get_endpoints(&params).await {
         Ok(resp) => {
+            if let Some(p) = &resp.pagination {
+                println!(
+                    "{} of {} (offset {}, limit {})",
+                    resp.data.len(),
+                    p.total,
+                    p.offset,
+                    p.limit
+                );
+            }
             for ep in &resp.data {
-                println!("{} | {:?} | {}", ep.id, ep.label, ep.chain);
+                println!(
+                    "{} | {} | {} | {} | dedicated={} flat={}",
+                    ep.id, ep.name, ep.status, ep.chain, ep.is_dedicated, ep.is_flat_rate
+                );
             }
         }
         Err(e) => eprintln!("Error: {e}"),

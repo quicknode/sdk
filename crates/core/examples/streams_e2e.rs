@@ -62,6 +62,14 @@ async fn main() {
             post_timeout_sec: 10,
             security_token: None,
         }))
+        .extra_destinations(vec![DestinationAttributes::Webhook(WebhookAttributes {
+            url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef".to_string(),
+            compression: "none".to_string(),
+            max_retry: 3,
+            retry_interval_sec: 1,
+            post_timeout_sec: 10,
+            security_token: None,
+        })])
         .fix_block_reorgs(0)
         .keep_distance_from_tip(0)
         .elastic_batch_enabled(true)
