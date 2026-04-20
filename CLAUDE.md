@@ -148,6 +148,9 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 - Library constructors should return `Result`, not panic — use `.unwrap()` or `.expect()` only in examples and tests, never in library code
 - Validate numeric config values before casting between signed/unsigned types (e.g., check `>= 0` before `i64 as u64`)
 
+### Backwards Compatability
+- If the release is still an 0.1.z release, we don't need to worry about backwards compatability as this is a greenfield project
+
 ## Code style
 
 ### Imports
