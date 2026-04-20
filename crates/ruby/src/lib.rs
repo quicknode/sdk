@@ -119,6 +119,16 @@ fn hash_get_vec_string(h: &RHash, key: &str) -> Result<Option<Vec<String>>, Erro
     }
 }
 
+fn hash_get_vec_i32(h: &RHash, key: &str) -> Result<Option<Vec<i32>>, Error> {
+    let r = ruby();
+    match h.get(r.to_symbol(key)) {
+        Some(v) if !v.is_nil() => Vec::<i32>::try_convert(v)
+            .map(Some)
+            .map_err(|e| Error::new(r.exception_type_error(), format!("{key}: {e}"))),
+        _ => Ok(None),
+    }
+}
+
 fn hash_require_vec_string(h: &RHash, key: &str) -> Result<Vec<String>, Error> {
     hash_get_vec_string(h, key)?.ok_or_else(|| {
         Error::new(
@@ -235,12 +245,36 @@ pub struct AdminApiClient {
 #[allow(clippy::needless_pass_by_value)]
 impl AdminApiClient {
     fn get_endpoints(&self, opts: RHash) -> Result<String, Error> {
-        validate_keys(&opts, &["limit", "offset", "tag_labels"])?;
+        validate_keys(
+            &opts,
+            &[
+                "limit",
+                "offset",
+                "search",
+                "sort_by",
+                "sort_direction",
+                "networks",
+                "statuses",
+                "labels",
+                "dedicated",
+                "is_flat_rate",
+                "tag_ids",
+                "tag_labels",
+            ],
+        )?;
         let client = self.inner.clone();
         let params = core::admin::GetEndpointsRequest {
             limit: hash_get_i32(&opts, "limit")?,
             offset: hash_get_i32(&opts, "offset")?,
-            tag_ids: None,
+            search: hash_get_string(&opts, "search")?,
+            sort_by: hash_get_string(&opts, "sort_by")?,
+            sort_direction: hash_get_string(&opts, "sort_direction")?,
+            networks: hash_get_vec_string(&opts, "networks")?,
+            statuses: hash_get_vec_string(&opts, "statuses")?,
+            labels: hash_get_vec_string(&opts, "labels")?,
+            dedicated: hash_get_bool(&opts, "dedicated")?,
+            is_flat_rate: hash_get_bool(&opts, "is_flat_rate")?,
+            tag_ids: hash_get_vec_i32(&opts, "tag_ids")?,
             tag_labels: hash_get_vec_string(&opts, "tag_labels")?,
         };
         runtime()
@@ -876,6 +910,99 @@ impl AdminApiClient {
         let user_id = hash_require_i64(&opts, "user_id")?;
         runtime()
             .block_on(client.resend_team_invite(id, user_id))
+            .map_err(map_err)
+            .and_then(to_json)
+    }
+
+    fn bulk_update_endpoint_status(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["ids", "status"])?;
+        let client = self.inner.clone();
+        let params = core::admin::BulkUpdateEndpointStatusRequest {
+            ids: hash_require_vec_string(&opts, "ids")?,
+            status: hash_require_string(&opts, "status")?,
+        };
+        runtime()
+            .block_on(client.bulk_update_endpoint_status(&params))
+            .map_err(map_err)
+            .and_then(to_json)
+    }
+
+    fn bulk_add_tag(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["ids", "label"])?;
+        let client = self.inner.clone();
+        let params = core::admin::BulkAddTagRequest {
+            ids: hash_require_vec_string(&opts, "ids")?,
+            label: hash_require_string(&opts, "label")?,
+        };
+        runtime()
+            .block_on(client.bulk_add_tag(&params))
+            .map_err(map_err)
+            .and_then(to_json)
+    }
+
+    fn bulk_remove_tag(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["ids", "tag_id"])?;
+        let client = self.inner.clone();
+        let params = core::admin::BulkRemoveTagRequest {
+            ids: hash_require_vec_string(&opts, "ids")?,
+            tag_id: hash_require_i32(&opts, "tag_id")?,
+        };
+        runtime()
+            .block_on(client.bulk_remove_tag(&params))
+            .map_err(map_err)
+            .and_then(to_json)
+    }
+
+    fn list_tags(&self) -> Result<String, Error> {
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.list_tags())
+            .map_err(map_err)
+            .and_then(to_json)
+    }
+
+    fn rename_tag(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id", "label"])?;
+        let client = self.inner.clone();
+        let id = hash_require_i32(&opts, "id")?;
+        let params = core::admin::RenameTagRequest {
+            label: hash_require_string(&opts, "label")?,
+        };
+        runtime()
+            .block_on(client.rename_tag(id, &params))
+            .map_err(map_err)
+            .and_then(to_json)
+    }
+
+    fn delete_account_tag(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
+        let client = self.inner.clone();
+        let id = hash_require_i32(&opts, "id")?;
+        runtime()
+            .block_on(client.delete_account_tag(id))
+            .map_err(map_err)
+            .and_then(to_json)
+    }
+
+    fn get_usage_by_tag(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["start_time", "end_time"])?;
+        let client = self.inner.clone();
+        let params = core::admin::GetUsageRequest {
+            start_time: hash_get_i64(&opts, "start_time")?,
+            end_time: hash_get_i64(&opts, "end_time")?,
+        };
+        runtime()
+            .block_on(client.get_usage_by_tag(&params))
+            .map_err(map_err)
+            .and_then(to_json)
+    }
+
+    fn get_endpoint_security(&self, opts: RHash) -> Result<String, Error> {
+        validate_keys(&opts, &["id"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(client.get_endpoint_security(&id))
             .map_err(map_err)
             .and_then(to_json)
     }
@@ -1793,6 +1920,29 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     admin.define_method(
         "resend_team_invite",
         method!(AdminApiClient::resend_team_invite, 1),
+    )?;
+    admin.define_method(
+        "bulk_update_endpoint_status",
+        method!(AdminApiClient::bulk_update_endpoint_status, 1),
+    )?;
+    admin.define_method("bulk_add_tag", method!(AdminApiClient::bulk_add_tag, 1))?;
+    admin.define_method(
+        "bulk_remove_tag",
+        method!(AdminApiClient::bulk_remove_tag, 1),
+    )?;
+    admin.define_method("list_tags", method!(AdminApiClient::list_tags, 0))?;
+    admin.define_method("rename_tag", method!(AdminApiClient::rename_tag, 1))?;
+    admin.define_method(
+        "delete_account_tag",
+        method!(AdminApiClient::delete_account_tag, 1),
+    )?;
+    admin.define_method(
+        "get_usage_by_tag",
+        method!(AdminApiClient::get_usage_by_tag, 1),
+    )?;
+    admin.define_method(
+        "get_endpoint_security",
+        method!(AdminApiClient::get_endpoint_security, 1),
     )?;
 
     // ── DestinationAttributes ─────────────────────────────────

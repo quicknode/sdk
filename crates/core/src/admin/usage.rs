@@ -138,3 +138,34 @@ pub struct GetUsageByChainResponse {
     pub data: Option<UsageByChainData>,
     pub error: Option<String>,
 }
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TagUsage {
+    pub tag_id: Option<i32>,
+    pub label: String,
+    pub credits_used: i64,
+    pub requests: i64,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsageByTagData {
+    #[serde(default)]
+    pub tags: Vec<TagUsage>,
+    pub start_time: Option<i64>,
+    pub end_time: Option<i64>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetUsageByTagResponse {
+    pub data: Option<UsageByTagData>,
+    pub error: Option<String>,
+}

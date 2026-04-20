@@ -19,6 +19,22 @@ pub struct GetEndpointsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub search: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_by: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_direction: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub networks: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub statuses: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub labels: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dedicated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_flat_rate: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tag_ids: Option<Vec<i32>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag_labels: Option<Vec<String>>,
@@ -31,7 +47,18 @@ pub struct GetEndpointsRequest {
 pub struct GetEndpointsResponse {
     #[serde(default)]
     pub data: Vec<Endpoint>,
+    pub pagination: Option<Pagination>,
     pub error: Option<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Pagination {
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
@@ -40,9 +67,13 @@ pub struct GetEndpointsResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Endpoint {
     pub id: String,
+    pub name: String,
     pub label: Option<String>,
+    pub status: String,
     pub chain: String,
     pub network: String,
+    pub is_dedicated: bool,
+    pub is_flat_rate: bool,
     pub http_url: String,
     pub wss_url: Option<String>,
     #[serde(default)]
@@ -151,21 +182,44 @@ pub struct EndpointIpCustomHeaderOption {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct EndpointToken {
     pub id: String,
     pub token: String,
 }
 
+// Manual Debug redacts `token` so accidental println!/tracing of an
+// EndpointSecurity response does not leak the raw RPC access token.
+impl std::fmt::Debug for EndpointToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EndpointToken")
+            .field("id", &self.id)
+            .field("token", &"[redacted]")
+            .finish()
+    }
+}
+
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct EndpointJwt {
     pub id: String,
     pub public_key: String,
     pub kid: String,
     pub name: String,
+}
+
+// Manual Debug redacts `public_key` — credential material per CLAUDE.md policy.
+impl std::fmt::Debug for EndpointJwt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EndpointJwt")
+            .field("id", &self.id)
+            .field("public_key", &"[redacted]")
+            .field("kid", &self.kid)
+            .field("name", &self.name)
+            .finish()
+    }
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
@@ -250,4 +304,13 @@ pub struct UpdateEndpointStatusResponse {
 pub struct CreateTagRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetEndpointSecurityResponse {
+    pub data: Option<EndpointSecurity>,
+    pub error: Option<String>,
 }

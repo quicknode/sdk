@@ -41,6 +41,57 @@ export interface ListPaymentsResponse {
 export interface ListPaymentsData {
   payments: Array<Payment>
 }
+export interface BulkUpdateEndpointStatusRequest {
+  ids: Array<string>
+  status: string
+}
+export interface BulkOperationResult {
+  id: string
+  success: boolean
+}
+export interface BulkUpdateEndpointStatusData {
+  total: number
+  updatedCount: number
+  failedCount: number
+  results: Array<BulkOperationResult>
+}
+export interface BulkUpdateEndpointStatusResponse {
+  data?: BulkUpdateEndpointStatusData
+  error?: string
+}
+export interface BulkAddTagRequest {
+  ids: Array<string>
+  label: string
+}
+export interface BulkTag {
+  tagId: number
+  label: string
+}
+export interface BulkAddTagData {
+  total: number
+  updatedCount: number
+  failedCount: number
+  results: Array<BulkOperationResult>
+  tag: BulkTag
+}
+export interface BulkAddTagResponse {
+  data?: BulkAddTagData
+  error?: string
+}
+export interface BulkRemoveTagRequest {
+  ids: Array<string>
+  tagId: number
+}
+export interface BulkRemoveTagData {
+  total: number
+  updatedCount: number
+  failedCount: number
+  results: Array<BulkOperationResult>
+}
+export interface BulkRemoveTagResponse {
+  data?: BulkRemoveTagData
+  error?: string
+}
 export interface ChainNetwork {
   slug: string
   name: string
@@ -188,18 +239,36 @@ export interface DeleteBoolResponse {
 export interface GetEndpointsRequest {
   limit?: number
   offset?: number
+  search?: string
+  sortBy?: string
+  sortDirection?: string
+  networks?: Array<string>
+  statuses?: Array<string>
+  labels?: Array<string>
+  dedicated?: boolean
+  isFlatRate?: boolean
   tagIds?: Array<number>
   tagLabels?: Array<string>
 }
 export interface GetEndpointsResponse {
   data: Array<Endpoint>
+  pagination?: Pagination
   error?: string
+}
+export interface Pagination {
+  total: number
+  limit: number
+  offset: number
 }
 export interface Endpoint {
   id: string
+  name: string
   label?: string
+  status: string
   chain: string
   network: string
+  isDedicated: boolean
+  isFlatRate: boolean
   httpUrl: string
   wssUrl?: string
   tags: Array<EndpointTag>
@@ -299,6 +368,10 @@ export interface UpdateEndpointStatusResponse {
 export interface CreateTagRequest {
   label?: string
 }
+export interface GetEndpointSecurityResponse {
+  data?: EndpointSecurity
+  error?: string
+}
 export interface GetEndpointLogsRequest {
   from: string
   to: string
@@ -327,6 +400,32 @@ export interface GetEndpointLogsResponse {
 }
 export interface GetLogDetailsResponse {
   data?: LogDetails
+}
+export interface AccountTag {
+  id: number
+  label: string
+  usageCount: number
+}
+export interface ListTagsData {
+  tags: Array<AccountTag>
+}
+export interface ListTagsResponse {
+  data?: ListTagsData
+  error?: string
+}
+export interface RenameTagRequest {
+  label: string
+}
+export interface RenameTagResponse {
+  data?: AccountTag
+  error?: string
+}
+export interface DeleteAccountTagData {
+  success: boolean
+}
+export interface DeleteAccountTagResponse {
+  data?: DeleteAccountTagData
+  error?: string
 }
 export interface TeamUser {
   id: number
@@ -485,6 +584,21 @@ export interface UsageByChainData {
 }
 export interface GetUsageByChainResponse {
   data?: UsageByChainData
+  error?: string
+}
+export interface TagUsage {
+  tagId?: number
+  label: string
+  creditsUsed: number
+  requests: number
+}
+export interface UsageByTagData {
+  tags: Array<TagUsage>
+  startTime?: number
+  endTime?: number
+}
+export interface GetUsageByTagResponse {
+  data?: UsageByTagData
   error?: string
 }
 export interface HttpConfig {
@@ -1023,6 +1137,14 @@ export declare class AdminApiClient {
   inviteTeamMember(id: number, params: InviteTeamMemberRequest): Promise<InviteTeamMemberResponse>
   removeTeamMember(id: number, userId: number, params?: RemoveTeamMemberRequest | undefined | null): Promise<RemoveTeamMemberResponse>
   resendTeamInvite(id: number, userId: number): Promise<ResendTeamInviteResponse>
+  bulkUpdateEndpointStatus(params: BulkUpdateEndpointStatusRequest): Promise<BulkUpdateEndpointStatusResponse>
+  bulkAddTag(params: BulkAddTagRequest): Promise<BulkAddTagResponse>
+  bulkRemoveTag(params: BulkRemoveTagRequest): Promise<BulkRemoveTagResponse>
+  listTags(): Promise<ListTagsResponse>
+  renameTag(id: number, params: RenameTagRequest): Promise<RenameTagResponse>
+  deleteAccountTag(id: number): Promise<DeleteAccountTagResponse>
+  getUsageByTag(params?: GetUsageRequest | undefined | null): Promise<GetUsageByTagResponse>
+  getEndpointSecurity(id: string): Promise<GetEndpointSecurityResponse>
 }
 export declare class StreamsApiClient {
   createStream(params: CreateStreamParamsNode): Promise<StreamNode>

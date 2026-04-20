@@ -1,12 +1,14 @@
 use sdk_core::{
     admin::{
+        BulkAddTagRequest, BulkRemoveTagRequest, BulkUpdateEndpointStatusRequest,
         CreateDomainMaskRequest, CreateEndpointRequest, CreateIpRequest, CreateJwtRequest,
         CreateMethodRateLimitRequest, CreateOrUpdateIpCustomHeaderRequest, CreateReferrerRequest,
         CreateRequestFilterRequest, CreateTagRequest, CreateTeamRequest, GetAccountMetricsRequest,
         GetEndpointLogsRequest, GetEndpointMetricsRequest, GetEndpointsRequest, GetUsageRequest,
-        InviteTeamMemberRequest, RateLimitSettings, SecurityOptionsUpdate, UpdateEndpointRequest,
-        UpdateEndpointStatusRequest, UpdateMethodRateLimitRequest, UpdateRateLimitsRequest,
-        UpdateRequestFilterRequest, UpdateSecurityOptionsRequest, UpdateTeamEndpointsRequest,
+        InviteTeamMemberRequest, RateLimitSettings, RenameTagRequest, SecurityOptionsUpdate,
+        UpdateEndpointRequest, UpdateEndpointStatusRequest, UpdateMethodRateLimitRequest,
+        UpdateRateLimitsRequest, UpdateRequestFilterRequest, UpdateSecurityOptionsRequest,
+        UpdateTeamEndpointsRequest,
     },
     QuickNodeSdk, SdkFullConfig,
 };
@@ -65,6 +67,19 @@ async fn main() {
     {
         Ok(resp) => println!("get_usage_by_chain: {:?}", resp.data),
         Err(e) => eprintln!("get_usage_by_chain error: {e}"),
+    }
+
+    match qn.admin.get_usage_by_tag(&GetUsageRequest::default()).await {
+        Ok(resp) => println!("get_usage_by_tag: {:?}", resp.data),
+        Err(e) => eprintln!("get_usage_by_tag error: {e}"),
+    }
+
+    match qn.admin.list_tags().await {
+        Ok(resp) => println!(
+            "list_tags: {} tags",
+            resp.data.map(|d| d.tags.len()).unwrap_or(0)
+        ),
+        Err(e) => eprintln!("list_tags error: {e}"),
     }
 
     match qn
@@ -242,6 +257,11 @@ async fn main() {
     match qn.admin.get_security_options(&endpoint_id).await {
         Ok(resp) => println!("get_security_options: {} options", resp.data.len()),
         Err(e) => eprintln!("get_security_options error: {e}"),
+    }
+
+    match qn.admin.get_endpoint_security(&endpoint_id).await {
+        Ok(resp) => println!("get_endpoint_security: {:?}", resp.data.is_some()),
+        Err(e) => eprintln!("get_endpoint_security error: {e}"),
     }
 
     match qn
@@ -591,6 +611,87 @@ async fn main() {
     match qn.admin.disable_multichain(&endpoint_id).await {
         Ok(()) => println!("disable_multichain: ok"),
         Err(e) => eprintln!("disable_multichain error: {e}"),
+    }
+
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+    // --- Bulk endpoint ops (single-endpoint batch) ---
+
+    match qn
+        .admin
+        .bulk_update_endpoint_status(&BulkUpdateEndpointStatusRequest {
+            ids: vec![endpoint_id.clone()],
+            status: "paused".to_string(),
+        })
+        .await
+    {
+        Ok(resp) => println!("bulk_update_endpoint_status paused: {:?}", resp.data),
+        Err(e) => eprintln!("bulk_update_endpoint_status paused error: {e}"),
+    }
+
+    match qn
+        .admin
+        .bulk_update_endpoint_status(&BulkUpdateEndpointStatusRequest {
+            ids: vec![endpoint_id.clone()],
+            status: "active".to_string(),
+        })
+        .await
+    {
+        Ok(resp) => println!("bulk_update_endpoint_status active: {:?}", resp.data),
+        Err(e) => eprintln!("bulk_update_endpoint_status active error: {e}"),
+    }
+
+    // --- Account-level tags (via bulk_add/remove + rename/delete) ---
+
+    let bulk_tag_id = match qn
+        .admin
+        .bulk_add_tag(&BulkAddTagRequest {
+            ids: vec![endpoint_id.clone()],
+            label: "sdk-bulk-tag".to_string(),
+        })
+        .await
+    {
+        Ok(resp) => {
+            println!("bulk_add_tag: {:?}", resp.data);
+            resp.data.map(|d| d.tag.tag_id)
+        }
+        Err(e) => {
+            eprintln!("bulk_add_tag error: {e}");
+            None
+        }
+    };
+
+    if let Some(tag_id) = bulk_tag_id {
+        match qn
+            .admin
+            .rename_tag(
+                tag_id,
+                &RenameTagRequest {
+                    label: "sdk-bulk-tag-renamed".to_string(),
+                },
+            )
+            .await
+        {
+            Ok(resp) => println!("rename_tag: {:?}", resp.data),
+            Err(e) => eprintln!("rename_tag error: {e}"),
+        }
+
+        match qn
+            .admin
+            .bulk_remove_tag(&BulkRemoveTagRequest {
+                ids: vec![endpoint_id.clone()],
+                tag_id,
+            })
+            .await
+        {
+            Ok(resp) => println!("bulk_remove_tag: {:?}", resp.data),
+            Err(e) => eprintln!("bulk_remove_tag error: {e}"),
+        }
+
+        match qn.admin.delete_account_tag(tag_id).await {
+            Ok(resp) => println!("delete_account_tag: {:?}", resp.data),
+            Err(e) => eprintln!("delete_account_tag error: {e}"),
+        }
     }
 
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;

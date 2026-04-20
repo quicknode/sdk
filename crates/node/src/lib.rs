@@ -656,6 +656,93 @@ impl AdminApiClient {
             .await
             .map_err(|e| Error::from_reason(e.to_string()))
     }
+
+    #[napi]
+    pub async fn bulk_update_endpoint_status(
+        &self,
+        params: core::admin::BulkUpdateEndpointStatusRequest,
+    ) -> Result<core::admin::BulkUpdateEndpointStatusResponse> {
+        self.inner
+            .bulk_update_endpoint_status(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn bulk_add_tag(
+        &self,
+        params: core::admin::BulkAddTagRequest,
+    ) -> Result<core::admin::BulkAddTagResponse> {
+        self.inner
+            .bulk_add_tag(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn bulk_remove_tag(
+        &self,
+        params: core::admin::BulkRemoveTagRequest,
+    ) -> Result<core::admin::BulkRemoveTagResponse> {
+        self.inner
+            .bulk_remove_tag(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn list_tags(&self) -> Result<core::admin::ListTagsResponse> {
+        self.inner
+            .list_tags()
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn rename_tag(
+        &self,
+        id: i32,
+        params: core::admin::RenameTagRequest,
+    ) -> Result<core::admin::RenameTagResponse> {
+        self.inner
+            .rename_tag(id, &params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn delete_account_tag(
+        &self,
+        id: i32,
+    ) -> Result<core::admin::DeleteAccountTagResponse> {
+        self.inner
+            .delete_account_tag(id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_usage_by_tag(
+        &self,
+        params: Option<core::admin::GetUsageRequest>,
+    ) -> Result<core::admin::GetUsageByTagResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_usage_by_tag(&params)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    #[napi]
+    pub async fn get_endpoint_security(
+        &self,
+        id: String,
+    ) -> Result<core::admin::GetEndpointSecurityResponse> {
+        self.inner
+            .get_endpoint_security(&id)
+            .await
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
 }
 
 // ── StreamsApiClient ───────────────────────────────────────────────────────

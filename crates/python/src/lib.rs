@@ -73,7 +73,20 @@ pub struct AdminApiClient {
 #[gen_stub_pymethods]
 #[pymethods]
 impl AdminApiClient {
-    #[pyo3(signature = (limit=None, offset=None, tag_ids=None, tag_labels=None))]
+    #[pyo3(signature = (
+        limit=None,
+        offset=None,
+        search=None,
+        sort_by=None,
+        sort_direction=None,
+        networks=None,
+        statuses=None,
+        labels=None,
+        dedicated=None,
+        is_flat_rate=None,
+        tag_ids=None,
+        tag_labels=None,
+    ))]
     // We are using pyo3_async_runtimes::tokio::future_into_py, so we need an override of the
     // return type generation because it will always return PyResult<Bound<'py, PyAny>>.
     // The async wrapper future_into_py returns a generic "any Python object" type because Python's
@@ -83,11 +96,20 @@ impl AdminApiClient {
     ))]
     // Need to take arguments here so the client doesn't have to initalize a class for the param. If it was
     // params: GetEndpointsRequest, that class needs to be initalized and passed in as param
+    #[allow(clippy::too_many_arguments)]
     fn get_endpoints<'py>(
         &self,
         py: Python<'py>,
         limit: Option<i32>,
         offset: Option<i32>,
+        search: Option<String>,
+        sort_by: Option<String>,
+        sort_direction: Option<String>,
+        networks: Option<Vec<String>>,
+        statuses: Option<Vec<String>>,
+        labels: Option<Vec<String>>,
+        dedicated: Option<bool>,
+        is_flat_rate: Option<bool>,
         tag_ids: Option<Vec<i32>>,
         tag_labels: Option<Vec<String>>,
     ) -> PyResult<Bound<'py, PyAny>> {
@@ -95,6 +117,14 @@ impl AdminApiClient {
         let params = core::admin::GetEndpointsRequest {
             limit,
             offset,
+            search,
+            sort_by,
+            sort_direction,
+            networks,
+            statuses,
+            labels,
+            dedicated,
+            is_flat_rate,
             tag_ids,
             tag_labels,
         };
@@ -1052,6 +1082,148 @@ impl AdminApiClient {
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .resend_team_invite(id, user_id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, BulkUpdateEndpointStatusResponse]"
+    ))]
+    fn bulk_update_endpoint_status<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Vec<String>,
+        status: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::BulkUpdateEndpointStatusRequest { ids, status };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .bulk_update_endpoint_status(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, BulkAddTagResponse]"
+    ))]
+    fn bulk_add_tag<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Vec<String>,
+        label: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::BulkAddTagRequest { ids, label };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .bulk_add_tag(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, BulkRemoveTagResponse]"
+    ))]
+    fn bulk_remove_tag<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Vec<String>,
+        tag_id: i32,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::BulkRemoveTagRequest { ids, tag_id };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .bulk_remove_tag(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ListTagsResponse]"
+    ))]
+    fn list_tags<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .list_tags()
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, RenameTagResponse]"
+    ))]
+    fn rename_tag<'py>(
+        &self,
+        py: Python<'py>,
+        id: i32,
+        label: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::RenameTagRequest { label };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .rename_tag(id, &params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteAccountTagResponse]"
+    ))]
+    fn delete_account_tag<'py>(&self, py: Python<'py>, id: i32) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_account_tag(id)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[pyo3(signature = (start_time=None, end_time=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageByTagResponse]"
+    ))]
+    fn get_usage_by_tag<'py>(
+        &self,
+        py: Python<'py>,
+        start_time: Option<i64>,
+        end_time: Option<i64>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetUsageRequest {
+            start_time,
+            end_time,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_usage_by_tag(&params)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetEndpointSecurityResponse]"
+    ))]
+    fn get_endpoint_security<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_endpoint_security(&id)
                 .await
                 .map_err(|e| PyValueError::new_err(e.to_string()))
         })
@@ -2033,6 +2205,29 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::TeamMessageData>()?;
     m.add_class::<core::admin::RemoveTeamMemberResponse>()?;
     m.add_class::<core::admin::ResendTeamInviteResponse>()?;
+    m.add_class::<core::admin::Pagination>()?;
+    m.add_class::<core::admin::GetEndpointSecurityResponse>()?;
+    m.add_class::<core::admin::BulkOperationResult>()?;
+    m.add_class::<core::admin::BulkUpdateEndpointStatusRequest>()?;
+    m.add_class::<core::admin::BulkUpdateEndpointStatusData>()?;
+    m.add_class::<core::admin::BulkUpdateEndpointStatusResponse>()?;
+    m.add_class::<core::admin::BulkTag>()?;
+    m.add_class::<core::admin::BulkAddTagRequest>()?;
+    m.add_class::<core::admin::BulkAddTagData>()?;
+    m.add_class::<core::admin::BulkAddTagResponse>()?;
+    m.add_class::<core::admin::BulkRemoveTagRequest>()?;
+    m.add_class::<core::admin::BulkRemoveTagData>()?;
+    m.add_class::<core::admin::BulkRemoveTagResponse>()?;
+    m.add_class::<core::admin::AccountTag>()?;
+    m.add_class::<core::admin::ListTagsData>()?;
+    m.add_class::<core::admin::ListTagsResponse>()?;
+    m.add_class::<core::admin::RenameTagRequest>()?;
+    m.add_class::<core::admin::RenameTagResponse>()?;
+    m.add_class::<core::admin::DeleteAccountTagData>()?;
+    m.add_class::<core::admin::DeleteAccountTagResponse>()?;
+    m.add_class::<core::admin::TagUsage>()?;
+    m.add_class::<core::admin::UsageByTagData>()?;
+    m.add_class::<core::admin::GetUsageByTagResponse>()?;
     m.add_class::<core::HttpConfig>()?;
     m.add_class::<core::AdminConfig>()?;
     m.add_class::<core::StreamsConfig>()?;
