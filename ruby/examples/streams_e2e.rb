@@ -58,7 +58,7 @@ puts "created: #{stream_id} | #{stream["status"]}"
 fetched = JSON.parse(qn.streams.get_stream(id: stream_id))
 puts "fetched: #{fetched["id"]} | #{fetched["name"]}"
 
-updated = JSON.parse(qn.streams.update_stream(stream_id, { name: "E2E Test Stream Updated" }))
+updated = JSON.parse(qn.streams.update_stream(id: stream_id, name: "E2E Test Stream Updated"))
 puts "updated name: #{updated["name"]}"
 sleep 1
 

@@ -78,6 +78,7 @@ sdk/
 Construct the SDK once, then reach into the four sub-clients (`admin`, `streams`, `webhooks`, `kvstore`). Subsequent API Reference snippets assume you have a `qn` handle from one of these blocks.
 
 ```rust
+// Rust
 use sdk_core::{QuickNodeSdk, SdkFullConfig};
 
 #[tokio::main]
@@ -90,6 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 ```python
+# Python
 import asyncio
 from sdk import QuickNodeSdk
 
@@ -102,6 +104,7 @@ asyncio.run(main())
 ```
 
 ```typescript
+// Node.js
 import { QuickNodeSdk } from "quicknode-sdk";
 
 const qn = QuickNodeSdk.fromEnv();
@@ -110,6 +113,7 @@ console.log(`${resp.data.length} endpoints`);
 ```
 
 ```ruby
+# Ruby
 require "json"
 require "quicknode_sdk"
 
@@ -144,15 +148,19 @@ let qn = QuickNodeSdk::new(&SdkFullConfig::builder().api_key("your-key").build()
 ### Option B — Load from environment (`from_env()`)
 
 ```python
+# Python
 qn = QuickNodeSdk.from_env()
 ```
 ```typescript
+// Node.js
 const qn = QuickNodeSdk.fromEnv();
 ```
 ```ruby
+# Ruby
 qn = QuickNodeSdk::SDK.from_env
 ```
 ```rust
+// Rust
 let qn = QuickNodeSdk::from_env()?;
 ```
 
@@ -196,6 +204,7 @@ Returns a paginated list of endpoints on the account with optional search, filte
 **Returns**: `GetEndpointsResponse` — `{ data: Endpoint[], pagination?: Pagination }`.
 
 ```rust
+// Rust
 let params = GetEndpointsRequest::builder()
     .limit(20)
     .sort_by("created_at".to_string())
@@ -205,10 +214,12 @@ let resp = qn.admin.get_endpoints(&params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_endpoints(limit=20, sort_by="created_at", sort_direction="desc")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getEndpoints({
   limit: 20,
   sortBy: "created_at",
@@ -217,6 +228,7 @@ const resp = await qn.admin.getEndpoints({
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_endpoints(limit: 20, sort_by: "created_at", sort_direction: "desc"))
 ```
 
@@ -229,6 +241,7 @@ Creates a new endpoint for the given blockchain and network.
 **Returns**: `CreateEndpointResponse` with `data: SingleEndpoint`.
 
 ```rust
+// Rust
 let params = CreateEndpointRequest::builder()
     .chain("ethereum".to_string())
     .network("mainnet".to_string())
@@ -237,14 +250,17 @@ let resp = qn.admin.create_endpoint(&params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.create_endpoint(chain="ethereum", network="mainnet")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.createEndpoint({ chain: "ethereum", network: "mainnet" });
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.create_endpoint(chain: "ethereum", network: "mainnet"))
 ```
 
@@ -257,18 +273,22 @@ Fetches a single endpoint by id, including its full security configuration and r
 **Returns**: `ShowEndpointResponse` with `data: SingleEndpoint`.
 
 ```rust
+// Rust
 let resp = qn.admin.show_endpoint("ep-123").await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.show_endpoint("ep-123")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.showEndpoint("ep-123");
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.show_endpoint(id: "ep-123"))
 ```
 
@@ -281,19 +301,23 @@ Updates editable fields on an endpoint. Currently supports `label`.
 **Returns**: nothing.
 
 ```rust
+// Rust
 let params = UpdateEndpointRequest::builder().label("my label".to_string()).build();
 qn.admin.update_endpoint("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.update_endpoint("ep-123", label="my label")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.updateEndpoint("ep-123", { label: "my label" });
 ```
 
 ```ruby
+# Ruby
 qn.admin.update_endpoint(id: "ep-123", label: "my label")
 ```
 
@@ -306,18 +330,22 @@ Archives an endpoint. The HTTP verb is `DELETE` but the effect is archival, not 
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.archive_endpoint("ep-123").await?;
 ```
 
 ```python
+# Python
 await qn.admin.archive_endpoint("ep-123")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.archiveEndpoint("ep-123");
 ```
 
 ```ruby
+# Ruby
 qn.admin.archive_endpoint(id: "ep-123")
 ```
 
@@ -330,19 +358,23 @@ Pauses or unpauses an endpoint.
 **Returns**: `UpdateEndpointStatusResponse`.
 
 ```rust
+// Rust
 let params = UpdateEndpointStatusRequest::builder().status("paused".to_string()).build();
 qn.admin.update_endpoint_status("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.update_endpoint_status("ep-123", status="paused")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.updateEndpointStatus("ep-123", { status: "paused" });
 ```
 
 ```ruby
+# Ruby
 JSON.parse(qn.admin.update_endpoint_status(id: "ep-123", status: "paused"))
 ```
 
@@ -359,19 +391,23 @@ Tags an endpoint with the given label. Creates the tag on the account if it does
 **Returns**: nothing.
 
 ```rust
+// Rust
 let params = CreateTagRequest::builder().label("prod".to_string()).build();
 qn.admin.create_tag("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.create_tag("ep-123", label="prod")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.createTag("ep-123", { label: "prod" });
 ```
 
 ```ruby
+# Ruby
 qn.admin.create_tag(id: "ep-123", label: "prod")
 ```
 
@@ -384,18 +420,22 @@ Removes a tag from a specific endpoint.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.delete_tag("ep-123", "42").await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_tag("ep-123", "42")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteTag("ep-123", "42");
 ```
 
 ```ruby
+# Ruby
 qn.admin.delete_tag(id: "ep-123", tag_id: "42")
 ```
 
@@ -410,18 +450,22 @@ Lists all teams on the account.
 **Returns**: `ListTeamsResponse` with `data: TeamSummary[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.list_teams().await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.list_teams()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.listTeams();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.list_teams)
 ```
 
@@ -434,19 +478,23 @@ Creates a new team.
 **Returns**: `CreateTeamResponse` with `data: CreateTeamData`.
 
 ```rust
+// Rust
 let params = CreateTeamRequest::builder().name("Payments".to_string()).build();
 let resp = qn.admin.create_team(&params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.create_team(name="Payments")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.createTeam({ name: "Payments" });
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.create_team(name: "Payments"))
 ```
 
@@ -459,18 +507,22 @@ Fetches team detail including pending invites.
 **Returns**: `GetTeamResponse` with `data: TeamDetail`.
 
 ```rust
+// Rust
 let resp = qn.admin.get_team(42).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_team(42)
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getTeam(42);
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_team(id: 42))
 ```
 
@@ -483,18 +535,22 @@ Deletes a team.
 **Returns**: `DeleteTeamResponse`.
 
 ```rust
+// Rust
 qn.admin.delete_team(42).await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_team(42)
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteTeam(42);
 ```
 
 ```ruby
+# Ruby
 qn.admin.delete_team(id: 42)
 ```
 
@@ -507,18 +563,22 @@ Lists endpoints accessible to a team.
 **Returns**: `ListTeamEndpointsResponse` with `data: TeamEndpoint[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.list_team_endpoints(42).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.list_team_endpoints(42)
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.listTeamEndpoints(42);
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.list_team_endpoints(id: 42))
 ```
 
@@ -531,6 +591,7 @@ Replaces the set of endpoints associated with a team. Pass an empty array to rem
 **Returns**: `UpdateTeamEndpointsResponse`.
 
 ```rust
+// Rust
 let params = UpdateTeamEndpointsRequest::builder()
     .endpoint_ids(vec!["ep-123".to_string(), "ep-456".to_string()])
     .build();
@@ -538,14 +599,17 @@ qn.admin.update_team_endpoints(42, &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.update_team_endpoints(42, endpoint_ids=["ep-123", "ep-456"])
 ```
 
 ```typescript
+// Node.js
 await qn.admin.updateTeamEndpoints(42, { endpointIds: ["ep-123", "ep-456"] });
 ```
 
 ```ruby
+# Ruby
 qn.admin.update_team_endpoints(id: 42, endpoint_ids: ["ep-123", "ep-456"])
 ```
 
@@ -558,6 +622,7 @@ Invites a user to a team. Existing users only need `email`; new users require `f
 **Returns**: `InviteTeamMemberResponse`.
 
 ```rust
+// Rust
 let params = InviteTeamMemberRequest::builder()
     .email("alice@example.com".to_string())
     .role("viewer".to_string())
@@ -566,14 +631,17 @@ qn.admin.invite_team_member(42, &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.invite_team_member(42, email="alice@example.com", role="viewer")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.inviteTeamMember(42, { email: "alice@example.com", role: "viewer" });
 ```
 
 ```ruby
+# Ruby
 qn.admin.invite_team_member(id: 42, email: "alice@example.com", role: "viewer")
 ```
 
@@ -586,18 +654,22 @@ Removes a user from a team.
 **Returns**: `RemoveTeamMemberResponse`.
 
 ```rust
+// Rust
 qn.admin.remove_team_member(42, 7).await?;
 ```
 
 ```python
+# Python
 await qn.admin.remove_team_member(42, 7)
 ```
 
 ```typescript
+// Node.js
 await qn.admin.removeTeamMember(42, 7);
 ```
 
 ```ruby
+# Ruby
 qn.admin.remove_team_member(id: 42, user_id: 7)
 ```
 
@@ -610,18 +682,22 @@ Re-sends a pending team invitation.
 **Returns**: `ResendTeamInviteResponse`.
 
 ```rust
+// Rust
 qn.admin.resend_team_invite(42, 7).await?;
 ```
 
 ```python
+# Python
 await qn.admin.resend_team_invite(42, 7)
 ```
 
 ```typescript
+// Node.js
 await qn.admin.resendTeamInvite(42, 7);
 ```
 
 ```ruby
+# Ruby
 qn.admin.resend_team_invite(id: 42, user_id: 7)
 ```
 
@@ -636,18 +712,22 @@ Aggregate account usage for a time window.
 **Returns**: `GetUsageResponse` with `data: UsageData` (`credits_used`, `credits_remaining`, `limit`, `overages`, `start_time`, `end_time`).
 
 ```rust
+// Rust
 let resp = qn.admin.get_usage(&GetUsageRequest::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_usage()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getUsage();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_usage({}))
 ```
 
@@ -658,18 +738,22 @@ Per-endpoint usage breakdown.
 **Returns**: `GetUsageByEndpointResponse` with `data.endpoints: EndpointUsage[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.get_usage_by_endpoint(&GetUsageRequest::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_usage_by_endpoint()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getUsageByEndpoint();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_usage_by_endpoint({}))
 ```
 
@@ -680,18 +764,22 @@ Per-RPC-method usage breakdown.
 **Returns**: `GetUsageByMethodResponse` with `data.methods: MethodUsage[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.get_usage_by_method(&GetUsageRequest::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_usage_by_method()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getUsageByMethod();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_usage_by_method({}))
 ```
 
@@ -702,18 +790,22 @@ Per-chain usage breakdown.
 **Returns**: `GetUsageByChainResponse` with `data.chains: ChainUsage[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.get_usage_by_chain(&GetUsageRequest::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_usage_by_chain()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getUsageByChain();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_usage_by_chain({}))
 ```
 
@@ -724,18 +816,22 @@ Per-tag usage breakdown.
 **Returns**: `GetUsageByTagResponse` with `data.tags: TagUsage[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.get_usage_by_tag(&GetUsageRequest::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_usage_by_tag()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getUsageByTag();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_usage_by_tag({}))
 ```
 
@@ -750,6 +846,7 @@ Fetches a page of request logs for an endpoint. Set `include_details=true` for f
 **Returns**: `GetEndpointLogsResponse` — `{ data: EndpointLog[], next_at?: string }`.
 
 ```rust
+// Rust
 let params = GetEndpointLogsRequest::builder()
     .from("2026-04-01T00:00:00Z".to_string())
     .to("2026-04-02T00:00:00Z".to_string())
@@ -759,6 +856,7 @@ let resp = qn.admin.get_endpoint_logs("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_endpoint_logs(
     "ep-123",
     from_time="2026-04-01T00:00:00Z",
@@ -768,6 +866,7 @@ resp = await qn.admin.get_endpoint_logs(
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getEndpointLogs("ep-123", {
   from: "2026-04-01T00:00:00Z",
   to: "2026-04-02T00:00:00Z",
@@ -776,6 +875,7 @@ const resp = await qn.admin.getEndpointLogs("ep-123", {
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_endpoint_logs(
   id: "ep-123",
   from_time: "2026-04-01T00:00:00Z",
@@ -793,18 +893,22 @@ Returns the full request/response payloads for a single log entry.
 **Returns**: `GetLogDetailsResponse` with `data: LogDetails`.
 
 ```rust
+// Rust
 let resp = qn.admin.get_log_details("ep-123", "req-abc").await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_log_details("ep-123", "req-abc")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getLogDetails("ep-123", "req-abc");
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_log_details(id: "ep-123", request_id: "req-abc"))
 ```
 
@@ -819,18 +923,22 @@ Returns the full security configuration for an endpoint: tokens, JWTs, referrers
 **Returns**: `GetEndpointSecurityResponse` with `data: EndpointSecurity`.
 
 ```rust
+// Rust
 let resp = qn.admin.get_endpoint_security("ep-123").await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_endpoint_security("ep-123")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getEndpointSecurity("ep-123");
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_endpoint_security(id: "ep-123"))
 ```
 
@@ -845,18 +953,22 @@ Returns the list of security features and their enabled state for an endpoint.
 **Returns**: `GetSecurityOptionsResponse` with `data: SecurityOption[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.get_security_options("ep-123").await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_security_options("ep-123")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getSecurityOptions("ep-123");
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_security_options(id: "ep-123"))
 ```
 
@@ -869,6 +981,7 @@ Enables or disables individual security features. Each field accepts `"enabled"`
 **Returns**: `UpdateSecurityOptionsResponse` with updated `SecurityOption[]`.
 
 ```rust
+// Rust
 let options = SecurityOptionsUpdate::builder()
     .tokens("enabled".to_string())
     .jwts("disabled".to_string())
@@ -878,6 +991,7 @@ qn.admin.update_security_options("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.update_security_options(
     "ep-123",
     tokens="enabled",
@@ -886,12 +1000,14 @@ await qn.admin.update_security_options(
 ```
 
 ```typescript
+// Node.js
 await qn.admin.updateSecurityOptions("ep-123", {
   options: { tokens: "enabled", jwts: "disabled" },
 });
 ```
 
 ```ruby
+# Ruby
 qn.admin.update_security_options(id: "ep-123", tokens: "enabled", jwts: "disabled")
 ```
 
@@ -906,18 +1022,22 @@ Generates a new auth token on an endpoint.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.create_token("ep-123").await?;
 ```
 
 ```python
+# Python
 await qn.admin.create_token("ep-123")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.createToken("ep-123");
 ```
 
 ```ruby
+# Ruby
 qn.admin.create_token(id: "ep-123")
 ```
 
@@ -930,18 +1050,22 @@ Revokes a token on an endpoint.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.delete_token("ep-123", "tok-1").await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_token("ep-123", "tok-1")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteToken("ep-123", "tok-1");
 ```
 
 ```ruby
+# Ruby
 qn.admin.delete_token(id: "ep-123", token_id: "tok-1")
 ```
 
@@ -956,19 +1080,23 @@ Whitelists a referrer URL or domain on an endpoint.
 **Returns**: nothing.
 
 ```rust
+// Rust
 let params = CreateReferrerRequest::builder().referrer("example.com".to_string()).build();
 qn.admin.create_referrer("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.create_referrer("ep-123", referrer="example.com")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.createReferrer("ep-123", { referrer: "example.com" });
 ```
 
 ```ruby
+# Ruby
 qn.admin.create_referrer(id: "ep-123", referrer: "example.com")
 ```
 
@@ -981,18 +1109,22 @@ Removes a referrer from the whitelist.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.delete_referrer("ep-123", "ref-1").await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_referrer("ep-123", "ref-1")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteReferrer("ep-123", "ref-1");
 ```
 
 ```ruby
+# Ruby
 qn.admin.delete_referrer(id: "ep-123", referrer_id: "ref-1")
 ```
 
@@ -1007,19 +1139,23 @@ Whitelists an IP address on an endpoint.
 **Returns**: nothing.
 
 ```rust
+// Rust
 let params = CreateIpRequest::builder().ip("198.51.100.7".to_string()).build();
 qn.admin.create_ip("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.create_ip("ep-123", ip="198.51.100.7")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.createIp("ep-123", { ip: "198.51.100.7" });
 ```
 
 ```ruby
+# Ruby
 qn.admin.create_ip(id: "ep-123", ip: "198.51.100.7")
 ```
 
@@ -1032,18 +1168,22 @@ Removes an IP from the whitelist.
 **Returns**: `DeleteBoolResponse`.
 
 ```rust
+// Rust
 qn.admin.delete_ip("ep-123", "ip-1").await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_ip("ep-123", "ip-1")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteIp("ep-123", "ip-1");
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.delete_ip(id: "ep-123", ip_id: "ip-1"))
 ```
 
@@ -1058,6 +1198,7 @@ Adds a custom domain mask to an endpoint.
 **Returns**: nothing.
 
 ```rust
+// Rust
 let params = CreateDomainMaskRequest::builder()
     .domain_mask("rpc.example.com".to_string())
     .build();
@@ -1065,14 +1206,17 @@ qn.admin.create_domain_mask("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.create_domain_mask("ep-123", domain_mask="rpc.example.com")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.createDomainMask("ep-123", { domainMask: "rpc.example.com" });
 ```
 
 ```ruby
+# Ruby
 qn.admin.create_domain_mask(id: "ep-123", domain_mask: "rpc.example.com")
 ```
 
@@ -1085,18 +1229,22 @@ Removes a domain mask.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.delete_domain_mask("ep-123", "dm-1").await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_domain_mask("ep-123", "dm-1")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteDomainMask("ep-123", "dm-1");
 ```
 
 ```ruby
+# Ruby
 qn.admin.delete_domain_mask(id: "ep-123", domain_mask_id: "dm-1")
 ```
 
@@ -1111,6 +1259,7 @@ Configures JWT validation on an endpoint.
 **Returns**: nothing.
 
 ```rust
+// Rust
 let params = CreateJwtRequest::builder()
     .public_key("-----BEGIN PUBLIC KEY-----\n...".to_string())
     .kid("key-1".to_string())
@@ -1120,6 +1269,7 @@ qn.admin.create_jwt("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.create_jwt(
     "ep-123",
     public_key="-----BEGIN PUBLIC KEY-----\n...",
@@ -1129,6 +1279,7 @@ await qn.admin.create_jwt(
 ```
 
 ```typescript
+// Node.js
 await qn.admin.createJwt("ep-123", {
   publicKey: "-----BEGIN PUBLIC KEY-----\n...",
   kid: "key-1",
@@ -1137,6 +1288,7 @@ await qn.admin.createJwt("ep-123", {
 ```
 
 ```ruby
+# Ruby
 qn.admin.create_jwt(
   id: "ep-123",
   public_key: "-----BEGIN PUBLIC KEY-----\n...",
@@ -1154,18 +1306,22 @@ Removes a JWT configuration.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.delete_jwt("ep-123", "jwt-1").await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_jwt("ep-123", "jwt-1")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteJwt("ep-123", "jwt-1");
 ```
 
 ```ruby
+# Ruby
 qn.admin.delete_jwt(id: "ep-123", jwt_id: "jwt-1")
 ```
 
@@ -1180,6 +1336,7 @@ Whitelist specific RPC methods on an endpoint. Requests for methods not on the l
 **Returns**: `CreateRequestFilterResponse` with `data.id`.
 
 ```rust
+// Rust
 let params = CreateRequestFilterRequest::builder()
     .method(vec!["eth_blockNumber".to_string(), "eth_getBalance".to_string()])
     .build();
@@ -1187,6 +1344,7 @@ let resp = qn.admin.create_request_filter("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.create_request_filter(
     "ep-123",
     method=["eth_blockNumber", "eth_getBalance"],
@@ -1194,12 +1352,14 @@ resp = await qn.admin.create_request_filter(
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.createRequestFilter("ep-123", {
   method: ["eth_blockNumber", "eth_getBalance"],
 });
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.create_request_filter(
   id: "ep-123",
   methods: ["eth_blockNumber", "eth_getBalance"]
@@ -1213,6 +1373,7 @@ resp = JSON.parse(qn.admin.create_request_filter(
 **Returns**: nothing.
 
 ```rust
+// Rust
 let params = UpdateRequestFilterRequest::builder()
     .method(vec!["eth_call".to_string()])
     .build();
@@ -1220,14 +1381,17 @@ qn.admin.update_request_filter("ep-123", "f-1", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.update_request_filter("ep-123", "f-1", method=["eth_call"])
 ```
 
 ```typescript
+// Node.js
 await qn.admin.updateRequestFilter("ep-123", "f-1", { method: ["eth_call"] });
 ```
 
 ```ruby
+# Ruby
 qn.admin.update_request_filter(id: "ep-123", request_filter_id: "f-1", methods: ["eth_call"])
 ```
 
@@ -1238,18 +1402,22 @@ qn.admin.update_request_filter(id: "ep-123", request_filter_id: "f-1", methods: 
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.delete_request_filter("ep-123", "f-1").await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_request_filter("ep-123", "f-1")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteRequestFilter("ep-123", "f-1");
 ```
 
 ```ruby
+# Ruby
 qn.admin.delete_request_filter(id: "ep-123", request_filter_id: "f-1")
 ```
 
@@ -1264,18 +1432,22 @@ Enables multichain on an endpoint.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.enable_multichain("ep-123").await?;
 ```
 
 ```python
+# Python
 await qn.admin.enable_multichain("ep-123")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.enableMultichain("ep-123");
 ```
 
 ```ruby
+# Ruby
 qn.admin.enable_multichain(id: "ep-123")
 ```
 
@@ -1288,18 +1460,22 @@ Disables multichain on an endpoint.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.disable_multichain("ep-123").await?;
 ```
 
 ```python
+# Python
 await qn.admin.disable_multichain("ep-123")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.disableMultichain("ep-123");
 ```
 
 ```ruby
+# Ruby
 qn.admin.disable_multichain(id: "ep-123")
 ```
 
@@ -1314,6 +1490,7 @@ Sets the custom header used to identify the client IP (e.g. when traffic is prox
 **Returns**: `CreateOrUpdateIpCustomHeaderResponse` with `data.header_name`.
 
 ```rust
+// Rust
 let params = CreateOrUpdateIpCustomHeaderRequest::builder()
     .header_name("X-Forwarded-For".to_string())
     .build();
@@ -1321,14 +1498,17 @@ qn.admin.create_or_update_ip_custom_header("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.create_or_update_ip_custom_header("ep-123", header_name="X-Forwarded-For")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.createOrUpdateIpCustomHeader("ep-123", { headerName: "X-Forwarded-For" });
 ```
 
 ```ruby
+# Ruby
 JSON.parse(qn.admin.create_or_update_ip_custom_header(
   id: "ep-123",
   header_name: "X-Forwarded-For"
@@ -1344,18 +1524,22 @@ Removes the custom IP header configuration.
 **Returns**: `DeleteBoolResponse`.
 
 ```rust
+// Rust
 qn.admin.delete_ip_custom_header("ep-123").await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_ip_custom_header("ep-123")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteIpCustomHeader("ep-123");
 ```
 
 ```ruby
+# Ruby
 JSON.parse(qn.admin.delete_ip_custom_header(id: "ep-123"))
 ```
 
@@ -1370,18 +1554,22 @@ Lists method-level rate limiters configured on an endpoint.
 **Returns**: `GetMethodRateLimitsResponse` with `data.rate_limiters: MethodRateLimiter[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.get_method_rate_limits("ep-123").await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_method_rate_limits("ep-123")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getMethodRateLimits("ep-123");
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_method_rate_limits(id: "ep-123"))
 ```
 
@@ -1394,6 +1582,7 @@ Creates a new method-level rate limiter.
 **Returns**: `CreateMethodRateLimitResponse` with `data: MethodRateLimiter`.
 
 ```rust
+// Rust
 let params = CreateMethodRateLimitRequest::builder()
     .interval("second".to_string())
     .methods(vec!["eth_call".to_string()])
@@ -1403,6 +1592,7 @@ let resp = qn.admin.create_method_rate_limit("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.create_method_rate_limit(
     "ep-123",
     interval="second",
@@ -1412,6 +1602,7 @@ resp = await qn.admin.create_method_rate_limit(
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.createMethodRateLimit("ep-123", {
   interval: "second",
   methods: ["eth_call"],
@@ -1420,6 +1611,7 @@ const resp = await qn.admin.createMethodRateLimit("ep-123", {
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.create_method_rate_limit(
   id: "ep-123",
   interval: "second",
@@ -1437,19 +1629,23 @@ Updates an existing rate limiter. Only provided fields change.
 **Returns**: `UpdateMethodRateLimitResponse`.
 
 ```rust
+// Rust
 let params = UpdateMethodRateLimitRequest::builder().rate(50).build();
 qn.admin.update_method_rate_limit("ep-123", "rl-1", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.update_method_rate_limit("ep-123", "rl-1", rate=50)
 ```
 
 ```typescript
+// Node.js
 await qn.admin.updateMethodRateLimit("ep-123", "rl-1", { rate: 50 });
 ```
 
 ```ruby
+# Ruby
 JSON.parse(qn.admin.update_method_rate_limit(id: "ep-123", method_rate_limit_id: "rl-1", rate: 50))
 ```
 
@@ -1462,18 +1658,22 @@ Deletes a rate limiter.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.admin.delete_method_rate_limit("ep-123", "rl-1").await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_method_rate_limit("ep-123", "rl-1")
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteMethodRateLimit("ep-123", "rl-1");
 ```
 
 ```ruby
+# Ruby
 qn.admin.delete_method_rate_limit(id: "ep-123", method_rate_limit_id: "rl-1")
 ```
 
@@ -1488,20 +1688,24 @@ Updates the endpoint-level RPS / RPM / RPD caps.
 **Returns**: nothing.
 
 ```rust
+// Rust
 let rate_limits = RateLimitSettings::builder().rps(100).rpm(5000).build();
 let params = UpdateRateLimitsRequest { rate_limits };
 qn.admin.update_rate_limits("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 await qn.admin.update_rate_limits("ep-123", rps=100, rpm=5000)
 ```
 
 ```typescript
+// Node.js
 await qn.admin.updateRateLimits("ep-123", { rateLimits: { rps: 100, rpm: 5000 } });
 ```
 
 ```ruby
+# Ruby
 qn.admin.update_rate_limits(id: "ep-123", rps: 100, rpm: 5000)
 ```
 
@@ -1516,6 +1720,7 @@ Returns metric series for an endpoint over a time period.
 **Returns**: `GetEndpointMetricsResponse` with `data: EndpointMetric[]`.
 
 ```rust
+// Rust
 let params = GetEndpointMetricsRequest {
     period: "day".to_string(),
     metric: "method_calls_over_time".to_string(),
@@ -1524,6 +1729,7 @@ let resp = qn.admin.get_endpoint_metrics("ep-123", &params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_endpoint_metrics(
     "ep-123",
     period="day",
@@ -1532,6 +1738,7 @@ resp = await qn.admin.get_endpoint_metrics(
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getEndpointMetrics("ep-123", {
   period: "day",
   metric: "method_calls_over_time",
@@ -1539,6 +1746,7 @@ const resp = await qn.admin.getEndpointMetrics("ep-123", {
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_endpoint_metrics(
   id: "ep-123",
   period: "day",
@@ -1555,6 +1763,7 @@ Returns account-level metric series. Supports an optional `percentile` (e.g. `"p
 **Returns**: `GetAccountMetricsResponse` with `data: EndpointMetric[]`.
 
 ```rust
+// Rust
 let params = GetAccountMetricsRequest {
     period: "day".to_string(),
     metric: "credits_over_time".to_string(),
@@ -1564,10 +1773,12 @@ let resp = qn.admin.get_account_metrics(&params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.get_account_metrics(period="day", metric="credits_over_time")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.getAccountMetrics({
   period: "day",
   metric: "credits_over_time",
@@ -1575,6 +1786,7 @@ const resp = await qn.admin.getAccountMetrics({
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.get_account_metrics(period: "day", metric: "credits_over_time"))
 ```
 
@@ -1589,18 +1801,22 @@ Lists the blockchains supported by QuickNode along with their networks.
 **Returns**: `ListChainsResponse` with `data: Chain[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.list_chains().await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.list_chains()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.listChains();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.list_chains)
 ```
 
@@ -1615,18 +1831,22 @@ Lists invoices on the account.
 **Returns**: `ListInvoicesResponse` with `data.invoices: Invoice[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.list_invoices().await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.list_invoices()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.listInvoices();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.list_invoices)
 ```
 
@@ -1639,18 +1859,22 @@ Lists payments on the account.
 **Returns**: `ListPaymentsResponse` with `data.payments: Payment[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.list_payments().await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.list_payments()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.listPayments();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.list_payments)
 ```
 
@@ -1665,6 +1889,7 @@ Activates or pauses many endpoints at once.
 **Returns**: `BulkUpdateEndpointStatusResponse` with per-endpoint `results`.
 
 ```rust
+// Rust
 let params = BulkUpdateEndpointStatusRequest::builder()
     .ids(vec!["ep-1".to_string(), "ep-2".to_string()])
     .status("paused".to_string())
@@ -1673,10 +1898,12 @@ let resp = qn.admin.bulk_update_endpoint_status(&params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.bulk_update_endpoint_status(ids=["ep-1", "ep-2"], status="paused")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.bulkUpdateEndpointStatus({
   ids: ["ep-1", "ep-2"],
   status: "paused",
@@ -1684,6 +1911,7 @@ const resp = await qn.admin.bulkUpdateEndpointStatus({
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.bulk_update_endpoint_status(ids: ["ep-1", "ep-2"], status: "paused"))
 ```
 
@@ -1696,6 +1924,7 @@ Applies a tag (created if missing) to many endpoints at once.
 **Returns**: `BulkAddTagResponse`.
 
 ```rust
+// Rust
 let params = BulkAddTagRequest::builder()
     .ids(vec!["ep-1".to_string(), "ep-2".to_string()])
     .label("prod".to_string())
@@ -1704,14 +1933,17 @@ let resp = qn.admin.bulk_add_tag(&params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.bulk_add_tag(ids=["ep-1", "ep-2"], label="prod")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.bulkAddTag({ ids: ["ep-1", "ep-2"], label: "prod" });
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.bulk_add_tag(ids: ["ep-1", "ep-2"], label: "prod"))
 ```
 
@@ -1724,6 +1956,7 @@ Removes a tag from many endpoints at once.
 **Returns**: `BulkRemoveTagResponse`.
 
 ```rust
+// Rust
 let params = BulkRemoveTagRequest::builder()
     .ids(vec!["ep-1".to_string(), "ep-2".to_string()])
     .tag_id(42)
@@ -1732,14 +1965,17 @@ let resp = qn.admin.bulk_remove_tag(&params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.bulk_remove_tag(ids=["ep-1", "ep-2"], tag_id=42)
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.bulkRemoveTag({ ids: ["ep-1", "ep-2"], tagId: 42 });
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.bulk_remove_tag(ids: ["ep-1", "ep-2"], tag_id: 42))
 ```
 
@@ -1754,18 +1990,22 @@ Lists every tag on the account along with usage counts.
 **Returns**: `ListTagsResponse` with `data.tags: AccountTag[]`.
 
 ```rust
+// Rust
 let resp = qn.admin.list_tags().await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.list_tags()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.listTags();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.list_tags)
 ```
 
@@ -1778,19 +2018,23 @@ Renames an account-level tag.
 **Returns**: `RenameTagResponse` with updated `AccountTag`.
 
 ```rust
+// Rust
 let params = RenameTagRequest::builder().label("staging".to_string()).build();
 let resp = qn.admin.rename_tag(42, &params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.admin.rename_tag(42, label="staging")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.admin.renameTag(42, { label: "staging" });
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.admin.rename_tag(tag_id: 42, label: "staging"))
 ```
 
@@ -1803,18 +2047,22 @@ Deletes a tag from the account. The tag must first be removed from any endpoints
 **Returns**: `DeleteAccountTagResponse`.
 
 ```rust
+// Rust
 qn.admin.delete_account_tag(42).await?;
 ```
 
 ```python
+# Python
 await qn.admin.delete_account_tag(42)
 ```
 
 ```typescript
+// Node.js
 await qn.admin.deleteAccountTag(42);
 ```
 
 ```ruby
+# Ruby
 JSON.parse(qn.admin.delete_account_tag(id: 42))
 ```
 
@@ -1867,6 +2115,7 @@ Creates a new stream that delivers filtered data to the configured destination. 
 **Returns**: `Stream`.
 
 ```rust
+// Rust
 let params = CreateStreamParams::builder()
     .name("My Stream".to_string())
     .region(StreamRegion::UsaEast)
@@ -1890,6 +2139,7 @@ let stream = qn.streams.create_stream(&params).await?;
 ```
 
 ```python
+# Python
 from sdk import WebhookAttributes, StreamWebhookDestination
 
 stream = await qn.streams.create_stream(
@@ -1915,6 +2165,7 @@ stream = await qn.streams.create_stream(
 ```
 
 ```typescript
+// Node.js
 import { StreamDataset, StreamRegion, StreamStatus } from "quicknode-sdk";
 
 const stream = await qn.streams.createStream({
@@ -1941,6 +2192,7 @@ const stream = await qn.streams.createStream({
 ```
 
 ```ruby
+# Ruby
 dest = QuickNodeSdk::DestinationAttributes.webhook(
   url: "https://webhook.site/...",
   max_retry: 3,
@@ -1971,18 +2223,22 @@ Paginated list of streams on the account.
 **Returns**: `ListStreamsResponse` with `data: Stream[]` and `page_info`.
 
 ```rust
+// Rust
 let resp = qn.streams.list_streams(&ListStreamsParams::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.streams.list_streams()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.streams.listStreams();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.streams.list_streams({}))
 ```
 
@@ -1995,18 +2251,22 @@ Fetches one stream by id.
 **Returns**: `Stream`.
 
 ```rust
+// Rust
 let stream = qn.streams.get_stream("stream-id").await?;
 ```
 
 ```python
+# Python
 stream = await qn.streams.get_stream("stream-id")
 ```
 
 ```typescript
+// Node.js
 const stream = await qn.streams.getStream("stream-id");
 ```
 
 ```ruby
+# Ruby
 stream = JSON.parse(qn.streams.get_stream(id: "stream-id"))
 ```
 
@@ -2019,6 +2279,7 @@ Partially updates a stream. Omitted fields are left unchanged.
 **Returns**: updated `Stream`.
 
 ```rust
+// Rust
 let params = UpdateStreamParams {
     name: Some("Renamed".to_string()),
     ..Default::default()
@@ -2027,14 +2288,17 @@ let stream = qn.streams.update_stream("stream-id", &params).await?;
 ```
 
 ```python
+# Python
 stream = await qn.streams.update_stream("stream-id", name="Renamed")
 ```
 
 ```typescript
+// Node.js
 const stream = await qn.streams.updateStream("stream-id", { name: "Renamed" });
 ```
 
 ```ruby
+# Ruby
 stream = JSON.parse(qn.streams.update_stream(id: "stream-id", name: "Renamed"))
 ```
 
@@ -2047,18 +2311,22 @@ Deletes one stream by id.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.streams.delete_stream("stream-id").await?;
 ```
 
 ```python
+# Python
 await qn.streams.delete_stream("stream-id")
 ```
 
 ```typescript
+// Node.js
 await qn.streams.deleteStream("stream-id");
 ```
 
 ```ruby
+# Ruby
 qn.streams.delete_stream(id: "stream-id")
 ```
 
@@ -2071,18 +2339,22 @@ Deletes every stream on the account. Destructive and takes no arguments.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.streams.delete_all_streams().await?;
 ```
 
 ```python
+# Python
 await qn.streams.delete_all_streams()
 ```
 
 ```typescript
+// Node.js
 await qn.streams.deleteAllStreams();
 ```
 
 ```ruby
+# Ruby
 qn.streams.delete_all_streams
 ```
 
@@ -2095,18 +2367,22 @@ Resumes delivery on a stream from its current position.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.streams.activate_stream("stream-id").await?;
 ```
 
 ```python
+# Python
 await qn.streams.activate_stream("stream-id")
 ```
 
 ```typescript
+// Node.js
 await qn.streams.activateStream("stream-id");
 ```
 
 ```ruby
+# Ruby
 qn.streams.activate_stream(id: "stream-id")
 ```
 
@@ -2119,18 +2395,22 @@ Halts delivery on a stream.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.streams.pause_stream("stream-id").await?;
 ```
 
 ```python
+# Python
 await qn.streams.pause_stream("stream-id")
 ```
 
 ```typescript
+// Node.js
 await qn.streams.pauseStream("stream-id");
 ```
 
 ```ruby
+# Ruby
 qn.streams.pause_stream(id: "stream-id")
 ```
 
@@ -2143,6 +2423,7 @@ Runs a filter function against a block so it can be validated before being attac
 **Returns**: `TestFilterResponse` with `result` and `logs`.
 
 ```rust
+// Rust
 let params = TestFilterParams {
     network: "ethereum-mainnet".to_string(),
     dataset: StreamDataset::Block,
@@ -2155,6 +2436,7 @@ let resp = qn.streams.test_filter(&params).await?;
 ```
 
 ```python
+# Python
 resp = await qn.streams.test_filter(
     network="ethereum-mainnet",
     dataset="block",
@@ -2163,6 +2445,7 @@ resp = await qn.streams.test_filter(
 ```
 
 ```typescript
+// Node.js
 import { StreamDataset } from "quicknode-sdk";
 
 const resp = await qn.streams.testFilter({
@@ -2173,6 +2456,7 @@ const resp = await qn.streams.testFilter({
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.streams.test_filter(
   network: "ethereum-mainnet",
   dataset: "block",
@@ -2189,18 +2473,22 @@ Counts currently enabled (active) streams, optionally filtered by type.
 **Returns**: `EnabledCountResponse` with `total`.
 
 ```rust
+// Rust
 let resp = qn.streams.get_enabled_count(None).await?;
 ```
 
 ```python
+# Python
 resp = await qn.streams.get_enabled_count()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.streams.getEnabledCount();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.streams.get_enabled_count({}))
 ```
 
@@ -2255,18 +2543,22 @@ Paginated list of webhooks.
 **Returns**: `ListWebhooksResponse` with `data: Webhook[]` and `pageInfo`.
 
 ```rust
+// Rust
 let resp = qn.webhooks.list_webhooks(&GetWebhooksParams::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.webhooks.list_webhooks()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.webhooks.listWebhooks();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.webhooks.list_webhooks({}))
 ```
 
@@ -2279,18 +2571,22 @@ Fetches a webhook by id.
 **Returns**: `Webhook`.
 
 ```rust
+// Rust
 let webhook = qn.webhooks.get_webhook("wh-1").await?;
 ```
 
 ```python
+# Python
 webhook = await qn.webhooks.get_webhook("wh-1")
 ```
 
 ```typescript
+// Node.js
 const webhook = await qn.webhooks.getWebhook("wh-1");
 ```
 
 ```ruby
+# Ruby
 webhook = JSON.parse(qn.webhooks.get_webhook(id: "wh-1"))
 ```
 
@@ -2303,6 +2599,7 @@ Creates a webhook from a predefined filter template.
 **Returns**: `Webhook`.
 
 ```rust
+// Rust
 let template_args = TemplateArgs::evm_wallet_filter(&EvmWalletFilterTemplate {
     wallets: vec!["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".to_string()],
 })?;
@@ -2321,6 +2618,7 @@ let webhook = qn.webhooks.create_webhook_from_template(&params).await?;
 ```
 
 ```python
+# Python
 from sdk import EvmWalletFilterTemplate, TemplateArgs, WebhookDestinationAttributes
 
 webhook = await qn.webhooks.create_webhook_from_template(
@@ -2334,6 +2632,7 @@ webhook = await qn.webhooks.create_webhook_from_template(
 ```
 
 ```typescript
+// Node.js
 import { TemplateArgs } from "quicknode-sdk";
 
 const webhook = await qn.webhooks.createWebhookFromTemplate({
@@ -2347,6 +2646,7 @@ const webhook = await qn.webhooks.createWebhookFromTemplate({
 ```
 
 ```ruby
+# Ruby
 destination_attributes = JSON.generate({
   url: "https://webhook.site/...",
   compression: "none"
@@ -2367,11 +2667,12 @@ webhook = JSON.parse(qn.webhooks.create_webhook_from_template(
 
 Partially updates a webhook's name, notification email, and/or destination. If `destination_attributes` is supplied without `security_token`, a new token is generated automatically.
 
-**Parameters**: `id` (required); body — all optional: `name`, `notification_email`, `destination_attributes`.
+**Parameters**: `id` (required); body — all optional: `name`, `notification_email`, `destination_attributes`. In Ruby, `destination_attributes` is passed as a JSON string under the key `destination_attributes_json`.
 
 **Returns**: updated `Webhook`.
 
 ```rust
+// Rust
 let params = UpdateWebhookParams {
     name: Some("Renamed Webhook".to_string()),
     ..Default::default()
@@ -2380,14 +2681,17 @@ let webhook = qn.webhooks.update_webhook("wh-1", &params).await?;
 ```
 
 ```python
+# Python
 webhook = await qn.webhooks.update_webhook("wh-1", name="Renamed Webhook")
 ```
 
 ```typescript
+// Node.js
 const webhook = await qn.webhooks.updateWebhook("wh-1", { name: "Renamed Webhook" });
 ```
 
 ```ruby
+# Ruby
 webhook = JSON.parse(qn.webhooks.update_webhook(id: "wh-1", name: "Renamed Webhook"))
 ```
 
@@ -2400,6 +2704,7 @@ Updates the template args (and optionally name, email, destination) on an existi
 **Returns**: updated `Webhook`.
 
 ```rust
+// Rust
 let template_args = TemplateArgs::evm_wallet_filter(&EvmWalletFilterTemplate {
     wallets: vec!["0xnewwallet".to_string()],
 })?;
@@ -2413,6 +2718,7 @@ let webhook = qn.webhooks.update_webhook_template("wh-1", &params).await?;
 ```
 
 ```python
+# Python
 webhook = await qn.webhooks.update_webhook_template(
     "wh-1",
     template_args=TemplateArgs.evm_wallet_filter(
@@ -2422,12 +2728,14 @@ webhook = await qn.webhooks.update_webhook_template(
 ```
 
 ```typescript
+// Node.js
 const webhook = await qn.webhooks.updateWebhookTemplate("wh-1", {
   templateArgs: TemplateArgs.evmWalletFilter({ wallets: ["0xnewwallet"] }),
 });
 ```
 
 ```ruby
+# Ruby
 template_args = JSON.generate({
   template_id: "evmWalletFilter",
   value: JSON.generate({ wallets: ["0xnewwallet"] })
@@ -2447,18 +2755,22 @@ Deletes a webhook.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.webhooks.delete_webhook("wh-1").await?;
 ```
 
 ```python
+# Python
 await qn.webhooks.delete_webhook("wh-1")
 ```
 
 ```typescript
+// Node.js
 await qn.webhooks.deleteWebhook("wh-1");
 ```
 
 ```ruby
+# Ruby
 qn.webhooks.delete_webhook(id: "wh-1")
 ```
 
@@ -2471,18 +2783,22 @@ Deletes every webhook on the account. Destructive and takes no arguments.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.webhooks.delete_all_webhooks().await?;
 ```
 
 ```python
+# Python
 await qn.webhooks.delete_all_webhooks()
 ```
 
 ```typescript
+// Node.js
 await qn.webhooks.deleteAllWebhooks();
 ```
 
 ```ruby
+# Ruby
 qn.webhooks.delete_all_webhooks
 ```
 
@@ -2495,18 +2811,22 @@ Pauses a webhook so it stops delivering events.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.webhooks.pause_webhook("wh-1").await?;
 ```
 
 ```python
+# Python
 await qn.webhooks.pause_webhook("wh-1")
 ```
 
 ```typescript
+// Node.js
 await qn.webhooks.pauseWebhook("wh-1");
 ```
 
 ```ruby
+# Ruby
 qn.webhooks.pause_webhook(id: "wh-1")
 ```
 
@@ -2519,21 +2839,25 @@ Activates a paused or new webhook so it resumes delivering events. `start_from` 
 **Returns**: nothing.
 
 ```rust
+// Rust
 let params = ActivateWebhookParams { start_from: WebhookStartFrom::Latest };
 qn.webhooks.activate_webhook("wh-1", &params).await?;
 ```
 
 ```python
+# Python
 await qn.webhooks.activate_webhook("wh-1", start_from="latest")
 ```
 
 ```typescript
+// Node.js
 import { WebhookStartFrom } from "quicknode-sdk";
 
 await qn.webhooks.activateWebhook("wh-1", { startFrom: WebhookStartFrom.Latest });
 ```
 
 ```ruby
+# Ruby
 qn.webhooks.activate_webhook(id: "wh-1", start_from: "latest")
 ```
 
@@ -2546,18 +2870,22 @@ Counts currently enabled webhooks.
 **Returns**: `WebhookEnabledCountResponse` with `total`.
 
 ```rust
+// Rust
 let resp = qn.webhooks.get_enabled_count().await?;
 ```
 
 ```python
+# Python
 resp = await qn.webhooks.get_enabled_count()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.webhooks.getEnabledCount();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.webhooks.get_enabled_count)
 ```
 
@@ -2578,6 +2906,7 @@ Stores a single string value under a key.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.kvstore.create_set(&CreateSetParams {
     key: "my-key".to_string(),
     value: "hello".to_string(),
@@ -2585,14 +2914,17 @@ qn.kvstore.create_set(&CreateSetParams {
 ```
 
 ```python
+# Python
 await qn.kvstore.create_set(key="my-key", value="hello")
 ```
 
 ```typescript
+// Node.js
 await qn.kvstore.createSet({ key: "my-key", value: "hello" });
 ```
 
 ```ruby
+# Ruby
 qn.kvstore.create_set(key: "my-key", value: "hello")
 ```
 
@@ -2605,18 +2937,22 @@ Paginated page of key/value entries.
 **Returns**: `GetSetsResponse` — `{ data: KvSetEntry[], cursor: string }`.
 
 ```rust
+// Rust
 let resp = qn.kvstore.get_sets(&Default::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.kvstore.get_sets()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.kvstore.getSets();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.kvstore.get_sets({}))
 ```
 
@@ -2629,18 +2965,22 @@ Returns the value stored under a key.
 **Returns**: `GetSetResponse` with `value`.
 
 ```rust
+// Rust
 let resp = qn.kvstore.get_set("my-key").await?;
 ```
 
 ```python
+# Python
 resp = await qn.kvstore.get_set("my-key")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.kvstore.getSet("my-key");
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.kvstore.get_set(key: "my-key"))
 ```
 
@@ -2648,11 +2988,12 @@ resp = JSON.parse(qn.kvstore.get_set(key: "my-key"))
 
 Adds and/or deletes multiple sets in a single request.
 
-**Parameters** (at least one required): `add_sets` (map<string,string>, optional), `delete_sets` (string[], optional). The Ruby binding currently only forwards `delete_sets`; use `create_set` / `bulk_sets` individually from Ruby to add.
+**Parameters** (at least one required): `add_sets` (map<string,string>, optional), `delete_sets` (string[], optional).
 
 **Returns**: nothing.
 
 ```rust
+// Rust
 use std::collections::HashMap;
 
 let mut add_sets = HashMap::new();
@@ -2664,6 +3005,7 @@ qn.kvstore.bulk_sets(&BulkSetsParams {
 ```
 
 ```python
+# Python
 await qn.kvstore.bulk_sets(
     add_sets={"k1": "v1"},
     delete_sets=["old-key"],
@@ -2671,6 +3013,7 @@ await qn.kvstore.bulk_sets(
 ```
 
 ```typescript
+// Node.js
 await qn.kvstore.bulkSets({
   addSets: { k1: "v1" },
   deleteSets: ["old-key"],
@@ -2678,7 +3021,8 @@ await qn.kvstore.bulkSets({
 ```
 
 ```ruby
-qn.kvstore.bulk_sets(delete_sets: ["old-key"])
+# Ruby
+qn.kvstore.bulk_sets(add_sets: { "k1" => "v1" }, delete_sets: ["old-key"])
 ```
 
 ##### `delete_set` / `deleteSet`
@@ -2690,18 +3034,22 @@ Deletes a single set.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.kvstore.delete_set("my-key").await?;
 ```
 
 ```python
+# Python
 await qn.kvstore.delete_set("my-key")
 ```
 
 ```typescript
+// Node.js
 await qn.kvstore.deleteSet("my-key");
 ```
 
 ```ruby
+# Ruby
 qn.kvstore.delete_set(key: "my-key")
 ```
 
@@ -2716,6 +3064,7 @@ Creates a list under a key, seeded with the initial items.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.kvstore.create_list(&CreateListParams {
     key: "my-list".to_string(),
     items: vec!["0xabc".to_string(), "0xdef".to_string()],
@@ -2723,14 +3072,17 @@ qn.kvstore.create_list(&CreateListParams {
 ```
 
 ```python
+# Python
 await qn.kvstore.create_list(key="my-list", items=["0xabc", "0xdef"])
 ```
 
 ```typescript
+// Node.js
 await qn.kvstore.createList({ key: "my-list", items: ["0xabc", "0xdef"] });
 ```
 
 ```ruby
+# Ruby
 qn.kvstore.create_list(key: "my-list", items: ["0xabc", "0xdef"])
 ```
 
@@ -2743,18 +3095,22 @@ Paginated page of list keys.
 **Returns**: `GetListsResponse` — `{ data: { keys: string[] }, cursor: string }`.
 
 ```rust
+// Rust
 let resp = qn.kvstore.get_lists(&Default::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.kvstore.get_lists()
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.kvstore.getLists();
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.kvstore.get_lists({}))
 ```
 
@@ -2767,18 +3123,22 @@ Paginated page of items for a specific list.
 **Returns**: `GetListResponse` — `{ data: { items: string[] }, cursor: string }`.
 
 ```rust
+// Rust
 let resp = qn.kvstore.get_list("my-list", &Default::default()).await?;
 ```
 
 ```python
+# Python
 resp = await qn.kvstore.get_list("my-list")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.kvstore.getList("my-list");
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.kvstore.get_list(key: "my-list"))
 ```
 
@@ -2791,6 +3151,7 @@ Adds and/or removes items in a single operation.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.kvstore.update_list(
     "my-list",
     &UpdateListParams {
@@ -2801,6 +3162,7 @@ qn.kvstore.update_list(
 ```
 
 ```python
+# Python
 await qn.kvstore.update_list(
     "my-list",
     add_items=["0x456"],
@@ -2809,6 +3171,7 @@ await qn.kvstore.update_list(
 ```
 
 ```typescript
+// Node.js
 await qn.kvstore.updateList("my-list", {
   addItems: ["0x456"],
   removeItems: ["0xabc"],
@@ -2816,6 +3179,7 @@ await qn.kvstore.updateList("my-list", {
 ```
 
 ```ruby
+# Ruby
 qn.kvstore.update_list(key: "my-list", add_items: ["0x456"], remove_items: ["0xabc"])
 ```
 
@@ -2828,6 +3192,7 @@ Appends a single item to a list.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.kvstore.add_list_item(
     "my-list",
     &AddListItemParams { item: "0x123".to_string() },
@@ -2835,14 +3200,17 @@ qn.kvstore.add_list_item(
 ```
 
 ```python
+# Python
 await qn.kvstore.add_list_item("my-list", "0x123")
 ```
 
 ```typescript
+// Node.js
 await qn.kvstore.addListItem("my-list", { item: "0x123" });
 ```
 
 ```ruby
+# Ruby
 qn.kvstore.add_list_item(key: "my-list", item: "0x123")
 ```
 
@@ -2855,18 +3223,22 @@ Checks whether a list contains a specific item.
 **Returns**: `ListContainsItemResponse` with `exists: bool`.
 
 ```rust
+// Rust
 let resp = qn.kvstore.list_contains_item("my-list", "0x123").await?;
 ```
 
 ```python
+# Python
 resp = await qn.kvstore.list_contains_item("my-list", "0x123")
 ```
 
 ```typescript
+// Node.js
 const resp = await qn.kvstore.listContainsItem("my-list", "0x123");
 ```
 
 ```ruby
+# Ruby
 resp = JSON.parse(qn.kvstore.list_contains_item(key: "my-list", item: "0x123"))
 ```
 
@@ -2879,18 +3251,22 @@ Removes a single item from a list.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.kvstore.delete_list_item("my-list", "0x123").await?;
 ```
 
 ```python
+# Python
 await qn.kvstore.delete_list_item("my-list", "0x123")
 ```
 
 ```typescript
+// Node.js
 await qn.kvstore.deleteListItem("my-list", "0x123");
 ```
 
 ```ruby
+# Ruby
 qn.kvstore.delete_list_item(key: "my-list", item: "0x123")
 ```
 
@@ -2903,18 +3279,22 @@ Deletes a list and all of its items.
 **Returns**: nothing.
 
 ```rust
+// Rust
 qn.kvstore.delete_list("my-list").await?;
 ```
 
 ```python
+# Python
 await qn.kvstore.delete_list("my-list")
 ```
 
 ```typescript
+// Node.js
 await qn.kvstore.deleteList("my-list");
 ```
 
 ```ruby
+# Ruby
 qn.kvstore.delete_list(key: "my-list")
 ```
 
@@ -2935,6 +3315,7 @@ Each language binding maps these to its native exception type:
 - **Ruby**: raises `RuntimeError` for SDK errors and `ArgumentError` for missing/unknown Hash keys or bad types.
 
 ```rust
+// Rust
 match qn.streams.get_stream("missing").await {
     Ok(stream) => println!("{}", stream.name),
     Err(SdkError::Api { status, body }) => eprintln!("api {status}: {body}"),
@@ -2943,6 +3324,7 @@ match qn.streams.get_stream("missing").await {
 ```
 
 ```python
+# Python
 try:
     await qn.streams.get_stream("missing")
 except ValueError as e:
@@ -2950,6 +3332,7 @@ except ValueError as e:
 ```
 
 ```typescript
+// Node.js
 try {
   await qn.streams.getStream("missing");
 } catch (e) {
@@ -2958,6 +3341,7 @@ try {
 ```
 
 ```ruby
+# Ruby
 begin
   qn.streams.get_stream(id: "missing")
 rescue => e
