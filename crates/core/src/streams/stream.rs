@@ -3,12 +3,10 @@ use bon::Builder;
 #[cfg(feature = "node")]
 use napi_derive::napi;
 #[cfg(feature = "python")]
-use pyo3::{exceptions::PyValueError, pyclass, pymethods, PyResult};
+use pyo3::{pyclass, pymethods};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use serde::{Deserialize, Deserializer, Serialize};
-
-use crate::errors::SdkError;
 
 fn deserialize_as_json_string<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
@@ -16,19 +14,6 @@ where
 {
     let value = serde_json::Value::deserialize(deserializer)?;
     serde_json::to_string(&value).map_err(serde::de::Error::custom)
-}
-
-fn deserialize_as_optional_json_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
-    match value {
-        None => Ok(None),
-        Some(v) => serde_json::to_string(&v)
-            .map(Some)
-            .map_err(serde::de::Error::custom),
-    }
 }
 
 // ── Enums ──────────────────────────────────────────────────────────────────
@@ -674,186 +659,56 @@ impl AddressBookConfig {
 
 // ── Destination Attributes ─────────────────────────────────────────────────
 
-// The API expects a `destination` string and a `destination_attributes` object
-// whose shape depends on which destination is selected. The natural Rust model
-// would be an enum with per-variant data, but napi-rs and PyO3 cannot represent
-// Rust discriminated unions at the FFI boundary — they require flat structs.
-// Instead, `DestinationAttributes` is a flat wrapper struct that bundles the
-// destination variant with its pre-serialized JSON value. Callers construct it
-// via typed static factory methods (one per destination), so they never interact
-// with raw JSON. The `CreateStreamParams` holds one `DestinationAttributes`
-// field instead of 10 separate `Option<XAttributes>` fields — making mismatches
-// a compile-time error in Rust and a clear constructor error in Python/Node.
-
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "node", napi(object))]
+// Discriminated union keyed by the `destination` tag on the QuickNode Streams
+// API wire format. Each variant carries the typed attributes for that
+// destination. `serde(tag = "destination", content = "destination_attributes")`
+// produces and consumes the exact wire shape the API expects when flattened
+// into a request/response struct.
+//
+// FFI note: this enum is NOT annotated with #[pyclass] or #[napi(object)] —
+// PyO3 and napi-rs cannot represent enum-with-data. Each language binding
+// crate (crates/python, crates/node, crates/ruby) converts between the
+// language-surface type and this enum. Rust consumers get the full enum.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DestinationAttributes {
-    // pub fields required for napi(object) to expose them in TypeScript.
-    // Callers should use the typed factory methods rather than setting fields
-    // directly — the value field is a pre-serialized JSON string.
-    pub destination: StreamDestination,
-    // Stored as a JSON string so napi(object) can represent it (serde_json::Value
-    // is not supported by napi-rs). Parsed back to Value in create_stream.
-    pub value: String,
+#[serde(
+    tag = "destination",
+    content = "destination_attributes",
+    rename_all = "snake_case"
+)]
+pub enum DestinationAttributes {
+    Webhook(WebhookAttributes),
+    S3(S3Attributes),
+    Azure(AzureAttributes),
+    Postgres(PostgresAttributes),
+    Mysql(MysqlAttributes),
+    Mongo(MongoAttributes),
+    Clickhouse(ClickhouseAttributes),
+    Snowflake(SnowflakeAttributes),
+    Kafka(KafkaAttributes),
+    Redis(RedisAttributes),
 }
 
-// napi(object) on CreateStreamParams requires all fields to implement Default
-// so napi can handle cases where the field is absent in JS. In practice,
-// destination_attributes is always required — the default is never used.
-impl Default for DestinationAttributes {
-    fn default() -> Self {
-        Self {
-            destination: StreamDestination::Webhook,
-            value: "null".to_string(),
+impl DestinationAttributes {
+    pub fn tag(&self) -> StreamDestination {
+        match self {
+            Self::Webhook(_) => StreamDestination::Webhook,
+            Self::S3(_) => StreamDestination::S3,
+            Self::Azure(_) => StreamDestination::Azure,
+            Self::Postgres(_) => StreamDestination::Postgres,
+            Self::Mysql(_) => StreamDestination::Mysql,
+            Self::Mongo(_) => StreamDestination::Mongo,
+            Self::Clickhouse(_) => StreamDestination::Clickhouse,
+            Self::Snowflake(_) => StreamDestination::Snowflake,
+            Self::Kafka(_) => StreamDestination::Kafka,
+            Self::Redis(_) => StreamDestination::Redis,
         }
-    }
-}
-
-impl DestinationAttributes {
-    pub fn webhook(attrs: &WebhookAttributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::Webhook,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn s3(attrs: &S3Attributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::S3,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn azure(attrs: &AzureAttributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::Azure,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn postgres(attrs: &PostgresAttributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::Postgres,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn mysql(attrs: &MysqlAttributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::Mysql,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn mongo(attrs: &MongoAttributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::Mongo,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn clickhouse(attrs: &ClickhouseAttributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::Clickhouse,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn snowflake(attrs: &SnowflakeAttributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::Snowflake,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn kafka(attrs: &KafkaAttributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::Kafka,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn redis(attrs: &RedisAttributes) -> Result<Self, SdkError> {
-        Ok(Self {
-            destination: StreamDestination::Redis,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-}
-
-#[cfg(feature = "python")]
-#[gen_stub_pymethods]
-#[pymethods]
-impl DestinationAttributes {
-    #[staticmethod]
-    #[pyo3(name = "webhook")]
-    fn py_webhook(attrs: &WebhookAttributes) -> PyResult<Self> {
-        Self::webhook(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "s3")]
-    fn py_s3(attrs: &S3Attributes) -> PyResult<Self> {
-        Self::s3(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "azure")]
-    fn py_azure(attrs: &AzureAttributes) -> PyResult<Self> {
-        Self::azure(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "postgres")]
-    fn py_postgres(attrs: &PostgresAttributes) -> PyResult<Self> {
-        Self::postgres(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "mysql")]
-    fn py_mysql(attrs: &MysqlAttributes) -> PyResult<Self> {
-        Self::mysql(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "mongo")]
-    fn py_mongo(attrs: &MongoAttributes) -> PyResult<Self> {
-        Self::mongo(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "clickhouse")]
-    fn py_clickhouse(attrs: &ClickhouseAttributes) -> PyResult<Self> {
-        Self::clickhouse(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "snowflake")]
-    fn py_snowflake(attrs: &SnowflakeAttributes) -> PyResult<Self> {
-        Self::snowflake(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "kafka")]
-    fn py_kafka(attrs: &KafkaAttributes) -> PyResult<Self> {
-        Self::kafka(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "redis")]
-    fn py_redis(attrs: &RedisAttributes) -> PyResult<Self> {
-        Self::redis(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
     }
 }
 
 // ── Request (public-facing) ────────────────────────────────────────────────
 
 #[cfg_attr(feature = "rust", derive(Builder))]
-#[cfg_attr(feature = "node", napi(object))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateStreamParams {
     pub name: String,
     pub region: StreamRegion,
@@ -861,10 +716,9 @@ pub struct CreateStreamParams {
     pub dataset: StreamDataset,
     pub start_range: i64,
     pub end_range: i64,
-    // destination and destination_attributes are skipped here and inserted manually
-    // into the request body in StreamsApiClient::create_stream, so serde doesn't
-    // try to serialize them as fields of this struct.
-    #[serde(skip)]
+    // `#[serde(flatten)]` combined with the enum's `tag`/`content` attrs
+    // produces the wire shape: { "destination": "...", "destination_attributes": {...} }
+    #[serde(flatten)]
     pub destination_attributes: DestinationAttributes,
     pub plan: String,
     pub threshold_fetch_buffer: i64,
@@ -902,9 +756,6 @@ pub struct CreateStreamParams {
 
 // ── Response ───────────────────────────────────────────────────────────────
 
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stream {
     pub id: String,
@@ -916,7 +767,6 @@ pub struct Stream {
     pub network: String,
     pub dataset: String,
     pub region: String,
-    pub destination: String,
     pub start_range: i64,
     pub end_range: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -947,13 +797,12 @@ pub struct Stream {
     pub fix_block_reorgs: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_hash: Option<String>,
-    /// Destination-specific configuration as a JSON string. Shape depends on the destination type.
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_as_optional_json_string"
-    )]
-    pub destination_attributes: Option<String>,
+    // Flattened typed destination + destination_attributes. Wire shape:
+    // { "destination": "webhook", "destination_attributes": { ... } }
+    // Optional on the response because partial responses from some endpoints
+    // may omit them. Defaults to None when absent.
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub destination_attributes: Option<DestinationAttributes>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elastic_batch_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -978,9 +827,6 @@ pub struct PageInfo {
     pub total: i64,
 }
 
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListStreamsResponse {
     pub data: Vec<Stream>,
@@ -1004,9 +850,7 @@ pub struct ListStreamsParams {
     pub order_direction: Option<String>,
 }
 
-#[cfg_attr(feature = "node", napi(object))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct UpdateStreamParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -1020,7 +864,8 @@ pub struct UpdateStreamParams {
     pub start_range: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_range: Option<i64>,
-    #[serde(skip)]
+    // Flattening Option<enum> omits the keys entirely when None.
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub destination_attributes: Option<DestinationAttributes>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plan: Option<String>,
