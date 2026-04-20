@@ -36,96 +36,121 @@ impl ResolvedKvStoreConfig {
 
 // ── Request types ──────────────────────────────────────────────────────────
 
+/// Parameters for `create_set`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateSetParams {
+    /// Unique key identifying the set.
     pub key: String,
+    /// String value stored under the key.
     pub value: String,
 }
 
+/// Parameters for `get_sets`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GetSetsParams {
+    /// Maximum number of entries returned.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
+    /// Cursor returned by a previous page; pass to fetch the next page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
 }
 
+/// Parameters for `bulk_sets`. Either or both fields may be supplied.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BulkSetsParams {
+    /// Key/value pairs to add.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub add_sets: Option<HashMap<String, String>>,
+    /// Keys to delete.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub delete_sets: Option<Vec<String>>,
 }
 
+/// Parameters for `create_list`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateListParams {
+    /// Unique key identifying the list.
     pub key: String,
+    /// Initial items inserted into the list.
     pub items: Vec<String>,
 }
 
+/// Parameters for `get_lists`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GetListsParams {
+    /// Maximum number of list keys returned.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
+    /// Cursor returned by a previous page; pass to fetch the next page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
 }
 
+/// Parameters for `get_list`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GetListParams {
+    /// Maximum number of items returned.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i64>,
+    /// Cursor returned by a previous page; pass to fetch the next page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
 }
 
+/// Parameters for `update_list`. Either or both fields may be supplied.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct UpdateListParams {
+    /// Items to add to the list.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub add_items: Option<Vec<String>>,
+    /// Items to remove from the list.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remove_items: Option<Vec<String>>,
 }
 
+/// Parameters for `add_list_item`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AddListItemParams {
+    /// Item to append to the list.
     pub item: String,
 }
 
 // ── Response types ─────────────────────────────────────────────────────────
 
-// A single entry returned in the GET /sets listing
+/// A single key/value entry returned by `get_sets`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KvSetEntry {
+    /// Key identifying the set.
     pub key: String,
+    /// Stored string value.
     pub value: String,
 }
 
@@ -139,13 +164,16 @@ impl KvSetEntry {
     }
 }
 
+/// Response from `get_sets`.
 // GET /sets → {"data": [{key, value}], "cursor": ""}
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetSetsResponse {
+    /// Key/value entries on the current page.
     pub data: Vec<KvSetEntry>,
+    /// Cursor for the next page; empty string when there are no more pages.
     pub cursor: String,
 }
 
@@ -159,12 +187,14 @@ impl GetSetsResponse {
     }
 }
 
+/// Response from `get_set`.
 // GET /sets/{key} → {"data": {"key": "...", "value": "..."}}
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetSetResponse {
+    /// Stored string value.
     pub value: String,
 }
 
@@ -178,12 +208,14 @@ impl GetSetResponse {
     }
 }
 
+/// Inner data for `get_lists` responses.
 // Inner data for GET /lists → data.keys
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetListsData {
+    /// List keys on the current page.
     pub keys: Vec<String>,
 }
 
@@ -197,13 +229,16 @@ impl GetListsData {
     }
 }
 
+/// Response from `get_lists`.
 // GET /lists → {"data": {"keys": [...]}, "cursor": ""}
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetListsResponse {
+    /// List keys on the current page.
     pub data: GetListsData,
+    /// Cursor for the next page; empty string when there are no more pages.
     pub cursor: String,
 }
 
@@ -217,12 +252,14 @@ impl GetListsResponse {
     }
 }
 
+/// Inner data for `get_list` responses.
 // Inner data for GET /lists/{key} → data.items
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetListData {
+    /// Items in the list on the current page.
     pub items: Vec<String>,
 }
 
@@ -236,13 +273,16 @@ impl GetListData {
     }
 }
 
+/// Response from `get_list`.
 // GET /lists/{key} → {"data": {"items": [...]}, "cursor": ""}
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetListResponse {
+    /// Items for the list on the current page.
     pub data: GetListData,
+    /// Cursor for the next page; empty string when there are no more pages.
     pub cursor: String,
 }
 
@@ -256,11 +296,13 @@ impl GetListResponse {
     }
 }
 
+/// Response from `list_contains_item`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListContainsItemResponse {
+    /// `true` when the item is present in the list.
     pub exists: bool,
 }
 
@@ -283,6 +325,9 @@ struct ApiResponse<T> {
 
 // ── Client ─────────────────────────────────────────────────────────────────
 
+/// Client for the QuickNode Key-Value Store. Supports two primitives: *sets*
+/// (single string values under a key) and *lists* (ordered collections of
+/// strings under a key).
 #[derive(Debug, Clone)]
 pub struct KvStoreApiClient {
     config: SdkConfig,
@@ -295,6 +340,7 @@ impl KvStoreApiClient {
 
     // ── Sets ────────────────────────────────────────────────────────────────
 
+    /// Creates a new set, storing a single string value under the given key.
     pub async fn create_set(&self, params: &CreateSetParams) -> Result<(), SdkError> {
         let url = self.config.kvstore().base_url.join("sets")?;
         let resp = self
@@ -313,6 +359,8 @@ impl KvStoreApiClient {
         Ok(())
     }
 
+    /// Returns a paginated page of key/value entries from the store. Use the
+    /// response `cursor` to fetch subsequent pages.
     pub async fn get_sets(&self, params: &GetSetsParams) -> Result<GetSetsResponse, SdkError> {
         let mut url = self.config.kvstore().base_url.join("sets")?;
         {
@@ -339,6 +387,7 @@ impl KvStoreApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the string value stored for a single set by key.
     pub async fn get_set(&self, key: &str) -> Result<GetSetResponse, SdkError> {
         let url = self
             .config
@@ -362,6 +411,8 @@ impl KvStoreApiClient {
         Ok(wrapper.data)
     }
 
+    /// Adds and removes multiple sets in a single request. Either `add_sets`,
+    /// `delete_sets`, or both may be supplied.
     pub async fn bulk_sets(&self, params: &BulkSetsParams) -> Result<(), SdkError> {
         let url = self.config.kvstore().base_url.join("sets/bulk")?;
         let resp = self
@@ -380,6 +431,7 @@ impl KvStoreApiClient {
         Ok(())
     }
 
+    /// Removes a single set by key.
     pub async fn delete_set(&self, key: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -403,6 +455,7 @@ impl KvStoreApiClient {
 
     // ── Lists ───────────────────────────────────────────────────────────────
 
+    /// Creates a new list under the given key, seeded with the provided items.
     pub async fn create_list(&self, params: &CreateListParams) -> Result<(), SdkError> {
         let url = self.config.kvstore().base_url.join("lists")?;
         let resp = self
@@ -421,6 +474,8 @@ impl KvStoreApiClient {
         Ok(())
     }
 
+    /// Returns a paginated page of list keys from the store. Use the response
+    /// `cursor` to fetch subsequent pages.
     pub async fn get_lists(&self, params: &GetListsParams) -> Result<GetListsResponse, SdkError> {
         let mut url = self.config.kvstore().base_url.join("lists")?;
         {
@@ -447,6 +502,8 @@ impl KvStoreApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns a paginated page of items from the list identified by `key`.
+    /// Use the response `cursor` to fetch subsequent pages.
     pub async fn get_list(
         &self,
         key: &str,
@@ -481,6 +538,8 @@ impl KvStoreApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates an existing list by adding and/or removing items in a single
+    /// operation. Either `add_items`, `remove_items`, or both may be supplied.
     pub async fn update_list(&self, key: &str, params: &UpdateListParams) -> Result<(), SdkError> {
         let url = self
             .config
@@ -503,6 +562,7 @@ impl KvStoreApiClient {
         Ok(())
     }
 
+    /// Appends a single item to the list identified by `key`.
     pub async fn add_list_item(
         &self,
         key: &str,
@@ -529,6 +589,7 @@ impl KvStoreApiClient {
         Ok(())
     }
 
+    /// Checks whether the specified list contains the given item.
     pub async fn list_contains_item(
         &self,
         key: &str,
@@ -556,6 +617,7 @@ impl KvStoreApiClient {
         Ok(wrapper.data)
     }
 
+    /// Removes a specific item from the list identified by `key`.
     pub async fn delete_list_item(&self, key: &str, item: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -577,6 +639,7 @@ impl KvStoreApiClient {
         Ok(())
     }
 
+    /// Removes a list and all of its items by key.
     pub async fn delete_list(&self, key: &str) -> Result<(), SdkError> {
         let url = self
             .config

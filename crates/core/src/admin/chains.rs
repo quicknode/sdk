@@ -6,33 +6,44 @@ use pyo3::pyclass;
 use pyo3_stub_gen::derive::gen_stub_pyclass;
 use serde::{Deserialize, Serialize};
 
+/// A network within a supported chain.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainNetwork {
+    /// Network slug (e.g. `mainnet`).
     pub slug: String,
+    /// Human-readable network name.
     pub name: String,
+    /// Numeric chain id, when applicable.
     pub chain_id: Option<i64>,
 }
 
+/// A blockchain supported by QuickNode along with its networks.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Chain {
+    /// Chain slug (e.g. `ethereum`).
     pub slug: String,
+    /// Networks available on this chain.
     #[serde(default)]
     pub networks: Vec<ChainNetwork>,
+    /// Whether the chain is shown in selection UIs.
     pub is_select_chain: Option<bool>,
 }
 
+/// Response from `list_chains`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListChainsResponse {
+    /// Supported chains and their networks.
     #[serde(default)]
     pub data: Vec<Chain>,
+    /// Error message when the request did not succeed.
     pub error: Option<String>,
 }

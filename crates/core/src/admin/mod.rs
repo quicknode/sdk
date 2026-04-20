@@ -88,6 +88,8 @@ impl ResolvedAdminConfig {
     }
 }
 
+/// Client for the QuickNode Admin API. Manage endpoints, tags, teams, billing,
+/// usage/metrics, security, and rate limits on the account.
 #[derive(Debug, Clone)]
 pub struct AdminApiClient {
     config: SdkConfig,
@@ -98,6 +100,11 @@ impl AdminApiClient {
         Self { config }
     }
 
+    /// Returns a paginated list of endpoints on the account. Supports searching
+    /// by subdomain or label, filtering by networks, statuses, labels, and
+    /// tags, and sorting. The response includes endpoint metadata (id, label,
+    /// status, chain/network, HTTP and WebSocket URLs, tags) plus
+    /// total/limit/offset pagination info.
     pub async fn get_endpoints(
         &self,
         params: &GetEndpointsRequest,
@@ -125,6 +132,10 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a new endpoint for a given blockchain and network. Requires
+    /// `chain` and `network`; returns the new endpoint with its HTTP and
+    /// WebSocket URLs, default security configuration (tokens, JWTs, IPs,
+    /// domain masks, CORS), and rate limits.
     pub async fn create_endpoint(
         &self,
         params: &CreateEndpointRequest,
@@ -148,6 +159,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns details for a specific endpoint by ID.
     pub async fn show_endpoint(&self, id: &str) -> Result<ShowEndpointResponse, SdkError> {
         let url = self
             .config
@@ -171,6 +183,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates editable fields on an endpoint (e.g. its label). Returns a
+    /// boolean indicating whether the update succeeded.
     pub async fn update_endpoint(
         &self,
         id: &str,
@@ -199,6 +213,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Archives an endpoint. The API uses `DELETE` but the effect is archival
+    /// rather than permanent deletion.
     pub async fn archive_endpoint(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -222,6 +238,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Pauses or unpauses an endpoint by setting its status to `active` or
+    /// `paused`.
     pub async fn update_endpoint_status(
         &self,
         id: &str,
@@ -250,6 +268,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a new tag on a specific endpoint from a label. Returns the new
+    /// tag with its id, account info, and timestamps.
     pub async fn create_tag(&self, id: &str, params: &CreateTagRequest) -> Result<(), SdkError> {
         let url = self
             .config
@@ -274,6 +294,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a tag from a specific endpoint by tag id.
     pub async fn delete_tag(&self, id: &str, tag_id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -297,6 +318,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Returns all teams on the account. Each team includes its id, name,
+    /// member count, and member details (roles, contact info, account status).
     pub async fn list_teams(&self) -> Result<ListTeamsResponse, SdkError> {
         let url = self.config.admin().base_url.join("teams")?;
         let resp = self
@@ -316,6 +339,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a new team. Requires a `name`; returns the new team with its
+    /// id, name, default role, and member count.
     pub async fn create_team(
         &self,
         params: &CreateTeamRequest,
@@ -339,6 +364,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns a specific team by id, including active members with their
+    /// roles and contact info plus any pending invites.
     pub async fn get_team(&self, id: i64) -> Result<GetTeamResponse, SdkError> {
         let url = self
             .config
@@ -362,6 +389,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Deletes a team by id. The team must have no members before it can be
+    /// deleted.
     pub async fn delete_team(&self, id: i64) -> Result<DeleteTeamResponse, SdkError> {
         let url = self
             .config
@@ -385,6 +414,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the endpoints accessible to a given team. Each entry includes
+    /// the endpoint id, subdomain, chain, and network.
     pub async fn list_team_endpoints(
         &self,
         id: i64,
@@ -411,6 +442,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Assigns or unassigns endpoints for a team. Pass an array of endpoint ids
+    /// to set the team's accessible endpoints; pass an empty array to remove
+    /// all associations.
     pub async fn update_team_endpoints(
         &self,
         id: i64,
@@ -439,6 +473,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Invites a user to a team by email. For new users, `full_name` and
+    /// `role` (`admin`, `viewer`, or `billing`) are also required. Returns the
+    /// invited user's profile and invitation status.
     pub async fn invite_team_member(
         &self,
         id: i64,
@@ -467,6 +504,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes a user from a team by team id and user id.
     pub async fn remove_team_member(
         &self,
         id: i64,
@@ -496,6 +534,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Resends the invitation email to a pending team member, identified by
+    /// team id and user id.
     pub async fn resend_team_invite(
         &self,
         id: i64,
@@ -523,6 +563,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns account RPC usage totals for an optional time range. The
+    /// response includes `credits_used`, `credits_remaining`, the account
+    /// `limit`, any `overages`, and the queried time window.
     pub async fn get_usage(&self, params: &GetUsageRequest) -> Result<GetUsageResponse, SdkError> {
         let url = self.config.admin().base_url.join("usage/rpc")?;
         let resp = self
@@ -543,6 +586,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns RPC usage broken down per endpoint over an optional time range.
+    /// Each entry includes endpoint metadata, aggregate `credits_used` and
+    /// `requests`, and a per-method credit breakdown.
     pub async fn get_usage_by_endpoint(
         &self,
         params: &GetUsageRequest,
@@ -566,6 +612,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns RPC usage grouped by method over an optional time range. Each
+    /// entry includes the method name, credits consumed, and archival status.
+    /// Ranges longer than one week are rounded to midnight UTC.
     pub async fn get_usage_by_method(
         &self,
         params: &GetUsageRequest,
@@ -589,6 +638,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns RPC usage grouped by chain over an optional time range. Each
+    /// entry includes the chain and its credit consumption.
     pub async fn get_usage_by_chain(
         &self,
         params: &GetUsageRequest,
@@ -612,6 +663,10 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns activity logs for a specific endpoint. Supports filtering by
+    /// timestamp range and pagination. Each log entry includes timestamp,
+    /// HTTP method, network, status code, and error data; full request/response
+    /// bodies can be included when requested.
     pub async fn get_endpoint_logs(
         &self,
         id: &str,
@@ -640,6 +695,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the raw request and response payloads for a specific log entry
+    /// on an endpoint, identified by request UUID. Both payloads are
+    /// JSON-encoded strings and are truncated at 2KB.
     pub async fn get_log_details(
         &self,
         id: &str,
@@ -668,6 +726,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the security options for an endpoint — an object of security
+    /// feature toggles with their current enabled/disabled status.
     pub async fn get_security_options(
         &self,
         id: &str,
@@ -694,6 +754,10 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates which security features are enabled on an endpoint. Each option
+    /// in the submitted object can be toggled `enabled` or `disabled` —
+    /// examples include token auth, JWT validation, IP restrictions, CORS,
+    /// HSTS, referrer validation, and domain masking.
     pub async fn update_security_options(
         &self,
         id: &str,
@@ -722,6 +786,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Generates a new authentication token for an endpoint.
     pub async fn create_token(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -745,6 +810,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Revokes a token on an endpoint by token id.
     pub async fn delete_token(
         &self,
         id: &str,
@@ -772,6 +838,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Adds a referrer to an endpoint's security settings, specifying which
+    /// external URL or domain is permitted to call the endpoint.
     pub async fn create_referrer(
         &self,
         id: &str,
@@ -800,6 +868,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a referrer from an endpoint's security settings by referrer id.
     pub async fn delete_referrer(
         &self,
         id: &str,
@@ -826,6 +895,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Adds an IP address to an endpoint's security whitelist.
     pub async fn create_ip(&self, id: &str, params: &CreateIpRequest) -> Result<(), SdkError> {
         let url = self
             .config
@@ -850,6 +920,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes an IP address from an endpoint's security whitelist by ip id.
     pub async fn delete_ip(&self, id: &str, ip_id: &str) -> Result<DeleteBoolResponse, SdkError> {
         let url = self
             .config
@@ -873,6 +944,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Adds a domain mask to an endpoint — a custom domain used to hide the
+    /// endpoint's QuickNode URL so requests can be routed through your own
+    /// domain.
     pub async fn create_domain_mask(
         &self,
         id: &str,
@@ -901,6 +975,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a domain mask from an endpoint by domain mask id.
     pub async fn delete_domain_mask(
         &self,
         id: &str,
@@ -927,6 +1002,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a new JWT for endpoint authentication. Accepts a public key,
+    /// key id (`kid`), and token name.
     pub async fn create_jwt(&self, id: &str, params: &CreateJwtRequest) -> Result<(), SdkError> {
         let url = self
             .config
@@ -951,6 +1028,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a JWT from an endpoint's security configuration by jwt id,
+    /// revoking its access.
     pub async fn delete_jwt(&self, id: &str, jwt_id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -974,6 +1053,9 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Creates a request filter on an endpoint — a method whitelist that
+    /// restricts which RPC methods may be called. Accepts an array of method
+    /// names; other methods are blocked.
     pub async fn create_request_filter(
         &self,
         id: &str,
@@ -1002,6 +1084,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates an existing request filter on an endpoint, replacing the
+    /// whitelisted method list.
     pub async fn update_request_filter(
         &self,
         id: &str,
@@ -1030,6 +1114,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Removes a request filter from an endpoint's security configuration by
+    /// request filter id.
     pub async fn delete_request_filter(
         &self,
         id: &str,
@@ -1056,6 +1142,8 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Enables multichain functionality on an endpoint, allowing a single
+    /// endpoint to serve multiple chains.
     pub async fn enable_multichain(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -1079,6 +1167,7 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Disables multichain functionality on an endpoint.
     pub async fn disable_multichain(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -1102,6 +1191,10 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Sets the custom HTTP header used to identify the client IP for an
+    /// endpoint (for example, `X-Forwarded-For`). This header is used by
+    /// IP-based security features to resolve the real client address when
+    /// requests are proxied.
     pub async fn create_or_update_ip_custom_header(
         &self,
         id: &str,
@@ -1130,6 +1223,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes the custom IP header configuration from an endpoint.
     pub async fn delete_ip_custom_header(&self, id: &str) -> Result<DeleteBoolResponse, SdkError> {
         let url = self
             .config
@@ -1153,6 +1247,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the method rate limits configured on an endpoint, including
+    /// each limiter's interval, methods, rate, and status.
     pub async fn get_method_rate_limits(
         &self,
         id: &str,
@@ -1179,6 +1275,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Creates a per-method rate limit on an endpoint. A method rate limit
+    /// caps specific RPC methods rather than the endpoint as a whole, defined
+    /// by an `interval` (e.g. `second`), the target `methods`, and a `rate`.
     pub async fn create_method_rate_limit(
         &self,
         id: &str,
@@ -1207,6 +1306,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates an existing method rate limit on an endpoint. Accepts the
+    /// methods to apply the limit to, the desired `status`, and the `rate`.
     pub async fn update_method_rate_limit(
         &self,
         id: &str,
@@ -1235,6 +1336,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes a method rate limit from an endpoint by method rate limit id.
     pub async fn delete_method_rate_limit(
         &self,
         id: &str,
@@ -1261,6 +1363,9 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Updates the overall rate limits on an endpoint. Accepts `rps`
+    /// (requests per second), `rpm` (requests per minute), and `rpd` (requests
+    /// per day).
     pub async fn update_rate_limits(
         &self,
         id: &str,
@@ -1289,6 +1394,9 @@ impl AdminApiClient {
         Ok(())
     }
 
+    /// Returns time-series metrics for a specific endpoint. Requires a
+    /// `period` (`hour`, `day`, `week`, or `month`) and a metric type such as
+    /// `method_calls_over_time` or `response_status_breakdown`.
     pub async fn get_endpoint_metrics(
         &self,
         id: &str,
@@ -1317,6 +1425,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns aggregated metrics across all endpoints on the account. Accepts
+    /// a `period` (`hour`, `day`, `week`, or `month`) and a metric type such
+    /// as `method_calls_over_time` or `credits_over_time`.
     pub async fn get_account_metrics(
         &self,
         params: &GetAccountMetricsRequest,
@@ -1340,6 +1451,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns all chains supported by QuickNode along with their networks.
+    /// Each entry includes the chain slug and its network slugs and names.
     pub async fn list_chains(&self) -> Result<ListChainsResponse, SdkError> {
         let url = self.config.admin().base_url.join("chains")?;
         let resp = self
@@ -1359,6 +1472,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the account's invoices, including id, status, billing reason,
+    /// amounts due and paid, line items with descriptions and billing periods,
+    /// and creation timestamps.
     pub async fn list_invoices(&self) -> Result<ListInvoicesResponse, SdkError> {
         let url = self.config.admin().base_url.join("billing/invoices")?;
         let resp = self
@@ -1378,6 +1494,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns all payments on the account, including amount, status, card
+    /// last-four, timestamp, currency, and marketplace spending.
     pub async fn list_payments(&self) -> Result<ListPaymentsResponse, SdkError> {
         let url = self.config.admin().base_url.join("billing/payments")?;
         let resp = self
@@ -1397,6 +1515,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Pauses or unpauses multiple endpoints in a single call. Accepts an
+    /// array of endpoint ids and a target status (`active` or `paused`);
+    /// returns per-endpoint success/failure results plus totals.
     pub async fn bulk_update_endpoint_status(
         &self,
         params: &BulkUpdateEndpointStatusRequest,
@@ -1425,6 +1546,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Applies a single tag label to multiple endpoints in one call. Returns
+    /// totals for affected endpoints, successes, and failures, plus the tag
+    /// that was applied.
     pub async fn bulk_add_tag(
         &self,
         params: &BulkAddTagRequest,
@@ -1453,6 +1577,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes a tag from multiple endpoints in one call, identified by an
+    /// array of endpoint ids and a tag id.
     pub async fn bulk_remove_tag(
         &self,
         params: &BulkRemoveTagRequest,
@@ -1484,6 +1610,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns all account-level tags, including tags with zero associated
+    /// endpoints. Each tag includes its id, label, and endpoint usage count.
     pub async fn list_tags(&self) -> Result<ListTagsResponse, SdkError> {
         let url = self.config.admin().base_url.join("endpoints/tags")?;
         let resp = self
@@ -1503,6 +1631,8 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates the label of an account tag. Because the tag is shared across
+    /// endpoints, all associated endpoints reflect the new label immediately.
     pub async fn rename_tag(
         &self,
         id: i32,
@@ -1533,6 +1663,8 @@ impl AdminApiClient {
 
     // Named delete_account_tag to avoid collision with the existing per-endpoint
     // delete_tag(id, tag_id). OpenAPI reuses the deleteTag operationId for both.
+    /// Deletes an account-level tag. The tag must first be removed from all
+    /// endpoints before it can be deleted.
     pub async fn delete_account_tag(&self, id: i32) -> Result<DeleteAccountTagResponse, SdkError> {
         let url = self
             .config
@@ -1556,6 +1688,9 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns RPC usage grouped by endpoint tag over an optional time range.
+    /// Each entry includes the tag id, label, credits consumed, and request
+    /// count.
     pub async fn get_usage_by_tag(
         &self,
         params: &GetUsageRequest,
@@ -1579,6 +1714,10 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the full security configuration for an endpoint in a single
+    /// call, without loading the entire endpoint object. The response includes
+    /// tokens, JWTs, referrers, domain masks, IPs, and a security options
+    /// object describing which features are enabled.
     pub async fn get_endpoint_security(
         &self,
         id: &str,

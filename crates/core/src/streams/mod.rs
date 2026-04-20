@@ -32,6 +32,9 @@ impl ResolvedStreamsConfig {
 
 // ── Client ─────────────────────────────────────────────────────────────────
 
+/// Client for the QuickNode Streams REST API. Create, list, update, and control
+/// blockchain data streams that deliver filtered on-chain events to configured
+/// destinations.
 #[derive(Debug, Clone)]
 pub struct StreamsApiClient {
     config: SdkConfig,
@@ -42,6 +45,13 @@ impl StreamsApiClient {
         Self { config }
     }
 
+    /// Creates a new Stream on a given blockchain network and dataset, delivering
+    /// batches to the configured destination. Start from a specific block for
+    /// backfills or from the tip for real-time streaming, and optionally attach
+    /// a base64-encoded JavaScript filter to transform data before delivery.
+    /// The stream can be created in an active or paused state and supports
+    /// reorg handling, distance-from-tip, elastic batching, notification emails,
+    /// and extra destinations for multi-destination delivery.
     pub async fn create_stream(&self, params: &CreateStreamParams) -> Result<Stream, SdkError> {
         let url = self.config.streams().base_url.join("streams")?;
         let resp = self
@@ -62,6 +72,14 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns a paginated list of streams on the account. Each stream includes
+    /// its full configuration — identifiers, timestamps, network and dataset,
+    /// filter, block range, destination settings, and operational status — and
+    /// surfaces advanced features such as elastic batching and extra
+    /// destinations, where batches must be delivered to every configured
+    /// destination before the stream advances. Supports pagination via
+    /// `offset`/`limit` and sorting via `order_by`/`order_direction`, and can
+    /// filter by stream type.
     pub async fn list_streams(
         &self,
         params: &ListStreamsParams,
@@ -100,6 +118,8 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Removes every stream on the account. Takes no filters and cannot be
+    /// undone.
     pub async fn delete_all_streams(&self) -> Result<(), SdkError> {
         let url = self.config.streams().base_url.join("streams")?;
         let resp = self
@@ -117,6 +137,8 @@ impl StreamsApiClient {
         Ok(())
     }
 
+    /// Returns a single stream by ID, including its full configuration and
+    /// current status.
     pub async fn get_stream(&self, id: &str) -> Result<Stream, SdkError> {
         let url = self
             .config
@@ -138,6 +160,8 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Updates an existing stream's configuration. Only fields present on
+    /// `params` are modified; omitted fields are left unchanged.
     pub async fn update_stream(
         &self,
         id: &str,
@@ -164,6 +188,7 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Deletes a single stream by ID.
     pub async fn delete_stream(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -185,6 +210,7 @@ impl StreamsApiClient {
         Ok(())
     }
 
+    /// Activates a stream by ID, resuming delivery from its current position.
     pub async fn activate_stream(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -206,6 +232,7 @@ impl StreamsApiClient {
         Ok(())
     }
 
+    /// Pauses a stream by ID, halting delivery until it is activated again.
     pub async fn pause_stream(&self, id: &str) -> Result<(), SdkError> {
         let url = self
             .config
@@ -227,6 +254,9 @@ impl StreamsApiClient {
         Ok(())
     }
 
+    /// Runs a filter function against a specified block on a given network and
+    /// dataset, returning the filter's output so it can be validated before
+    /// being attached to a live stream.
     pub async fn test_filter(
         &self,
         params: &TestFilterParams,
@@ -248,6 +278,8 @@ impl StreamsApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the total count of currently enabled (active) streams on the
+    /// account, optionally filtered by stream type.
     pub async fn get_enabled_count(
         &self,
         stream_type: Option<&str>,
