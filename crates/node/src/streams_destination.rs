@@ -18,9 +18,14 @@ use sdk_core as core;
 // awkward in TypeScript. This layer renames the inner key to match core.
 
 fn node_da_to_core(v: serde_json::Value) -> Result<core::streams::DestinationAttributes> {
-    let mut obj = v.as_object().cloned().ok_or_else(|| {
-        Error::from_reason("destination_attributes must be an object".to_string())
-    })?;
+    let mut obj = match v {
+        serde_json::Value::Object(o) => o,
+        _ => {
+            return Err(Error::from_reason(
+                "destination_attributes must be an object".to_string(),
+            ))
+        }
+    };
     let attrs = obj.remove("attributes").ok_or_else(|| {
         Error::from_reason("destination_attributes.attributes is required".to_string())
     })?;
@@ -30,11 +35,11 @@ fn node_da_to_core(v: serde_json::Value) -> Result<core::streams::DestinationAtt
         .map_err(|e| Error::from_reason(format!("invalid destination_attributes: {e}")))
 }
 
-fn core_da_to_node(attrs: core::streams::DestinationAttributes) -> Result<serde_json::Value> {
+fn core_da_to_node(attrs: &core::streams::DestinationAttributes) -> Result<serde_json::Value> {
     // Core serde serializes as { destination, destination_attributes } per the
     // wire format. Node responses preserve the wire shape so consumers match
     // the TypeScript `DestinationAttributesResponse` type in sdk.d.ts.
-    serde_json::to_value(&attrs)
+    serde_json::to_value(attrs)
         .map_err(|e| Error::from_reason(format!("failed to serialize destination_attributes: {e}")))
 }
 
@@ -201,7 +206,7 @@ pub struct StreamNode {
 
 impl StreamNode {
     pub fn from_core(s: core::streams::Stream) -> Result<Self> {
-        let destination_attributes = match s.destination_attributes {
+        let destination_attributes = match &s.destination_attributes {
             Some(attrs) => Some(core_da_to_node(attrs)?),
             None => None,
         };

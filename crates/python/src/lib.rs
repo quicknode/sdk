@@ -1108,7 +1108,7 @@ impl StreamsApiClient {
         region: String,
         start_range: i64,
         end_range: i64,
-        destination_attributes: Bound<'py, PyAny>,
+        destination_attributes: &Bound<'py, PyAny>,
         plan: String,
         threshold_fetch_buffer: i64,
         dataset_batch_size: Option<i64>,
@@ -1128,7 +1128,7 @@ impl StreamsApiClient {
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let destination_attributes =
-            streams_destination::extract_destination_attributes(&destination_attributes)?;
+            streams_destination::extract_destination_attributes(destination_attributes)?;
         let dataset = serde_json::from_value::<core::streams::StreamDataset>(
             serde_json::Value::String(dataset),
         )
