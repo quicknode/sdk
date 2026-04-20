@@ -2,20 +2,14 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use sdk_core as core;
 
-// ── Node-side stream wrappers ──────────────────────────────────────────────
+// napi(object) cannot represent the flattened DestinationAttributes enum on
+// core's stream types, so these wrappers carry it as serde_json::Value.
 //
-// Core CreateStreamParams, UpdateStreamParams, Stream, and ListStreamsResponse
-// lost #[napi(object)] because they flatten a Rust enum (DestinationAttributes).
-// These napi-side wrappers mirror those shapes but hold destination_attributes
-// as serde_json::Value, so TypeScript consumers can use a discriminated union
-// `{ destination: "webhook", attributes: { ... } }` (sdk.d.ts). Conversion to
-// and from the core enum happens in into_core / from_core.
-//
-// Wire asymmetry: the API wire format is
-// `{ destination, destination_attributes: {...} }`. The Node input shape uses
-// `{ destination, attributes: {...} }` (nested key renamed to `attributes`)
-// because double-nested `destination_attributes.destination_attributes` is
-// awkward in TypeScript. This layer renames the inner key to match core.
+// The Node input shape is `{ destination, attributes: {...} }` — the inner
+// key is renamed from the API's `destination_attributes` to `attributes` to
+// avoid `destinationAttributes.destinationAttributes.url` in TypeScript.
+// node_da_to_core() renames it back before deserializing. Responses keep the
+// wire shape (no rename) since consumers usually just read them.
 
 fn node_da_to_core(v: serde_json::Value) -> Result<core::streams::DestinationAttributes> {
     let mut obj = match v {
@@ -36,9 +30,6 @@ fn node_da_to_core(v: serde_json::Value) -> Result<core::streams::DestinationAtt
 }
 
 fn core_da_to_node(attrs: &core::streams::DestinationAttributes) -> Result<serde_json::Value> {
-    // Core serde serializes as { destination, destination_attributes } per the
-    // wire format. Node responses preserve the wire shape so consumers match
-    // the TypeScript `DestinationAttributesResponse` type in sdk.d.ts.
     serde_json::to_value(attrs)
         .map_err(|e| Error::from_reason(format!("failed to serialize destination_attributes: {e}")))
 }
@@ -51,7 +42,6 @@ pub struct CreateStreamParamsNode {
     pub dataset: core::streams::StreamDataset,
     pub start_range: i64,
     pub end_range: i64,
-    // Shape: { destination: "webhook", attributes: { url, ... } }
     pub destination_attributes: serde_json::Value,
     pub plan: String,
     pub threshold_fetch_buffer: i64,
@@ -195,7 +185,6 @@ pub struct StreamNode {
     pub notification_email: Option<String>,
     pub fix_block_reorgs: Option<i32>,
     pub current_hash: Option<String>,
-    // Shape: { destination: "webhook", destination_attributes: {...} } (matches wire format)
     pub destination_attributes: Option<serde_json::Value>,
     pub elastic_batch_enabled: Option<bool>,
     pub qn_account_id: Option<String>,

@@ -659,16 +659,11 @@ impl AddressBookConfig {
 
 // ── Destination Attributes ─────────────────────────────────────────────────
 
-// Discriminated union keyed by the `destination` tag on the QuickNode Streams
-// API wire format. Each variant carries the typed attributes for that
-// destination. `serde(tag = "destination", content = "destination_attributes")`
-// produces and consumes the exact wire shape the API expects when flattened
-// into a request/response struct.
-//
-// FFI note: this enum is NOT annotated with #[pyclass] or #[napi(object)] —
-// PyO3 and napi-rs cannot represent enum-with-data. Each language binding
-// crate (crates/python, crates/node, crates/ruby) converts between the
-// language-surface type and this enum. Rust consumers get the full enum.
+// Pure-Rust discriminated union; no #[pyclass] / #[napi(object)] because PyO3
+// and napi-rs cannot represent enum-with-data. Each language binding crate
+// wraps this type for its own FFI surface.
+// The serde tag/content pair matches the API wire format when flattened into
+// a request/response struct.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(
     tag = "destination",
@@ -716,8 +711,7 @@ pub struct CreateStreamParams {
     pub dataset: StreamDataset,
     pub start_range: i64,
     pub end_range: i64,
-    // `#[serde(flatten)]` combined with the enum's `tag`/`content` attrs
-    // produces the wire shape: { "destination": "...", "destination_attributes": {...} }
+    // Flattening the enum's tag/content produces { destination, destination_attributes }.
     #[serde(flatten)]
     pub destination_attributes: DestinationAttributes,
     pub plan: String,
@@ -797,10 +791,7 @@ pub struct Stream {
     pub fix_block_reorgs: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_hash: Option<String>,
-    // Flattened typed destination + destination_attributes. Wire shape:
-    // { "destination": "webhook", "destination_attributes": { ... } }
-    // Optional on the response because partial responses from some endpoints
-    // may omit them. Defaults to None when absent.
+    // Optional because partial responses (e.g. list) may omit the destination pair.
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub destination_attributes: Option<DestinationAttributes>,
     #[serde(skip_serializing_if = "Option::is_none")]

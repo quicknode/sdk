@@ -7,13 +7,10 @@ use sdk_core::streams::{
     WebhookAttributes,
 };
 
-// ── Per-destination typed wrappers ─────────────────────────────────────────
-//
-// Each wrapper is a thin #[pyclass] around the corresponding core *Attributes
-// struct. Python callers construct the typed destination directly:
-//   StreamWebhookDestination(WebhookAttributes(...))
-// and pass it to create_stream / update_stream. The Rust side extracts the
-// variant via extract_destination_attributes() below.
+// Per-destination typed wrappers. PyO3 cannot represent a Rust enum-with-data,
+// so each variant of core's DestinationAttributes is exposed as its own
+// #[pyclass] here. extract_destination_attributes() reassembles the enum at
+// the FFI boundary.
 
 macro_rules! destination_wrapper {
     ($name:ident, $attrs:ident, $variant:ident) => {
@@ -140,11 +137,9 @@ pub fn destination_attributes_to_py(
     })
 }
 
-// ── PyStream (wraps core Stream) ───────────────────────────────────────────
-//
-// Core Stream lost #[pyclass] because it holds a flattened DestinationAttributes
-// enum. This wrapper mirrors every public field and converts destination_attributes
-// to the typed Python class via destination_attributes_to_py.
+// Core Stream cannot be #[pyclass] because it holds the flattened
+// DestinationAttributes enum; this wrapper restores Python exposure and
+// converts destination_attributes to the typed Python class.
 
 #[gen_stub_pyclass]
 #[pyclass(name = "Stream")]
@@ -254,8 +249,6 @@ impl PyStream {
         })
     }
 }
-
-// ── PyListStreamsResponse (wraps core ListStreamsResponse) ─────────────────
 
 #[gen_stub_pyclass]
 #[pyclass(name = "ListStreamsResponse")]

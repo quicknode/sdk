@@ -23,10 +23,8 @@ class QuickNodeSdk {
   }
 }
 
-// napi-rs converts Rust snake_case fields to camelCase for JS consumers. The
-// destination attributes for streams now travel as a serde_json::Value through
-// napi — the caller passes a plain object `{ destination, attributes }` which
-// napi forwards directly to Rust, which converts to the typed enum.
+// TemplateArgs.value is a pre-serialized JSON string; napi forwards camelCase
+// keys from JS but the API expects snake_case, so stringify through these.
 function toSnakeCase(str) {
   return str.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 }

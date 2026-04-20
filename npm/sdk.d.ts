@@ -23,12 +23,10 @@ import {
   StellarWalletTransactionsFilterTemplate,
 } from "./index";
 
-// Discriminated union for Stream destination attributes. Used on input.
-// Matches the napi-side CreateStreamParamsNode / UpdateStreamParamsNode.
-// Wire note: the underlying API uses { destination, destination_attributes }.
-// This TS shape uses `attributes` for the inner key to avoid the awkward
-// `destinationAttributes.destinationAttributes.url` path. The Node binding
-// renames the key to the wire format.
+// Stream destination attributes (input). The inner key is `attributes` rather
+// than the wire's `destination_attributes` to avoid
+// `destinationAttributes.destinationAttributes.url`; the Node binding renames
+// it back before the request.
 export type StreamDestinationAttributesInput =
   | { destination: "webhook"; attributes: WebhookAttributes }
   | { destination: "s3"; attributes: S3Attributes }
@@ -41,8 +39,7 @@ export type StreamDestinationAttributesInput =
   | { destination: "kafka"; attributes: KafkaAttributes }
   | { destination: "redis"; attributes: RedisAttributes };
 
-// Discriminated union for Stream destination attributes on response. Matches
-// the wire shape as returned by the API: { destination, destination_attributes }.
+// Stream destination attributes (response) — matches the wire shape.
 export type StreamDestinationAttributesResponse =
   | { destination: "webhook"; destination_attributes: WebhookAttributes }
   | { destination: "s3"; destination_attributes: S3Attributes }
@@ -55,7 +52,7 @@ export type StreamDestinationAttributesResponse =
   | { destination: "kafka"; destination_attributes: KafkaAttributes }
   | { destination: "redis"; destination_attributes: RedisAttributes };
 
-// Wrapper types overriding the napi-generated JSON-blob fields with typed unions.
+// Replace the napi-generated JSON-blob destinationAttributes with typed unions.
 type _CreateStreamParamsNode = import("./index").CreateStreamParamsNode;
 type _UpdateStreamParamsNode = import("./index").UpdateStreamParamsNode;
 type _StreamNode = import("./index").StreamNode;
@@ -266,10 +263,7 @@ export {
   WebhookStartFrom,
 } from "./index";
 
-// A StreamsApiClient-typed facade. The napi-generated methods return
-// StreamNode / ListStreamsResponseNode whose destination_attributes is typed
-// as `any` (JSON value). This interface retypes those to the discriminated
-// unions above so consumers get full type safety.
+// Retypes napi's `any` destination_attributes to the discriminated unions.
 export interface StreamsApiClientTyped {
   createStream(params: CreateStreamParams): Promise<Stream>;
   listStreams(params?: import("./index").ListStreamsParams | undefined | null): Promise<ListStreamsResponse>;
