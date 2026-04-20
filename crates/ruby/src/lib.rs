@@ -871,9 +871,9 @@ impl DestinationAttributes {
             security_token: hash_get_string(&opts, "security_token")?,
             compression: hash_require_string(&opts, "compression")?,
         };
-        core::streams::DestinationAttributes::webhook(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::Webhook(attrs),
+        })
     }
 
     fn s3(opts: RHash) -> Result<Self, Error> {
@@ -889,9 +889,9 @@ impl DestinationAttributes {
             retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
             use_ssl: hash_get_bool(&opts, "use_ssl")?,
         };
-        core::streams::DestinationAttributes::s3(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::S3(attrs),
+        })
     }
 
     fn azure(opts: RHash) -> Result<Self, Error> {
@@ -905,9 +905,9 @@ impl DestinationAttributes {
             retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
             blob_prefix: hash_get_string(&opts, "blob_prefix")?,
         };
-        core::streams::DestinationAttributes::azure(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::Azure(attrs),
+        })
     }
 
     fn postgres(opts: RHash) -> Result<Self, Error> {
@@ -922,9 +922,9 @@ impl DestinationAttributes {
             max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
             retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
         };
-        core::streams::DestinationAttributes::postgres(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::Postgres(attrs),
+        })
     }
 
     fn mysql(opts: RHash) -> Result<Self, Error> {
@@ -938,9 +938,9 @@ impl DestinationAttributes {
             max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
             retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
         };
-        core::streams::DestinationAttributes::mysql(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::Mysql(attrs),
+        })
     }
 
     fn mongo(opts: RHash) -> Result<Self, Error> {
@@ -953,9 +953,9 @@ impl DestinationAttributes {
             max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
             retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
         };
-        core::streams::DestinationAttributes::mongo(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::Mongo(attrs),
+        })
     }
 
     fn clickhouse(opts: RHash) -> Result<Self, Error> {
@@ -979,9 +979,9 @@ impl DestinationAttributes {
             )?,
             skip_initialize_with_version: hash_get_bool(&opts, "skip_initialize_with_version")?,
         };
-        core::streams::DestinationAttributes::clickhouse(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::Clickhouse(attrs),
+        })
     }
 
     fn snowflake(opts: RHash) -> Result<Self, Error> {
@@ -999,9 +999,9 @@ impl DestinationAttributes {
             retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
             table_name: hash_get_string(&opts, "table_name")?,
         };
-        core::streams::DestinationAttributes::snowflake(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::Snowflake(attrs),
+        })
     }
 
     fn kafka(opts: RHash) -> Result<Self, Error> {
@@ -1020,9 +1020,9 @@ impl DestinationAttributes {
             protocol: hash_get_string(&opts, "protocol")?,
             mechanisms: hash_get_string(&opts, "mechanisms")?,
         };
-        core::streams::DestinationAttributes::kafka(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::Kafka(attrs),
+        })
     }
 
     fn redis(opts: RHash) -> Result<Self, Error> {
@@ -1037,9 +1037,9 @@ impl DestinationAttributes {
             retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
             tls: hash_get_bool(&opts, "tls")?,
         };
-        core::streams::DestinationAttributes::redis(&attrs)
-            .map(|inner| Self { inner })
-            .map_err(map_err)
+        Ok(Self {
+            inner: core::streams::DestinationAttributes::Redis(attrs),
+        })
     }
 }
 

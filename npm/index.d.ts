@@ -750,79 +750,10 @@ export interface AddressBookConfig {
   objectsFilterPath?: string
   elementsFilterPaths: Array<string>
 }
-export interface DestinationAttributes {
-  destination: StreamDestination
-  value: string
-}
-export interface CreateStreamParams {
-  name: string
-  region: StreamRegion
-  network: string
-  dataset: StreamDataset
-  startRange: number
-  endRange: number
-  destinationAttributes: DestinationAttributes
-  plan: string
-  thresholdFetchBuffer: number
-  datasetBatchSize?: number
-  maxBatchSize?: number
-  maxBufferRangeSize?: number
-  maxBufferProcessingWorkers?: number
-  keepDistanceFromTip?: number
-  filterFunction?: string
-  filterLanguage?: FilterLanguage
-  addressBookConfig?: AddressBookConfig
-  includeStreamMetadata?: StreamMetadataLocation
-  productType?: ProductType
-  status?: StreamStatus
-  notificationEmail?: string
-  chargeMinCap?: number
-  fixBlockReorgs?: number
-  elasticBatchEnabled?: boolean
-}
-export interface Stream {
-  id: string
-  name: string
-  status: string
-  createdAt: string
-  updatedAt: string
-  sequence: number
-  network: string
-  dataset: string
-  region: string
-  destination: string
-  startRange: number
-  endRange: number
-  plan?: string
-  thresholdFetchBuffer?: number
-  datasetBatchSize?: number
-  maxBatchSize?: number
-  maxBufferRangeSize?: number
-  maxBufferProcessingWorkers?: number
-  keepDistanceFromTip?: number
-  filterFunction?: string
-  filterLanguage?: string
-  includeStreamMetadata?: string
-  productType?: string
-  notificationEmail?: string
-  fixBlockReorgs?: number
-  currentHash?: string
-  /** Destination-specific configuration as a JSON string. Shape depends on the destination type. */
-  destinationAttributes?: string
-  elasticBatchEnabled?: boolean
-  qnAccountId?: string
-  chargeMinCap?: number
-  memo?: string
-  addressBookConfig?: AddressBookConfig
-}
 export interface PageInfo {
   limit: number
   offset: number
   total: number
-}
-export interface ListStreamsResponse {
-  data: Array<Stream>
-  pageInfo: PageInfo
 }
 export interface ListStreamsParams {
   streamType?: string
@@ -830,32 +761,6 @@ export interface ListStreamsParams {
   limit?: number
   orderBy?: string
   orderDirection?: string
-}
-export interface UpdateStreamParams {
-  name?: string
-  region?: StreamRegion
-  network?: string
-  dataset?: StreamDataset
-  startRange?: number
-  endRange?: number
-  destinationAttributes?: DestinationAttributes
-  plan?: string
-  thresholdFetchBuffer?: number
-  datasetBatchSize?: number
-  maxBatchSize?: number
-  maxBufferRangeSize?: number
-  maxBufferProcessingWorkers?: number
-  keepDistanceFromTip?: number
-  filterFunction?: string
-  filterLanguage?: FilterLanguage
-  addressBookConfig?: AddressBookConfig
-  includeStreamMetadata?: StreamMetadataLocation
-  notificationEmail?: string
-  chargeMinCap?: number
-  fixBlockReorgs?: number
-  elasticBatchEnabled?: boolean
-  status?: StreamStatus
-  memo?: string
 }
 export interface TestFilterParams {
   network: string
@@ -965,6 +870,95 @@ export interface ListWebhooksResponse {
 export interface WebhookEnabledCountResponse {
   total: number
 }
+export interface CreateStreamParamsNode {
+  name: string
+  region: StreamRegion
+  network: string
+  dataset: StreamDataset
+  startRange: number
+  endRange: number
+  destinationAttributes: any
+  plan: string
+  thresholdFetchBuffer: number
+  datasetBatchSize?: number
+  maxBatchSize?: number
+  maxBufferRangeSize?: number
+  maxBufferProcessingWorkers?: number
+  keepDistanceFromTip?: number
+  filterFunction?: string
+  filterLanguage?: FilterLanguage
+  addressBookConfig?: AddressBookConfig
+  includeStreamMetadata?: StreamMetadataLocation
+  productType?: ProductType
+  status?: StreamStatus
+  notificationEmail?: string
+  chargeMinCap?: number
+  fixBlockReorgs?: number
+  elasticBatchEnabled?: boolean
+}
+export interface UpdateStreamParamsNode {
+  name?: string
+  region?: StreamRegion
+  network?: string
+  dataset?: StreamDataset
+  startRange?: number
+  endRange?: number
+  destinationAttributes?: any
+  plan?: string
+  thresholdFetchBuffer?: number
+  datasetBatchSize?: number
+  maxBatchSize?: number
+  maxBufferRangeSize?: number
+  maxBufferProcessingWorkers?: number
+  keepDistanceFromTip?: number
+  filterFunction?: string
+  filterLanguage?: FilterLanguage
+  addressBookConfig?: AddressBookConfig
+  includeStreamMetadata?: StreamMetadataLocation
+  notificationEmail?: string
+  chargeMinCap?: number
+  fixBlockReorgs?: number
+  elasticBatchEnabled?: boolean
+  status?: StreamStatus
+  memo?: string
+}
+export interface StreamNode {
+  id: string
+  name: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  sequence: number
+  network: string
+  dataset: string
+  region: string
+  startRange: number
+  endRange: number
+  plan?: string
+  thresholdFetchBuffer?: number
+  datasetBatchSize?: number
+  maxBatchSize?: number
+  maxBufferRangeSize?: number
+  maxBufferProcessingWorkers?: number
+  keepDistanceFromTip?: number
+  filterFunction?: string
+  filterLanguage?: string
+  includeStreamMetadata?: string
+  productType?: string
+  notificationEmail?: string
+  fixBlockReorgs?: number
+  currentHash?: string
+  destinationAttributes?: any
+  elasticBatchEnabled?: boolean
+  qnAccountId?: string
+  chargeMinCap?: number
+  memo?: string
+  addressBookConfig?: AddressBookConfig
+}
+export interface ListStreamsResponseNode {
+  data: Array<StreamNode>
+  pageInfo: PageInfo
+}
 export declare class QuickNodeSdk {
   constructor(config: SdkFullConfig)
   get admin(): AdminApiClient
@@ -1028,11 +1022,11 @@ export declare class AdminApiClient {
   resendTeamInvite(id: number, userId: number): Promise<ResendTeamInviteResponse>
 }
 export declare class StreamsApiClient {
-  createStream(params: CreateStreamParams): Promise<Stream>
-  listStreams(params?: ListStreamsParams | undefined | null): Promise<ListStreamsResponse>
+  createStream(params: CreateStreamParamsNode): Promise<StreamNode>
+  listStreams(params?: ListStreamsParams | undefined | null): Promise<ListStreamsResponseNode>
   deleteAllStreams(): Promise<void>
-  getStream(id: string): Promise<Stream>
-  updateStream(id: string, params: UpdateStreamParams): Promise<Stream>
+  getStream(id: string): Promise<StreamNode>
+  updateStream(id: string, params: UpdateStreamParamsNode): Promise<StreamNode>
   deleteStream(id: string): Promise<void>
   activateStream(id: string): Promise<void>
   pauseStream(id: string): Promise<void>

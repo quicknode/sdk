@@ -10,7 +10,6 @@ import cjs from './sdk.js';
 export default cjs;
 export const {
   QuickNodeSdk,
-  DestinationAttributes,
   TemplateArgs,
   StreamRegion,
   StreamDataset,

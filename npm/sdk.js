@@ -23,11 +23,8 @@ class QuickNodeSdk {
   }
 }
 
-// napi-rs converts Rust snake_case fields to camelCase for JS consumers, but the
-// destination attributes `value` field is a raw JSON string that bypasses napi —
-// it's JSON.stringified here and parsed directly by the Rust core before being
-// sent to the API. The API expects snake_case keys, so we must convert before
-// stringifying.
+// TemplateArgs.value is a pre-serialized JSON string; napi forwards camelCase
+// keys from JS but the API expects snake_case, so stringify through these.
 function toSnakeCase(str) {
   return str.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 }
@@ -37,57 +34,6 @@ function keysToSnakeCase(obj) {
   return Object.fromEntries(
     Object.entries(obj).map(([k, v]) => [toSnakeCase(k), keysToSnakeCase(v)])
   );
-}
-
-// DestinationAttributes wraps the napi-rs generated plain object with typed
-// static factory methods. The underlying object has `destination` (string enum)
-// and `value` (JSON string) fields — callers should use the factory methods
-// rather than constructing the object directly.
-class DestinationAttributes {
-  constructor(destination, value) {
-    this.destination = destination;
-    this.value = value;
-  }
-
-  static webhook(attrs) {
-    return new DestinationAttributes("Webhook", JSON.stringify(keysToSnakeCase(attrs)));
-  }
-
-  static s3(attrs) {
-    return new DestinationAttributes("S3", JSON.stringify(keysToSnakeCase(attrs)));
-  }
-
-  static azure(attrs) {
-    return new DestinationAttributes("Azure", JSON.stringify(keysToSnakeCase(attrs)));
-  }
-
-  static postgres(attrs) {
-    return new DestinationAttributes("Postgres", JSON.stringify(keysToSnakeCase(attrs)));
-  }
-
-  static mysql(attrs) {
-    return new DestinationAttributes("Mysql", JSON.stringify(keysToSnakeCase(attrs)));
-  }
-
-  static mongo(attrs) {
-    return new DestinationAttributes("Mongo", JSON.stringify(keysToSnakeCase(attrs)));
-  }
-
-  static clickhouse(attrs) {
-    return new DestinationAttributes("Clickhouse", JSON.stringify(keysToSnakeCase(attrs)));
-  }
-
-  static snowflake(attrs) {
-    return new DestinationAttributes("Snowflake", JSON.stringify(keysToSnakeCase(attrs)));
-  }
-
-  static kafka(attrs) {
-    return new DestinationAttributes("Kafka", JSON.stringify(keysToSnakeCase(attrs)));
-  }
-
-  static redis(attrs) {
-    return new DestinationAttributes("Redis", JSON.stringify(keysToSnakeCase(attrs)));
-  }
 }
 
 // TemplateArgs wraps the napi-rs generated plain object with typed
@@ -133,4 +79,4 @@ class TemplateArgs {
   }
 }
 
-module.exports = { ..._index, QuickNodeSdk, DestinationAttributes, TemplateArgs };
+module.exports = { ..._index, QuickNodeSdk, TemplateArgs };

@@ -43,28 +43,12 @@ impl StreamsApiClient {
     }
 
     pub async fn create_stream(&self, params: &CreateStreamParams) -> Result<Stream, SdkError> {
-        let mut body = serde_json::to_value(params).map_err(|e| SdkError::Config(e.to_string()))?;
-        let obj = body.as_object_mut().ok_or_else(|| {
-            SdkError::Config("failed to serialize request body as JSON object".into())
-        })?;
-        #[allow(clippy::needless_borrows_for_generic_args)]
-        obj.insert(
-            "destination".to_string(),
-            serde_json::to_value(&params.destination_attributes.destination)
-                .map_err(|e| SdkError::Config(e.to_string()))?,
-        );
-        obj.insert(
-            "destination_attributes".to_string(),
-            serde_json::from_str(&params.destination_attributes.value)
-                .map_err(|e| SdkError::Config(e.to_string()))?,
-        );
-
         let url = self.config.streams().base_url.join("streams")?;
         let resp = self
             .config
             .http_client()
             .post(url)
-            .json(&body)
+            .json(params)
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -159,22 +143,6 @@ impl StreamsApiClient {
         id: &str,
         params: &UpdateStreamParams,
     ) -> Result<Stream, SdkError> {
-        let mut body = serde_json::to_value(params).map_err(|e| SdkError::Config(e.to_string()))?;
-        if let Some(da) = &params.destination_attributes {
-            let obj = body.as_object_mut().ok_or_else(|| {
-                SdkError::Config("failed to serialize request body as JSON object".into())
-            })?;
-            #[allow(clippy::needless_borrows_for_generic_args)]
-            obj.insert(
-                "destination".to_string(),
-                serde_json::to_value(&da.destination)
-                    .map_err(|e| SdkError::Config(e.to_string()))?,
-            );
-            obj.insert(
-                "destination_attributes".to_string(),
-                serde_json::from_str(&da.value).map_err(|e| SdkError::Config(e.to_string()))?,
-            );
-        }
         let url = self
             .config
             .streams()
@@ -184,7 +152,7 @@ impl StreamsApiClient {
             .config
             .http_client()
             .patch(url)
-            .json(&body)
+            .json(params)
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -340,15 +308,14 @@ mod tests {
             dataset: StreamDataset::Block,
             start_range: 17000000,
             end_range: -1,
-            destination_attributes: DestinationAttributes::webhook(&WebhookAttributes {
+            destination_attributes: DestinationAttributes::Webhook(WebhookAttributes {
                 url: "https://example.com/webhook".to_string(),
                 max_retry: 3,
                 retry_interval_sec: 1,
                 post_timeout_sec: 10,
                 compression: "none".to_string(),
                 security_token: None,
-            })
-            .unwrap(),
+            }),
             plan: "growth_plan".to_string(),
             threshold_fetch_buffer: 1000,
             dataset_batch_size: None,
@@ -381,6 +348,13 @@ mod tests {
             "dataset": "block",
             "region": "usa_east",
             "destination": "webhook",
+            "destination_attributes": {
+                "url": "https://example.com/webhook",
+                "max_retry": 3,
+                "retry_interval_sec": 1,
+                "post_timeout_sec": 10,
+                "compression": "none"
+            },
             "start_range": 17000000,
             "end_range": -1
         })
@@ -404,6 +378,52 @@ mod tests {
         assert_eq!(resp.status, "active");
         assert_eq!(resp.network, "ethereum-mainnet");
         assert_eq!(resp.dataset, "block");
+        // Verify the full destination_attributes round-trip on the response
+        // side. Without this assertion, serde's flatten+Option silently
+        // swallows malformed destination_attributes as None.
+        match resp.destination_attributes {
+            Some(DestinationAttributes::Webhook(attrs)) => {
+                assert_eq!(attrs.url, "https://example.com/webhook");
+                assert_eq!(attrs.max_retry, 3);
+            }
+            other => panic!("expected Webhook destination, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_stream_sends_typed_webhook_destination() {
+        use wiremock::matchers::body_partial_json;
+        let server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/streams"))
+            .and(body_partial_json(serde_json::json!({
+                "destination": "webhook",
+                "destination_attributes": {
+                    "url": "https://example.com/webhook",
+                    "max_retry": 3,
+                    "retry_interval_sec": 1,
+                    "post_timeout_sec": 10,
+                    "compression": "none"
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(stream_response_json()))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = CreateStreamParams {
+            destination_attributes: DestinationAttributes::Webhook(WebhookAttributes {
+                url: "https://example.com/webhook".to_string(),
+                max_retry: 3,
+                retry_interval_sec: 1,
+                post_timeout_sec: 10,
+                compression: "none".to_string(),
+                security_token: None,
+            }),
+            ..webhook_params()
+        };
+        sdk.streams.create_stream(&params).await.unwrap();
     }
 
     #[tokio::test]

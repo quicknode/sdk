@@ -2,6 +2,8 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use sdk_core as core;
 
+mod streams_destination;
+
 // ── Top-level SDK ──────────────────────────────────────────────
 
 #[napi]
@@ -669,24 +671,29 @@ impl StreamsApiClient {
     #[napi]
     pub async fn create_stream(
         &self,
-        params: core::streams::CreateStreamParams,
-    ) -> Result<core::streams::Stream> {
-        self.inner
-            .create_stream(&params)
+        params: streams_destination::CreateStreamParamsNode,
+    ) -> Result<streams_destination::StreamNode> {
+        let core_params = params.into_core()?;
+        let stream = self
+            .inner
+            .create_stream(&core_params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+        streams_destination::StreamNode::from_core(stream)
     }
 
     #[napi]
     pub async fn list_streams(
         &self,
         params: Option<core::streams::ListStreamsParams>,
-    ) -> Result<core::streams::ListStreamsResponse> {
+    ) -> Result<streams_destination::ListStreamsResponseNode> {
         let params = params.unwrap_or_default();
-        self.inner
+        let resp = self
+            .inner
             .list_streams(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+        streams_destination::ListStreamsResponseNode::from_core(resp)
     }
 
     #[napi]
@@ -698,23 +705,28 @@ impl StreamsApiClient {
     }
 
     #[napi]
-    pub async fn get_stream(&self, id: String) -> Result<core::streams::Stream> {
-        self.inner
+    pub async fn get_stream(&self, id: String) -> Result<streams_destination::StreamNode> {
+        let stream = self
+            .inner
             .get_stream(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+        streams_destination::StreamNode::from_core(stream)
     }
 
     #[napi]
     pub async fn update_stream(
         &self,
         id: String,
-        params: core::streams::UpdateStreamParams,
-    ) -> Result<core::streams::Stream> {
-        self.inner
-            .update_stream(&id, &params)
+        params: streams_destination::UpdateStreamParamsNode,
+    ) -> Result<streams_destination::StreamNode> {
+        let core_params = params.into_core()?;
+        let stream = self
+            .inner
+            .update_stream(&id, &core_params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+        streams_destination::StreamNode::from_core(stream)
     }
 
     #[napi]
