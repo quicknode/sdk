@@ -14,7 +14,7 @@ crate-type = ["cdylib"]
 [dependencies]
 sdk-core = { path = "../core", features = ["node"] }
 tokio = { version = "1", features = ["rt-multi-thread"] }
-napi = { version = "2", features = ["async", "tokio_rt"] }
+napi = { version = "2", features = ["async", "tokio_rt", "serde-json"] }
 napi-derive = "2"
 serde_json = "1.0"
 

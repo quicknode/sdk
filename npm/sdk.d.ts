@@ -12,7 +12,6 @@ import {
   SnowflakeAttributes,
   KafkaAttributes,
   RedisAttributes,
-  StreamDestination,
   WebhookTemplateId,
   EvmWalletFilterTemplate,
   EvmContractEventsTemplate,
@@ -24,6 +23,62 @@ import {
   StellarWalletTransactionsFilterTemplate,
 } from "./index";
 
+// Discriminated union for Stream destination attributes. Used on input.
+// Matches the napi-side CreateStreamParamsNode / UpdateStreamParamsNode.
+// Wire note: the underlying API uses { destination, destination_attributes }.
+// This TS shape uses `attributes` for the inner key to avoid the awkward
+// `destinationAttributes.destinationAttributes.url` path. The Node binding
+// renames the key to the wire format.
+export type StreamDestinationAttributesInput =
+  | { destination: "webhook"; attributes: WebhookAttributes }
+  | { destination: "s3"; attributes: S3Attributes }
+  | { destination: "azure"; attributes: AzureAttributes }
+  | { destination: "postgres"; attributes: PostgresAttributes }
+  | { destination: "mysql"; attributes: MysqlAttributes }
+  | { destination: "mongo"; attributes: MongoAttributes }
+  | { destination: "clickhouse"; attributes: ClickhouseAttributes }
+  | { destination: "snowflake"; attributes: SnowflakeAttributes }
+  | { destination: "kafka"; attributes: KafkaAttributes }
+  | { destination: "redis"; attributes: RedisAttributes };
+
+// Discriminated union for Stream destination attributes on response. Matches
+// the wire shape as returned by the API: { destination, destination_attributes }.
+export type StreamDestinationAttributesResponse =
+  | { destination: "webhook"; destination_attributes: WebhookAttributes }
+  | { destination: "s3"; destination_attributes: S3Attributes }
+  | { destination: "azure"; destination_attributes: AzureAttributes }
+  | { destination: "postgres"; destination_attributes: PostgresAttributes }
+  | { destination: "mysql"; destination_attributes: MysqlAttributes }
+  | { destination: "mongo"; destination_attributes: MongoAttributes }
+  | { destination: "clickhouse"; destination_attributes: ClickhouseAttributes }
+  | { destination: "snowflake"; destination_attributes: SnowflakeAttributes }
+  | { destination: "kafka"; destination_attributes: KafkaAttributes }
+  | { destination: "redis"; destination_attributes: RedisAttributes };
+
+// Wrapper types overriding the napi-generated JSON-blob fields with typed unions.
+type _CreateStreamParamsNode = import("./index").CreateStreamParamsNode;
+type _UpdateStreamParamsNode = import("./index").UpdateStreamParamsNode;
+type _StreamNode = import("./index").StreamNode;
+type _ListStreamsResponseNode = import("./index").ListStreamsResponseNode;
+
+export type CreateStreamParams =
+  Omit<_CreateStreamParamsNode, "destinationAttributes"> & {
+    destinationAttributes: StreamDestinationAttributesInput;
+  };
+
+export type UpdateStreamParams =
+  Omit<_UpdateStreamParamsNode, "destinationAttributes"> & {
+    destinationAttributes?: StreamDestinationAttributesInput;
+  };
+
+export type Stream = Omit<_StreamNode, "destinationAttributes"> & {
+  destinationAttributes?: StreamDestinationAttributesResponse;
+};
+
+export type ListStreamsResponse = Omit<_ListStreamsResponseNode, "data"> & {
+  data: Stream[];
+};
+
 export type {
   SdkFullConfig,
   HttpConfig,
@@ -31,9 +86,7 @@ export type {
   StreamsConfig,
   // streams
   ListStreamsParams,
-  ListStreamsResponse,
   PageInfo,
-  UpdateStreamParams,
   TestFilterParams,
   TestFilterResponse,
   EnabledCountResponse,
@@ -49,8 +102,6 @@ export type {
   RedisAttributes,
   AddressBookConfig,
   StreamsApiClient,
-  CreateStreamParams,
-  Stream,
   // billing
   InvoiceLine,
   Invoice,
@@ -215,28 +266,30 @@ export {
   WebhookStartFrom,
 } from "./index";
 
+// A StreamsApiClient-typed facade. The napi-generated methods return
+// StreamNode / ListStreamsResponseNode whose destination_attributes is typed
+// as `any` (JSON value). This interface retypes those to the discriminated
+// unions above so consumers get full type safety.
+export interface StreamsApiClientTyped {
+  createStream(params: CreateStreamParams): Promise<Stream>;
+  listStreams(params?: import("./index").ListStreamsParams | undefined | null): Promise<ListStreamsResponse>;
+  deleteAllStreams(): Promise<void>;
+  getStream(id: string): Promise<Stream>;
+  updateStream(id: string, params: UpdateStreamParams): Promise<Stream>;
+  deleteStream(id: string): Promise<void>;
+  activateStream(id: string): Promise<void>;
+  pauseStream(id: string): Promise<void>;
+  testFilter(params: import("./index").TestFilterParams): Promise<import("./index").TestFilterResponse>;
+  getEnabledCount(streamType?: string | undefined | null): Promise<import("./index").EnabledCountResponse>;
+}
+
 export class QuickNodeSdk {
   constructor(config: SdkFullConfig);
   static fromEnv(): QuickNodeSdk;
   admin: _QuickNodeSdk["admin"];
-  streams: _QuickNodeSdk["streams"];
-  webhooks: WebhooksApiClient;
-  kvstore: KvStoreApiClient;
-}
-
-export class DestinationAttributes {
-  destination: StreamDestination;
-  value: string;
-  static webhook(attrs: WebhookAttributes): DestinationAttributes;
-  static s3(attrs: S3Attributes): DestinationAttributes;
-  static azure(attrs: AzureAttributes): DestinationAttributes;
-  static postgres(attrs: PostgresAttributes): DestinationAttributes;
-  static mysql(attrs: MysqlAttributes): DestinationAttributes;
-  static mongo(attrs: MongoAttributes): DestinationAttributes;
-  static clickhouse(attrs: ClickhouseAttributes): DestinationAttributes;
-  static snowflake(attrs: SnowflakeAttributes): DestinationAttributes;
-  static kafka(attrs: KafkaAttributes): DestinationAttributes;
-  static redis(attrs: RedisAttributes): DestinationAttributes;
+  streams: StreamsApiClientTyped;
+  webhooks: _QuickNodeSdk["webhooks"];
+  kvstore: _QuickNodeSdk["kvstore"];
 }
 
 export class TemplateArgs {
