@@ -39,18 +39,11 @@ export type StreamDestinationAttributesInput =
   | { destination: "kafka"; attributes: KafkaAttributes }
   | { destination: "redis"; attributes: RedisAttributes };
 
-// Stream destination attributes (response) — matches the wire shape.
-export type StreamDestinationAttributesResponse =
-  | { destination: "webhook"; destination_attributes: WebhookAttributes }
-  | { destination: "s3"; destination_attributes: S3Attributes }
-  | { destination: "azure"; destination_attributes: AzureAttributes }
-  | { destination: "postgres"; destination_attributes: PostgresAttributes }
-  | { destination: "mysql"; destination_attributes: MysqlAttributes }
-  | { destination: "mongo"; destination_attributes: MongoAttributes }
-  | { destination: "clickhouse"; destination_attributes: ClickhouseAttributes }
-  | { destination: "snowflake"; destination_attributes: SnowflakeAttributes }
-  | { destination: "kafka"; destination_attributes: KafkaAttributes }
-  | { destination: "redis"; destination_attributes: RedisAttributes };
+// Stream destination attributes (response). Mirrors the input shape so a
+// response can be round-tripped back into an update call without renaming.
+// The Node binding renames the wire `destination_attributes` key to
+// `attributes` on the way out.
+export type StreamDestinationAttributesResponse = StreamDestinationAttributesInput;
 
 // Replace the napi-generated JSON-blob destinationAttributes with typed unions.
 type _CreateStreamParamsNode = import("./index").CreateStreamParamsNode;
@@ -264,6 +257,9 @@ export {
 } from "./index";
 
 // Retypes napi's `any` destination_attributes to the discriminated unions.
+// NOTE: keep these method signatures in sync with the napi-generated
+// StreamsApiClient in ./index.d.ts. Adding a method to crates/node/src/lib.rs
+// requires adding it here too; there is no automated check.
 export interface StreamsApiClientTyped {
   createStream(params: CreateStreamParams): Promise<Stream>;
   listStreams(params?: import("./index").ListStreamsParams | undefined | null): Promise<ListStreamsResponse>;

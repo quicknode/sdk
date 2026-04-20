@@ -348,6 +348,13 @@ mod tests {
             "dataset": "block",
             "region": "usa_east",
             "destination": "webhook",
+            "destination_attributes": {
+                "url": "https://example.com/webhook",
+                "max_retry": 3,
+                "retry_interval_sec": 1,
+                "post_timeout_sec": 10,
+                "compression": "none"
+            },
             "start_range": 17000000,
             "end_range": -1
         })
@@ -371,6 +378,16 @@ mod tests {
         assert_eq!(resp.status, "active");
         assert_eq!(resp.network, "ethereum-mainnet");
         assert_eq!(resp.dataset, "block");
+        // Verify the full destination_attributes round-trip on the response
+        // side. Without this assertion, serde's flatten+Option silently
+        // swallows malformed destination_attributes as None.
+        match resp.destination_attributes {
+            Some(DestinationAttributes::Webhook(attrs)) => {
+                assert_eq!(attrs.url, "https://example.com/webhook");
+                assert_eq!(attrs.max_retry, 3);
+            }
+            other => panic!("expected Webhook destination, got {other:?}"),
+        }
     }
 
     #[tokio::test]

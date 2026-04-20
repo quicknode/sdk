@@ -72,7 +72,7 @@ fn node_da_to_core(v: serde_json::Value) -> Result<core::streams::DestinationAtt
         }
     };
     let attrs = obj.remove("attributes").ok_or_else(|| {
-        Error::from_reason("destination_attributes.attributes is required".to_string())
+        Error::from_reason("destinationAttributes.attributes is required".to_string())
     })?;
     // Convert attribute keys (camelCase → snake_case) so they match the core
     // struct field names. The outer `destination` key is already a string enum
@@ -88,15 +88,16 @@ fn core_da_to_node(attrs: &core::streams::DestinationAttributes) -> Result<serde
     let v = serde_json::to_value(attrs).map_err(|e| {
         Error::from_reason(format!("failed to serialize destination_attributes: {e}"))
     })?;
-    // Convert only the inner `destination_attributes` object's keys to
-    // camelCase. The outer `destination` tag is a string value; its key stays
-    // snake_case because it matches the wire format the TS type documents.
+    // Rename the inner wire key `destination_attributes` -> `attributes` and
+    // camelCase its keys so the response shape matches the input shape
+    // (`{ destination, attributes }`), letting TS consumers round-trip a
+    // response back into an update without renaming.
     let serde_json::Value::Object(mut obj) = v else {
         return Ok(v);
     };
     if let Some(inner) = obj.remove("destination_attributes") {
         obj.insert(
-            "destination_attributes".to_string(),
+            "attributes".to_string(),
             convert_keys(inner, snake_to_camel),
         );
     }

@@ -95,10 +95,17 @@ pub fn extract_destination_attributes(obj: &Bound<'_, PyAny>) -> PyResult<Destin
     if let Ok(v) = obj.extract::<StreamRedisDestination>() {
         return Ok(v.to_core());
     }
-    Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-        "destination_attributes must be one of the *DestinationAttributes classes \
-         (StreamWebhookDestination, StreamS3Destination, ...)",
-    ))
+    let received = obj
+        .get_type()
+        .name()
+        .map_or_else(|_| "<unknown>".to_string(), |n| n.to_string());
+    Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+        "destination_attributes must be one of StreamWebhookDestination, \
+         StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, \
+         StreamMysqlDestination, StreamMongoDestination, StreamClickhouseDestination, \
+         StreamSnowflakeDestination, StreamKafkaDestination, StreamRedisDestination — \
+         got {received}"
+    )))
 }
 
 pub fn destination_attributes_to_py(
@@ -194,7 +201,9 @@ pub struct PyStream {
     pub fix_block_reorgs: Option<i32>,
     #[pyo3(get)]
     pub current_hash: Option<String>,
-    #[pyo3(get)]
+    // Exposed via a #[getter] below so pyo3-stub-gen can override the stub
+    // type to the typed Union; #[pyo3(get)] on Py<PyAny> would produce
+    // Optional[Any] in the generated stubs.
     pub destination_attributes: Option<Py<PyAny>>,
     #[pyo3(get)]
     pub elastic_batch_enabled: Option<bool>,
@@ -247,6 +256,23 @@ impl PyStream {
             memo: s.memo,
             address_book_config: s.address_book_config,
         })
+    }
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl PyStream {
+    // Exposed as a getter so pyo3_stub_gen can override the stub to a typed
+    // Union. Without the override, the stub would be `Optional[Any]` and IDEs
+    // couldn't surface the 10 destination classes.
+    #[getter]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Optional[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamMysqlDestination, StreamMongoDestination, StreamClickhouseDestination, StreamSnowflakeDestination, StreamKafkaDestination, StreamRedisDestination]]"
+    ))]
+    fn destination_attributes<'py>(&self, py: Python<'py>) -> Option<Py<PyAny>> {
+        self.destination_attributes
+            .as_ref()
+            .map(|v| v.clone_ref(py))
     }
 }
 
