@@ -52,17 +52,20 @@ type _StreamNode = import("./index").StreamNode;
 type _ListStreamsResponseNode = import("./index").ListStreamsResponseNode;
 
 export type CreateStreamParams =
-  Omit<_CreateStreamParamsNode, "destinationAttributes"> & {
+  Omit<_CreateStreamParamsNode, "destinationAttributes" | "extraDestinations"> & {
     destinationAttributes: StreamDestinationAttributesInput;
+    extraDestinations?: StreamDestinationAttributesInput[] | null;
   };
 
 export type UpdateStreamParams =
-  Omit<_UpdateStreamParamsNode, "destinationAttributes"> & {
+  Omit<_UpdateStreamParamsNode, "destinationAttributes" | "extraDestinations"> & {
     destinationAttributes?: StreamDestinationAttributesInput;
+    extraDestinations?: StreamDestinationAttributesInput[] | null;
   };
 
-export type Stream = Omit<_StreamNode, "destinationAttributes"> & {
+export type Stream = Omit<_StreamNode, "destinationAttributes" | "extraDestinations"> & {
   destinationAttributes?: StreamDestinationAttributesResponse;
+  extraDestinations?: StreamDestinationAttributesResponse[] | null;
 };
 
 export type ListStreamsResponse = Omit<_ListStreamsResponseNode, "data"> & {

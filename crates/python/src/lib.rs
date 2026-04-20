@@ -1094,7 +1094,8 @@ impl StreamsApiClient {
         notification_email=None,
         charge_min_cap=None,
         fix_block_reorgs=None,
-        elastic_batch_enabled=None
+        elastic_batch_enabled=None,
+        extra_destinations=None
     ))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, Stream]"
@@ -1125,10 +1126,13 @@ impl StreamsApiClient {
         charge_min_cap: Option<i32>,
         fix_block_reorgs: Option<i32>,
         elastic_batch_enabled: Option<bool>,
+        extra_destinations: Option<Bound<'py, PyAny>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let destination_attributes =
             streams_destination::extract_destination_attributes(destination_attributes)?;
+        let extra_destinations =
+            streams_destination::extract_extra_destinations(extra_destinations)?;
         let dataset = serde_json::from_value::<core::streams::StreamDataset>(
             serde_json::Value::String(dataset),
         )
@@ -1191,6 +1195,7 @@ impl StreamsApiClient {
                 charge_min_cap,
                 fix_block_reorgs,
                 elastic_batch_enabled,
+                extra_destinations,
             };
             let stream = client
                 .create_stream(&params)
@@ -1281,6 +1286,7 @@ impl StreamsApiClient {
         elastic_batch_enabled=None,
         status=None,
         memo=None,
+        extra_destinations=None,
     ))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, Stream]"
@@ -1312,11 +1318,14 @@ impl StreamsApiClient {
         elastic_batch_enabled: Option<bool>,
         status: Option<String>,
         memo: Option<String>,
+        extra_destinations: Option<Bound<'py, PyAny>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let destination_attributes = destination_attributes
             .map(|obj| streams_destination::extract_destination_attributes(&obj))
             .transpose()?;
+        let extra_destinations =
+            streams_destination::extract_extra_destinations(extra_destinations)?;
         let dataset = dataset
             .map(|s| {
                 serde_json::from_value::<core::streams::StreamDataset>(serde_json::Value::String(s))
@@ -1377,6 +1386,7 @@ impl StreamsApiClient {
                 elastic_batch_enabled,
                 status,
                 memo,
+                extra_destinations,
             };
             let stream = client
                 .update_stream(&id, &params)

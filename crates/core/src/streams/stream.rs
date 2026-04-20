@@ -746,6 +746,9 @@ pub struct CreateStreamParams {
     pub fix_block_reorgs: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elastic_batch_enabled: Option<bool>,
+    // Not flattened: each element serializes as its own {destination, destination_attributes} pair.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra_destinations: Option<Vec<DestinationAttributes>>,
 }
 
 // ── Response ───────────────────────────────────────────────────────────────
@@ -804,6 +807,8 @@ pub struct Stream {
     pub memo: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address_book_config: Option<AddressBookConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extra_destinations: Option<Vec<DestinationAttributes>>,
 }
 
 // ── New Request/Response Types ─────────────────────────────────────────────
@@ -892,6 +897,8 @@ pub struct UpdateStreamParams {
     pub status: Option<StreamStatus>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extra_destinations: Option<Vec<DestinationAttributes>>,
 }
 
 #[cfg_attr(feature = "node", napi(object))]

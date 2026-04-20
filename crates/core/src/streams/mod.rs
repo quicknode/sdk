@@ -333,6 +333,7 @@ mod tests {
             charge_min_cap: None,
             fix_block_reorgs: None,
             elastic_batch_enabled: None,
+            extra_destinations: None,
         }
     }
 
@@ -424,6 +425,149 @@ mod tests {
             ..webhook_params()
         };
         sdk.streams.create_stream(&params).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn create_stream_sends_extra_destinations() {
+        use wiremock::matchers::body_partial_json;
+        let server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/streams"))
+            .and(body_partial_json(serde_json::json!({
+                "extra_destinations": [
+                    {
+                        "destination": "webhook",
+                        "destination_attributes": {
+                            "url": "https://example.com/extra-hook",
+                            "max_retry": 5,
+                            "retry_interval_sec": 2,
+                            "post_timeout_sec": 15,
+                            "compression": "none"
+                        }
+                    },
+                    {
+                        "destination": "s3",
+                        "destination_attributes": {
+                            "endpoint": "s3.example.com",
+                            "access_key": "AKIA",
+                            "secret_key": "secret",
+                            "bucket": "my-bucket",
+                            "object_prefix": "streams/",
+                            "compression": "gzip",
+                            "file_type": ".json",
+                            "max_retry": 3,
+                            "retry_interval_sec": 1
+                        }
+                    }
+                ]
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(stream_response_json()))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = CreateStreamParams {
+            extra_destinations: Some(vec![
+                DestinationAttributes::Webhook(WebhookAttributes {
+                    url: "https://example.com/extra-hook".to_string(),
+                    max_retry: 5,
+                    retry_interval_sec: 2,
+                    post_timeout_sec: 15,
+                    compression: "none".to_string(),
+                    security_token: None,
+                }),
+                DestinationAttributes::S3(S3Attributes {
+                    endpoint: "s3.example.com".to_string(),
+                    access_key: "AKIA".to_string(),
+                    secret_key: "secret".to_string(),
+                    bucket: "my-bucket".to_string(),
+                    object_prefix: "streams/".to_string(),
+                    compression: "gzip".to_string(),
+                    file_type: ".json".to_string(),
+                    max_retry: 3,
+                    retry_interval_sec: 1,
+                    use_ssl: None,
+                }),
+            ]),
+            ..webhook_params()
+        };
+        sdk.streams.create_stream(&params).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn update_stream_sends_extra_destinations() {
+        use wiremock::matchers::body_partial_json;
+        let server = MockServer::start().await;
+
+        Mock::given(method("PATCH"))
+            .and(path("/streams/test-id"))
+            .and(body_partial_json(serde_json::json!({
+                "extra_destinations": [
+                    {
+                        "destination": "webhook",
+                        "destination_attributes": {
+                            "url": "https://example.com/patched-hook",
+                            "max_retry": 1,
+                            "retry_interval_sec": 1,
+                            "post_timeout_sec": 5,
+                            "compression": "none"
+                        }
+                    }
+                ]
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(stream_response_json()))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = UpdateStreamParams {
+            extra_destinations: Some(vec![DestinationAttributes::Webhook(WebhookAttributes {
+                url: "https://example.com/patched-hook".to_string(),
+                max_retry: 1,
+                retry_interval_sec: 1,
+                post_timeout_sec: 5,
+                compression: "none".to_string(),
+                security_token: None,
+            })]),
+            ..Default::default()
+        };
+        sdk.streams.update_stream("test-id", &params).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn get_stream_parses_extra_destinations() {
+        let server = MockServer::start().await;
+        let mut body = stream_response_json();
+        body["extra_destinations"] = serde_json::json!([
+            {
+                "destination": "webhook",
+                "destination_attributes": {
+                    "url": "https://example.com/extra",
+                    "max_retry": 2,
+                    "retry_interval_sec": 1,
+                    "post_timeout_sec": 10,
+                    "compression": "none"
+                }
+            }
+        ]);
+        Mock::given(method("GET"))
+            .and(path("/streams/test-id"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.streams.get_stream("test-id").await.unwrap();
+        let extras = resp.extra_destinations.expect("extra_destinations present");
+        assert_eq!(extras.len(), 1);
+        match &extras[0] {
+            DestinationAttributes::Webhook(w) => {
+                assert_eq!(w.url, "https://example.com/extra");
+                assert_eq!(w.max_retry, 2);
+            }
+            other => panic!("expected Webhook, got {other:?}"),
+        }
     }
 
     #[tokio::test]

@@ -895,6 +895,7 @@ export interface CreateStreamParamsNode {
   chargeMinCap?: number
   fixBlockReorgs?: number
   elasticBatchEnabled?: boolean
+  extraDestinations?: Array<any>
 }
 export interface UpdateStreamParamsNode {
   name?: string
@@ -921,6 +922,7 @@ export interface UpdateStreamParamsNode {
   elasticBatchEnabled?: boolean
   status?: StreamStatus
   memo?: string
+  extraDestinations?: Array<any>
 }
 export interface StreamNode {
   id: string
@@ -954,6 +956,7 @@ export interface StreamNode {
   chargeMinCap?: number
   memo?: string
   addressBookConfig?: AddressBookConfig
+  extraDestinations?: Array<any>
 }
 export interface ListStreamsResponseNode {
   data: Array<StreamNode>

@@ -1,5 +1,7 @@
 #![allow(clippy::expect_used)]
-use magnus::{function, method, prelude::*, r_hash::ForEach, symbol::Symbol, Error, RHash, Ruby};
+use magnus::{
+    function, method, prelude::*, r_hash::ForEach, symbol::Symbol, Error, RArray, RHash, Ruby,
+};
 use sdk_core as core;
 
 // ── Tokio runtime ───────────────────────────────────────────────────────────
@@ -150,6 +152,32 @@ fn hash_get_dest_attrs(
         Some(v) if !v.is_nil() => {
             let wrapped: &DestinationAttributes = magnus::TryConvert::try_convert(v)?;
             Ok(Some(wrapped.inner.clone()))
+        }
+        _ => Ok(None),
+    }
+}
+
+fn hash_get_extra_destinations(
+    h: &RHash,
+    key: &str,
+) -> Result<Option<Vec<core::streams::DestinationAttributes>>, Error> {
+    let r = ruby();
+    match h.get(r.to_symbol(key)) {
+        Some(v) if !v.is_nil() => {
+            let arr: RArray = magnus::TryConvert::try_convert(v)
+                .map_err(|e| Error::new(r.exception_type_error(), format!("{key}: {e}")))?;
+            let mut out = Vec::with_capacity(arr.len());
+            for item in arr.into_iter() {
+                let wrapped: &DestinationAttributes = magnus::TryConvert::try_convert(item)
+                    .map_err(|e| {
+                        Error::new(
+                            r.exception_type_error(),
+                            format!("{key}: element must be a DestinationAttributes: {e}"),
+                        )
+                    })?;
+                out.push(wrapped.inner.clone());
+            }
+            Ok(Some(out))
         }
         _ => Ok(None),
     }
@@ -1111,6 +1139,7 @@ impl StreamsApiClient {
             charge_min_cap: hash_get_i32(&opts, "charge_min_cap")?,
             fix_block_reorgs: hash_get_i32(&opts, "fix_block_reorgs")?,
             elastic_batch_enabled: hash_get_bool(&opts, "elastic_batch_enabled")?,
+            extra_destinations: hash_get_extra_destinations(&opts, "extra_destinations")?,
         };
         runtime()
             .block_on(client.create_stream(&params))
@@ -1202,6 +1231,7 @@ impl StreamsApiClient {
             elastic_batch_enabled: hash_get_bool(&opts, "elastic_batch_enabled")?,
             status,
             memo: hash_get_string(&opts, "memo")?,
+            extra_destinations: hash_get_extra_destinations(&opts, "extra_destinations")?,
         };
         runtime()
             .block_on(client.update_stream(&id, &params))

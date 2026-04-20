@@ -84,6 +84,23 @@ fn node_da_to_core(v: serde_json::Value) -> Result<core::streams::DestinationAtt
         .map_err(|e| Error::from_reason(format!("invalid destination_attributes: {e}")))
 }
 
+fn node_extras_to_core(
+    items: Option<Vec<serde_json::Value>>,
+) -> Result<Option<Vec<core::streams::DestinationAttributes>>> {
+    items
+        .map(|v| v.into_iter().map(node_da_to_core).collect())
+        .transpose()
+}
+
+fn core_extras_to_node(
+    items: &Option<Vec<core::streams::DestinationAttributes>>,
+) -> Result<Option<Vec<serde_json::Value>>> {
+    items
+        .as_ref()
+        .map(|v| v.iter().map(core_da_to_node).collect())
+        .transpose()
+}
+
 fn core_da_to_node(attrs: &core::streams::DestinationAttributes) -> Result<serde_json::Value> {
     let v = serde_json::to_value(attrs).map_err(|e| {
         Error::from_reason(format!("failed to serialize destination_attributes: {e}"))
@@ -130,11 +147,15 @@ pub struct CreateStreamParamsNode {
     pub charge_min_cap: Option<i32>,
     pub fix_block_reorgs: Option<i32>,
     pub elastic_batch_enabled: Option<bool>,
+    // Each element carries the same { destination, attributes } shape as the
+    // primary destination; we rewrite to core's wire format in node_da_to_core.
+    pub extra_destinations: Option<Vec<serde_json::Value>>,
 }
 
 impl CreateStreamParamsNode {
     pub fn into_core(self) -> Result<core::streams::CreateStreamParams> {
         let destination_attributes = node_da_to_core(self.destination_attributes)?;
+        let extra_destinations = node_extras_to_core(self.extra_destinations)?;
         Ok(core::streams::CreateStreamParams {
             name: self.name,
             region: self.region,
@@ -160,6 +181,7 @@ impl CreateStreamParamsNode {
             charge_min_cap: self.charge_min_cap,
             fix_block_reorgs: self.fix_block_reorgs,
             elastic_batch_enabled: self.elastic_batch_enabled,
+            extra_destinations,
         })
     }
 }
@@ -191,6 +213,7 @@ pub struct UpdateStreamParamsNode {
     pub elastic_batch_enabled: Option<bool>,
     pub status: Option<core::streams::StreamStatus>,
     pub memo: Option<String>,
+    pub extra_destinations: Option<Vec<serde_json::Value>>,
 }
 
 impl UpdateStreamParamsNode {
@@ -199,6 +222,7 @@ impl UpdateStreamParamsNode {
             .destination_attributes
             .map(node_da_to_core)
             .transpose()?;
+        let extra_destinations = node_extras_to_core(self.extra_destinations)?;
         Ok(core::streams::UpdateStreamParams {
             name: self.name,
             region: self.region,
@@ -224,6 +248,7 @@ impl UpdateStreamParamsNode {
             elastic_batch_enabled: self.elastic_batch_enabled,
             status: self.status,
             memo: self.memo,
+            extra_destinations,
         })
     }
 }
@@ -261,6 +286,7 @@ pub struct StreamNode {
     pub charge_min_cap: Option<i32>,
     pub memo: Option<String>,
     pub address_book_config: Option<core::streams::AddressBookConfig>,
+    pub extra_destinations: Option<Vec<serde_json::Value>>,
 }
 
 impl StreamNode {
@@ -269,6 +295,7 @@ impl StreamNode {
             Some(attrs) => Some(core_da_to_node(attrs)?),
             None => None,
         };
+        let extra_destinations = core_extras_to_node(&s.extra_destinations)?;
         Ok(Self {
             id: s.id,
             name: s.name,
@@ -301,6 +328,7 @@ impl StreamNode {
             charge_min_cap: s.charge_min_cap,
             memo: s.memo,
             address_book_config: s.address_book_config,
+            extra_destinations,
         })
     }
 }

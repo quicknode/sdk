@@ -41,6 +41,17 @@ async def main():
                 compression="none",
             )
         ),
+        extra_destinations=[
+            StreamWebhookDestination(
+                WebhookAttributes(
+                    url="https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
+                    max_retry=3,
+                    retry_interval_sec=1,
+                    post_timeout_sec=10,
+                    compression="none",
+                )
+            ),
+        ],
         plan="growth_plan",
         threshold_fetch_buffer=1000,
         dataset_batch_size=1,
