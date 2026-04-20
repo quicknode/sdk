@@ -129,6 +129,31 @@ fn hash_get_vec_i32(h: &RHash, key: &str) -> Result<Option<Vec<i32>>, Error> {
     }
 }
 
+fn hash_get_map_string_string(
+    h: &RHash,
+    key: &str,
+) -> Result<Option<std::collections::HashMap<String, String>>, Error> {
+    let r = ruby();
+    let Some(v) = h.get(r.to_symbol(key)) else {
+        return Ok(None);
+    };
+    if v.is_nil() {
+        return Ok(None);
+    }
+    let inner: RHash = magnus::TryConvert::try_convert(v)
+        .map_err(|e| Error::new(r.exception_type_error(), format!("{key}: {e}")))?;
+    let mut out = std::collections::HashMap::with_capacity(inner.len());
+    inner.foreach(|k: magnus::Value, val: magnus::Value| {
+        let k_str = String::try_convert(k)
+            .map_err(|e| Error::new(r.exception_type_error(), format!("{key} key: {e}")))?;
+        let v_str = String::try_convert(val)
+            .map_err(|e| Error::new(r.exception_type_error(), format!("{key} value: {e}")))?;
+        out.insert(k_str, v_str);
+        Ok(ForEach::Continue)
+    })?;
+    Ok(Some(out))
+}
+
 fn hash_require_vec_string(h: &RHash, key: &str) -> Result<Vec<String>, Error> {
     hash_get_vec_string(h, key)?.ok_or_else(|| {
         Error::new(
@@ -1317,8 +1342,9 @@ impl StreamsApiClient {
     }
 
     // update_stream accepts id + a Ruby Hash (opts) because the param count exceeds 15.
-    fn update_stream(&self, id: String, opts: RHash) -> Result<String, Error> {
+    fn update_stream(&self, opts: RHash) -> Result<String, Error> {
         let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
         let dataset =
             parse_enum_opt::<core::streams::StreamDataset>(hash_get_string(&opts, "dataset")?)?;
         let region =
@@ -1477,13 +1503,28 @@ impl WebhooksApiClient {
     }
 
     fn update_webhook(&self, opts: RHash) -> Result<String, Error> {
-        validate_keys(&opts, &["id", "name", "notification_email"])?;
+        validate_keys(
+            &opts,
+            &[
+                "id",
+                "name",
+                "notification_email",
+                "destination_attributes_json",
+            ],
+        )?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
+        let destination_attributes = match hash_get_string(&opts, "destination_attributes_json")? {
+            Some(json) => Some(
+                serde_json::from_str::<core::webhooks::WebhookDestinationAttributes>(&json)
+                    .map_err(parse_err)?,
+            ),
+            None => None,
+        };
         let params = core::webhooks::UpdateWebhookParams {
             name: hash_get_string(&opts, "name")?,
             notification_email: hash_get_string(&opts, "notification_email")?,
-            destination_attributes: None,
+            destination_attributes,
         };
         runtime()
             .block_on(client.update_webhook(&id, &params))
@@ -1639,7 +1680,7 @@ impl KvStoreApiClient {
         let client = self.inner.clone();
         runtime()
             .block_on(client.bulk_sets(&core::kvstore::BulkSetsParams {
-                add_sets: None,
+                add_sets: hash_get_map_string_string(&opts, "add_sets")?,
                 delete_sets: hash_get_vec_string(&opts, "delete_sets")?,
             }))
             .map_err(map_err)
@@ -1972,8 +2013,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
         method!(StreamsApiClient::delete_all_streams, 0),
     )?;
     streams.define_method("get_stream", method!(StreamsApiClient::get_stream, 1))?;
-    // update_stream takes id + a Hash (opts) because id is positional
-    streams.define_method("update_stream", method!(StreamsApiClient::update_stream, 2))?;
+    streams.define_method("update_stream", method!(StreamsApiClient::update_stream, 1))?;
     streams.define_method("delete_stream", method!(StreamsApiClient::delete_stream, 1))?;
     streams.define_method(
         "activate_stream",
