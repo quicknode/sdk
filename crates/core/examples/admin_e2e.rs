@@ -19,6 +19,11 @@ async fn main() {
     let config = SdkFullConfig::from_env().expect("Config from env failed");
     let qn = QuickNodeSdk::new(&config).expect("sdk failed to initialize");
 
+    let run_suffix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() % 1_000_000)
+        .unwrap_or(0);
+
     // --- Read-only globals ---
 
     match qn.admin.list_chains().await {
@@ -161,13 +166,13 @@ async fn main() {
         .update_endpoint_status(
             &endpoint_id,
             &UpdateEndpointStatusRequest {
-                status: "inactive".to_string(),
+                status: "paused".to_string(),
             },
         )
         .await
     {
-        Ok(resp) => println!("update_endpoint_status inactive: {:?}", resp.data),
-        Err(e) => eprintln!("update_endpoint_status inactive error: {e}"),
+        Ok(resp) => println!("update_endpoint_status paused: {:?}", resp.data),
+        Err(e) => eprintln!("update_endpoint_status paused error: {e}"),
     }
 
     match qn
@@ -243,7 +248,7 @@ async fn main() {
             &endpoint_id,
             &GetEndpointMetricsRequest {
                 period: "day".to_string(),
-                metric: "requests".to_string(),
+                metric: "credits_over_time".to_string(),
             },
         )
         .await
@@ -647,7 +652,7 @@ async fn main() {
         .admin
         .bulk_add_tag(&BulkAddTagRequest {
             ids: vec![endpoint_id.clone()],
-            label: "sdk-bulk-tag".to_string(),
+            label: format!("sdk-bulk-tag-{run_suffix}"),
         })
         .await
     {
@@ -667,7 +672,7 @@ async fn main() {
             .rename_tag(
                 tag_id,
                 &RenameTagRequest {
-                    label: "sdk-bulk-tag-renamed".to_string(),
+                    label: format!("sdk-renamed-{run_suffix}"),
                 },
             )
             .await
@@ -746,17 +751,33 @@ async fn main() {
                 team_id,
                 &InviteTeamMemberRequest {
                     email: "placeholder@example.com".to_string(),
-                    full_name: None,
-                    role: None,
+                    full_name: Some("Placeholder User".to_string()),
+                    role: Some("viewer".to_string()),
                 },
             )
             .await
         {
             Ok(resp) => println!("invite_team_member: {:?}", resp.data),
-            Err(e) => eprintln!("invite_team_member error (expected with placeholder email): {e}"),
+            Err(e) => eprintln!("invite_team_member error: {e}"),
         }
 
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+        // Detach endpoints before deleting the team so the endpoint remains
+        // account-owned and archive_endpoint works below.
+        match qn
+            .admin
+            .update_team_endpoints(
+                team_id,
+                &UpdateTeamEndpointsRequest {
+                    endpoint_ids: vec![],
+                },
+            )
+            .await
+        {
+            Ok(resp) => println!("update_team_endpoints detach: {:?}", resp.data),
+            Err(e) => eprintln!("update_team_endpoints detach error: {e}"),
+        }
 
         match qn.admin.delete_team(team_id).await {
             Ok(resp) => println!("delete_team: {:?}", resp.data),
