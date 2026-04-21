@@ -2,7 +2,7 @@
 use magnus::{
     function, method, prelude::*, r_hash::ForEach, symbol::Symbol, Error, RArray, RHash, Ruby,
 };
-use sdk_core as core;
+use quicknode_sdk as core;
 
 mod errors;
 

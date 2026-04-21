@@ -27,7 +27,7 @@ jobs:
         run: cargo clippy --workspace --lib --tests -- -D warnings
 
       - name: cargo test
-        run: cargo test -p sdk-core --lib
+        run: cargo test -p quicknode-sdk --lib
 
   python:
     runs-on: ubuntu-latest

@@ -79,7 +79,7 @@ Construct the SDK once, then reach into the four sub-clients (`admin`, `streams`
 
 ```rust
 // Rust
-use sdk_core::{QuickNodeSdk, SdkFullConfig};
+use quicknode_sdk::{QuickNodeSdk, SdkFullConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -3388,7 +3388,7 @@ Use the commands in the `Justfile` for the setup and build commands.
 ```bash
 # Core library
 cargo check
-cargo test -p sdk-core
+cargo test -p quicknode-sdk
 
 # Python (from project root)
 just python-setup-env
@@ -3401,7 +3401,7 @@ just node-build
 just ruby-build
 
 # Rust
-cargo build -p sdk-core
+cargo build -p quicknode-sdk
 ```
 
 ### Testing
@@ -3410,13 +3410,13 @@ cargo build -p sdk-core
 just test
 ```
 
-Runs the Rust unit tests for `sdk-core` using [wiremock](https://github.com/LukeMathWalker/wiremock-rs) to mock HTTP responses — no API key required.
+Runs the Rust unit tests for `quicknode-sdk` using [wiremock](https://github.com/LukeMathWalker/wiremock-rs) to mock HTTP responses — no API key required.
 
 ### Examples
 
 ```bash
 # Rust
-QN_SDK__API_KEY=replaceme cargo run --example admin -p sdk-core --features rust
+QN_SDK__API_KEY=replaceme cargo run --example admin -p quicknode-sdk --features rust
 
 # Python
 QN_SDK__API_KEY=replaceme uv run python/examples/admin.py
@@ -3435,6 +3435,30 @@ QN_SDK__API_KEY=replaceme ruby ruby/examples/streams.rb
 
 ### Releasing
 
+The Rust crate (`quicknode-sdk` on crates.io) versions independently from the Python, Node, and Ruby bindings. Its version lives in `crates/core/Cargo.toml`; the bindings share the workspace version in the root `Cargo.toml`.
+
+#### Rust crate only (crates.io)
+
+```bash
+# 1. Bump the version in crates/core/Cargo.toml (e.g. 0.1.0 → 0.1.0-alpha.5)
+#    Pre-release identifiers use SemVer 2.0 syntax: MAJOR.MINOR.PATCH-<id>.<N>
+#    Examples: 0.1.0-alpha.4, 0.2.0-beta.1, 0.2.0-rc.1
+
+# 2. Commit and push
+git commit -am "chore: release quicknode-sdk 0.1.0-alpha.5"
+git push
+
+# 3. Validate the tarball (no upload)
+cargo publish -p quicknode-sdk --dry-run
+
+# 4. Publish (requires `cargo login` with a crates.io token)
+cargo publish -p quicknode-sdk
+```
+
+The first publish claims the `quicknode-sdk` name permanently. Published versions are immutable — you cannot overwrite or delete them (only `cargo yank`, which hides but doesn't remove).
+
+#### All bindings together (Python / Node / Ruby)
+
 macOS (Apple Silicon) artifacts are built locally rather than on GitHub Actions to avoid the ~10× runner cost. Linux artifacts are still built by CI on tag push.
 
 ```bash
@@ -3451,6 +3475,8 @@ just macos-build-and-publish 0.2.0
 ```
 
 Step 4 requires the [`gh` CLI](https://cli.github.com/) authenticated to the repo. Intel macOS (`x86_64-apple-darwin`) is not shipped — users on Intel Macs install from source.
+
+`just release` does **not** bump the Rust crate version (that's managed separately in `crates/core/Cargo.toml`). If you want the Rust crate to move in lockstep with a binding release, bump it manually in the same commit.
 
 ## License
 

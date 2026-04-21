@@ -1,7 +1,7 @@
 use magnus::{
     exception::ExceptionClass, prelude::*, value::Opaque, Object, RModule, RObject, Ruby, Value,
 };
-use sdk_core::errors::{HttpKind, SdkError};
+use quicknode_sdk::errors::{HttpKind, SdkError};
 use std::sync::OnceLock;
 
 // Class handles are captured at #[magnus::init] time. OnceLock<Opaque<T>> is

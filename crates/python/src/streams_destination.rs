@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
-use sdk_core::streams::{
+use quicknode_sdk::streams::{
     AddressBookConfig, AzureAttributes, ClickhouseAttributes, DestinationAttributes,
     KafkaAttributes, ListStreamsResponse, MongoAttributes, MysqlAttributes, PageInfo,
     PostgresAttributes, RedisAttributes, S3Attributes, SnowflakeAttributes, Stream,

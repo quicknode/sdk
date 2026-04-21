@@ -70,7 +70,7 @@ macos-build-and-publish version:
   echo "Uploaded macOS arm64 artifacts to v{{version}}"
 
 test:
-  cargo test -p sdk-core --lib
+  cargo test -p quicknode-sdk --lib
 
 lint:
   cargo clippy --workspace --lib --tests -- -D warnings

@@ -3,7 +3,7 @@ use pyo3::{
     exceptions::{PyException, PyValueError},
     prelude::*,
 };
-use sdk_core::errors::{HttpKind, SdkError};
+use quicknode_sdk::errors::{HttpKind, SdkError};
 
 // Invalid-argument parse errors for user-supplied strings (enum values, etc.)
 // stay as PyValueError — they're argument errors, not SDK errors.

@@ -1,6 +1,6 @@
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
-use sdk_core as core;
+use quicknode_sdk as core;
 
 mod errors;
 mod streams_destination;

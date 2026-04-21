@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use sdk_core::{
+use quicknode_sdk::{
     webhooks::{
         ActivateWebhookParams, CreateWebhookFromTemplateParams, EvmWalletFilterTemplate,
         GetWebhooksParams, TemplateArgs, UpdateWebhookParams, WebhookDestinationAttributes,

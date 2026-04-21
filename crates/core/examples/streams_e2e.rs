@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use sdk_core::{
+use quicknode_sdk::{
     streams::{
         CreateStreamParams, DestinationAttributes, ListStreamsParams, StreamDataset,
         StreamMetadataLocation, StreamRegion, StreamStatus, TestFilterParams, UpdateStreamParams,

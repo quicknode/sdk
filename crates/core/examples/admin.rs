@@ -1,4 +1,4 @@
-use sdk_core::{admin::GetEndpointsRequest, QuickNodeSdk, SdkFullConfig};
+use quicknode_sdk::{admin::GetEndpointsRequest, QuickNodeSdk, SdkFullConfig};
 
 #[tokio::main]
 #[allow(clippy::unwrap_used, clippy::expect_used)]

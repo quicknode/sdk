@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Node.js bindings for quicknode sdk"
+publish = false
 
 [lints]
 workspace = true
@@ -12,7 +13,7 @@ workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
-sdk-core = { path = "../core", features = ["node"] }
+quicknode-sdk = { path = "../core", features = ["node"] }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 napi = { version = "2", features = ["async", "tokio_rt", "serde-json"] }
 napi-derive = "2"
