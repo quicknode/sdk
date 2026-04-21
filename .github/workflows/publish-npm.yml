@@ -27,9 +27,6 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Upgrade npm to trusted-publishing-capable version
-        run: npm install -g npm@latest
-
       - name: Download node .node artifacts from GitHub release
         run: |
           mkdir -p npm/artifacts
@@ -69,9 +66,9 @@ jobs:
         run: |
           for pkg_dir in */; do
             echo "Publishing $pkg_dir"
-            (cd "$pkg_dir" && npm publish --access public --tag "${{ inputs.npm_tag }}")
+            (cd "$pkg_dir" && npx -y npm@latest publish --access public --tag "${{ inputs.npm_tag }}")
           done
 
       - name: Publish main package
         working-directory: npm
-        run: npm publish --access public --tag "${{ inputs.npm_tag }}"
+        run: npx -y npm@latest publish --access public --tag "${{ inputs.npm_tag }}"

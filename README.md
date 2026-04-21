@@ -3493,13 +3493,15 @@ The npm publish uses [napi-rs's multi-package layout](https://napi.rs/docs/deep-
 
 Anyone with permission to run the `Publish npm` workflow in this repo can cut a release.
 
+**Note on versions:** the git tag tracks the overall project version (e.g. `v0.1.0-alpha.5`) and is set in `crates/core/Cargo.toml` / the root `Cargo.toml`. The npm package version is set independently in `npm/package.json` (e.g. `3.0.0-alpha.5`) to stay compatible with the pre-existing `@quicknode/sdk` 2.x series on npm. The two versions do not need to match.
+
 **Per-release flow:**
 
-1. **Bump the npm version** in `npm/package.json` (e.g. `3.0.0-alpha.4` → `3.0.0-alpha.5`), commit, and push to `main`.
+1. **Bump the npm version** in `npm/package.json` (e.g. `3.0.0-alpha.4` → `3.0.0-alpha.5`), commit, and push to `main`. (Bump the overall project version in `just release <version>` as part of the normal release flow above — this sets the git tag.)
 
 2. **Create the GitHub release** via the GitHub UI:
    - Go to **Releases → Draft a new release**.
-   - Click **Choose a tag**, type the new tag (e.g. `v3.0.0-alpha.5`), and select **Create new tag on publish**.
+   - Click **Choose a tag**, type the new tag (e.g. `v0.1.0-alpha.5`), and select **Create new tag on publish**.
    - Target branch: `main`.
    - Fill in the title and release notes (or click **Generate release notes**).
    - Click **Publish release**.
@@ -3511,12 +3513,12 @@ Anyone with permission to run the `Publish npm` workflow in this repo can cut a 
 4. **Build and upload the macOS arm64 binary** locally (Apple Silicon Mac required):
    ```bash
    just node-build
-   gh release upload v3.0.0-alpha.5 npm/index.darwin-arm64.node
+   gh release upload v0.1.0-alpha.5 npm/index.darwin-arm64.node
    ```
 
-5. **Trigger the publish workflow.** From the GitHub UI: **Actions → Publish npm → Run workflow**, then enter the tag (`v3.0.0-alpha.5`) and npm dist-tag (`next`). Or via CLI:
+5. **Trigger the publish workflow.** From the GitHub UI: **Actions → Publish npm → Run workflow**, then enter the git tag (`v0.1.0-alpha.5`) and npm dist-tag (`next`). Or via CLI:
    ```bash
-   gh workflow run publish-npm.yml -f tag=v3.0.0-alpha.5 -f npm_tag=next
+   gh workflow run publish-npm.yml -f tag=v0.1.0-alpha.5 -f npm_tag=next
    ```
 
 6. **Verify.**
