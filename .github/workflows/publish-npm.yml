@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -112,6 +111,8 @@ jobs:
 
       - name: Publish per-platform packages
         working-directory: npm/platforms
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           for pkg_dir in */; do
             echo "Publishing $pkg_dir"
@@ -120,4 +121,6 @@ jobs:
 
       - name: Publish main package
         working-directory: npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --tag "${{ inputs.npm_tag }}"
