@@ -66,9 +66,8 @@ npm/quicknode-sdk-*.tgz
 
 # Claude
 .claude/settings.local.json
-
-# Claude Code agent planning artifacts
 docs/superpowers/
+notes.md
 
 # Ruby native extension (built locally by `just ruby-build`)
 ruby/lib/*.bundle
