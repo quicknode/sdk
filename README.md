@@ -3491,8 +3491,7 @@ The Node package is published to npm as `@quicknode/sdk`. During the 3.x pre-rel
 
 The npm publish uses [napi-rs's multi-package layout](https://napi.rs/docs/deep-dive/release): one main package plus per-platform sub-packages (`@quicknode/sdk-linux-x64-gnu`, `@quicknode/sdk-darwin-arm64`, etc.) declared as `optionalDependencies`. Publishing is triggered manually via a GitHub Actions workflow so the macOS binary (built locally) can be uploaded to the GitHub release before publish.
 
-**One-time setup:**
-- An `NPM_TOKEN` with publish access to `@quicknode/sdk*` packages must be set as a GitHub Actions secret. Use an npm Automation token.
+Anyone with permission to run the `Publish npm` workflow in this repo can cut a release.
 
 **Per-release flow:**
 

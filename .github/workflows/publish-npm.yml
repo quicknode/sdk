@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,8 +24,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm to trusted-publishing-capable version
+        run: npm install -g npm@latest
 
       - name: Download node .node artifacts from GitHub release
         run: |
@@ -67,11 +71,7 @@ jobs:
             echo "Publishing $pkg_dir"
             (cd "$pkg_dir" && npm publish --access public --tag "${{ inputs.npm_tag }}")
           done
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish main package
         working-directory: npm
         run: npm publish --access public --tag "${{ inputs.npm_tag }}"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
