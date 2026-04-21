@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Git tag to publish (e.g. v0.1.0-alpha.5)'
+        description: "Git tag to publish (e.g. v0.1.0-alpha.5)"
         required: true
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install twine
         run: pip install "twine>=5,<6"
@@ -41,8 +41,8 @@ jobs:
           wheel_count=$(ls dist/quicknode_sdk-*.whl 2>/dev/null | wc -l)
           sdist_count=$(ls dist/quicknode_sdk-*.tar.gz 2>/dev/null | wc -l)
           echo "Found $wheel_count wheels and $sdist_count sdist(s)"
-          if [ "$wheel_count" -ne 16 ]; then
-            echo "Expected 16 wheels (4 python versions × 4 linux targets), got $wheel_count"
+          if [ "$wheel_count" -ne 20 ]; then
+            echo "Expected 20 wheels (4 python versions × 5 OS targets), got $wheel_count"
             ls -la dist/
             exit 1
           fi
