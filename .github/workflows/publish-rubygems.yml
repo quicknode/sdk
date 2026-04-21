@@ -1,0 +1,68 @@
+name: Publish RubyGems
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to publish (e.g. v0.1.0-alpha.5)"
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Download gem artifacts from GitHub release
+        run: |
+          mkdir -p dist
+          gh release download "${{ inputs.tag }}" \
+            --pattern 'quicknode_sdk-*.gem' \
+            --dir dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify required gems are present
+        run: |
+          gem_count=$(ls dist/quicknode_sdk-*.gem 2>/dev/null | wc -l)
+          echo "Found $gem_count gem(s)"
+          required=(
+            quicknode_sdk-*-x86_64-linux.gem
+            quicknode_sdk-*-aarch64-linux.gem
+            quicknode_sdk-*-arm64-darwin.gem
+          )
+          for pattern in "${required[@]}"; do
+            if ! ls dist/$pattern >/dev/null 2>&1; then
+              echo "Missing platform gem matching $pattern"
+              ls -la dist/
+              exit 1
+            fi
+          done
+          # Source gem has no platform suffix, e.g. quicknode_sdk-0.1.0.gem
+          if ! ls dist/quicknode_sdk-[0-9]*.gem 2>/dev/null | grep -Ev '(x86_64-linux|aarch64-linux|arm64-darwin)\.gem$' >/dev/null; then
+            echo "Missing source gem (quicknode_sdk-<version>.gem)"
+            ls -la dist/
+            exit 1
+          fi
+          if [ "$gem_count" -ne 4 ]; then
+            echo "Expected 4 gems (3 platform + 1 source), got $gem_count"
+            ls -la dist/
+            exit 1
+          fi
+
+      - name: Publish to RubyGems
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: |
+          for gem_file in dist/quicknode_sdk-*.gem; do
+            echo "Publishing $gem_file"
+            gem push "$gem_file"
+          done
