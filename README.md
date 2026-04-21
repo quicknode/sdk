@@ -3433,6 +3433,25 @@ QN_SDK__API_KEY=replaceme ruby ruby/examples/admin_e2e.rb
 QN_SDK__API_KEY=replaceme ruby ruby/examples/streams.rb
 ```
 
+### Releasing
+
+macOS (Apple Silicon) artifacts are built locally rather than on GitHub Actions to avoid the ~10× runner cost. Linux artifacts are still built by CI on tag push.
+
+```bash
+# 1. Bump versions, commit, tag
+just release 0.2.0
+
+# 2. Push
+git push && git push origin v0.2.0
+
+# 3. Wait for CI to finish and publish the GitHub release with Linux artifacts.
+
+# 4. Build macOS arm64 artifacts locally and append them to the release
+just macos-build-and-publish 0.2.0
+```
+
+Step 4 requires the [`gh` CLI](https://cli.github.com/) authenticated to the repo. Intel macOS (`x86_64-apple-darwin`) is not shipped — users on Intel Macs install from source.
+
 ## License
 
 MIT

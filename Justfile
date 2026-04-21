@@ -46,6 +46,33 @@ macos-dist-ruby:
   @echo "Built Ruby bundle:"
   @file dist/quicknode_sdk.bundle
 
+# Build macOS arm64 artifacts locally and upload to an existing GitHub release.
+# Usage: just macos-build-and-publish 0.2.0
+# Precondition: tag vX.Y.Z has been pushed and CI has published the release.
+macos-build-and-publish version:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  if ! gh release view "v{{version}}" >/dev/null 2>&1; then
+    echo "Error: release v{{version}} not found. Push the tag and let CI publish it first." >&2
+    exit 1
+  fi
+  just macos-dist-python
+  just macos-dist-node
+  just macos-dist-ruby
+  # Stage the compiled bundle under ruby/lib so the platform gem picks it up,
+  # then build the arm64-darwin gem (mirrors .github/workflows/release.yml build-ruby).
+  cp dist/quicknode_sdk.bundle ruby/lib/quicknode_sdk.bundle
+  cd ruby && ruby -e "
+    spec = Gem::Specification.load('quicknode_sdk.gemspec')
+    spec.platform = Gem::Platform.new('arm64-darwin')
+    spec.extensions = []
+    spec.files += ['lib/quicknode_sdk.bundle']
+    File.write('quicknode_sdk_platform.gemspec', spec.to_ruby)
+  " && gem build quicknode_sdk_platform.gemspec && rm quicknode_sdk_platform.gemspec && cd ..
+  mv ruby/*.gem dist/
+  gh release upload "v{{version}}" dist/*.whl dist/index.darwin-arm64.node dist/*.gem --clobber
+  echo "Uploaded macOS arm64 artifacts to v{{version}}"
+
 test:
   cargo test -p sdk-core --lib
 
