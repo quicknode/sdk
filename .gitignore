@@ -66,3 +66,9 @@ npm/quicknode-sdk-*.tgz
 
 # Claude
 .claude/settings.local.json
+docs/superpowers/
+notes.md
+
+# Ruby native extension (built locally by `just ruby-build`)
+ruby/lib/*.bundle
+ruby/lib/*.so
