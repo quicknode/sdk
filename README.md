@@ -73,7 +73,7 @@ sdk/
 
 **Node.js:** `npm install quicknode-sdk`
 
-**Ruby:** `gem install quicknode-sdk` _(not yet published — see Development below)_
+**Ruby:** `gem install quicknode_sdk` 
 
 ## Quick Start
 
