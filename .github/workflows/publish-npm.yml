@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Git tag to publish (e.g. v3.0.0-alpha.4)'
+        description: 'Git tag to publish (e.g. v0.1.0-alpha.5)'
         required: true
       npm_tag:
         description: 'npm dist-tag (next, latest, beta)'
@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Download node .node artifacts from GitHub release
@@ -53,22 +53,71 @@ jobs:
         working-directory: npm
         run: mv artifacts/*.node . && rmdir artifacts
 
-      - name: Install npm deps
-        working-directory: npm
-        run: npm ci
-
       - name: Assemble per-platform sub-packages
         working-directory: npm
-        run: npx napi prepublish --skip-gh-release
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const path = require('path');
+
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const { name: pkgName, version, napi } = pkg;
+          const binaryName = napi.binaryName;
+
+          // Map napi triple → { platformArchABI, os, cpu, libc? }
+          const targetMap = {
+            'x86_64-unknown-linux-gnu':   { abi: 'linux-x64-gnu',   os: 'linux',  cpu: 'x64',   libc: 'glibc' },
+            'aarch64-unknown-linux-gnu':  { abi: 'linux-arm64-gnu', os: 'linux',  cpu: 'arm64', libc: 'glibc' },
+            'x86_64-unknown-linux-musl':  { abi: 'linux-x64-musl',  os: 'linux',  cpu: 'x64',   libc: 'musl' },
+            'aarch64-unknown-linux-musl': { abi: 'linux-arm64-musl',os: 'linux',  cpu: 'arm64', libc: 'musl' },
+            'aarch64-apple-darwin':       { abi: 'darwin-arm64',    os: 'darwin', cpu: 'arm64' },
+          };
+
+          const optionalDependencies = {};
+          for (const triple of napi.targets) {
+            const t = targetMap[triple];
+            if (!t) throw new Error(`No target map entry for ${triple}`);
+            const subName = `${pkgName}-${t.abi}`;
+            const subDir = path.join('platforms', t.abi);
+            const binFile = `index.${t.abi}.node`;
+
+            if (!fs.existsSync(binFile)) {
+              throw new Error(`Binary ${binFile} missing for target ${triple}`);
+            }
+
+            fs.mkdirSync(subDir, { recursive: true });
+            fs.copyFileSync(binFile, path.join(subDir, binFile));
+
+            const subPkg = {
+              name: subName,
+              version,
+              main: binFile,
+              files: [binFile],
+              description: pkg.description,
+              license: pkg.license,
+              os: [t.os],
+              cpu: [t.cpu],
+            };
+            if (t.libc) subPkg.libc = [t.libc];
+
+            fs.writeFileSync(path.join(subDir, 'package.json'), JSON.stringify(subPkg, null, 2) + '\n');
+            optionalDependencies[subName] = version;
+            console.log(`Assembled ${subDir} (${subName}@${version})`);
+          }
+
+          pkg.optionalDependencies = optionalDependencies;
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          console.log('Updated main package.json optionalDependencies');
+          EOF
 
       - name: Publish per-platform packages
-        working-directory: npm/npm
+        working-directory: npm/platforms
         run: |
           for pkg_dir in */; do
             echo "Publishing $pkg_dir"
-            (cd "$pkg_dir" && npx -y npm@latest publish --access public --tag "${{ inputs.npm_tag }}")
+            (cd "$pkg_dir" && npm publish --access public --tag "${{ inputs.npm_tag }}")
           done
 
       - name: Publish main package
         working-directory: npm
-        run: npx -y npm@latest publish --access public --tag "${{ inputs.npm_tag }}"
+        run: npm publish --access public --tag "${{ inputs.npm_tag }}"
