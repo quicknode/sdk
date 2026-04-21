@@ -56,6 +56,8 @@ macos-build-and-publish version:
     echo "Error: release v{{version}} not found. Push the tag and let CI publish it first." >&2
     exit 1
   fi
+  # Clean dist/ so stale artifacts from a previous version's build don't get uploaded.
+  rm -rf dist
   just macos-dist-python
   just macos-dist-node
   just macos-dist-ruby
