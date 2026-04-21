@@ -61,9 +61,9 @@ jobs:
         run: npx napi prepublish --skip-gh-release
 
       - name: Publish per-platform packages
-        working-directory: npm
+        working-directory: npm/npm
         run: |
-          for pkg_dir in npm/*/; do
+          for pkg_dir in */; do
             echo "Publishing $pkg_dir"
             (cd "$pkg_dir" && npm publish --access public --tag "${{ inputs.npm_tag }}")
           done
