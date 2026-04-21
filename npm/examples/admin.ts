@@ -3,7 +3,7 @@ import {
   ApiError,
   TimeoutError,
   QuickNodeError,
-} from "..";
+} from "../sdk";
 
 async function main() {
   const qn = QuickNodeSdk.fromEnv();
