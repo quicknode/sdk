@@ -67,6 +67,8 @@ sdk/
 
 ## Installation
 
+**Rust:** `cargo add quicknode-sdk`
+
 **Python:** `uv add quicknode-sdk`
 
 **Node.js:** `npm install quicknode-sdk`
@@ -3528,6 +3530,33 @@ Anyone with permission to run the `Publish npm` workflow in this repo can cut a 
    ```
 
 Users can install the pre-release with `npm install @quicknode/sdk@next`.
+
+#### PyPI publish (`quicknode-sdk`)
+
+The Python package is published to PyPI as `quicknode-sdk`. Wheels and the sdist are built by `release.yml` on every GitHub release and attached as artifacts; the `Publish PyPI` workflow downloads them from a release tag and uploads to PyPI via `twine`.
+
+**Version format:** PyPI uses PEP 440, so pre-releases are written without a hyphen. `0.1.0-alpha.6` → `0.1.0a6` in `pyproject.toml`.
+
+**Per-release flow:**
+
+1. **Bump the version** in `pyproject.toml` (e.g. `0.1.0a6` → `0.1.0a7`) and run `uv lock` to refresh `uv.lock`. Commit and push.
+
+2. **Create the GitHub release** as described in the main Releasing section — this triggers `release.yml`, which builds the Linux wheels and sdist and attaches them to the release as `quicknode_sdk-*.whl` and `quicknode_sdk-*.tar.gz`.
+
+3. **Wait for `release.yml` to finish.** Confirm 16 wheels (4 Python versions × 4 Linux targets) and 1 sdist are attached to the release.
+
+4. **Trigger the publish workflow.** From the GitHub UI: **Actions → Publish PyPI → Run workflow**, then enter the git tag. Or via CLI:
+   ```bash
+   gh workflow run publish-pypi.yml -f tag=v0.1.0-alpha.6
+   ```
+
+5. **Verify.**
+   ```bash
+   pip install quicknode-sdk==0.1.0a6
+   python -c "import sdk; print(sdk.QuickNodeSdk)"
+   ```
+
+**First publish:** the repo secret `PYPI_API_TOKEN` must be set. Project-scoped tokens only work after the project exists on PyPI, so the first upload needs a user-scoped token; rotate to a project-scoped token after.
 
 ## License
 
