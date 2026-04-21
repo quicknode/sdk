@@ -153,7 +153,8 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 - If the release is still an 0.1.z release, we don't need to worry about backwards compatability as this is a greenfield project
 
 ### Documentation
-Keep inline documentation comments updated with each change
+- Keep inline documentation comments updated with each change
+- Keep README.md updated with each change
 
 ## Code style
 
