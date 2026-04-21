@@ -3,7 +3,7 @@ use pyo3_stub_gen::{
     define_stub_info_gatherer,
     derive::{gen_stub_pyclass, gen_stub_pymethods},
 };
-use sdk_core as core;
+use quicknode_sdk as core;
 
 mod errors;
 mod streams_destination;

@@ -1,6 +1,6 @@
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
-use sdk_core as core;
+use quicknode_sdk as core;
 
 // napi(object) cannot represent the flattened DestinationAttributes enum on
 // core's stream types, so these wrappers carry it as serde_json::Value.

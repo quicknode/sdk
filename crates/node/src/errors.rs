@@ -1,5 +1,5 @@
 use napi::{bindgen_prelude::Error, Status};
-use sdk_core::errors::{HttpKind, SdkError};
+use quicknode_sdk::errors::{HttpKind, SdkError};
 
 // napi-rs can only throw plain napi::Error with a status + message. To give
 // callers a typed class hierarchy in JS, we encode the variant as a structured

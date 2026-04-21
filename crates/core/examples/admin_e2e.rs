@@ -1,4 +1,4 @@
-use sdk_core::{
+use quicknode_sdk::{
     admin::{
         BulkAddTagRequest, BulkRemoveTagRequest, BulkUpdateEndpointStatusRequest,
         CreateDomainMaskRequest, CreateEndpointRequest, CreateIpRequest, CreateJwtRequest,
@@ -827,7 +827,12 @@ async fn main() {
         .get_endpoints(&GetEndpointsRequest::default())
         .await
     {
-        Err(e) if matches!(e.http_kind(), Some(sdk_core::errors::HttpKind::Timeout)) => {
+        Err(e)
+            if matches!(
+                e.http_kind(),
+                Some(quicknode_sdk::errors::HttpKind::Timeout)
+            ) =>
+        {
             println!("timed out as expected");
         }
         other => eprintln!("expected timeout, got {other:?}"),

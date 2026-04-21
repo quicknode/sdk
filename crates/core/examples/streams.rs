@@ -1,4 +1,4 @@
-use sdk_core::{
+use quicknode_sdk::{
     streams::{
         CreateStreamParams, DestinationAttributes, StreamDataset, StreamMetadataLocation,
         StreamRegion, StreamStatus, WebhookAttributes,

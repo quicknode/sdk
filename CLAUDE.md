@@ -7,9 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Rust
 ```bash
 cargo check                                        # Type check all crates
-cargo build -p sdk-core                           # Build core crate
-cargo test -p sdk-core --lib                      # Run tests (excludes examples)
-cargo run --example admin -p sdk-core             # Run example (requires QN_API_KEY env var)
+cargo build -p quicknode-sdk                      # Build core crate
+cargo test -p quicknode-sdk --lib                  # Run tests (excludes examples)
+cargo run --example admin -p quicknode-sdk         # Run example (requires QN_API_KEY env var)
 ```
 
 ### Python

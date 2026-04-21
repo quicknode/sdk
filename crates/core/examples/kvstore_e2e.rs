@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use sdk_core::{
+use quicknode_sdk::{
     kvstore::{
         AddListItemParams, BulkSetsParams, CreateListParams, CreateSetParams, UpdateListParams,
     },

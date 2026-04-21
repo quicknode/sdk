@@ -79,7 +79,7 @@ Construct the SDK once, then reach into the four sub-clients (`admin`, `streams`
 
 ```rust
 // Rust
-use sdk_core::{QuickNodeSdk, SdkFullConfig};
+use quicknode_sdk::{QuickNodeSdk, SdkFullConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -3388,7 +3388,7 @@ Use the commands in the `Justfile` for the setup and build commands.
 ```bash
 # Core library
 cargo check
-cargo test -p sdk-core
+cargo test -p quicknode-sdk
 
 # Python (from project root)
 just python-setup-env
@@ -3401,7 +3401,7 @@ just node-build
 just ruby-build
 
 # Rust
-cargo build -p sdk-core
+cargo build -p quicknode-sdk
 ```
 
 ### Testing
@@ -3410,13 +3410,13 @@ cargo build -p sdk-core
 just test
 ```
 
-Runs the Rust unit tests for `sdk-core` using [wiremock](https://github.com/LukeMathWalker/wiremock-rs) to mock HTTP responses — no API key required.
+Runs the Rust unit tests for `quicknode-sdk` using [wiremock](https://github.com/LukeMathWalker/wiremock-rs) to mock HTTP responses — no API key required.
 
 ### Examples
 
 ```bash
 # Rust
-QN_SDK__API_KEY=replaceme cargo run --example admin -p sdk-core --features rust
+QN_SDK__API_KEY=replaceme cargo run --example admin -p quicknode-sdk --features rust
 
 # Python
 QN_SDK__API_KEY=replaceme uv run python/examples/admin.py

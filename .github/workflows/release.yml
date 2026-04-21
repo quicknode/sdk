@@ -14,12 +14,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Package crate
-        run: cargo package -p sdk-core --allow-dirty
+        run: cargo package -p quicknode-sdk --allow-dirty
 
       - uses: actions/upload-artifact@v4
         with:
           name: rust-crate
-          path: target/package/sdk-core-*.crate
+          path: target/package/quicknode-sdk-*.crate
 
   build-python:
     strategy:
