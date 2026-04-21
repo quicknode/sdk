@@ -60,11 +60,21 @@ function fromNapiError(err) {
   if (!(err instanceof Error)) return err;
   const m = err.message.match(TAG_RE);
   if (!m) return err;
-  const [, kind, statusStr, , rest] = m;
-  // rest = "<msg>\x1f<body>" — split on the unit separator
-  const sepIdx = rest.indexOf("\x1f");
-  const msg = sepIdx === -1 ? rest : rest.slice(0, sepIdx);
-  const body = sepIdx === -1 ? "" : rest.slice(sepIdx + 1);
+  const [, kind, statusStr, bodyLenStr, rest] = m;
+  // rest = "<msg>\x1f<body>". Use body_len (byte length from Rust) to split
+  // deterministically — the body may itself contain \x1f, and Api messages
+  // embed the body in msg, so scanning for the first separator is unsafe.
+  let msg = rest;
+  let body = "";
+  if (bodyLenStr !== "-") {
+    const bodyLen = Number(bodyLenStr);
+    const bodyBytes = Buffer.from(rest, "utf8");
+    const bodyStart = bodyBytes.length - bodyLen;
+    if (bodyStart >= 1 && bodyBytes[bodyStart - 1] === 0x1f) {
+      msg = bodyBytes.slice(0, bodyStart - 1).toString("utf8");
+      body = bodyBytes.slice(bodyStart).toString("utf8");
+    }
+  }
   switch (kind) {
     case "Config": return new ConfigError(msg);
     case "Timeout": return new TimeoutError(msg);
