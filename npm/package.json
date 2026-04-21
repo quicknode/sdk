@@ -1,6 +1,6 @@
 {
-  "name": "@quicknode/sdk-next",
-  "version": "0.1.0",
+  "name": "@quicknode/sdk",
+  "version": "3.0.0-alpha.4",
   "description": "Quicknode SDK",
   "main": "sdk.js",
   "types": "sdk.d.ts",
@@ -27,7 +27,8 @@
       "x86_64-unknown-linux-gnu",
       "aarch64-unknown-linux-gnu",
       "x86_64-unknown-linux-musl",
-      "aarch64-unknown-linux-musl"
+      "aarch64-unknown-linux-musl",
+      "aarch64-apple-darwin"
     ]
   },
   "scripts": {
