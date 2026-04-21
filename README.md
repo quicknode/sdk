@@ -3459,24 +3459,74 @@ The first publish claims the `quicknode-sdk` name permanently. Published version
 
 #### All bindings together (Python / Node / Ruby)
 
-macOS (Apple Silicon) artifacts are built locally rather than on GitHub Actions to avoid the ~10× runner cost. Linux artifacts are still built by CI on tag push.
+macOS (Apple Silicon) artifacts are built locally rather than on GitHub Actions to avoid the ~10× runner cost. Linux artifacts are built by CI when a GitHub release is published.
 
-```bash
-# 1. Bump versions, commit, tag
-just release 0.2.0
+1. **Bump versions and commit:**
+   ```bash
+   just release 0.2.0
+   git push
+   ```
 
-# 2. Push
-git push && git push origin v0.2.0
+2. **Create the GitHub release** via the GitHub UI:
+   - **Releases → Draft a new release**.
+   - **Choose a tag** → type `v0.2.0` → **Create new tag on publish**.
+   - Target branch: `main`.
+   - Fill in title and notes (or click **Generate release notes**).
+   - Click **Publish release**.
 
-# 3. Wait for CI to finish and publish the GitHub release with Linux artifacts.
+   This creates + pushes the tag and triggers `.github/workflows/release.yml`, which builds Linux artifacts and attaches them to the release.
 
-# 4. Build macOS arm64 artifacts locally and append them to the release
-just macos-build-and-publish 0.2.0
-```
+3. **Build macOS arm64 artifacts locally and append them to the release:**
+   ```bash
+   just macos-build-and-publish 0.2.0
+   ```
 
-Step 4 requires the [`gh` CLI](https://cli.github.com/) authenticated to the repo. Intel macOS (`x86_64-apple-darwin`) is not shipped — users on Intel Macs install from source.
+Step 3 requires the [`gh` CLI](https://cli.github.com/) authenticated to the repo. Intel macOS (`x86_64-apple-darwin`) is not shipped — users on Intel Macs install from source.
 
 `just release` does **not** bump the Rust crate version (that's managed separately in `crates/core/Cargo.toml`). If you want the Rust crate to move in lockstep with a binding release, bump it manually in the same commit.
+
+#### npm publish (`@quicknode/sdk`)
+
+The Node package is published to npm as `@quicknode/sdk`. During the 3.x pre-release period, publishes use the `next` dist-tag so `npm install @quicknode/sdk` continues to resolve to the legacy 2.x release while `npm install @quicknode/sdk@next` pulls the rewrite.
+
+The npm publish uses [napi-rs's multi-package layout](https://napi.rs/docs/deep-dive/release): one main package plus per-platform sub-packages (`@quicknode/sdk-linux-x64-gnu`, `@quicknode/sdk-darwin-arm64`, etc.) declared as `optionalDependencies`. Publishing is triggered manually via a GitHub Actions workflow so the macOS binary (built locally) can be uploaded to the GitHub release before publish.
+
+**One-time setup:**
+- An `NPM_TOKEN` with publish access to `@quicknode/sdk*` packages must be set as a GitHub Actions secret. Use an npm Automation token.
+
+**Per-release flow:**
+
+1. **Bump the npm version** in `npm/package.json` (e.g. `3.0.0-alpha.4` → `3.0.0-alpha.5`), commit, and push to `main`.
+
+2. **Create the GitHub release** via the GitHub UI:
+   - Go to **Releases → Draft a new release**.
+   - Click **Choose a tag**, type the new tag (e.g. `v3.0.0-alpha.5`), and select **Create new tag on publish**.
+   - Target branch: `main`.
+   - Fill in the title and release notes (or click **Generate release notes**).
+   - Click **Publish release**.
+
+   Publishing the release creates + pushes the tag, which triggers `.github/workflows/release.yml`. CI builds the Linux `.node` artifacts and attaches them to the release you just created.
+
+3. **Wait for `release.yml` to finish.** Confirm the four Linux `index.*.node` artifacts are attached to the release.
+
+4. **Build and upload the macOS arm64 binary** locally (Apple Silicon Mac required):
+   ```bash
+   just node-build
+   gh release upload v3.0.0-alpha.5 npm/index.darwin-arm64.node
+   ```
+
+5. **Trigger the publish workflow.** From the GitHub UI: **Actions → Publish npm → Run workflow**, then enter the tag (`v3.0.0-alpha.5`) and npm dist-tag (`next`). Or via CLI:
+   ```bash
+   gh workflow run publish-npm.yml -f tag=v3.0.0-alpha.5 -f npm_tag=next
+   ```
+
+6. **Verify.**
+   ```bash
+   npm view @quicknode/sdk dist-tags
+   # Expected: next: 3.0.0-alpha.5, latest: 2.6.0 (unchanged)
+   ```
+
+Users can install the pre-release with `npm install @quicknode/sdk@next`.
 
 ## License
 

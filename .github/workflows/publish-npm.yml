@@ -1,0 +1,77 @@
+name: Publish npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to publish (e.g. v3.0.0-alpha.4)'
+        required: true
+      npm_tag:
+        description: 'npm dist-tag (next, latest, beta)'
+        required: true
+        default: 'next'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download node .node artifacts from GitHub release
+        run: |
+          mkdir -p npm/artifacts
+          gh release download "${{ inputs.tag }}" \
+            --pattern 'index.*.node' \
+            --dir npm/artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify required binaries are present
+        run: |
+          required=(
+            index.linux-x64-gnu.node
+            index.linux-arm64-gnu.node
+            index.linux-x64-musl.node
+            index.linux-arm64-musl.node
+            index.darwin-arm64.node
+          )
+          for f in "${required[@]}"; do
+            test -f "npm/artifacts/$f" || { echo "Missing $f"; exit 1; }
+          done
+
+      - name: Move binaries into npm/
+        working-directory: npm
+        run: mv artifacts/*.node . && rmdir artifacts
+
+      - name: Install npm deps
+        working-directory: npm
+        run: npm ci
+
+      - name: Assemble per-platform sub-packages
+        working-directory: npm
+        run: npx napi prepublish --skip-gh-release
+
+      - name: Publish per-platform packages
+        working-directory: npm
+        run: |
+          for pkg_dir in npm/*/; do
+            echo "Publishing $pkg_dir"
+            (cd "$pkg_dir" && npm publish --access public --tag "${{ inputs.npm_tag }}")
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish main package
+        working-directory: npm
+        run: npm publish --access public --tag "${{ inputs.npm_tag }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
