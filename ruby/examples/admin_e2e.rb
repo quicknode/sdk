@@ -1,4 +1,5 @@
 require "json"
+require "securerandom"
 require_relative "../lib/quicknode_sdk"
 
 qn = QuickNodeSdk::SDK.from_env
@@ -73,6 +74,8 @@ puts "update_endpoint_status paused: #{resp["data"]}"
 resp = JSON.parse(qn.admin.update_endpoint_status(id: endpoint_id, status: "active"))
 puts "update_endpoint_status active: #{resp["data"]}"
 
+sleep 1
+
 # ── Tags ──────────────────────────────────────────────────────────────────────
 
 qn.admin.create_tag(id: endpoint_id, label: "example-tag")
@@ -95,7 +98,9 @@ resp = JSON.parse(qn.admin.get_endpoint_logs(
 ))
 puts "get_endpoint_logs: #{resp["data"].length} entries"
 
-resp = JSON.parse(qn.admin.get_endpoint_metrics(id: endpoint_id, period: "day", metric: "requests"))
+sleep 1
+
+resp = JSON.parse(qn.admin.get_endpoint_metrics(id: endpoint_id, period: "day", metric: "credits_over_time"))
 puts "get_endpoint_metrics: #{resp["data"].length} series"
 
 # ── Security options ──────────────────────────────────────────────────────────
@@ -103,11 +108,16 @@ puts "get_endpoint_metrics: #{resp["data"].length} series"
 resp = JSON.parse(qn.admin.get_security_options(id: endpoint_id))
 puts "get_security_options: #{resp["data"].length} options"
 
+sleep 1
+
 resp = JSON.parse(qn.admin.get_endpoint_security(id: endpoint_id))
 puts "get_endpoint_security: has_data=#{!resp["data"].nil?}"
 
 resp = JSON.parse(qn.admin.update_security_options(id: endpoint_id, tokens: "enabled"))
 puts "update_security_options: #{resp["data"].length} options"
+
+sleep 0.5
+
 
 # ── Token ─────────────────────────────────────────────────────────────────────
 
@@ -207,8 +217,8 @@ sleep 0.5
 
 # ── Rate limits ───────────────────────────────────────────────────────────────
 
-qn.admin.update_rate_limits(id: endpoint_id, rps: 10)
-puts "update_rate_limits: ok"
+#qn.admin.update_rate_limits(id: endpoint_id, rps: 3)
+#puts "update_rate_limits: ok"
 
 resp = JSON.parse(qn.admin.get_method_rate_limits(id: endpoint_id))
 puts "get_method_rate_limits: #{resp["data"]}"
@@ -247,12 +257,15 @@ puts "bulk_update_endpoint_status active: #{resp["data"]}"
 
 # ── Account-level tags (bulk_add/remove + rename/delete) ─────────────────────
 
-resp = JSON.parse(qn.admin.bulk_add_tag(ids: [endpoint_id], label: "sdk-bulk-tag"))
+tag_suffix = SecureRandom.hex(4)
+resp = JSON.parse(qn.admin.bulk_add_tag(ids: [endpoint_id], label: "sdk-bulk-#{tag_suffix}"))
 puts "bulk_add_tag: #{resp["data"]}"
 bulk_tag_id = resp.dig("data", "tag", "tag_id")
 
+sleep 0.5
+
 if bulk_tag_id
-  resp = JSON.parse(qn.admin.rename_tag(id: bulk_tag_id, label: "sdk-bulk-tag-renamed"))
+  resp = JSON.parse(qn.admin.rename_tag(id: bulk_tag_id, label: "sdk-renamed-#{tag_suffix}"))
   puts "rename_tag: #{resp["data"]}"
 
   resp = JSON.parse(qn.admin.bulk_remove_tag(ids: [endpoint_id], tag_id: bulk_tag_id))
@@ -270,6 +283,7 @@ resp = JSON.parse(qn.admin.create_team(name: "sdk-example-team"))
 team_id = resp.dig("data", "id")
 puts "create_team: #{resp["data"]}"
 
+sleep 0.5
 if team_id
   resp = JSON.parse(qn.admin.get_team(id: team_id))
   puts "get_team: #{resp.dig("data", "name")}"
@@ -277,8 +291,12 @@ if team_id
   resp = JSON.parse(qn.admin.list_team_endpoints(id: team_id))
   puts "list_team_endpoints: #{resp["data"].length} endpoints"
 
+  sleep 0.5
+
   resp = JSON.parse(qn.admin.update_team_endpoints(id: team_id, endpoint_ids: [endpoint_id]))
   puts "update_team_endpoints: #{resp["data"]}"
+
+  sleep 0.5
 
   begin
     resp = JSON.parse(qn.admin.invite_team_member(id: team_id, email: "placeholder@example.com"))
@@ -299,3 +317,33 @@ sleep 0.5
 
 qn.admin.archive_endpoint(id: endpoint_id)
 puts "archive_endpoint: ok"
+
+# ── Error handling ───────────────────────────────────────────────────────────
+
+# 1) API error path — 404 on a bogus endpoint id.
+begin
+  qn.admin.show_endpoint(id: "does-not-exist")
+  raise "expected 404"
+rescue QuickNodeSdk::ApiError => e
+  raise "expected QuickNodeSdk::Error subclass" unless e.is_a?(QuickNodeSdk::Error)
+  raise "expected 404, got #{e.status}" unless e.status == 404
+  puts "api error #{e.status}: #{e.body[0, 80]}"
+end
+
+# 2) Timeout path — unreachable base URL + 1s timeout forces a timeout
+prev_url = ENV["QN_SDK__ADMIN__BASE_URL"]
+prev_timeout = ENV["QN_SDK__HTTP__TIMEOUT_SECS"]
+ENV["QN_SDK__ADMIN__BASE_URL"] = "http://10.255.255.1/"
+ENV["QN_SDK__HTTP__TIMEOUT_SECS"] = "1"
+begin
+  blackhole = QuickNodeSdk::SDK.from_env
+  begin
+    blackhole.admin.get_endpoints(limit: 20)
+    raise "expected timeout"
+  rescue QuickNodeSdk::TimeoutError
+    puts "timed out as expected"
+  end
+ensure
+  ENV["QN_SDK__ADMIN__BASE_URL"] = prev_url
+  ENV["QN_SDK__HTTP__TIMEOUT_SECS"] = prev_timeout
+end

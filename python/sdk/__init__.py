@@ -184,6 +184,13 @@ from sdk._core import (
     XrplWalletFilterTemplate,
     HyperliquidWalletEventsFilterTemplate,
     StellarWalletTransactionsFilterTemplate,
+    QuickNodeError,
+    ConfigError,
+    HttpError,
+    TimeoutError,
+    ConnectionError,
+    ApiError,
+    DecodeError,
 )
 
 __all__ = [
@@ -371,4 +378,11 @@ __all__ = [
     "XrplWalletFilterTemplate",
     "HyperliquidWalletEventsFilterTemplate",
     "StellarWalletTransactionsFilterTemplate",
+    "QuickNodeError",
+    "ConfigError",
+    "HttpError",
+    "TimeoutError",
+    "ConnectionError",
+    "ApiError",
+    "DecodeError",
 ]

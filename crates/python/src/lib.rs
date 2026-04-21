@@ -1,10 +1,11 @@
-use pyo3::{exceptions::PyValueError, prelude::*};
+use pyo3::prelude::*;
 use pyo3_stub_gen::{
     define_stub_info_gatherer,
     derive::{gen_stub_pyclass, gen_stub_pymethods},
 };
 use sdk_core as core;
 
+mod errors;
 mod streams_destination;
 
 // ── Top-level SDK ──────────────────────────────────────────────
@@ -29,8 +30,7 @@ impl QuickNodeSdk {
     #[new]
     #[allow(clippy::needless_pass_by_value)]
     fn new(config: core::SdkFullConfig) -> PyResult<Self> {
-        let sdk_config =
-            core::SdkConfig::new(&config).map_err(|e| PyValueError::new_err(e.to_string()))?;
+        let sdk_config = core::SdkConfig::new(&config).map_err(errors::map_sdk_err)?;
         Ok(Self {
             admin: AdminApiClient {
                 inner: core::admin::AdminApiClient::new(sdk_config.clone()),
@@ -59,7 +59,7 @@ impl QuickNodeSdk {
                 },
                 kvstore: KvStoreApiClient { inner: sdk.kvstore },
             })
-            .map_err(|e| PyValueError::new_err(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 }
 
@@ -139,7 +139,7 @@ impl AdminApiClient {
             client
                 .get_endpoints(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -163,7 +163,7 @@ impl AdminApiClient {
             client
                 .create_endpoint(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -174,10 +174,7 @@ impl AdminApiClient {
     fn show_endpoint<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .show_endpoint(&id)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.show_endpoint(&id).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -197,7 +194,7 @@ impl AdminApiClient {
             client
                 .update_endpoint(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -210,7 +207,7 @@ impl AdminApiClient {
             client
                 .archive_endpoint(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -231,7 +228,7 @@ impl AdminApiClient {
             client
                 .update_endpoint_status(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -251,7 +248,7 @@ impl AdminApiClient {
             client
                 .create_tag(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -268,7 +265,7 @@ impl AdminApiClient {
             client
                 .delete_tag(&id, &tag_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -291,10 +288,7 @@ impl AdminApiClient {
             end_time,
         };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .get_usage(&params)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.get_usage(&params).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -320,7 +314,7 @@ impl AdminApiClient {
             client
                 .get_usage_by_endpoint(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -346,7 +340,7 @@ impl AdminApiClient {
             client
                 .get_usage_by_method(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -371,7 +365,7 @@ impl AdminApiClient {
             client
                 .get_usage_by_chain(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -406,7 +400,7 @@ impl AdminApiClient {
             client
                 .get_endpoint_logs(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -427,7 +421,7 @@ impl AdminApiClient {
             client
                 .get_log_details(&id, &request_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -446,7 +440,7 @@ impl AdminApiClient {
             client
                 .get_security_options(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -491,7 +485,7 @@ impl AdminApiClient {
             client
                 .update_security_options(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -500,10 +494,7 @@ impl AdminApiClient {
     fn create_token<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .create_token(&id)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.create_token(&id).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -522,7 +513,7 @@ impl AdminApiClient {
             client
                 .delete_token(&id, &token_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -542,7 +533,7 @@ impl AdminApiClient {
             client
                 .create_referrer(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -561,7 +552,7 @@ impl AdminApiClient {
             client
                 .delete_referrer(&id, &referrer_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -580,7 +571,7 @@ impl AdminApiClient {
             client
                 .create_ip(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -599,7 +590,7 @@ impl AdminApiClient {
             client
                 .delete_ip(&id, &ip_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -620,7 +611,7 @@ impl AdminApiClient {
             client
                 .create_domain_mask(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -639,7 +630,7 @@ impl AdminApiClient {
             client
                 .delete_domain_mask(&id, &domain_mask_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -665,7 +656,7 @@ impl AdminApiClient {
             client
                 .create_jwt(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -683,7 +674,7 @@ impl AdminApiClient {
             client
                 .delete_jwt(&id, &jwt_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -706,7 +697,7 @@ impl AdminApiClient {
             client
                 .create_request_filter(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -727,7 +718,7 @@ impl AdminApiClient {
             client
                 .update_request_filter(&id, &request_filter_id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -745,7 +736,7 @@ impl AdminApiClient {
             client
                 .delete_request_filter(&id, &request_filter_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -758,7 +749,7 @@ impl AdminApiClient {
             client
                 .enable_multichain(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -770,7 +761,7 @@ impl AdminApiClient {
             client
                 .disable_multichain(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -793,7 +784,7 @@ impl AdminApiClient {
             client
                 .create_or_update_ip_custom_header(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -811,7 +802,7 @@ impl AdminApiClient {
             client
                 .delete_ip_custom_header(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -830,7 +821,7 @@ impl AdminApiClient {
             client
                 .get_method_rate_limits(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -858,7 +849,7 @@ impl AdminApiClient {
             client
                 .create_method_rate_limit(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -887,7 +878,7 @@ impl AdminApiClient {
             client
                 .update_method_rate_limit(&id, &method_rate_limit_id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -904,7 +895,7 @@ impl AdminApiClient {
             client
                 .delete_method_rate_limit(&id, &method_rate_limit_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -929,7 +920,7 @@ impl AdminApiClient {
             client
                 .update_rate_limits(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -952,7 +943,7 @@ impl AdminApiClient {
             client
                 .get_endpoint_metrics(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -980,7 +971,7 @@ impl AdminApiClient {
             client
                 .get_account_metrics(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -992,10 +983,7 @@ impl AdminApiClient {
     fn list_chains<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .list_chains()
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.list_chains().await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1008,10 +996,7 @@ impl AdminApiClient {
     fn list_invoices<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .list_invoices()
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.list_invoices().await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1023,10 +1008,7 @@ impl AdminApiClient {
     fn list_payments<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .list_payments()
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.list_payments().await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1038,10 +1020,7 @@ impl AdminApiClient {
     fn list_teams<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .list_teams()
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.list_teams().await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1058,7 +1037,7 @@ impl AdminApiClient {
             client
                 .create_team(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1071,10 +1050,7 @@ impl AdminApiClient {
     fn get_team<'py>(&self, py: Python<'py>, id: i64) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .get_team(id)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.get_team(id).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1087,10 +1063,7 @@ impl AdminApiClient {
     fn delete_team<'py>(&self, py: Python<'py>, id: i64) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .delete_team(id)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.delete_team(id).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1106,7 +1079,7 @@ impl AdminApiClient {
             client
                 .list_team_endpoints(id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1129,7 +1102,7 @@ impl AdminApiClient {
             client
                 .update_team_endpoints(id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1158,7 +1131,7 @@ impl AdminApiClient {
             client
                 .invite_team_member(id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1180,7 +1153,7 @@ impl AdminApiClient {
             client
                 .remove_team_member(id, user_id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1201,7 +1174,7 @@ impl AdminApiClient {
             client
                 .resend_team_invite(id, user_id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1223,7 +1196,7 @@ impl AdminApiClient {
             client
                 .bulk_update_endpoint_status(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1245,7 +1218,7 @@ impl AdminApiClient {
             client
                 .bulk_add_tag(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1266,7 +1239,7 @@ impl AdminApiClient {
             client
                 .bulk_remove_tag(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1278,10 +1251,7 @@ impl AdminApiClient {
     fn list_tags<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .list_tags()
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.list_tags().await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1302,7 +1272,7 @@ impl AdminApiClient {
             client
                 .rename_tag(id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1317,7 +1287,7 @@ impl AdminApiClient {
             client
                 .delete_account_tag(id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1343,7 +1313,7 @@ impl AdminApiClient {
             client
                 .get_usage_by_tag(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1364,7 +1334,7 @@ impl AdminApiClient {
             client
                 .get_endpoint_security(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 }
@@ -1454,17 +1424,17 @@ impl StreamsApiClient {
         let dataset = serde_json::from_value::<core::streams::StreamDataset>(
             serde_json::Value::String(dataset),
         )
-        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        .map_err(errors::map_parse_err)?;
         let region = serde_json::from_value::<core::streams::StreamRegion>(
             serde_json::Value::String(region),
         )
-        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        .map_err(errors::map_parse_err)?;
         let filter_language = filter_language
             .map(|s| {
                 serde_json::from_value::<core::streams::FilterLanguage>(serde_json::Value::String(
                     s,
                 ))
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_parse_err)
             })
             .transpose()?;
         let include_stream_metadata = include_stream_metadata
@@ -1472,19 +1442,19 @@ impl StreamsApiClient {
                 serde_json::from_value::<core::streams::StreamMetadataLocation>(
                     serde_json::Value::String(s),
                 )
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_parse_err)
             })
             .transpose()?;
         let product_type = product_type
             .map(|s| {
                 serde_json::from_value::<core::streams::ProductType>(serde_json::Value::String(s))
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                    .map_err(errors::map_parse_err)
             })
             .transpose()?;
         let status = status
             .map(|s| {
                 serde_json::from_value::<core::streams::StreamStatus>(serde_json::Value::String(s))
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                    .map_err(errors::map_parse_err)
             })
             .transpose()?;
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -1518,7 +1488,7 @@ impl StreamsApiClient {
             let stream = client
                 .create_stream(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                .map_err(errors::map_sdk_err)?;
             Python::attach(|py| streams_destination::PyStream::from_core(stream, py))
         })
     }
@@ -1556,7 +1526,7 @@ impl StreamsApiClient {
             let resp = client
                 .list_streams(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                .map_err(errors::map_sdk_err)?;
             Python::attach(|py| streams_destination::PyListStreamsResponse::from_core(resp, py))
         })
     }
@@ -1570,7 +1540,7 @@ impl StreamsApiClient {
             client
                 .delete_all_streams()
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1582,10 +1552,7 @@ impl StreamsApiClient {
     fn get_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let stream = client
-                .get_stream(&id)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            let stream = client.get_stream(&id).await.map_err(errors::map_sdk_err)?;
             Python::attach(|py| streams_destination::PyStream::from_core(stream, py))
         })
     }
@@ -1661,13 +1628,13 @@ impl StreamsApiClient {
         let dataset = dataset
             .map(|s| {
                 serde_json::from_value::<core::streams::StreamDataset>(serde_json::Value::String(s))
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                    .map_err(errors::map_parse_err)
             })
             .transpose()?;
         let region = region
             .map(|s| {
                 serde_json::from_value::<core::streams::StreamRegion>(serde_json::Value::String(s))
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                    .map_err(errors::map_parse_err)
             })
             .transpose()?;
         let filter_language = filter_language
@@ -1675,7 +1642,7 @@ impl StreamsApiClient {
                 serde_json::from_value::<core::streams::FilterLanguage>(serde_json::Value::String(
                     s,
                 ))
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_parse_err)
             })
             .transpose()?;
         let include_stream_metadata = include_stream_metadata
@@ -1683,13 +1650,13 @@ impl StreamsApiClient {
                 serde_json::from_value::<core::streams::StreamMetadataLocation>(
                     serde_json::Value::String(s),
                 )
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_parse_err)
             })
             .transpose()?;
         let status = status
             .map(|s| {
                 serde_json::from_value::<core::streams::StreamStatus>(serde_json::Value::String(s))
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                    .map_err(errors::map_parse_err)
             })
             .transpose()?;
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -1723,7 +1690,7 @@ impl StreamsApiClient {
             let stream = client
                 .update_stream(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+                .map_err(errors::map_sdk_err)?;
             Python::attach(|py| streams_destination::PyStream::from_core(stream, py))
         })
     }
@@ -1733,10 +1700,7 @@ impl StreamsApiClient {
     fn delete_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .delete_stream(&id)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.delete_stream(&id).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1748,7 +1712,7 @@ impl StreamsApiClient {
             client
                 .activate_stream(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1757,10 +1721,7 @@ impl StreamsApiClient {
     fn pause_stream<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .pause_stream(&id)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.pause_stream(&id).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1785,13 +1746,13 @@ impl StreamsApiClient {
             let dataset = serde_json::from_value::<core::streams::StreamDataset>(
                 serde_json::Value::String(dataset),
             )
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            .map_err(errors::map_parse_err)?;
             let filter_language = filter_language
                 .map(|s| {
                     serde_json::from_value::<core::streams::FilterLanguage>(
                         serde_json::Value::String(s),
                     )
-                    .map_err(|e| PyValueError::new_err(e.to_string()))
+                    .map_err(errors::map_parse_err)
                 })
                 .transpose()?;
             let params = core::streams::TestFilterParams {
@@ -1805,7 +1766,7 @@ impl StreamsApiClient {
             client
                 .test_filter(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1825,7 +1786,7 @@ impl StreamsApiClient {
             client
                 .get_enabled_count(stream_type.as_deref())
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 }
@@ -1863,7 +1824,7 @@ impl WebhooksApiClient {
             client
                 .list_webhooks(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1876,7 +1837,7 @@ impl WebhooksApiClient {
             client
                 .delete_all_webhooks()
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1891,10 +1852,7 @@ impl WebhooksApiClient {
     fn get_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .get_webhook(&id)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.get_webhook(&id).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1926,7 +1884,7 @@ impl WebhooksApiClient {
             client
                 .update_webhook(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1938,7 +1896,7 @@ impl WebhooksApiClient {
             client
                 .delete_webhook(&id)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1947,10 +1905,7 @@ impl WebhooksApiClient {
     fn pause_webhook<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .pause_webhook(&id)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.pause_webhook(&id).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -1969,13 +1924,13 @@ impl WebhooksApiClient {
         let start_from = serde_json::from_value::<core::webhooks::WebhookStartFrom>(
             serde_json::Value::String(start_from),
         )
-        .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        .map_err(errors::map_parse_err)?;
         let params = core::webhooks::ActivateWebhookParams { start_from };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .activate_webhook(&id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -1990,7 +1945,7 @@ impl WebhooksApiClient {
             client
                 .get_enabled_count()
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2026,7 +1981,7 @@ impl WebhooksApiClient {
             client
                 .create_webhook_from_template(&params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2060,7 +2015,7 @@ impl WebhooksApiClient {
             client
                 .update_webhook_template(&webhook_id, &params)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 }
@@ -2091,7 +2046,7 @@ impl KvStoreApiClient {
             client
                 .create_set(&core::kvstore::CreateSetParams { key, value })
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2112,7 +2067,7 @@ impl KvStoreApiClient {
             client
                 .get_sets(&core::kvstore::GetSetsParams { limit, cursor })
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2124,10 +2079,7 @@ impl KvStoreApiClient {
     fn get_set<'py>(&self, py: Python<'py>, key: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .get_set(&key)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.get_set(&key).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -2149,7 +2101,7 @@ impl KvStoreApiClient {
                     delete_sets,
                 })
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2159,10 +2111,7 @@ impl KvStoreApiClient {
     fn delete_set<'py>(&self, py: Python<'py>, key: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .delete_set(&key)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.delete_set(&key).await.map_err(errors::map_sdk_err)
         })
     }
 
@@ -2180,7 +2129,7 @@ impl KvStoreApiClient {
             client
                 .create_list(&core::kvstore::CreateListParams { key, items })
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2201,7 +2150,7 @@ impl KvStoreApiClient {
             client
                 .get_lists(&core::kvstore::GetListsParams { limit, cursor })
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2223,7 +2172,7 @@ impl KvStoreApiClient {
             client
                 .get_list(&key, &core::kvstore::GetListParams { limit, cursor })
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2249,7 +2198,7 @@ impl KvStoreApiClient {
                     },
                 )
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2267,7 +2216,7 @@ impl KvStoreApiClient {
             client
                 .add_list_item(&key, &core::kvstore::AddListItemParams { item })
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2287,7 +2236,7 @@ impl KvStoreApiClient {
             client
                 .list_contains_item(&key, &item)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2305,7 +2254,7 @@ impl KvStoreApiClient {
             client
                 .delete_list_item(&key, &item)
                 .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2315,10 +2264,7 @@ impl KvStoreApiClient {
     fn delete_list<'py>(&self, py: Python<'py>, key: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client
-                .delete_list(&key)
-                .await
-                .map_err(|e| PyValueError::new_err(e.to_string()))
+            client.delete_list(&key).await.map_err(errors::map_sdk_err)
         })
     }
 }
@@ -2327,6 +2273,7 @@ impl KvStoreApiClient {
 
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    errors::add_to_module(m)?;
     m.add_class::<QuickNodeSdk>()?;
     m.add_class::<AdminApiClient>()?;
     m.add_class::<core::admin::GetEndpointsRequest>()?;

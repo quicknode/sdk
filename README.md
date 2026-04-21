@@ -3300,52 +3300,74 @@ qn.kvstore.delete_list(key: "my-list")
 
 ## Error Handling
 
-The core SDK defines `SdkError` (`crates/core/src/errors.rs`) with these variants:
+Every binding exposes a typed exception hierarchy derived from the core `SdkError`
+enum (`crates/core/src/errors.rs`). Catch the base class (`QuickNodeError` /
+`QuickNodeSdk::Error` / `SdkError`) for any SDK-originated failure, or a specific
+subclass to branch on transport vs. API semantics.
 
-- `Http` — transport failure (wraps `reqwest::Error`).
-- `Api { status, body }` — non-2xx HTTP response, carrying the status code and raw response body.
-- `Decode { source, body }` — response was 2xx but JSON parsing failed; `body` holds the raw payload for debugging.
-- `Config` — misconfiguration surfaced at construction time.
+| Logical class        | When it fires                                               | Extra fields         |
+|----------------------|-------------------------------------------------------------|----------------------|
+| `QuickNodeError`     | base class; catches everything below                        | —                    |
+| `ConfigError`        | invalid config or URL surfaced at construction time         | —                    |
+| `HttpError`          | transport failure that isn't a timeout/connect              | —                    |
+| `TimeoutError`       | request timed out (subclass of `HttpError`)                 | —                    |
+| `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
+| `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
+| `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
 
-Each language binding maps these to its native exception type:
+Per-language names:
 
-- **Rust**: `Result<T, SdkError>` — pattern-match on the variants.
-- **Python**: raises `ValueError` (`PyValueError`) with the error message.
-- **Node.js**: rejects with a napi-wrapped `Error` carrying the message.
-- **Ruby**: raises `RuntimeError` for SDK errors and `ArgumentError` for missing/unknown Hash keys or bad types.
+- **Rust** — pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`.
+- **Python** — `QuickNodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError` (importable from `sdk`).
+- **Node.js** — same class names, importable from `@quicknode/sdk`, all extend `Error`.
+- **Ruby** — `QuickNodeSdk::Error`, `QuickNodeSdk::ConfigError`, `QuickNodeSdk::HttpError`, `QuickNodeSdk::TimeoutError`, `QuickNodeSdk::ConnectionError`, `QuickNodeSdk::ApiError`, `QuickNodeSdk::DecodeError`; all extend `StandardError`. Hash-key validation still raises `ArgumentError`.
 
 ```rust
 // Rust
-match qn.streams.get_stream("missing").await {
-    Ok(stream) => println!("{}", stream.name),
-    Err(SdkError::Api { status, body }) => eprintln!("api {status}: {body}"),
-    Err(e) => eprintln!("other error: {e}"),
+match qn.admin.show_endpoint("missing").await {
+    Ok(resp) => println!("{:?}", resp.data),
+    Err(SdkError::Api { status, body }) if status.as_u16() == 404 => {
+        eprintln!("not found: {body}")
+    }
+    Err(e) if matches!(e.http_kind(), Some(HttpKind::Timeout)) => eprintln!("timed out"),
+    Err(e) => eprintln!("other: {e}"),
 }
 ```
 
 ```python
 # Python
+from sdk import ApiError, TimeoutError
 try:
-    await qn.streams.get_stream("missing")
-except ValueError as e:
-    print(f"sdk error: {e}")
+    await qn.admin.show_endpoint("missing")
+except ApiError as e:
+    if e.status == 404:
+        print(f"not found: {e.body}")
+    else:
+        raise
+except TimeoutError:
+    print("timed out")
 ```
 
 ```typescript
 // Node.js
+import { ApiError, TimeoutError } from "@quicknode/sdk";
 try {
-  await qn.streams.getStream("missing");
+  await qn.admin.showEndpoint("missing");
 } catch (e) {
-  console.error("sdk error:", e);
+  if (e instanceof ApiError && e.status === 404) console.error("not found:", e.body);
+  else if (e instanceof TimeoutError) console.error("timed out");
+  else throw e;
 }
 ```
 
 ```ruby
 # Ruby
 begin
-  qn.streams.get_stream(id: "missing")
-rescue => e
-  warn "sdk error: #{e.message}"
+  qn.admin.show_endpoint(id: "missing")
+rescue QuickNodeSdk::ApiError => e
+  warn "api #{e.status}: #{e.body}" if e.status == 404
+rescue QuickNodeSdk::TimeoutError
+  warn "timed out"
 end
 ```
 

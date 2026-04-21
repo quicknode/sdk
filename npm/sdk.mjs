@@ -24,4 +24,11 @@ export const {
   StreamsApiClient,
   WebhooksApiClient,
   KvStoreApiClient,
+  QuickNodeError,
+  ConfigError,
+  HttpError,
+  TimeoutError,
+  ConnectionError,
+  ApiError,
+  DecodeError,
 } = cjs;

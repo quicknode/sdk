@@ -322,3 +322,18 @@ export class TemplateArgs {
   static hyperliquidWalletEventsFilter(attrs: HyperliquidWalletEventsFilterTemplate): TemplateArgs;
   static stellarWalletTransactionsFilter(attrs: StellarWalletTransactionsFilterTemplate): TemplateArgs;
 }
+
+// Typed error hierarchy. Any SDK call can throw one of these; catch
+// QuickNodeError to handle them all, or a specific subclass for finer control.
+export class QuickNodeError extends Error {}
+export class ConfigError extends QuickNodeError {}
+export class HttpError extends QuickNodeError {}
+export class TimeoutError extends HttpError {}
+export class ConnectionError extends HttpError {}
+export class ApiError extends QuickNodeError {
+  status: number;
+  body: string;
+}
+export class DecodeError extends QuickNodeError {
+  body: string;
+}

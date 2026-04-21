@@ -2,23 +2,32 @@
 //
 const _index = require("./index.js");
 const { QuickNodeSdk: _QuickNodeSdk } = _index;
+const errors = require("./errors.js");
 
 class QuickNodeSdk {
   constructor(config) {
-    this._inner = new _QuickNodeSdk(config);
-    this.admin = this._inner.admin;
-    this.streams = this._inner.streams;
-    this.webhooks = this._inner.webhooks;
-    this.kvstore = this._inner.kvstore;
+    try {
+      this._inner = new _QuickNodeSdk(config);
+    } catch (e) {
+      throw errors.fromNapiError(e);
+    }
+    this.admin = errors.wrapClient(this._inner.admin);
+    this.streams = errors.wrapClient(this._inner.streams);
+    this.webhooks = errors.wrapClient(this._inner.webhooks);
+    this.kvstore = errors.wrapClient(this._inner.kvstore);
   }
 
   static fromEnv() {
     const instance = Object.create(QuickNodeSdk.prototype);
-    instance._inner = _QuickNodeSdk.fromEnv();
-    instance.admin = instance._inner.admin;
-    instance.streams = instance._inner.streams;
-    instance.webhooks = instance._inner.webhooks;
-    instance.kvstore = instance._inner.kvstore;
+    try {
+      instance._inner = _QuickNodeSdk.fromEnv();
+    } catch (e) {
+      throw errors.fromNapiError(e);
+    }
+    instance.admin = errors.wrapClient(instance._inner.admin);
+    instance.streams = errors.wrapClient(instance._inner.streams);
+    instance.webhooks = errors.wrapClient(instance._inner.webhooks);
+    instance.kvstore = errors.wrapClient(instance._inner.kvstore);
     return instance;
   }
 }
@@ -79,4 +88,15 @@ class TemplateArgs {
   }
 }
 
-module.exports = { ..._index, QuickNodeSdk, TemplateArgs };
+module.exports = {
+  ..._index,
+  QuickNodeSdk,
+  TemplateArgs,
+  QuickNodeError: errors.QuickNodeError,
+  ConfigError: errors.ConfigError,
+  HttpError: errors.HttpError,
+  TimeoutError: errors.TimeoutError,
+  ConnectionError: errors.ConnectionError,
+  ApiError: errors.ApiError,
+  DecodeError: errors.DecodeError,
+};
