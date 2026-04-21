@@ -103,12 +103,34 @@ pub struct SomeRequest { ... }
 - `rust` feature — `bon` builder pattern for ergonomic Rust usage
 
 ### Error Handling
-`SdkError` (`crates/core/src/errors.rs`) uses `thiserror` with three variants:
-- `Http` — wraps `reqwest::Error`
+`SdkError` (`crates/core/src/errors.rs`) uses `thiserror` with five variants:
+- `Http` — wraps `reqwest::Error` (further classified via `SdkError::http_kind()` → `HttpKind::{Timeout, Connect, Other}`)
 - `Api` — non-2xx response with status code and raw body
 - `Decode` — JSON parse failure with raw body for debugging
+- `UrlParse` — invalid URL (wraps `url::ParseError`)
+- `Config` — invalid configuration (string message)
 
-Language bindings convert `SdkError` to native exceptions: `PyValueError` (Python), `napi::Error` (Node.js), `magnus::Error` / `RuntimeError` (Ruby).
+Each binding exposes a typed exception hierarchy rooted at a shared base class so callers can `rescue` / `catch` / `except` by category. The mapping is:
+
+| `SdkError` variant | Python / Ruby class | Node class | Base |
+|---|---|---|---|
+| `Config`, `UrlParse` | `ConfigError` | `ConfigError` | `QuickNodeError` |
+| `Http` + `HttpKind::Timeout` | `TimeoutError` | `TimeoutError` | `HttpError` |
+| `Http` + `HttpKind::Connect` | `ConnectionError` | `ConnectionError` | `HttpError` |
+| `Http` + `HttpKind::Other` | `HttpError` | `HttpError` | `QuickNodeError` |
+| `Api { status, body }` | `ApiError` (with `.status`, `.body`) | `ApiError` (with `.status`, `.body`) | `QuickNodeError` |
+| `Decode { body, .. }` | `DecodeError` (with `.body`) | `DecodeError` (with `.body`) | `QuickNodeError` |
+
+Each binding owns its mapping in a dedicated `errors.rs` file:
+- **Python** — `crates/python/src/errors.rs` uses `create_exception!` macros; `map_sdk_err` sets `.status` / `.body` attributes via `setattr` on the exception instance. Exceptions are registered on the module in `add_to_module`.
+- **Node** — `crates/node/src/errors.rs` encodes the variant, status, and body into a tagged message (`[<kind>|<status>|<body_len>]<msg>\x1f<body>`) because napi-rs only supports plain `napi::Error`. The JS wrapper `npm/errors.js` (`fromNapiError` + `wrapClient` Proxy) parses the prefix and rethrows as the typed subclass. All client methods must be wrapped via `wrapClient` so sync throws and rejected promises are both re-tagged.
+- **Ruby** — `crates/ruby/src/errors.rs` uses `module.define_error` to build the class hierarchy under `QuickNodeSdk::Error`; `map_err` instantiates the class and sets `@status` / `@body` ivars (exposed via `attr_reader`-style methods). Classes are captured once in a `OnceLock<Opaque<ExceptionClass>>`.
+
+When adding a new `SdkError` variant:
+1. Add the variant to `crates/core/src/errors.rs` and update `http_kind()` if it's transport-level.
+2. Update the `match` in each binding's `map_*_err` function — the compiler will flag missing arms in Python and Ruby (Node's match is also exhaustive on the kind string).
+3. If the new variant should surface as a new exception class, add it to all three bindings + `npm/errors.js` + the exports in `python/sdk/__init__.py` + `npm/sdk.d.ts` + `npm/sdk.mjs`.
+4. Update examples in all four languages to demonstrate the new class if user-facing.
 
 ### Python Binding Pattern
 `crates/python/src/lib.rs` wraps core async methods using `pyo3_async_runtimes::tokio::future_into_py`. The Python API accepts individual keyword arguments instead of structs.
@@ -148,6 +170,9 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 ### Error handling
 - Library constructors should return `Result`, not panic — use `.unwrap()` or `.expect()` only in examples and tests, never in library code
 - Validate numeric config values before casting between signed/unsigned types (e.g., check `>= 0` before `i64 as u64`)
+- Map `SdkError` at the binding boundary only — keep core code returning `Result<_, SdkError>`, never a language-specific exception type. See the Error Handling section above for the typed exception hierarchy and how to add a new variant.
+- When a binding needs new error metadata (status, body, retry info, etc.), add it to the `SdkError` variant first, then surface it on the exception class in each binding (PyO3 `setattr`, Ruby `ivar_set`, Node tagged-message prefix).
+- Exception-raising tests belong in each language's example script (`crates/core/examples/admin_e2e.rs`, `python/examples/admin.py`, `npm/examples/admin.ts`, `ruby/examples/admin_e2e.rb`) — assert on the typed class, `status`, and `body` so regressions in the mapping layer fail loudly.
 
 ### Backwards Compatability
 - If the release is still an 0.1.z release, we don't need to worry about backwards compatability as this is a greenfield project

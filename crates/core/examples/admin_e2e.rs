@@ -10,7 +10,8 @@ use sdk_core::{
         UpdateRateLimitsRequest, UpdateRequestFilterRequest, UpdateSecurityOptionsRequest,
         UpdateTeamEndpointsRequest,
     },
-    QuickNodeSdk, SdkFullConfig,
+    errors::SdkError,
+    AdminConfig, HttpConfig, QuickNodeSdk, SdkFullConfig,
 };
 
 #[tokio::main]
@@ -539,7 +540,7 @@ async fn main() {
             &endpoint_id,
             &UpdateRateLimitsRequest {
                 rate_limits: RateLimitSettings {
-                    rps: Some(10),
+                    rps: Some(3),
                     ..Default::default()
                 },
             },
@@ -792,5 +793,43 @@ async fn main() {
     match qn.admin.archive_endpoint(&endpoint_id).await {
         Ok(()) => println!("archive_endpoint: ok"),
         Err(e) => eprintln!("archive_endpoint error: {e}"),
+    }
+
+    // --- Error handling ---
+
+    // 1) API error path — 404 on a bogus endpoint id.
+    match qn.admin.show_endpoint("does-not-exist").await {
+        Err(SdkError::Api { status, body }) => {
+            println!("api error {status}: {}", &body[..body.len().min(80)]);
+            assert_eq!(status.as_u16(), 404);
+        }
+        other => eprintln!("expected Api 404, got {other:?}"),
+    }
+
+    // 2) Timeout path — unreachable base URL + 1s timeout forces a timeout
+    // from reqwest, which maps to SdkError::Http with http_kind() == Timeout.
+    let blackhole = SdkFullConfig {
+        api_key: config.api_key.clone(),
+        http: Some(HttpConfig {
+            timeout_secs: Some(1),
+            pool_max_idle_per_host: None,
+        }),
+        admin: Some(AdminConfig {
+            base_url: Some("http://10.255.255.1/".to_string()),
+        }),
+        streams: None,
+        webhooks: None,
+        kvstore: None,
+    };
+    let tiny = QuickNodeSdk::new(&blackhole).expect("build tiny sdk");
+    match tiny
+        .admin
+        .get_endpoints(&GetEndpointsRequest::default())
+        .await
+    {
+        Err(e) if matches!(e.http_kind(), Some(sdk_core::errors::HttpKind::Timeout)) => {
+            println!("timed out as expected");
+        }
+        other => eprintln!("expected timeout, got {other:?}"),
     }
 }

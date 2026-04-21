@@ -1,5 +1,14 @@
 import asyncio
-from sdk import QuickNodeSdk
+import os
+from sdk import (
+    QuickNodeSdk,
+    SdkFullConfig,
+    HttpConfig,
+    AdminConfig,
+    ApiError,
+    TimeoutError,
+    QuickNodeError,
+)
 
 
 async def main():
@@ -26,6 +35,28 @@ async def main():
     if response.data:
         sec = await qn.admin.get_endpoint_security(response.data[0].id)
         print(f"get_endpoint_security: has_data={sec.data is not None}")
+
+    # ── Error handling ──────────────────────────────────────────────────
+    # 1) API error path — 404 on a bogus endpoint id.
+    try:
+        await qn.admin.show_endpoint("does-not-exist")
+    except ApiError as e:
+        assert isinstance(e, QuickNodeError)
+        assert e.status == 404
+        print(f"api error {e.status}: {e.body[:80]}")
+
+    # 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.
+    blackhole = QuickNodeSdk(
+        SdkFullConfig(
+            api_key=os.environ["QN_SDK__API_KEY"],
+            http=HttpConfig(timeout_secs=1),
+            admin=AdminConfig(base_url="http://10.255.255.1/"),
+        )
+    )
+    try:
+        await blackhole.admin.get_endpoints()
+    except TimeoutError:
+        print("timed out as expected")
 
 
 asyncio.run(main())

@@ -4,6 +4,8 @@ use magnus::{
 };
 use sdk_core as core;
 
+mod errors;
+
 // ── Tokio runtime ───────────────────────────────────────────────────────────
 //
 // A single shared runtime for all blocking HTTP calls. GVL is held during
@@ -22,7 +24,7 @@ fn ruby() -> Ruby {
 
 #[allow(clippy::needless_pass_by_value)]
 fn map_err(e: core::errors::SdkError) -> Error {
-    Error::new(ruby().exception_runtime_error(), e.to_string())
+    errors::map_err(e)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -1797,6 +1799,10 @@ impl KvStoreApiClient {
 #[magnus::init(name = "quicknode_sdk")]
 fn init(ruby: &Ruby) -> Result<(), Error> {
     let module = ruby.define_module("QuickNodeSdk")?;
+
+    // Typed exception hierarchy — register before client classes so map_err
+    // can use them from the first call onward.
+    errors::init(ruby, &module)?;
 
     // ── SDK root ──────────────────────────────────────────────
     let sdk = module.define_class("SDK", ruby.class_object())?;

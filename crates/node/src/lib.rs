@@ -2,6 +2,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use sdk_core as core;
 
+mod errors;
 mod streams_destination;
 
 // ── Top-level SDK ──────────────────────────────────────────────
@@ -20,8 +21,7 @@ impl QuickNodeSdk {
     #[napi(constructor)]
     #[allow(clippy::needless_pass_by_value)]
     pub fn new(config: core::SdkFullConfig) -> Result<Self> {
-        let sdk_config =
-            core::SdkConfig::new(&config).map_err(|e| Error::from_reason(e.to_string()))?;
+        let sdk_config = core::SdkConfig::new(&config).map_err(errors::map_sdk_err)?;
         Ok(Self {
             admin: AdminApiClient {
                 inner: core::admin::AdminApiClient::new(sdk_config.clone()),
@@ -74,7 +74,7 @@ impl QuickNodeSdk {
                 },
                 kvstore: KvStoreApiClient { inner: sdk.kvstore },
             })
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 }
 
@@ -102,7 +102,7 @@ impl AdminApiClient {
         self.inner
             .get_endpoints(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Creates a new endpoint for a given blockchain and network. Requires
@@ -118,7 +118,7 @@ impl AdminApiClient {
         self.inner
             .create_endpoint(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns details for a specific endpoint by ID.
@@ -127,7 +127,7 @@ impl AdminApiClient {
         self.inner
             .show_endpoint(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Updates editable fields on an endpoint (e.g. its label). Returns a
@@ -142,7 +142,7 @@ impl AdminApiClient {
         self.inner
             .update_endpoint(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Archives an endpoint. The API uses `DELETE` but the effect is archival
@@ -152,7 +152,7 @@ impl AdminApiClient {
         self.inner
             .archive_endpoint(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Pauses or unpauses an endpoint by setting its status to `active` or
@@ -166,7 +166,7 @@ impl AdminApiClient {
         self.inner
             .update_endpoint_status(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Creates a new tag on a specific endpoint from a label. Returns the new
@@ -181,7 +181,7 @@ impl AdminApiClient {
         self.inner
             .create_tag(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a tag from a specific endpoint by tag id.
@@ -190,7 +190,7 @@ impl AdminApiClient {
         self.inner
             .delete_tag(&id, &tag_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns account RPC usage totals for an optional time range. The
@@ -205,7 +205,7 @@ impl AdminApiClient {
         self.inner
             .get_usage(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns RPC usage broken down per endpoint over an optional time range.
@@ -220,7 +220,7 @@ impl AdminApiClient {
         self.inner
             .get_usage_by_endpoint(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns RPC usage grouped by method over an optional time range. Each
@@ -235,7 +235,7 @@ impl AdminApiClient {
         self.inner
             .get_usage_by_method(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns RPC usage grouped by chain over an optional time range. Each
@@ -249,7 +249,7 @@ impl AdminApiClient {
         self.inner
             .get_usage_by_chain(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns activity logs for a specific endpoint. Supports filtering by
@@ -265,7 +265,7 @@ impl AdminApiClient {
         self.inner
             .get_endpoint_logs(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns the raw request and response payloads for a specific log entry
@@ -280,7 +280,7 @@ impl AdminApiClient {
         self.inner
             .get_log_details(&id, &request_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns the security options for an endpoint — an object of security
@@ -293,7 +293,7 @@ impl AdminApiClient {
         self.inner
             .get_security_options(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Updates which security features are enabled on an endpoint. Each option
@@ -309,7 +309,7 @@ impl AdminApiClient {
         self.inner
             .update_security_options(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Generates a new authentication token for an endpoint.
@@ -318,7 +318,7 @@ impl AdminApiClient {
         self.inner
             .create_token(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Revokes a token on an endpoint by token id.
@@ -331,7 +331,7 @@ impl AdminApiClient {
         self.inner
             .delete_token(&id, &token_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Adds a referrer to an endpoint's security settings, specifying which
@@ -346,7 +346,7 @@ impl AdminApiClient {
         self.inner
             .create_referrer(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a referrer from an endpoint's security settings by referrer id.
@@ -359,7 +359,7 @@ impl AdminApiClient {
         self.inner
             .delete_referrer(&id, &referrer_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Adds an IP address to an endpoint's security whitelist.
@@ -373,7 +373,7 @@ impl AdminApiClient {
         self.inner
             .create_ip(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes an IP address from an endpoint's security whitelist by ip id.
@@ -386,7 +386,7 @@ impl AdminApiClient {
         self.inner
             .delete_ip(&id, &ip_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Adds a domain mask to an endpoint — a custom domain used to hide the
@@ -402,7 +402,7 @@ impl AdminApiClient {
         self.inner
             .create_domain_mask(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a domain mask from an endpoint by domain mask id.
@@ -415,7 +415,7 @@ impl AdminApiClient {
         self.inner
             .delete_domain_mask(&id, &domain_mask_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Creates a new JWT for endpoint authentication. Accepts a public key,
@@ -430,7 +430,7 @@ impl AdminApiClient {
         self.inner
             .create_jwt(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a JWT from an endpoint's security configuration by jwt id,
@@ -440,7 +440,7 @@ impl AdminApiClient {
         self.inner
             .delete_jwt(&id, &jwt_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Creates a request filter on an endpoint — a method whitelist that
@@ -456,7 +456,7 @@ impl AdminApiClient {
         self.inner
             .create_request_filter(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Updates an existing request filter on an endpoint, replacing the
@@ -472,7 +472,7 @@ impl AdminApiClient {
         self.inner
             .update_request_filter(&id, &request_filter_id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a request filter from an endpoint's security configuration by
@@ -482,7 +482,7 @@ impl AdminApiClient {
         self.inner
             .delete_request_filter(&id, &request_filter_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Enables multichain functionality on an endpoint, allowing a single
@@ -492,7 +492,7 @@ impl AdminApiClient {
         self.inner
             .enable_multichain(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Disables multichain functionality on an endpoint.
@@ -501,7 +501,7 @@ impl AdminApiClient {
         self.inner
             .disable_multichain(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Sets the custom HTTP header used to identify the client IP for an
@@ -517,7 +517,7 @@ impl AdminApiClient {
         self.inner
             .create_or_update_ip_custom_header(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes the custom IP header configuration from an endpoint.
@@ -529,7 +529,7 @@ impl AdminApiClient {
         self.inner
             .delete_ip_custom_header(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns the method rate limits configured on an endpoint, including
@@ -542,7 +542,7 @@ impl AdminApiClient {
         self.inner
             .get_method_rate_limits(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Creates a per-method rate limit on an endpoint. A method rate limit
@@ -557,7 +557,7 @@ impl AdminApiClient {
         self.inner
             .create_method_rate_limit(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Updates an existing method rate limit on an endpoint. Accepts the
@@ -573,7 +573,7 @@ impl AdminApiClient {
         self.inner
             .update_method_rate_limit(&id, &method_rate_limit_id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a method rate limit from an endpoint by method rate limit id.
@@ -586,7 +586,7 @@ impl AdminApiClient {
         self.inner
             .delete_method_rate_limit(&id, &method_rate_limit_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Updates the overall rate limits on an endpoint. Accepts `rps`
@@ -601,7 +601,7 @@ impl AdminApiClient {
         self.inner
             .update_rate_limits(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns time-series metrics for a specific endpoint. Requires a
@@ -616,7 +616,7 @@ impl AdminApiClient {
         self.inner
             .get_endpoint_metrics(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns aggregated metrics across all endpoints on the account. Accepts
@@ -630,17 +630,14 @@ impl AdminApiClient {
         self.inner
             .get_account_metrics(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns all chains supported by QuickNode along with their networks.
     /// Each entry includes the chain slug and its network slugs and names.
     #[napi]
     pub async fn list_chains(&self) -> Result<core::admin::ListChainsResponse> {
-        self.inner
-            .list_chains()
-            .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+        self.inner.list_chains().await.map_err(errors::map_sdk_err)
     }
 
     /// Returns the account's invoices, including id, status, billing reason,
@@ -651,7 +648,7 @@ impl AdminApiClient {
         self.inner
             .list_invoices()
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns all payments on the account, including amount, status, card
@@ -661,17 +658,14 @@ impl AdminApiClient {
         self.inner
             .list_payments()
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns all teams on the account. Each team includes its id, name,
     /// member count, and member details (roles, contact info, account status).
     #[napi]
     pub async fn list_teams(&self) -> Result<core::admin::ListTeamsResponse> {
-        self.inner
-            .list_teams()
-            .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+        self.inner.list_teams().await.map_err(errors::map_sdk_err)
     }
 
     /// Creates a new team. Requires a `name`; returns the new team with its
@@ -684,17 +678,14 @@ impl AdminApiClient {
         self.inner
             .create_team(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns a specific team by id, including active members with their
     /// roles and contact info plus any pending invites.
     #[napi]
     pub async fn get_team(&self, id: i64) -> Result<core::admin::GetTeamResponse> {
-        self.inner
-            .get_team(id)
-            .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+        self.inner.get_team(id).await.map_err(errors::map_sdk_err)
     }
 
     /// Deletes a team by id. The team must have no members before it can be
@@ -704,7 +695,7 @@ impl AdminApiClient {
         self.inner
             .delete_team(id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns the endpoints accessible to a given team. Each entry includes
@@ -717,7 +708,7 @@ impl AdminApiClient {
         self.inner
             .list_team_endpoints(id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Assigns or unassigns endpoints for a team. Pass an array of endpoint ids
@@ -732,7 +723,7 @@ impl AdminApiClient {
         self.inner
             .update_team_endpoints(id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Invites a user to a team by email. For new users, `full_name` and
@@ -747,7 +738,7 @@ impl AdminApiClient {
         self.inner
             .invite_team_member(id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a user from a team by team id and user id.
@@ -762,7 +753,7 @@ impl AdminApiClient {
         self.inner
             .remove_team_member(id, user_id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Resends the invitation email to a pending team member, identified by
@@ -776,7 +767,7 @@ impl AdminApiClient {
         self.inner
             .resend_team_invite(id, user_id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Pauses or unpauses multiple endpoints in a single call. Accepts an
@@ -790,7 +781,7 @@ impl AdminApiClient {
         self.inner
             .bulk_update_endpoint_status(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Applies a single tag label to multiple endpoints in one call. Returns
@@ -804,7 +795,7 @@ impl AdminApiClient {
         self.inner
             .bulk_add_tag(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a tag from multiple endpoints in one call, identified by an
@@ -817,17 +808,14 @@ impl AdminApiClient {
         self.inner
             .bulk_remove_tag(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns all account-level tags, including tags with zero associated
     /// endpoints. Each tag includes its id, label, and endpoint usage count.
     #[napi]
     pub async fn list_tags(&self) -> Result<core::admin::ListTagsResponse> {
-        self.inner
-            .list_tags()
-            .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+        self.inner.list_tags().await.map_err(errors::map_sdk_err)
     }
 
     /// Updates the label of an account tag. Because the tag is shared across
@@ -841,7 +829,7 @@ impl AdminApiClient {
         self.inner
             .rename_tag(id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Deletes an account-level tag. The tag must first be removed from all
@@ -854,7 +842,7 @@ impl AdminApiClient {
         self.inner
             .delete_account_tag(id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns RPC usage grouped by endpoint tag over an optional time range.
@@ -869,7 +857,7 @@ impl AdminApiClient {
         self.inner
             .get_usage_by_tag(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns the full security configuration for an endpoint in a single
@@ -884,7 +872,7 @@ impl AdminApiClient {
         self.inner
             .get_endpoint_security(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 }
 
@@ -915,7 +903,7 @@ impl StreamsApiClient {
             .inner
             .create_stream(&core_params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))?;
+            .map_err(errors::map_sdk_err)?;
         streams_destination::StreamNode::from_core(stream)
     }
 
@@ -937,7 +925,7 @@ impl StreamsApiClient {
             .inner
             .list_streams(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))?;
+            .map_err(errors::map_sdk_err)?;
         streams_destination::ListStreamsResponseNode::from_core(resp)
     }
 
@@ -948,7 +936,7 @@ impl StreamsApiClient {
         self.inner
             .delete_all_streams()
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns a single stream by ID, including its full configuration and
@@ -959,7 +947,7 @@ impl StreamsApiClient {
             .inner
             .get_stream(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))?;
+            .map_err(errors::map_sdk_err)?;
         streams_destination::StreamNode::from_core(stream)
     }
 
@@ -976,7 +964,7 @@ impl StreamsApiClient {
             .inner
             .update_stream(&id, &core_params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))?;
+            .map_err(errors::map_sdk_err)?;
         streams_destination::StreamNode::from_core(stream)
     }
 
@@ -986,7 +974,7 @@ impl StreamsApiClient {
         self.inner
             .delete_stream(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Activates a stream by ID, resuming delivery from its current position.
@@ -995,7 +983,7 @@ impl StreamsApiClient {
         self.inner
             .activate_stream(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Pauses a stream by ID, halting delivery until it is activated again.
@@ -1004,7 +992,7 @@ impl StreamsApiClient {
         self.inner
             .pause_stream(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Runs a filter function against a specified block on a given network and
@@ -1018,7 +1006,7 @@ impl StreamsApiClient {
         self.inner
             .test_filter(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns the total count of currently enabled (active) streams on the
@@ -1031,7 +1019,7 @@ impl StreamsApiClient {
         self.inner
             .get_enabled_count(stream_type.as_deref())
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 }
 
@@ -1059,7 +1047,7 @@ impl WebhooksApiClient {
         self.inner
             .list_webhooks(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes every webhook on the account. Destructive and takes no
@@ -1069,7 +1057,7 @@ impl WebhooksApiClient {
         self.inner
             .delete_all_webhooks()
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Fetches a single webhook's full configuration and status by ID. Returns
@@ -1082,7 +1070,7 @@ impl WebhooksApiClient {
         self.inner
             .get_webhook(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Modifies an existing webhook's configuration. Supports updating the
@@ -1101,7 +1089,7 @@ impl WebhooksApiClient {
         self.inner
             .update_webhook(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Permanently removes a single webhook by ID.
@@ -1110,7 +1098,7 @@ impl WebhooksApiClient {
         self.inner
             .delete_webhook(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Pauses a webhook by ID so it stops delivering events until reactivated.
@@ -1119,7 +1107,7 @@ impl WebhooksApiClient {
         self.inner
             .pause_webhook(&id)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Activates a previously created or paused webhook so it begins (or
@@ -1135,7 +1123,7 @@ impl WebhooksApiClient {
         self.inner
             .activate_webhook(&id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns the total number of enabled webhooks currently configured on
@@ -1145,7 +1133,7 @@ impl WebhooksApiClient {
         self.inner
             .get_enabled_count()
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Creates a new webhook from a predefined filter template. Requires a
@@ -1163,7 +1151,7 @@ impl WebhooksApiClient {
         self.inner
             .create_webhook_from_template(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Updates an existing template-backed webhook, modifying its template
@@ -1181,7 +1169,7 @@ impl WebhooksApiClient {
         self.inner
             .update_webhook_template(&webhook_id, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 }
 
@@ -1201,7 +1189,7 @@ impl KvStoreApiClient {
         self.inner
             .create_set(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns a paginated page of key/value entries from the store. Use the
@@ -1215,16 +1203,13 @@ impl KvStoreApiClient {
         self.inner
             .get_sets(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns the string value stored for a single set by key.
     #[napi]
     pub async fn get_set(&self, key: String) -> Result<core::kvstore::GetSetResponse> {
-        self.inner
-            .get_set(&key)
-            .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+        self.inner.get_set(&key).await.map_err(errors::map_sdk_err)
     }
 
     /// Adds and removes multiple sets in a single request. Either `add_sets`,
@@ -1234,7 +1219,7 @@ impl KvStoreApiClient {
         self.inner
             .bulk_sets(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a single set by key.
@@ -1243,7 +1228,7 @@ impl KvStoreApiClient {
         self.inner
             .delete_set(&key)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Creates a new list under the given key, seeded with the provided items.
@@ -1252,7 +1237,7 @@ impl KvStoreApiClient {
         self.inner
             .create_list(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns a paginated page of list keys from the store. Use the response
@@ -1266,7 +1251,7 @@ impl KvStoreApiClient {
         self.inner
             .get_lists(&params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Returns a paginated page of items from the list identified by `key`.
@@ -1281,7 +1266,7 @@ impl KvStoreApiClient {
         self.inner
             .get_list(&key, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Updates an existing list by adding and/or removing items in a single
@@ -1295,7 +1280,7 @@ impl KvStoreApiClient {
         self.inner
             .update_list(&key, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Appends a single item to the list identified by `key`.
@@ -1308,7 +1293,7 @@ impl KvStoreApiClient {
         self.inner
             .add_list_item(&key, &params)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Checks whether the specified list contains the given item.
@@ -1321,7 +1306,7 @@ impl KvStoreApiClient {
         self.inner
             .list_contains_item(&key, &item)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a specific item from the list identified by `key`.
@@ -1330,7 +1315,7 @@ impl KvStoreApiClient {
         self.inner
             .delete_list_item(&key, &item)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 
     /// Removes a list and all of its items by key.
@@ -1339,6 +1324,6 @@ impl KvStoreApiClient {
         self.inner
             .delete_list(&key)
             .await
-            .map_err(|e| Error::from_reason(e.to_string()))
+            .map_err(errors::map_sdk_err)
     }
 }
