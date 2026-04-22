@@ -12,7 +12,7 @@ mod streams_destination;
 
 #[gen_stub_pyclass]
 #[pyclass]
-pub struct QuickNodeSdk {
+pub struct QuicknodeSdk {
     #[pyo3(get)]
     admin: AdminApiClient,
     #[pyo3(get)]
@@ -25,7 +25,7 @@ pub struct QuickNodeSdk {
 
 #[gen_stub_pymethods]
 #[pymethods]
-impl QuickNodeSdk {
+impl QuicknodeSdk {
     /// Creates a new SDK instance from an explicit configuration.
     #[new]
     #[allow(clippy::needless_pass_by_value)]
@@ -50,7 +50,7 @@ impl QuickNodeSdk {
     /// Creates a new SDK instance using configuration from environment variables.
     #[staticmethod]
     fn from_env() -> PyResult<Self> {
-        core::QuickNodeSdk::from_env()
+        core::QuicknodeSdk::from_env()
             .map(|sdk| Self {
                 admin: AdminApiClient { inner: sdk.admin },
                 streams: StreamsApiClient { inner: sdk.streams },
@@ -595,7 +595,7 @@ impl AdminApiClient {
     }
 
     /// Adds a domain mask to an endpoint — a custom domain used to hide the
-    /// endpoint's QuickNode URL so requests can be routed through your own
+    /// endpoint's Quicknode URL so requests can be routed through your own
     /// domain.
     #[pyo3(signature = (id, domain_mask=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
@@ -975,7 +975,7 @@ impl AdminApiClient {
         })
     }
 
-    /// Returns all chains supported by QuickNode along with their networks.
+    /// Returns all chains supported by Quicknode along with their networks.
     /// Each entry includes the chain slug and its network slugs and names.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, ListChainsResponse]"
@@ -2274,7 +2274,7 @@ impl KvStoreApiClient {
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     errors::add_to_module(m)?;
-    m.add_class::<QuickNodeSdk>()?;
+    m.add_class::<QuicknodeSdk>()?;
     m.add_class::<AdminApiClient>()?;
     m.add_class::<core::admin::GetEndpointsRequest>()?;
     m.add_class::<core::admin::GetEndpointsResponse>()?;

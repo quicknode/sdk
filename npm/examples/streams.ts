@@ -1,5 +1,5 @@
 import {
-  QuickNodeSdk,
+  QuicknodeSdk,
   StreamDataset,
   StreamMetadataLocation,
   StreamRegion,
@@ -8,7 +8,7 @@ import {
 import type { CreateStreamParams } from "../sdk";
 
 async function main() {
-  const qn = QuickNodeSdk.fromEnv();
+  const qn = QuicknodeSdk.fromEnv();
   const params: CreateStreamParams = {
     name: "My Stream",
     network: "ethereum-mainnet",

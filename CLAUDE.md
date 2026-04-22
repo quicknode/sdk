@@ -65,8 +65,8 @@ This is a polyglot SDK: one Rust core library with Python, Node.js, and Ruby bin
 - `ruby/` — Ruby package directory (`lib/quicknode_sdk.rb` entry point, `examples/`)
 
 ### Core Pattern
-- `QuickNodeSdk` is the root entry point holding sub-clients (e.g., `admin: AdminApiClient`). All clients share a `SdkConfig(Arc<SdkConfigInner>)` wrapping one `reqwest` HTTP client and the API key.
-- There are clients per QuickNode product, with functions mapping to API calls
+- `QuicknodeSdk` is the root entry point holding sub-clients (e.g., `admin: AdminApiClient`). All clients share a `SdkConfig(Arc<SdkConfigInner>)` wrapping one `reqwest` HTTP client and the API key.
+- There are clients per Quicknode product, with functions mapping to API calls
 - Request params and Responses should be fully typed structs
 
 ### Per-Sub-Client Config Pattern
@@ -114,17 +114,17 @@ Each binding exposes a typed exception hierarchy rooted at a shared base class s
 
 | `SdkError` variant | Python / Ruby class | Node class | Base |
 |---|---|---|---|
-| `Config`, `UrlParse` | `ConfigError` | `ConfigError` | `QuickNodeError` |
+| `Config`, `UrlParse` | `ConfigError` | `ConfigError` | `QuicknodeError` |
 | `Http` + `HttpKind::Timeout` | `TimeoutError` | `TimeoutError` | `HttpError` |
 | `Http` + `HttpKind::Connect` | `ConnectionError` | `ConnectionError` | `HttpError` |
-| `Http` + `HttpKind::Other` | `HttpError` | `HttpError` | `QuickNodeError` |
-| `Api { status, body }` | `ApiError` (with `.status`, `.body`) | `ApiError` (with `.status`, `.body`) | `QuickNodeError` |
-| `Decode { body, .. }` | `DecodeError` (with `.body`) | `DecodeError` (with `.body`) | `QuickNodeError` |
+| `Http` + `HttpKind::Other` | `HttpError` | `HttpError` | `QuicknodeError` |
+| `Api { status, body }` | `ApiError` (with `.status`, `.body`) | `ApiError` (with `.status`, `.body`) | `QuicknodeError` |
+| `Decode { body, .. }` | `DecodeError` (with `.body`) | `DecodeError` (with `.body`) | `QuicknodeError` |
 
 Each binding owns its mapping in a dedicated `errors.rs` file:
 - **Python** — `crates/python/src/errors.rs` uses `create_exception!` macros; `map_sdk_err` sets `.status` / `.body` attributes via `setattr` on the exception instance. Exceptions are registered on the module in `add_to_module`.
 - **Node** — `crates/node/src/errors.rs` encodes the variant, status, and body into a tagged message (`[<kind>|<status>|<body_len>]<msg>\x1f<body>`) because napi-rs only supports plain `napi::Error`. The JS wrapper `npm/errors.js` (`fromNapiError` + `wrapClient` Proxy) parses the prefix and rethrows as the typed subclass. All client methods must be wrapped via `wrapClient` so sync throws and rejected promises are both re-tagged.
-- **Ruby** — `crates/ruby/src/errors.rs` uses `module.define_error` to build the class hierarchy under `QuickNodeSdk::Error`; `map_err` instantiates the class and sets `@status` / `@body` ivars (exposed via `attr_reader`-style methods). Classes are captured once in a `OnceLock<Opaque<ExceptionClass>>`.
+- **Ruby** — `crates/ruby/src/errors.rs` uses `module.define_error` to build the class hierarchy under `QuicknodeSdk::Error`; `map_err` instantiates the class and sets `@status` / `@body` ivars (exposed via `attr_reader`-style methods). Classes are captured once in a `OnceLock<Opaque<ExceptionClass>>`.
 
 When adding a new `SdkError` variant:
 1. Add the variant to `crates/core/src/errors.rs` and update `http_kind()` if it's transport-level.
@@ -139,7 +139,7 @@ When adding a new `SdkError` variant:
 `crates/node/src/lib.rs` uses `#[napi(constructor)]` and `#[napi(getter)]` macros. napi handles async conversion automatically.
 
 ### Ruby Binding Pattern
-`crates/ruby/src/lib.rs` uses the `magnus` crate. All async SDK calls are wrapped via a single shared `tokio::runtime` (static `OnceLock`) using `.block_on()` to produce a synchronous Ruby API. Methods returning data return **JSON strings** — callers must parse with `JSON.parse()`. All parameters are passed as a single Ruby Hash with symbol keys (e.g. `get_endpoints(limit: 20)`). Required keys throw `ArgumentError` if missing; unknown keys also throw `ArgumentError` (validated via `validate_keys`). The magnus arity limit of 15 is why this pattern is used uniformly — all methods are registered with arity `1` (or `0` for zero-param methods). Classes are exposed under the `QuickNodeSdk` module and registered via `#[magnus::init(name = "quicknode_sdk")]`.
+`crates/ruby/src/lib.rs` uses the `magnus` crate. All async SDK calls are wrapped via a single shared `tokio::runtime` (static `OnceLock`) using `.block_on()` to produce a synchronous Ruby API. Methods returning data return **JSON strings** — callers must parse with `JSON.parse()`. All parameters are passed as a single Ruby Hash with symbol keys (e.g. `get_endpoints(limit: 20)`). Required keys throw `ArgumentError` if missing; unknown keys also throw `ArgumentError` (validated via `validate_keys`). The magnus arity limit of 15 is why this pattern is used uniformly — all methods are registered with arity `1` (or `0` for zero-param methods). Classes are exposed under the `QuicknodeSdk` module and registered via `#[magnus::init(name = "quicknode_sdk")]`.
 
 When adding a new Ruby method:
 1. Accept `opts: RHash` as the single parameter

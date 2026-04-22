@@ -2,7 +2,7 @@
 ## python/sdk/__init__.pyi is a build artifact — overwritten by `just python-build`.
 ## Edit this file, not __init__.pyi directly.
 from sdk._core import (
-    QuickNodeSdk,
+    QuicknodeSdk,
     AdminApiClient,
     StreamsApiClient,
     Stream,
@@ -186,7 +186,7 @@ from sdk._core import (
     XrplWalletFilterTemplate,
     HyperliquidWalletEventsFilterTemplate,
     StellarWalletTransactionsFilterTemplate,
-    QuickNodeError,
+    QuicknodeError,
     ConfigError,
     HttpError,
     TimeoutError,
@@ -196,7 +196,7 @@ from sdk._core import (
 )
 
 __all__ = [
-    "QuickNodeSdk",
+    "QuicknodeSdk",
     "AdminApiClient",
     "StreamsApiClient",
     "Stream",
@@ -380,7 +380,7 @@ __all__ = [
     "XrplWalletFilterTemplate",
     "HyperliquidWalletEventsFilterTemplate",
     "StellarWalletTransactionsFilterTemplate",
-    "QuickNodeError",
+    "QuicknodeError",
     "ConfigError",
     "HttpError",
     "TimeoutError",

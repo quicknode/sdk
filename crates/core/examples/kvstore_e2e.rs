@@ -4,14 +4,14 @@ use quicknode_sdk::{
     kvstore::{
         AddListItemParams, BulkSetsParams, CreateListParams, CreateSetParams, UpdateListParams,
     },
-    QuickNodeSdk, SdkFullConfig,
+    QuicknodeSdk, SdkFullConfig,
 };
 
 #[tokio::main]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn main() {
     let config = SdkFullConfig::from_env().expect("Config from env failed");
-    let qn = QuickNodeSdk::new(&config).expect("sdk failed to initialize");
+    let qn = QuicknodeSdk::new(&config).expect("sdk failed to initialize");
 
     // ── Sets ────────────────────────────────────────────────────────────────
 

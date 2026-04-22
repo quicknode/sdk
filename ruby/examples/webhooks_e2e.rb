@@ -1,7 +1,7 @@
 require "json"
 require_relative "../lib/quicknode_sdk"
 
-qn = QuickNodeSdk::SDK.from_env
+qn = QuicknodeSdk::SDK.from_env
 
 before = JSON.parse(qn.webhooks.list_webhooks({}))
 puts "webhooks before: #{before["data"].length}"

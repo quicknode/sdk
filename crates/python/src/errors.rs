@@ -12,13 +12,13 @@ pub fn map_parse_err(e: serde_json::Error) -> PyErr {
     PyValueError::new_err(e.to_string())
 }
 
-create_exception!(_core, QuickNodeError, PyException);
-create_exception!(_core, ConfigError, QuickNodeError);
-create_exception!(_core, HttpError, QuickNodeError);
+create_exception!(_core, QuicknodeError, PyException);
+create_exception!(_core, ConfigError, QuicknodeError);
+create_exception!(_core, HttpError, QuicknodeError);
 create_exception!(_core, TimeoutError, HttpError);
 create_exception!(_core, ConnectionError, HttpError);
-create_exception!(_core, ApiError, QuickNodeError);
-create_exception!(_core, DecodeError, QuickNodeError);
+create_exception!(_core, ApiError, QuicknodeError);
+create_exception!(_core, DecodeError, QuicknodeError);
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn map_sdk_err(e: SdkError) -> PyErr {
@@ -57,7 +57,7 @@ pub fn map_sdk_err(e: SdkError) -> PyErr {
 
 pub fn add_to_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let py = m.py();
-    m.add("QuickNodeError", py.get_type::<QuickNodeError>())?;
+    m.add("QuicknodeError", py.get_type::<QuicknodeError>())?;
     m.add("ConfigError", py.get_type::<ConfigError>())?;
     m.add("HttpError", py.get_type::<HttpError>())?;
     m.add("TimeoutError", py.get_type::<TimeoutError>())?;

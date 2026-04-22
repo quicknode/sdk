@@ -1,5 +1,5 @@
 import {
-  QuickNodeSdk,
+  QuicknodeSdk,
   StreamDataset,
   StreamMetadataLocation,
   StreamRegion,
@@ -10,7 +10,7 @@ import type { CreateStreamParams, UpdateStreamParams } from "../sdk";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function main() {
-  const qn = QuickNodeSdk.fromEnv();
+  const qn = QuicknodeSdk.fromEnv();
 
   const before = await qn.streams.listStreams();
   console.log(`streams before: ${before.pageInfo.total}`);

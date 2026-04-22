@@ -32,7 +32,7 @@ impl ResolvedStreamsConfig {
 
 // ── Client ─────────────────────────────────────────────────────────────────
 
-/// Client for the QuickNode Streams REST API. Create, list, update, and control
+/// Client for the Quicknode Streams REST API. Create, list, update, and control
 /// blockchain data streams that deliver filtered on-chain events to configured
 /// destinations.
 #[derive(Debug, Clone)]
@@ -314,12 +314,12 @@ impl StreamsApiClient {
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
-    use crate::{QuickNodeSdk, SdkFullConfig, StreamsConfig};
+    use crate::{QuicknodeSdk, SdkFullConfig, StreamsConfig};
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    fn make_sdk(base_url: String) -> QuickNodeSdk {
-        QuickNodeSdk::new(&SdkFullConfig {
+    fn make_sdk(base_url: String) -> QuicknodeSdk {
+        QuicknodeSdk::new(&SdkFullConfig {
             api_key: "test-key".to_string(),
             http: None,
             admin: None,

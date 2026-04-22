@@ -11,14 +11,14 @@ use quicknode_sdk::{
         UpdateTeamEndpointsRequest,
     },
     errors::SdkError,
-    AdminConfig, HttpConfig, QuickNodeSdk, SdkFullConfig,
+    AdminConfig, HttpConfig, QuicknodeSdk, SdkFullConfig,
 };
 
 #[tokio::main]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn main() {
     let config = SdkFullConfig::from_env().expect("Config from env failed");
-    let qn = QuickNodeSdk::new(&config).expect("sdk failed to initialize");
+    let qn = QuicknodeSdk::new(&config).expect("sdk failed to initialize");
 
     let run_suffix = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -821,7 +821,7 @@ async fn main() {
         webhooks: None,
         kvstore: None,
     };
-    let tiny = QuickNodeSdk::new(&blackhole).expect("build tiny sdk");
+    let tiny = QuicknodeSdk::new(&blackhole).expect("build tiny sdk");
     match tiny
         .admin
         .get_endpoints(&GetEndpointsRequest::default())

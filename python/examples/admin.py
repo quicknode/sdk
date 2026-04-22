@@ -1,18 +1,18 @@
 import asyncio
 import os
 from sdk import (
-    QuickNodeSdk,
+    QuicknodeSdk,
     SdkFullConfig,
     HttpConfig,
     AdminConfig,
     ApiError,
     TimeoutError,
-    QuickNodeError,
+    QuicknodeError,
 )
 
 
 async def main():
-    qn = QuickNodeSdk.from_env()
+    qn = QuicknodeSdk.from_env()
 
     response = await qn.admin.get_endpoints(
         limit=20,
@@ -41,12 +41,12 @@ async def main():
     try:
         await qn.admin.show_endpoint("does-not-exist")
     except ApiError as e:
-        assert isinstance(e, QuickNodeError)
+        assert isinstance(e, QuicknodeError)
         assert e.status == 404
         print(f"api error {e.status}: {e.body[:80]}")
 
     # 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.
-    blackhole = QuickNodeSdk(
+    blackhole = QuicknodeSdk(
         SdkFullConfig(
             api_key=os.environ["QN_SDK__API_KEY"],
             http=HttpConfig(timeout_secs=1),

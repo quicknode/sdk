@@ -32,7 +32,7 @@ impl ResolvedWebhooksConfig {
 
 // ── Client ─────────────────────────────────────────────────────────────────
 
-/// Client for the QuickNode Webhooks REST API. Create webhooks from filter
+/// Client for the Quicknode Webhooks REST API. Create webhooks from filter
 /// templates, manage their lifecycle, and update their destinations.
 #[derive(Debug, Clone)]
 pub struct WebhooksApiClient {
@@ -351,12 +351,12 @@ impl WebhooksApiClient {
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
-    use crate::{QuickNodeSdk, SdkFullConfig, WebhooksConfig};
+    use crate::{QuicknodeSdk, SdkFullConfig, WebhooksConfig};
     use wiremock::matchers::{method, path, path_regex};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    fn make_sdk(base_url: String) -> QuickNodeSdk {
-        QuickNodeSdk::new(&SdkFullConfig {
+    fn make_sdk(base_url: String) -> QuicknodeSdk {
+        QuicknodeSdk::new(&SdkFullConfig {
             api_key: "test-key".to_string(),
             http: None,
             admin: None,

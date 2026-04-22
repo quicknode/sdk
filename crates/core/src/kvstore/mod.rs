@@ -325,7 +325,7 @@ struct ApiResponse<T> {
 
 // ── Client ─────────────────────────────────────────────────────────────────
 
-/// Client for the QuickNode Key-Value Store. Supports two primitives: *sets*
+/// Client for the Quicknode Key-Value Store. Supports two primitives: *sets*
 /// (single string values under a key) and *lists* (ordered collections of
 /// strings under a key).
 #[derive(Debug, Clone)]
@@ -668,12 +668,12 @@ impl KvStoreApiClient {
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
-    use crate::{KvStoreConfig, QuickNodeSdk, SdkFullConfig};
+    use crate::{KvStoreConfig, QuicknodeSdk, SdkFullConfig};
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    fn make_sdk(base_url: String) -> QuickNodeSdk {
-        QuickNodeSdk::new(&SdkFullConfig {
+    fn make_sdk(base_url: String) -> QuicknodeSdk {
+        QuicknodeSdk::new(&SdkFullConfig {
             api_key: "test-key".to_string(),
             http: None,
             admin: None,

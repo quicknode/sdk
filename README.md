@@ -1,6 +1,6 @@
 # Quicknode SDK
 
-A unified SDK for building on QuickNode.
+A unified SDK for building on Quicknode.
 
 Rust SDK with Python, Node.js, and Ruby bindings.
 
@@ -81,11 +81,11 @@ Construct the SDK once, then reach into the four sub-clients (`admin`, `streams`
 
 ```rust
 // Rust
-use quicknode_sdk::{QuickNodeSdk, SdkFullConfig};
+use quicknode_sdk::{QuicknodeSdk, SdkFullConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let qn = QuickNodeSdk::from_env()?;
+    let qn = QuicknodeSdk::from_env()?;
     let resp = qn.admin.get_endpoints(&Default::default()).await?;
     println!("{} endpoints", resp.data.len());
     Ok(())
@@ -95,10 +95,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```python
 # Python
 import asyncio
-from sdk import QuickNodeSdk
+from sdk import QuicknodeSdk
 
 async def main():
-    qn = QuickNodeSdk.from_env()
+    qn = QuicknodeSdk.from_env()
     resp = await qn.admin.get_endpoints()
     print(f"{len(resp.data)} endpoints")
 
@@ -107,9 +107,9 @@ asyncio.run(main())
 
 ```typescript
 // Node.js
-import { QuickNodeSdk } from "quicknode-sdk";
+import { QuicknodeSdk } from "quicknode-sdk";
 
-const qn = QuickNodeSdk.fromEnv();
+const qn = QuicknodeSdk.fromEnv();
 const resp = await qn.admin.getEndpoints();
 console.log(`${resp.data.length} endpoints`);
 ```
@@ -119,7 +119,7 @@ console.log(`${resp.data.length} endpoints`);
 require "json"
 require "quicknode_sdk"
 
-qn = QuickNodeSdk::SDK.from_env
+qn = QuicknodeSdk::SDK.from_env
 resp = JSON.parse(qn.admin.get_endpoints({}))
 puts "#{resp["data"].length} endpoints"
 ```
@@ -132,45 +132,45 @@ There are two ways to configure the SDK.
 
 ```python
 # Python
-from sdk import QuickNodeSdk, SdkFullConfig, HttpConfig
-qn = QuickNodeSdk(SdkFullConfig(api_key="your-key", http=HttpConfig(timeout_secs=30)))
+from sdk import QuicknodeSdk, SdkFullConfig, HttpConfig
+qn = QuicknodeSdk(SdkFullConfig(api_key="your-key", http=HttpConfig(timeout_secs=30)))
 ```
 
 ```typescript
 // Node.js
-import { QuickNodeSdk } from "quicknode-sdk";
-const qn = new QuickNodeSdk({ apiKey: "your-key", http: { timeoutSecs: 30 } });
+import { QuicknodeSdk } from "quicknode-sdk";
+const qn = new QuicknodeSdk({ apiKey: "your-key", http: { timeoutSecs: 30 } });
 ```
 
 ```rust
 // Rust
-let qn = QuickNodeSdk::new(&SdkFullConfig::builder().api_key("your-key").build())?;
+let qn = QuicknodeSdk::new(&SdkFullConfig::builder().api_key("your-key").build())?;
 ```
 
 ### Option B — Load from environment (`from_env()`)
 
 ```python
 # Python
-qn = QuickNodeSdk.from_env()
+qn = QuicknodeSdk.from_env()
 ```
 ```typescript
 // Node.js
-const qn = QuickNodeSdk.fromEnv();
+const qn = QuicknodeSdk.fromEnv();
 ```
 ```ruby
 # Ruby
-qn = QuickNodeSdk::SDK.from_env
+qn = QuicknodeSdk::SDK.from_env
 ```
 ```rust
 // Rust
-let qn = QuickNodeSdk::from_env()?;
+let qn = QuicknodeSdk::from_env()?;
 ```
 
 Environment variables (prefix `QN_SDK__`, separator `__`):
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `QN_SDK__API_KEY` | yes | — | Your QuickNode API key |
+| `QN_SDK__API_KEY` | yes | — | Your Quicknode API key |
 | `QN_SDK__HTTP__TIMEOUT_SECS` | no | 30 | HTTP request timeout in seconds |
 | `QN_SDK__HTTP__POOL_MAX_IDLE_PER_HOST` | no | — | Max idle HTTP connections per host |
 | `QN_SDK__ADMIN__BASE_URL` | no | `https://api.quicknode.com/v0/` | Override admin API base URL (HTTPS, must end with `/`) |
@@ -1796,7 +1796,7 @@ resp = JSON.parse(qn.admin.get_account_metrics(period: "day", metric: "credits_o
 
 ##### `list_chains` / `listChains`
 
-Lists the blockchains supported by QuickNode along with their networks.
+Lists the blockchains supported by Quicknode along with their networks.
 
 **Parameters**: none.
 
@@ -2104,7 +2104,7 @@ Wrapper naming per language:
 - **Rust**: `DestinationAttributes::Webhook(WebhookAttributes { .. })` etc.
 - **Python**: `StreamWebhookDestination(WebhookAttributes(...))`, `StreamS3Destination(S3Attributes(...))`, etc.
 - **Node.js**: a discriminated object `{ destination: "webhook", attributes: { ... } }` using string discriminators.
-- **Ruby**: factory methods on `QuickNodeSdk::DestinationAttributes`, e.g. `QuickNodeSdk::DestinationAttributes.webhook(url: ..., ...)`.
+- **Ruby**: factory methods on `QuicknodeSdk::DestinationAttributes`, e.g. `QuicknodeSdk::DestinationAttributes.webhook(url: ..., ...)`.
 
 #### Streams methods
 
@@ -2195,7 +2195,7 @@ const stream = await qn.streams.createStream({
 
 ```ruby
 # Ruby
-dest = QuickNodeSdk::DestinationAttributes.webhook(
+dest = QuicknodeSdk::DestinationAttributes.webhook(
   url: "https://webhook.site/...",
   max_retry: 3,
   retry_interval_sec: 1,
@@ -3303,13 +3303,13 @@ qn.kvstore.delete_list(key: "my-list")
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
-enum (`crates/core/src/errors.rs`). Catch the base class (`QuickNodeError` /
-`QuickNodeSdk::Error` / `SdkError`) for any SDK-originated failure, or a specific
+enum (`crates/core/src/errors.rs`). Catch the base class (`QuicknodeError` /
+`QuicknodeSdk::Error` / `SdkError`) for any SDK-originated failure, or a specific
 subclass to branch on transport vs. API semantics.
 
 | Logical class        | When it fires                                               | Extra fields         |
 |----------------------|-------------------------------------------------------------|----------------------|
-| `QuickNodeError`     | base class; catches everything below                        | —                    |
+| `QuicknodeError`     | base class; catches everything below                        | —                    |
 | `ConfigError`        | invalid config or URL surfaced at construction time         | —                    |
 | `HttpError`          | transport failure that isn't a timeout/connect              | —                    |
 | `TimeoutError`       | request timed out (subclass of `HttpError`)                 | —                    |
@@ -3320,9 +3320,9 @@ subclass to branch on transport vs. API semantics.
 Per-language names:
 
 - **Rust** — pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`.
-- **Python** — `QuickNodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError` (importable from `sdk`).
+- **Python** — `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError` (importable from `sdk`).
 - **Node.js** — same class names, importable from `@quicknode/sdk`, all extend `Error`.
-- **Ruby** — `QuickNodeSdk::Error`, `QuickNodeSdk::ConfigError`, `QuickNodeSdk::HttpError`, `QuickNodeSdk::TimeoutError`, `QuickNodeSdk::ConnectionError`, `QuickNodeSdk::ApiError`, `QuickNodeSdk::DecodeError`; all extend `StandardError`. Hash-key validation still raises `ArgumentError`.
+- **Ruby** — `QuicknodeSdk::Error`, `QuicknodeSdk::ConfigError`, `QuicknodeSdk::HttpError`, `QuicknodeSdk::TimeoutError`, `QuicknodeSdk::ConnectionError`, `QuicknodeSdk::ApiError`, `QuicknodeSdk::DecodeError`; all extend `StandardError`. Hash-key validation still raises `ArgumentError`.
 
 ```rust
 // Rust
@@ -3366,9 +3366,9 @@ try {
 # Ruby
 begin
   qn.admin.show_endpoint(id: "missing")
-rescue QuickNodeSdk::ApiError => e
+rescue QuicknodeSdk::ApiError => e
   warn "api #{e.status}: #{e.body}" if e.status == 404
-rescue QuickNodeSdk::TimeoutError
+rescue QuicknodeSdk::TimeoutError
   warn "timed out"
 end
 ```
@@ -3553,7 +3553,7 @@ The Python package is published to PyPI as `quicknode-sdk`. Wheels and the sdist
 5. **Verify.**
    ```bash
    pip install quicknode-sdk==0.1.0a6
-   python -c "import sdk; print(sdk.QuickNodeSdk)"
+   python -c "import sdk; print(sdk.QuicknodeSdk)"
    ```
 
 **First publish:** the repo secret `PYPI_API_TOKEN` must be set. Project-scoped tokens only work after the project exists on PyPI, so the first upload needs a user-scoped token; rotate to a project-scoped token after.

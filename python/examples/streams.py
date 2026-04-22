@@ -1,9 +1,9 @@
 import asyncio
-from sdk import QuickNodeSdk, WebhookAttributes, StreamWebhookDestination
+from sdk import QuicknodeSdk, WebhookAttributes, StreamWebhookDestination
 
 
 async def main():
-    qn = QuickNodeSdk.from_env()
+    qn = QuicknodeSdk.from_env()
     stream = await qn.streams.create_stream(
         name="My Stream",
         network="ethereum-mainnet",

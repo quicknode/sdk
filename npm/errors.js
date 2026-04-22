@@ -2,21 +2,21 @@
 // message is tagged "[<kind>|<status>|<body_len>]<msg>\x1f<body>"; parseAndRethrow
 // decodes that and throws an instance of the matching subclass below.
 
-class QuickNodeError extends Error {
+class QuicknodeError extends Error {
   constructor(message) {
     super(message);
-    this.name = "QuickNodeError";
+    this.name = "QuicknodeError";
   }
 }
 
-class ConfigError extends QuickNodeError {
+class ConfigError extends QuicknodeError {
   constructor(message) {
     super(message);
     this.name = "ConfigError";
   }
 }
 
-class HttpError extends QuickNodeError {
+class HttpError extends QuicknodeError {
   constructor(message) {
     super(message);
     this.name = "HttpError";
@@ -37,7 +37,7 @@ class ConnectionError extends HttpError {
   }
 }
 
-class ApiError extends QuickNodeError {
+class ApiError extends QuicknodeError {
   constructor(message, status, body) {
     super(message);
     this.name = "ApiError";
@@ -46,7 +46,7 @@ class ApiError extends QuickNodeError {
   }
 }
 
-class DecodeError extends QuickNodeError {
+class DecodeError extends QuicknodeError {
   constructor(message, body) {
     super(message);
     this.name = "DecodeError";
@@ -109,7 +109,7 @@ function wrapClient(client) {
 }
 
 module.exports = {
-  QuickNodeError,
+  QuicknodeError,
   ConfigError,
   HttpError,
   TimeoutError,

@@ -118,9 +118,9 @@ impl SdkConfig {
     }
 }
 
-/// Top-level entry point for the QuickNode SDK. Holds sub-clients for each
+/// Top-level entry point for the Quicknode SDK. Holds sub-clients for each
 /// product area; all share a single HTTP client and API key.
-pub struct QuickNodeSdk {
+pub struct QuicknodeSdk {
     /// Admin API client: manages endpoints, tags, teams, billing, usage,
     /// metrics, security, and rate limits.
     pub admin: admin::AdminApiClient,
@@ -133,7 +133,7 @@ pub struct QuickNodeSdk {
     pub kvstore: kvstore::KvStoreApiClient,
 }
 
-impl QuickNodeSdk {
+impl QuicknodeSdk {
     /// Creates a new SDK instance from an explicit configuration.
     pub fn new(config: &SdkFullConfig) -> Result<Self, SdkError> {
         let sdk_config = SdkConfig::new(config)?;

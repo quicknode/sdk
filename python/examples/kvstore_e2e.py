@@ -1,9 +1,9 @@
 import asyncio
-from sdk import QuickNodeSdk
+from sdk import QuicknodeSdk
 
 
 async def main():
-    qn = QuickNodeSdk.from_env()
+    qn = QuicknodeSdk.from_env()
 
     # ── Sets ─────────────────────────────────────────────────────────────────
 

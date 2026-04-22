@@ -1,12 +1,12 @@
 import {
-  QuickNodeSdk,
+  QuicknodeSdk,
   ApiError,
   TimeoutError,
-  QuickNodeError,
+  QuicknodeError,
 } from "../sdk";
 
 async function main() {
-  const qn = QuickNodeSdk.fromEnv();
+  const qn = QuicknodeSdk.fromEnv();
 
   const response = await qn.admin.getEndpoints({
     limit: 20,
@@ -40,13 +40,13 @@ async function main() {
     await qn.admin.showEndpoint("does-not-exist");
   } catch (e) {
     if (!(e instanceof ApiError)) throw e;
-    console.assert(e instanceof QuickNodeError);
+    console.assert(e instanceof QuicknodeError);
     console.assert(e.status === 404);
     console.log(`api error ${e.status}: ${e.body.slice(0, 80)}`);
   }
 
   // 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.
-  const blackhole = new QuickNodeSdk({
+  const blackhole = new QuicknodeSdk({
     apiKey: process.env.QN_SDK__API_KEY ?? "",
     http: { timeoutSecs: 1 },
     admin: { baseUrl: "http://10.255.255.1/" },
