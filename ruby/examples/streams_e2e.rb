@@ -1,7 +1,7 @@
 require "json"
 require_relative "../lib/quicknode_sdk"
 
-qn = QuickNodeSdk::SDK.from_env
+qn = QuicknodeSdk::SDK.from_env
 
 before = JSON.parse(qn.streams.list_streams({}))
 puts "streams before: #{before["pageInfo"]["total"]}"
@@ -18,7 +18,7 @@ filter_result = JSON.parse(qn.streams.test_filter(
 puts "filter logs: #{filter_result["logs"]}"
 sleep 1
 
-dest = QuickNodeSdk::DestinationAttributes.webhook(
+dest = QuicknodeSdk::DestinationAttributes.webhook(
   url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
   max_retry: 3,
   retry_interval_sec: 1,
@@ -26,7 +26,7 @@ dest = QuickNodeSdk::DestinationAttributes.webhook(
   compression: "none"
 )
 
-extra_dest = QuickNodeSdk::DestinationAttributes.webhook(
+extra_dest = QuicknodeSdk::DestinationAttributes.webhook(
   url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
   max_retry: 3,
   retry_interval_sec: 1,

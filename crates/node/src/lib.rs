@@ -8,7 +8,7 @@ mod streams_destination;
 // ── Top-level SDK ──────────────────────────────────────────────
 
 #[napi]
-pub struct QuickNodeSdk {
+pub struct QuicknodeSdk {
     admin: AdminApiClient,
     streams: StreamsApiClient,
     webhooks: WebhooksApiClient,
@@ -16,7 +16,7 @@ pub struct QuickNodeSdk {
 }
 
 #[napi]
-impl QuickNodeSdk {
+impl QuicknodeSdk {
     /// Creates a new SDK instance from an explicit configuration.
     #[napi(constructor)]
     #[allow(clippy::needless_pass_by_value)]
@@ -65,7 +65,7 @@ impl QuickNodeSdk {
     /// Creates a new SDK instance using configuration from environment variables.
     #[napi(factory)]
     pub fn from_env() -> Result<Self> {
-        core::QuickNodeSdk::from_env()
+        core::QuicknodeSdk::from_env()
             .map(|sdk| Self {
                 admin: AdminApiClient { inner: sdk.admin },
                 streams: StreamsApiClient { inner: sdk.streams },
@@ -390,7 +390,7 @@ impl AdminApiClient {
     }
 
     /// Adds a domain mask to an endpoint — a custom domain used to hide the
-    /// endpoint's QuickNode URL so requests can be routed through your own
+    /// endpoint's Quicknode URL so requests can be routed through your own
     /// domain.
     #[napi]
     pub async fn create_domain_mask(
@@ -633,7 +633,7 @@ impl AdminApiClient {
             .map_err(errors::map_sdk_err)
     }
 
-    /// Returns all chains supported by QuickNode along with their networks.
+    /// Returns all chains supported by Quicknode along with their networks.
     /// Each entry includes the chain slug and its network slugs and names.
     #[napi]
     pub async fn list_chains(&self) -> Result<core::admin::ListChainsResponse> {

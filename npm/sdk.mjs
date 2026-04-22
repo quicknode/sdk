@@ -9,7 +9,7 @@ import cjs from './sdk.js';
 
 export default cjs;
 export const {
-  QuickNodeSdk,
+  QuicknodeSdk,
   TemplateArgs,
   StreamRegion,
   StreamDataset,
@@ -24,7 +24,7 @@ export const {
   StreamsApiClient,
   WebhooksApiClient,
   KvStoreApiClient,
-  QuickNodeError,
+  QuicknodeError,
   ConfigError,
   HttpError,
   TimeoutError,

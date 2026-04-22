@@ -1,4 +1,4 @@
-import { QuickNodeSdk, TemplateArgs, WebhookStartFrom } from "../sdk";
+import { QuicknodeSdk, TemplateArgs, WebhookStartFrom } from "../sdk";
 import type {
   CreateWebhookFromTemplateParams,
   UpdateWebhookParams,
@@ -7,7 +7,7 @@ import type {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function main() {
-  const qn = QuickNodeSdk.fromEnv();
+  const qn = QuicknodeSdk.fromEnv();
 
   const before = await qn.webhooks.listWebhooks();
   console.log(`webhooks before: ${before.data.length}`);

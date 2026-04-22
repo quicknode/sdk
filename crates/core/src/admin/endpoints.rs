@@ -90,7 +90,7 @@ pub struct Pagination {
 pub struct Endpoint {
     /// Unique endpoint identifier.
     pub id: String,
-    /// QuickNode-assigned subdomain.
+    /// Quicknode-assigned subdomain.
     pub name: String,
     /// Human-readable label.
     pub label: Option<String>,

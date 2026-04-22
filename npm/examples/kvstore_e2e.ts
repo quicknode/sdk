@@ -1,4 +1,4 @@
-import { QuickNodeSdk } from "../sdk";
+import { QuicknodeSdk } from "../sdk";
 import type {
   CreateSetParams,
   BulkSetsParams,
@@ -8,7 +8,7 @@ import type {
 } from "../sdk";
 
 async function main() {
-  const qn = QuickNodeSdk.fromEnv();
+  const qn = QuicknodeSdk.fromEnv();
 
   // ── Sets ──────────────────────────────────────────────────────────────────
 

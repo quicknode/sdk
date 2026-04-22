@@ -1,6 +1,6 @@
 # Need to manually keep this file updated with the exports
 from sdk._core import (
-    QuickNodeSdk,
+    QuicknodeSdk,
     AdminApiClient,
     StreamsApiClient,
     Stream,
@@ -184,7 +184,7 @@ from sdk._core import (
     XrplWalletFilterTemplate,
     HyperliquidWalletEventsFilterTemplate,
     StellarWalletTransactionsFilterTemplate,
-    QuickNodeError,
+    QuicknodeError,
     ConfigError,
     HttpError,
     TimeoutError,
@@ -194,7 +194,7 @@ from sdk._core import (
 )
 
 __all__ = [
-    "QuickNodeSdk",
+    "QuicknodeSdk",
     "AdminApiClient",
     "StreamsApiClient",
     "Stream",
@@ -378,7 +378,7 @@ __all__ = [
     "XrplWalletFilterTemplate",
     "HyperliquidWalletEventsFilterTemplate",
     "StellarWalletTransactionsFilterTemplate",
-    "QuickNodeError",
+    "QuicknodeError",
     "ConfigError",
     "HttpError",
     "TimeoutError",

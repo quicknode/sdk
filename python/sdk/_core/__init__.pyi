@@ -125,7 +125,7 @@ __all__ = [
     "Pagination",
     "Payment",
     "PostgresAttributes",
-    "QuickNodeSdk",
+    "QuicknodeSdk",
     "RateLimitSettings",
     "RedisAttributes",
     "RemoveTeamMemberRequest",
@@ -386,7 +386,7 @@ class AdminApiClient:
     def create_domain_mask(self, id: builtins.str, domain_mask: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
         Adds a domain mask to an endpoint — a custom domain used to hide the
-        endpoint's QuickNode URL so requests can be routed through your own
+        endpoint's Quicknode URL so requests can be routed through your own
         domain.
         """
     def delete_domain_mask(self, id: builtins.str, domain_mask_id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, DeleteBoolResponse]:
@@ -479,7 +479,7 @@ class AdminApiClient:
         """
     def list_chains(self) -> typing.Coroutine[typing.Any, typing.Any, ListChainsResponse]:
         r"""
-        Returns all chains supported by QuickNode along with their networks.
+        Returns all chains supported by Quicknode along with their networks.
         Each entry includes the chain slug and its network slugs and names.
         """
     def list_invoices(self) -> typing.Coroutine[typing.Any, typing.Any, ListInvoicesResponse]:
@@ -1056,7 +1056,7 @@ class BulkUpdateEndpointStatusResponse:
 @typing.final
 class Chain:
     r"""
-    A blockchain supported by QuickNode along with its networks.
+    A blockchain supported by Quicknode along with its networks.
     """
     @property
     def slug(self) -> builtins.str:
@@ -1316,12 +1316,12 @@ class CreateDomainMaskRequest:
     @property
     def domain_mask(self) -> typing.Optional[builtins.str]:
         r"""
-        Custom domain that will mask the endpoint's QuickNode URL.
+        Custom domain that will mask the endpoint's Quicknode URL.
         """
     @domain_mask.setter
     def domain_mask(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Custom domain that will mask the endpoint's QuickNode URL.
+        Custom domain that will mask the endpoint's Quicknode URL.
         """
 
 @typing.final
@@ -1854,12 +1854,12 @@ class Endpoint:
     @property
     def name(self) -> builtins.str:
         r"""
-        QuickNode-assigned subdomain.
+        Quicknode-assigned subdomain.
         """
     @name.setter
     def name(self, value: builtins.str) -> None:
         r"""
-        QuickNode-assigned subdomain.
+        Quicknode-assigned subdomain.
         """
     @property
     def label(self) -> typing.Optional[builtins.str]:
@@ -4735,7 +4735,7 @@ class PostgresAttributes:
     def __new__(cls, host: builtins.str, port: builtins.int, database: builtins.str, username: builtins.str, password: builtins.str, table_name: builtins.str, sslmode: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int) -> PostgresAttributes: ...
 
 @typing.final
-class QuickNodeSdk:
+class QuicknodeSdk:
     @property
     def admin(self) -> AdminApiClient: ...
     @property
@@ -4744,12 +4744,12 @@ class QuickNodeSdk:
     def webhooks(self) -> WebhooksApiClient: ...
     @property
     def kvstore(self) -> KvStoreApiClient: ...
-    def __new__(cls, config: SdkFullConfig) -> QuickNodeSdk:
+    def __new__(cls, config: SdkFullConfig) -> QuicknodeSdk:
         r"""
         Creates a new SDK instance from an explicit configuration.
         """
     @staticmethod
-    def from_env() -> QuickNodeSdk:
+    def from_env() -> QuicknodeSdk:
         r"""
         Creates a new SDK instance using configuration from environment variables.
         """

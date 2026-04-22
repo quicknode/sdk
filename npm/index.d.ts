@@ -172,7 +172,7 @@ export interface ChainNetwork {
   /** Numeric chain id, when applicable. */
   chainId?: number
 }
-/** A blockchain supported by QuickNode along with its networks. */
+/** A blockchain supported by Quicknode along with its networks. */
 export interface Chain {
   /** Chain slug (e.g. `ethereum`). */
   slug: string
@@ -362,7 +362,7 @@ export interface CreateIpRequest {
 }
 /** Parameters for `create_domain_mask`. */
 export interface CreateDomainMaskRequest {
-  /** Custom domain that will mask the endpoint's QuickNode URL. */
+  /** Custom domain that will mask the endpoint's Quicknode URL. */
   domainMask?: string
 }
 /** Parameters for `create_jwt`. */
@@ -469,7 +469,7 @@ export interface Pagination {
 export interface Endpoint {
   /** Unique endpoint identifier. */
   id: string
-  /** QuickNode-assigned subdomain. */
+  /** Quicknode-assigned subdomain. */
   name: string
   /** Human-readable label. */
   label?: string
@@ -1830,7 +1830,7 @@ export interface ListStreamsResponseNode {
   data: Array<StreamNode>
   pageInfo: PageInfo
 }
-export declare class QuickNodeSdk {
+export declare class QuicknodeSdk {
   /** Creates a new SDK instance from an explicit configuration. */
   constructor(config: SdkFullConfig)
   /** Returns the admin sub-client. */
@@ -1842,7 +1842,7 @@ export declare class QuickNodeSdk {
   /** Returns the kvstore sub-client. */
   get kvstore(): KvStoreApiClient
   /** Creates a new SDK instance using configuration from environment variables. */
-  static fromEnv(): QuickNodeSdk
+  static fromEnv(): QuicknodeSdk
 }
 export declare class AdminApiClient {
   /**
@@ -1949,7 +1949,7 @@ export declare class AdminApiClient {
   deleteIp(id: string, ipId: string): Promise<DeleteBoolResponse>
   /**
    * Adds a domain mask to an endpoint — a custom domain used to hide the
-   * endpoint's QuickNode URL so requests can be routed through your own
+   * endpoint's Quicknode URL so requests can be routed through your own
    * domain.
    */
   createDomainMask(id: string, params?: CreateDomainMaskRequest | undefined | null): Promise<void>
@@ -2034,7 +2034,7 @@ export declare class AdminApiClient {
    */
   getAccountMetrics(params: GetAccountMetricsRequest): Promise<GetAccountMetricsResponse>
   /**
-   * Returns all chains supported by QuickNode along with their networks.
+   * Returns all chains supported by Quicknode along with their networks.
    * Each entry includes the chain slug and its network slugs and names.
    */
   listChains(): Promise<ListChainsResponse>

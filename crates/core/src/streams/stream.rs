@@ -984,7 +984,7 @@ pub struct Stream {
     /// Whether elastic batching is active.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elastic_batch_enabled: Option<bool>,
-    /// QuickNode account ID that owns the stream.
+    /// Quicknode account ID that owns the stream.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub qn_account_id: Option<String>,
     /// Minimum charge cap applied to the stream's billing.

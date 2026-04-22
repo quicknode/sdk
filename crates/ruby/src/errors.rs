@@ -78,7 +78,7 @@ fn classes(ruby: &Ruby) -> &ErrorClasses {
     let _ = ruby;
     CLASSES
         .get()
-        .expect("QuickNodeSdk error classes not initialized")
+        .expect("QuicknodeSdk error classes not initialized")
 }
 
 #[allow(clippy::needless_pass_by_value)]

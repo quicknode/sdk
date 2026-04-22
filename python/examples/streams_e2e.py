@@ -1,14 +1,14 @@
 import asyncio
 import time
 from sdk import (
-    QuickNodeSdk,
+    QuicknodeSdk,
     WebhookAttributes,
     StreamWebhookDestination,
 )
 
 
 async def main():
-    qn = QuickNodeSdk.from_env()
+    qn = QuicknodeSdk.from_env()
 
     before = await qn.streams.list_streams()
     print(f"streams before: {before.page_info.total}")

@@ -1,6 +1,6 @@
 // sdk.d.ts
 import {
-  QuickNodeSdk as _QuickNodeSdk,
+  QuicknodeSdk as _QuicknodeSdk,
   SdkFullConfig,
   WebhookAttributes,
   S3Attributes,
@@ -301,13 +301,13 @@ export interface StreamsApiClientTyped {
   getEnabledCount(streamType?: string | undefined | null): Promise<import("./index").EnabledCountResponse>;
 }
 
-export class QuickNodeSdk {
+export class QuicknodeSdk {
   constructor(config: SdkFullConfig);
-  static fromEnv(): QuickNodeSdk;
-  admin: _QuickNodeSdk["admin"];
+  static fromEnv(): QuicknodeSdk;
+  admin: _QuicknodeSdk["admin"];
   streams: StreamsApiClientTyped;
-  webhooks: _QuickNodeSdk["webhooks"];
-  kvstore: _QuickNodeSdk["kvstore"];
+  webhooks: _QuicknodeSdk["webhooks"];
+  kvstore: _QuicknodeSdk["kvstore"];
 }
 
 export class TemplateArgs {
@@ -324,16 +324,16 @@ export class TemplateArgs {
 }
 
 // Typed error hierarchy. Any SDK call can throw one of these; catch
-// QuickNodeError to handle them all, or a specific subclass for finer control.
-export class QuickNodeError extends Error {}
-export class ConfigError extends QuickNodeError {}
-export class HttpError extends QuickNodeError {}
+// QuicknodeError to handle them all, or a specific subclass for finer control.
+export class QuicknodeError extends Error {}
+export class ConfigError extends QuicknodeError {}
+export class HttpError extends QuicknodeError {}
 export class TimeoutError extends HttpError {}
 export class ConnectionError extends HttpError {}
-export class ApiError extends QuickNodeError {
+export class ApiError extends QuicknodeError {
   status: number;
   body: string;
 }
-export class DecodeError extends QuickNodeError {
+export class DecodeError extends QuicknodeError {
   body: string;
 }

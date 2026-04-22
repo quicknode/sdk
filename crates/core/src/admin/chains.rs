@@ -20,7 +20,7 @@ pub struct ChainNetwork {
     pub chain_id: Option<i64>,
 }
 
-/// A blockchain supported by QuickNode along with its networks.
+/// A blockchain supported by Quicknode along with its networks.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]

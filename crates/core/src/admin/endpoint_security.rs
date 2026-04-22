@@ -127,7 +127,7 @@ pub struct CreateIpRequest {
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CreateDomainMaskRequest {
-    /// Custom domain that will mask the endpoint's QuickNode URL.
+    /// Custom domain that will mask the endpoint's Quicknode URL.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub domain_mask: Option<String>,
 }

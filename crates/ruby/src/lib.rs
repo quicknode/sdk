@@ -220,16 +220,16 @@ fn hash_get_extra_destinations(
     }
 }
 
-// ── QuickNodeSdk ────────────────────────────────────────────────────────────
+// ── QuicknodeSdk ────────────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuickNodeSdk::SDK", free_immediately, size)]
-pub struct QuickNodeSdk {
-    inner: core::QuickNodeSdk,
+#[magnus::wrap(class = "QuicknodeSdk::SDK", free_immediately, size)]
+pub struct QuicknodeSdk {
+    inner: core::QuicknodeSdk,
 }
 
-impl QuickNodeSdk {
+impl QuicknodeSdk {
     fn from_env() -> Result<Self, Error> {
-        core::QuickNodeSdk::from_env()
+        core::QuicknodeSdk::from_env()
             .map(|inner| Self { inner })
             .map_err(map_err)
     }
@@ -263,7 +263,7 @@ impl QuickNodeSdk {
 //
 // All methods return JSON strings. Call JSON.parse on the result in Ruby.
 
-#[magnus::wrap(class = "QuickNodeSdk::Admin", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Admin", free_immediately, size)]
 #[derive(Clone)]
 pub struct AdminApiClient {
     inner: core::admin::AdminApiClient,
@@ -1037,7 +1037,7 @@ impl AdminApiClient {
 
 // ── DestinationAttributes ───────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuickNodeSdk::DestinationAttributes", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::DestinationAttributes", free_immediately, size)]
 pub struct DestinationAttributes {
     pub inner: core::streams::DestinationAttributes,
 }
@@ -1227,7 +1227,7 @@ impl DestinationAttributes {
 
 // ── StreamsApiClient ────────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuickNodeSdk::Streams", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Streams", free_immediately, size)]
 #[derive(Clone)]
 pub struct StreamsApiClient {
     inner: core::streams::StreamsApiClient,
@@ -1466,7 +1466,7 @@ impl StreamsApiClient {
 
 // ── WebhooksApiClient ───────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuickNodeSdk::Webhooks", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Webhooks", free_immediately, size)]
 #[derive(Clone)]
 pub struct WebhooksApiClient {
     inner: core::webhooks::WebhooksApiClient,
@@ -1636,7 +1636,7 @@ impl WebhooksApiClient {
 
 // ── KvStoreApiClient ────────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuickNodeSdk::KvStore", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::KvStore", free_immediately, size)]
 #[derive(Clone)]
 pub struct KvStoreApiClient {
     inner: core::kvstore::KvStoreApiClient,
@@ -1798,7 +1798,7 @@ impl KvStoreApiClient {
 
 #[magnus::init(name = "quicknode_sdk")]
 fn init(ruby: &Ruby) -> Result<(), Error> {
-    let module = ruby.define_module("QuickNodeSdk")?;
+    let module = ruby.define_module("QuicknodeSdk")?;
 
     // Typed exception hierarchy — register before client classes so map_err
     // can use them from the first call onward.
@@ -1806,11 +1806,11 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
 
     // ── SDK root ──────────────────────────────────────────────
     let sdk = module.define_class("SDK", ruby.class_object())?;
-    sdk.define_singleton_method("from_env", function!(QuickNodeSdk::from_env, 0))?;
-    sdk.define_method("admin", method!(QuickNodeSdk::admin, 0))?;
-    sdk.define_method("streams", method!(QuickNodeSdk::streams, 0))?;
-    sdk.define_method("webhooks", method!(QuickNodeSdk::webhooks, 0))?;
-    sdk.define_method("kvstore", method!(QuickNodeSdk::kvstore, 0))?;
+    sdk.define_singleton_method("from_env", function!(QuicknodeSdk::from_env, 0))?;
+    sdk.define_method("admin", method!(QuicknodeSdk::admin, 0))?;
+    sdk.define_method("streams", method!(QuicknodeSdk::streams, 0))?;
+    sdk.define_method("webhooks", method!(QuicknodeSdk::webhooks, 0))?;
+    sdk.define_method("kvstore", method!(QuicknodeSdk::kvstore, 0))?;
 
     // ── Admin ─────────────────────────────────────────────────
     let admin = module.define_class("Admin", ruby.class_object())?;

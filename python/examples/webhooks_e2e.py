@@ -2,14 +2,14 @@ import asyncio
 
 from sdk import (
     EvmWalletFilterTemplate,
-    QuickNodeSdk,
+    QuicknodeSdk,
     TemplateArgs,
     WebhookDestinationAttributes,
 )
 
 
 async def main():
-    qn = QuickNodeSdk.from_env()
+    qn = QuicknodeSdk.from_env()
 
     before = await qn.webhooks.list_webhooks()
     print(f"webhooks before: {len(before.data)}")

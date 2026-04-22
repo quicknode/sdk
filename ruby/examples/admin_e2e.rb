@@ -2,7 +2,7 @@ require "json"
 require "securerandom"
 require_relative "../lib/quicknode_sdk"
 
-qn = QuickNodeSdk::SDK.from_env
+qn = QuicknodeSdk::SDK.from_env
 
 # ── Read-only globals ─────────────────────────────────────────────────────────
 
@@ -324,8 +324,8 @@ puts "archive_endpoint: ok"
 begin
   qn.admin.show_endpoint(id: "does-not-exist")
   raise "expected 404"
-rescue QuickNodeSdk::ApiError => e
-  raise "expected QuickNodeSdk::Error subclass" unless e.is_a?(QuickNodeSdk::Error)
+rescue QuicknodeSdk::ApiError => e
+  raise "expected QuicknodeSdk::Error subclass" unless e.is_a?(QuicknodeSdk::Error)
   raise "expected 404, got #{e.status}" unless e.status == 404
   puts "api error #{e.status}: #{e.body[0, 80]}"
 end
@@ -336,11 +336,11 @@ prev_timeout = ENV["QN_SDK__HTTP__TIMEOUT_SECS"]
 ENV["QN_SDK__ADMIN__BASE_URL"] = "http://10.255.255.1/"
 ENV["QN_SDK__HTTP__TIMEOUT_SECS"] = "1"
 begin
-  blackhole = QuickNodeSdk::SDK.from_env
+  blackhole = QuicknodeSdk::SDK.from_env
   begin
     blackhole.admin.get_endpoints(limit: 20)
     raise "expected timeout"
-  rescue QuickNodeSdk::TimeoutError
+  rescue QuicknodeSdk::TimeoutError
     puts "timed out as expected"
   end
 ensure

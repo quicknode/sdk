@@ -88,7 +88,7 @@ impl ResolvedAdminConfig {
     }
 }
 
-/// Client for the QuickNode Admin API. Manage endpoints, tags, teams, billing,
+/// Client for the Quicknode Admin API. Manage endpoints, tags, teams, billing,
 /// usage/metrics, security, and rate limits on the account.
 #[derive(Debug, Clone)]
 pub struct AdminApiClient {
@@ -945,7 +945,7 @@ impl AdminApiClient {
     }
 
     /// Adds a domain mask to an endpoint — a custom domain used to hide the
-    /// endpoint's QuickNode URL so requests can be routed through your own
+    /// endpoint's Quicknode URL so requests can be routed through your own
     /// domain.
     pub async fn create_domain_mask(
         &self,
@@ -1451,7 +1451,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
-    /// Returns all chains supported by QuickNode along with their networks.
+    /// Returns all chains supported by Quicknode along with their networks.
     /// Each entry includes the chain slug and its network slugs and names.
     pub async fn list_chains(&self) -> Result<ListChainsResponse, SdkError> {
         let url = self.config.admin().base_url.join("chains")?;
@@ -1800,12 +1800,12 @@ fn endpoints_query(params: &GetEndpointsRequest) -> Vec<(&'static str, String)> 
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
-    use crate::{AdminConfig, QuickNodeSdk, SdkFullConfig};
+    use crate::{AdminConfig, QuicknodeSdk, SdkFullConfig};
     use wiremock::matchers::{method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    fn make_sdk(base_url: String) -> QuickNodeSdk {
-        QuickNodeSdk::new(&SdkFullConfig {
+    fn make_sdk(base_url: String) -> QuicknodeSdk {
+        QuicknodeSdk::new(&SdkFullConfig {
             api_key: "test-key".to_string(),
             http: None,
             admin: Some(AdminConfig {
