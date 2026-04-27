@@ -2,11 +2,18 @@ require_relative "../lib/quicknode_sdk"
 
 qn = QuicknodeSdk::SDK.from_env
 
+# Exercise all three call styles the dispatcher supports against arity-1
+# native read-only methods. list_streams/get_enabled_count must work bare,
+# with kwargs, and with a positional empty hash.
 before = qn.streams.list_streams({})
 puts "streams before: #{before.dig(:pageInfo, :total)}"
+raise "list_streams bare broke" unless qn.streams.list_streams.keys.sort == before.keys.sort
+raise "list_streams kwargs splat broke" unless qn.streams.list_streams(**{}).keys.sort == before.keys.sort
 
 count = qn.streams.get_enabled_count({})
 puts "enabled count: #{count[:total]}"
+raise "get_enabled_count bare broke" unless qn.streams.get_enabled_count.keys.sort == count.keys.sort
+raise "get_enabled_count kwargs splat broke" unless qn.streams.get_enabled_count(**{}).keys.sort == count.keys.sort
 
 filter_result = qn.streams.test_filter(
   network: "ethereum-mainnet",

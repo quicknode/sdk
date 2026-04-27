@@ -5,11 +5,20 @@ qn = QuicknodeSdk::SDK.from_env
 
 # ── Read-only globals ─────────────────────────────────────────────────────────
 
+# Exercise all three call styles the dispatcher supports against an arity-0
+# native method (list_chains): bare, positional empty hash, and kwargs splat.
 resp = qn.admin.list_chains
 puts "list_chains: #{resp[:data].length} chains"
+raise "list_chains positional hash broke" unless qn.admin.list_chains({})[:data].length == resp[:data].length
+raise "list_chains kwargs splat broke" unless qn.admin.list_chains(**{})[:data].length == resp[:data].length
 
-resp = qn.admin.get_endpoints(limit: 5)
-puts "get_endpoints: #{resp[:data].length} endpoints"
+# Same coverage for an arity-1 native method (get_endpoints) — this is the
+# call shape the README advertises bare, so all three must work.
+bare = qn.admin.get_endpoints
+kwargs = qn.admin.get_endpoints(limit: 5)
+positional = qn.admin.get_endpoints({})
+puts "get_endpoints: #{kwargs[:data].length} endpoints (bare=#{bare[:data].length}, positional=#{positional[:data].length})"
+raise "get_endpoints bare vs positional differ" unless bare.keys.sort == positional.keys.sort
 
 # Verify symbol- and string-key access work interchangeably.
 sample = qn.admin.get_endpoints(limit: 1)
@@ -17,8 +26,15 @@ raise "expected QuicknodeSdk::IndifferentHash" unless sample.is_a?(QuicknodeSdk:
 raise "indifferent access broken" unless sample[:data] == sample["data"]
 puts "indifferent access: ok"
 
-resp = qn.admin.get_usage({})
-puts "get_usage: #{resp[:data].inspect}"
+# Same three-call-style check for one of the arity-1 read-only usage methods.
+# The remaining get_usage_by_* methods share the dispatcher path, so one
+# representative is enough to lock in coverage.
+usage_bare = qn.admin.get_usage
+usage_positional = qn.admin.get_usage({})
+usage_kwargs = qn.admin.get_usage(**{})
+raise "get_usage call styles diverge" unless usage_bare.keys.sort == usage_positional.keys.sort && usage_bare.keys.sort == usage_kwargs.keys.sort
+puts "get_usage: #{usage_bare[:data].inspect}"
+resp = usage_bare
 
 sleep 0.5
 

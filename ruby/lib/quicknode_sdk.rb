@@ -1,5 +1,6 @@
 require_relative "quicknode_sdk.bundle"
 require_relative "quicknode_sdk/wrap"
+require_relative "quicknode_sdk/native_delegator"
 require_relative "quicknode_sdk/clients/admin"
 require_relative "quicknode_sdk/clients/streams"
 require_relative "quicknode_sdk/clients/webhooks"
