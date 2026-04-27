@@ -61,10 +61,11 @@ macos-build-and-publish version:
   just macos-dist-python
   just macos-dist-node
   just macos-dist-ruby
-  # Stage the compiled bundle under ruby/lib so the platform gem picks it up,
+  # Stage the compiled bundle under ruby/lib/quicknode_sdk so the platform gem picks it up,
   # then build the arm64-darwin gem.
-  cp dist/quicknode_sdk.bundle ruby/lib/quicknode_sdk.bundle
-  cd ruby && ruby ../scripts/build-platform-gem.rb arm64-darwin lib/quicknode_sdk.bundle && gem build quicknode_sdk_platform.gemspec && rm quicknode_sdk_platform.gemspec && cd ..
+  mkdir -p ruby/lib/quicknode_sdk
+  cp dist/quicknode_sdk.bundle ruby/lib/quicknode_sdk/quicknode_sdk.bundle
+  cd ruby && ruby ../scripts/build-platform-gem.rb arm64-darwin lib/quicknode_sdk/quicknode_sdk.bundle && gem build quicknode_sdk_platform.gemspec && rm quicknode_sdk_platform.gemspec && cd ..
   mv ruby/*.gem dist/
   gh release upload "v{{version}}" dist/*.whl dist/index.darwin-arm64.node dist/*.gem --clobber
   echo "Uploaded macOS arm64 artifacts to v{{version}}"
