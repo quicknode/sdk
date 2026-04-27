@@ -4,6 +4,23 @@ A unified SDK for building on Quicknode.
 
 Rust SDK with Python, Node.js, and Ruby bindings.
 
+## Table of Contents
+
+- [Per-language docs](#per-language-docs)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Development](#development)
+  - [Prerequisites](#prerequisites)
+  - [Build Commands](#build-commands)
+  - [Testing](#testing)
+  - [Examples](#examples)
+  - [Releasing](#releasing)
+    - [Rust crate only (crates.io)](#rust-crate-only-cratesio)
+    - [All bindings together (Python / Node / Ruby)](#all-bindings-together-python--node--ruby)
+    - [npm publish (`@quicknode/sdk`)](#npm-publish-quicknodesdk)
+    - [PyPI publish (`quicknode-sdk`)](#pypi-publish-quicknode-sdk)
+- [License](#license)
+
 ## Per-language docs
 
 API reference, configuration, and error handling for each language live next to the package — those are also the docs that render on each package listing.

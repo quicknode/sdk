@@ -4,6 +4,47 @@ Ruby bindings for the Quicknode SDK.
 
 This is one of four language bindings published from the same Rust core. See the [project README](https://github.com/quiknode-labs/sdk/blob/main/README.md) for the polyglot overview, development setup, and release process.
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [API Reference](#api-reference)
+  - [Admin Client](#admin-client)
+    - [Endpoints](#endpoints)
+    - [Endpoint Tags](#endpoint-tags)
+    - [Teams](#teams)
+    - [Usage](#usage)
+    - [Logs](#logs)
+    - [Endpoint Security](#endpoint-security)
+    - [Security Options](#security-options)
+    - [Tokens](#tokens)
+    - [Referrers](#referrers)
+    - [IPs](#ips)
+    - [Domain Masks](#domain-masks)
+    - [JWTs](#jwts)
+    - [Request Filters](#request-filters)
+    - [Multichain](#multichain)
+    - [IP Custom Headers](#ip-custom-headers)
+    - [Method Rate Limits](#method-rate-limits)
+    - [Endpoint Rate Limits](#endpoint-rate-limits)
+    - [Metrics](#metrics)
+    - [Chains](#chains)
+    - [Billing](#billing)
+    - [Bulk Operations](#bulk-operations)
+    - [Account Tags](#account-tags)
+  - [Streams Client](#streams-client)
+    - [Datasets, Regions, and Destinations](#datasets-regions-and-destinations)
+    - [Streams methods](#streams-methods)
+  - [Webhooks Client](#webhooks-client)
+    - [Templates and destination](#templates-and-destination)
+    - [Webhooks methods](#webhooks-methods)
+  - [KV Store Client](#kv-store-client)
+    - [Sets](#sets)
+    - [Lists](#lists)
+- [Error Handling](#error-handling)
+- [License](#license)
+
 ## Installation
 
 `gem install quicknode_sdk`
