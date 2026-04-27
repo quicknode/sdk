@@ -220,11 +220,6 @@ jobs:
           gem build quicknode_sdk_platform.gemspec
           rm quicknode_sdk_platform.gemspec
 
-      - name: Build source gem
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        working-directory: ruby
-        run: gem build quicknode_sdk.gemspec
-
       - uses: actions/upload-artifact@v4
         with:
           name: ruby-${{ matrix.target }}
