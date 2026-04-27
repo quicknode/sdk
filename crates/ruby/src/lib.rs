@@ -267,7 +267,8 @@ impl QuicknodeSdk {
 // ── AdminApiClient ──────────────────────────────────────────────────────────
 //
 // Methods returning data return native Ruby Hash/Array via serde_magnus. The
-// Ruby package wraps these in Hashie::Mash before returning to the user.
+// Ruby package wraps these in QuicknodeSdk::IndifferentHash (a Hash subclass
+// with Hashie::Extensions::IndifferentAccess) before returning to the user.
 
 #[magnus::wrap(class = "QuicknodeSdk::Native::Admin", free_immediately, size)]
 #[derive(Clone)]
