@@ -1,4 +1,4 @@
-require_relative "quicknode_sdk.bundle"
+require_relative "quicknode_sdk/quicknode_sdk"
 require_relative "quicknode_sdk/wrap"
 require_relative "quicknode_sdk/native_delegator"
 require_relative "quicknode_sdk/clients/admin"

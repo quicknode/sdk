@@ -15,7 +15,7 @@ node-build:
 
 ruby-build:
   cargo build -p sdk-ruby --release
-  cp target/release/libquicknode_sdk.dylib ruby/lib/quicknode_sdk.bundle
+  cp target/release/libquicknode_sdk.dylib ruby/lib/quicknode_sdk/quicknode_sdk.bundle
 
 # Requires: maturin on PATH (e.g. pipx install maturin or brew install maturin)
 macos-dist-python:
