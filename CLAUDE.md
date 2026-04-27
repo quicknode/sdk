@@ -14,16 +14,11 @@ cargo run --example admin -p quicknode-sdk         # Run example (requires QN_AP
 
 ### Python
 ```bash
-just python-setup-env                             # Create venv, install maturin (one-time)
+just python-setup                                 # Create .venv and uv sync (one-time)
 just python-build                                 # Compile bindings + generate stubs
 cp python/sdk/init_manual_override.pyi python/sdk/__init__.pyi # Manually override __init__ so we can overwrite the commands
 ```
-If you are in a fish shell, run the python-setup-env manually:
-```
-uv venv
-source .venv/bin/activate.fish
-uv pip install maturin
-```
+Both recipes are shell-agnostic — they invoke `maturin` via `uvx`, so no venv activation is required and they work in bash, zsh, or fish without per-shell setup.
 
 ### Node.js
 ```bash
@@ -41,7 +36,7 @@ The build compiles `crates/ruby` and copies the resulting `libquicknode_sdk.dyli
 When verifying changes, use these commands based on what was modified:
 
 - **Rust only** — `cargo check && just lint`
-- **Python crate/bindings** — `just python-setup-env` (first time only), then `just python-build`
+- **Python crate/bindings** — `just python-setup` (first time only), then `just python-build`
 - **Node/npm** — `just node-build`
 - **Ruby** — `just ruby-build`
 - **Full verification** — `cargo check && just lint && just python-build && just node-build && just ruby-build && just test`
