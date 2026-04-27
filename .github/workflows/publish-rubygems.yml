@@ -46,8 +46,14 @@ jobs:
               exit 1
             fi
           done
-          if [ "$gem_count" -ne 3 ]; then
-            echo "Expected 3 platform gems, got $gem_count"
+          # Source gem has no platform suffix, e.g. quicknode_sdk-0.1.0.gem
+          if ! ls dist/quicknode_sdk-[0-9]*.gem 2>/dev/null | grep -Ev '(x86_64-linux|aarch64-linux|arm64-darwin)\.gem$' >/dev/null; then
+            echo "Missing source gem (quicknode_sdk-<version>.gem)"
+            ls -la dist/
+            exit 1
+          fi
+          if [ "$gem_count" -ne 4 ]; then
+            echo "Expected 4 gems (3 platform + 1 source), got $gem_count"
             ls -la dist/
             exit 1
           fi

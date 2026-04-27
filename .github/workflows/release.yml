@@ -159,8 +159,11 @@ jobs:
             cross: true
             gem_platform: aarch64-linux
           # musl targets are excluded: Rust cdylib is incompatible with musl (no dynamic linker).
-          # Users on platforms without a published platform gem (musl Linux, Windows) will get
-          # a normal RubyGems "no compatible platform" error at install time.
+          # The pure-Ruby source gem (built below on x86_64-unknown-linux-gnu) ships no native
+          # extension and exists only so Bundler's resolver has a `ruby`-platform fallback for
+          # heterogeneous Gemfile.lock PLATFORMS lists. Users on platforms without a precompiled
+          # platform gem (musl Linux, Windows) get a clear LoadError from lib/quicknode_sdk.rb at
+          # first require, listing the supported platforms.
           # Placeholder for future macOS support:
           # - target: aarch64-apple-darwin
           #   cross: false
@@ -220,6 +223,11 @@ jobs:
           "
           gem build quicknode_sdk_platform.gemspec
           rm quicknode_sdk_platform.gemspec
+
+      - name: Build source gem
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        working-directory: ruby
+        run: gem build quicknode_sdk.gemspec
 
       - uses: actions/upload-artifact@v4
         with:
