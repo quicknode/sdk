@@ -1,4 +1,3 @@
-require "json"
 require_relative "../lib/quicknode_sdk"
 
 qn = QuicknodeSdk::SDK.from_env
@@ -11,7 +10,7 @@ dest = QuicknodeSdk::DestinationAttributes.webhook(
   compression: "none"
 )
 
-stream_json = qn.streams.create_stream({
+stream = qn.streams.create_stream(
   name: "My Stream",
   network: "ethereum-mainnet",
   dataset: "block",
@@ -27,7 +26,6 @@ stream_json = qn.streams.create_stream({
   keep_distance_from_tip: 0,
   elastic_batch_enabled: true,
   status: "active"
-})
+)
 
-stream = JSON.parse(stream_json)
-puts "#{stream["id"]} | #{stream["name"]} | #{stream["status"]}"
+puts "#{stream.id} | #{stream.name} | #{stream.status}"
