@@ -34,7 +34,7 @@ just node-build                                   # npm install + build + test
 ```bash
 just ruby-build                                   # cargo build + copy .bundle artifact
 ```
-The build compiles `crates/ruby` and copies the resulting `libquicknode_sdk.dylib` to `ruby/lib/quicknode_sdk.bundle` (macOS) or equivalent `.so` on Linux.
+The build compiles `crates/ruby` and copies the resulting `libquicknode_sdk.dylib` to `ruby/lib/quicknode_sdk/quicknode_sdk.bundle` (macOS) or equivalent `.so` on Linux. The native lib lives under `lib/quicknode_sdk/` so `require_relative "quicknode_sdk/quicknode_sdk"` picks the platform extension automatically.
 
 ## Verification
 

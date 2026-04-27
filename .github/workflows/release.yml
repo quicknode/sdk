@@ -159,7 +159,8 @@ jobs:
             cross: true
             gem_platform: aarch64-linux
           # musl targets are excluded: Rust cdylib is incompatible with musl (no dynamic linker).
-          # Users on musl Linux (e.g. Alpine) will use the source gem which compiles on install.
+          # Users on platforms without a published platform gem (musl Linux, Windows) will get
+          # a normal RubyGems "no compatible platform" error at install time.
           # Placeholder for future macOS support:
           # - target: aarch64-apple-darwin
           #   cross: false
