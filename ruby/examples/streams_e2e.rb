@@ -3,10 +3,10 @@ require_relative "../lib/quicknode_sdk"
 qn = QuicknodeSdk::SDK.from_env
 
 before = qn.streams.list_streams({})
-puts "streams before: #{before.pageInfo.total}"
+puts "streams before: #{before.dig(:pageInfo, :total)}"
 
 count = qn.streams.get_enabled_count({})
-puts "enabled count: #{count.total}"
+puts "enabled count: #{count[:total]}"
 
 filter_result = qn.streams.test_filter(
   network: "ethereum-mainnet",
@@ -14,7 +14,7 @@ filter_result = qn.streams.test_filter(
   block: "17811625",
   filter_function: "ZnVuY3Rpb24gbWFpbihkYXRhKSB7IHJldHVybiBkYXRhOyB9"
 )
-puts "filter logs: #{filter_result.logs}"
+puts "filter logs: #{filter_result[:logs]}"
 sleep 1
 
 dest = QuicknodeSdk::DestinationAttributes.webhook(
@@ -51,14 +51,14 @@ stream = qn.streams.create_stream(
   elastic_batch_enabled: true,
   status: "active"
 )
-stream_id = stream.id
-puts "created: #{stream_id} | #{stream.status}"
+stream_id = stream[:id]
+puts "created: #{stream_id} | #{stream[:status]}"
 
 fetched = qn.streams.get_stream(id: stream_id)
-puts "fetched: #{fetched.id} | #{fetched.name}"
+puts "fetched: #{fetched[:id]} | #{fetched[:name]}"
 
 updated = qn.streams.update_stream(id: stream_id, name: "E2E Test Stream Updated")
-puts "updated name: #{updated.name}"
+puts "updated name: #{updated[:name]}"
 sleep 1
 
 qn.streams.pause_stream(id: stream_id)
@@ -72,4 +72,4 @@ puts "deleted: #{stream_id}"
 sleep 1
 
 after = qn.streams.list_streams({})
-puts "streams after: #{after.pageInfo.total}"
+puts "streams after: #{after.dig(:pageInfo, :total)}"

@@ -8,21 +8,21 @@ response = qn.admin.get_endpoints(
   sort_direction: "desc"
 )
 
-if response.pagination
-  p = response.pagination
-  puts "#{response.data.length} of #{p.total} (offset #{p.offset}, limit #{p.limit})"
+if response[:pagination]
+  p = response[:pagination]
+  puts "#{response[:data].length} of #{p[:total]} (offset #{p[:offset]}, limit #{p[:limit]})"
 end
 
-response.data.each do |ep|
-  puts "#{ep.id} | #{ep.name} | #{ep.status} | #{ep.network} | " \
-       "dedicated=#{ep.is_dedicated} flat=#{ep.is_flat_rate}"
+response[:data].each do |ep|
+  puts "#{ep[:id]} | #{ep[:name]} | #{ep[:status]} | #{ep[:network]} | " \
+       "dedicated=#{ep[:is_dedicated]} flat=#{ep[:is_flat_rate]}"
 end
 
 tags = qn.admin.list_tags
-puts "account tags: #{tags.data&.tags&.length || 0}"
+puts "account tags: #{tags.dig(:data, :tags)&.length || 0}"
 
-first = response.data.first
+first = response[:data].first
 if first
-  sec = qn.admin.get_endpoint_security(id: first.id)
-  puts "get_endpoint_security: has_data=#{!sec.data.nil?}"
+  sec = qn.admin.get_endpoint_security(id: first[:id])
+  puts "get_endpoint_security: has_data=#{!sec[:data].nil?}"
 end

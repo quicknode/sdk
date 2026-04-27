@@ -28,4 +28,4 @@ stream = qn.streams.create_stream(
   status: "active"
 )
 
-puts "#{stream.id} | #{stream.name} | #{stream.status}"
+puts "#{stream[:id]} | #{stream[:name]} | #{stream[:status]}"

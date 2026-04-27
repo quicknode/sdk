@@ -120,7 +120,7 @@ require "quicknode_sdk"
 
 qn = QuicknodeSdk::SDK.from_env
 resp = qn.admin.get_endpoints
-puts "#{resp.data.length} endpoints"
+puts "#{resp[:data].length} endpoints"
 ```
 
 ## Configuration
@@ -186,7 +186,7 @@ Each method below shows the call pattern in Rust, Python, Node.js, and Ruby in t
 - **Rust**: methods are `async` and return `Result<T, SdkError>`. Request structs use the [`bon`](https://docs.rs/bon) builder pattern via `::builder()`.
 - **Python**: methods are `async` — call with `await`. Parameters are kwargs; responses are native `pyclass` objects with attribute access.
 - **Node.js**: methods are `async` and take a single options object with camelCase keys.
-- **Ruby**: methods are **blocking** (not async). Parameters are a single Hash with symbol keys. Responses that carry data are returned as `Hashie::Mash` — access fields via dot-notation (`resp.data.first.id`), symbol keys (`resp[:data]`), or string keys (`resp["data"]`). Unknown keys raise `ArgumentError`.
+- **Ruby**: methods are **blocking** (not async). Parameters are a single Hash with symbol keys. Responses that carry data are returned as a `Hash` with indifferent access — `resp[:data]` and `resp["data"]` both work. Unknown parameter keys raise `ArgumentError`.
 
 ---
 

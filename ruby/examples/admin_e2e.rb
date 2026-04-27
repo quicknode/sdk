@@ -6,67 +6,67 @@ qn = QuicknodeSdk::SDK.from_env
 # ── Read-only globals ─────────────────────────────────────────────────────────
 
 resp = qn.admin.list_chains
-puts "list_chains: #{resp.data.length} chains"
+puts "list_chains: #{resp[:data].length} chains"
 
 resp = qn.admin.get_endpoints(limit: 5)
-puts "get_endpoints: #{resp.data.length} endpoints"
+puts "get_endpoints: #{resp[:data].length} endpoints"
 
-# Verify all three access styles work on a sample response.
+# Verify symbol- and string-key access work interchangeably.
 sample = qn.admin.get_endpoints(limit: 1)
-raise "expected Hashie::Mash" unless sample.is_a?(Hashie::Mash)
-raise "indifferent access broken" unless sample.data == sample[:data] && sample[:data] == sample["data"]
+raise "expected QuicknodeSdk::IndifferentHash" unless sample.is_a?(QuicknodeSdk::IndifferentHash)
+raise "indifferent access broken" unless sample[:data] == sample["data"]
 puts "indifferent access: ok"
 
 resp = qn.admin.get_usage({})
-puts "get_usage: #{resp.data.inspect}"
+puts "get_usage: #{resp[:data].inspect}"
 
 sleep 0.5
 
 resp = qn.admin.get_usage_by_endpoint({})
-puts "get_usage_by_endpoint: #{resp.data.inspect}"
+puts "get_usage_by_endpoint: #{resp[:data].inspect}"
 
 resp = qn.admin.get_usage_by_method({})
-puts "get_usage_by_method: #{resp.data.inspect}"
+puts "get_usage_by_method: #{resp[:data].inspect}"
 
 sleep 0.5
 
 resp = qn.admin.get_usage_by_chain({})
-puts "get_usage_by_chain: #{resp.data.inspect}"
+puts "get_usage_by_chain: #{resp[:data].inspect}"
 
 resp = qn.admin.get_usage_by_tag({})
-puts "get_usage_by_tag: #{resp.data.inspect}"
+puts "get_usage_by_tag: #{resp[:data].inspect}"
 
 resp = qn.admin.list_tags
-puts "list_tags: #{resp.data&.tags&.length || 0} tags"
+puts "list_tags: #{resp.dig(:data, :tags)&.length || 0} tags"
 
 resp = qn.admin.get_account_metrics(period: "day", metric: "requests")
-puts "get_account_metrics: #{resp.data.length} series"
+puts "get_account_metrics: #{resp[:data].length} series"
 
 resp = qn.admin.list_invoices
-puts "list_invoices: #{resp.data.inspect}"
+puts "list_invoices: #{resp[:data].inspect}"
 
 resp = qn.admin.list_payments
-puts "list_payments: #{resp.data.inspect}"
+puts "list_payments: #{resp[:data].inspect}"
 
 resp = qn.admin.list_teams
-puts "list_teams: #{resp.data.length} teams"
+puts "list_teams: #{resp[:data].length} teams"
 
 sleep 0.5
 
 # ── Create endpoint ───────────────────────────────────────────────────────────
 
 resp = qn.admin.create_endpoint(chain: "ethereum", network: "mainnet")
-endpoint_id = resp.data&.id
+endpoint_id = resp.dig(:data, :id)
 unless endpoint_id
-  puts "create_endpoint failed: #{resp.error}"
+  puts "create_endpoint failed: #{resp[:error]}"
   exit 1
 end
-puts "create_endpoint: #{endpoint_id} (#{resp.data.http_url})"
+puts "create_endpoint: #{endpoint_id} (#{resp.dig(:data, :http_url)})"
 
 # ── Endpoint CRUD ─────────────────────────────────────────────────────────────
 
 resp = qn.admin.show_endpoint(id: endpoint_id)
-puts "show_endpoint: #{resp.data.id}"
+puts "show_endpoint: #{resp.dig(:data, :id)}"
 
 qn.admin.update_endpoint(id: endpoint_id, label: "sdk-example")
 puts "update_endpoint: ok"
@@ -74,10 +74,10 @@ puts "update_endpoint: ok"
 sleep 0.5
 
 resp = qn.admin.update_endpoint_status(id: endpoint_id, status: "paused")
-puts "update_endpoint_status paused: #{resp.data}"
+puts "update_endpoint_status paused: #{resp[:data]}"
 
 resp = qn.admin.update_endpoint_status(id: endpoint_id, status: "active")
-puts "update_endpoint_status active: #{resp.data}"
+puts "update_endpoint_status active: #{resp[:data]}"
 
 sleep 1
 
@@ -88,7 +88,7 @@ puts "create_tag: ok"
 
 sleep 0.5
 resp = qn.admin.show_endpoint(id: endpoint_id)
-tag_id = resp.data&.tags&.first&.tag_id&.to_s
+tag_id = resp.dig(:data, :tags, 0, :tag_id)&.to_s
 if tag_id
   qn.admin.delete_tag(id: endpoint_id, tag_id: tag_id)
   puts "delete_tag: ok"
@@ -101,25 +101,25 @@ resp = qn.admin.get_endpoint_logs(
   from_time: "2025-01-01T00:00:00Z",
   to_time: "2025-01-02T00:00:00Z"
 )
-puts "get_endpoint_logs: #{resp.data.length} entries"
+puts "get_endpoint_logs: #{resp[:data].length} entries"
 
 sleep 1
 
 resp = qn.admin.get_endpoint_metrics(id: endpoint_id, period: "day", metric: "credits_over_time")
-puts "get_endpoint_metrics: #{resp.data.length} series"
+puts "get_endpoint_metrics: #{resp[:data].length} series"
 
 # ── Security options ──────────────────────────────────────────────────────────
 
 resp = qn.admin.get_security_options(id: endpoint_id)
-puts "get_security_options: #{resp.data.length} options"
+puts "get_security_options: #{resp[:data].length} options"
 
 sleep 1
 
 resp = qn.admin.get_endpoint_security(id: endpoint_id)
-puts "get_endpoint_security: has_data=#{!resp.data.nil?}"
+puts "get_endpoint_security: has_data=#{!resp[:data].nil?}"
 
 resp = qn.admin.update_security_options(id: endpoint_id, tokens: "enabled")
-puts "update_security_options: #{resp.data.length} options"
+puts "update_security_options: #{resp[:data].length} options"
 
 sleep 0.5
 
@@ -130,10 +130,10 @@ qn.admin.create_token(id: endpoint_id)
 puts "create_token: ok"
 
 resp = qn.admin.show_endpoint(id: endpoint_id)
-token_id = resp.data&.security&.tokens&.first&.id
+token_id = resp.dig(:data, :security, :tokens, 0, :id)
 if token_id
   resp = qn.admin.delete_token(id: endpoint_id, token_id: token_id)
-  puts "delete_token: #{resp.data}"
+  puts "delete_token: #{resp[:data]}"
 end
 
 # ── Referrer ──────────────────────────────────────────────────────────────────
@@ -143,10 +143,10 @@ puts "create_referrer: ok"
 
 sleep 0.5
 resp = qn.admin.show_endpoint(id: endpoint_id)
-referrer_id = resp.data&.security&.referrers&.first&.id
+referrer_id = resp.dig(:data, :security, :referrers, 0, :id)
 if referrer_id
   resp = qn.admin.delete_referrer(id: endpoint_id, referrer_id: referrer_id)
-  puts "delete_referrer: #{resp.data}"
+  puts "delete_referrer: #{resp[:data]}"
 end
 
 # ── IP allowlist ──────────────────────────────────────────────────────────────
@@ -155,12 +155,12 @@ qn.admin.create_ip(id: endpoint_id, ip: "192.0.2.1")
 puts "create_ip: ok"
 
 resp = qn.admin.show_endpoint(id: endpoint_id)
-ip_id = resp.data&.security&.ips&.first&.id
+ip_id = resp.dig(:data, :security, :ips, 0, :id)
 
 sleep 0.5
 if ip_id
   resp = qn.admin.delete_ip(id: endpoint_id, ip_id: ip_id)
-  puts "delete_ip: #{resp.data}"
+  puts "delete_ip: #{resp[:data]}"
 end
 
 # ── Domain mask ───────────────────────────────────────────────────────────────
@@ -169,10 +169,10 @@ qn.admin.create_domain_mask(id: endpoint_id, domain_mask: "example.com")
 puts "create_domain_mask: ok"
 
 resp = qn.admin.show_endpoint(id: endpoint_id)
-mask_id = resp.data&.security&.domain_masks&.first&.id
+mask_id = resp.dig(:data, :security, :domain_masks, 0, :id)
 if mask_id
   resp = qn.admin.delete_domain_mask(id: endpoint_id, domain_mask_id: mask_id)
-  puts "delete_domain_mask: #{resp.data}"
+  puts "delete_domain_mask: #{resp[:data]}"
 end
 
 # ── JWT (placeholder key will fail) ──────────────────────────────────────────
@@ -190,7 +190,7 @@ rescue => e
 end
 
 resp = qn.admin.show_endpoint(id: endpoint_id)
-jwt_id = resp.data&.security&.jwts&.first&.id
+jwt_id = resp.dig(:data, :security, :jwts, 0, :id)
 if jwt_id
   qn.admin.delete_jwt(id: endpoint_id, jwt_id: jwt_id)
   puts "delete_jwt: ok"
@@ -199,8 +199,8 @@ end
 # ── Request filter ────────────────────────────────────────────────────────────
 
 resp = qn.admin.create_request_filter(id: endpoint_id, methods: ["eth_getBalance"])
-rf_id = resp.data&.id
-puts "create_request_filter: #{resp.data}"
+rf_id = resp.dig(:data, :id)
+puts "create_request_filter: #{resp[:data]}"
 
 if rf_id
   qn.admin.update_request_filter(id: endpoint_id, request_filter_id: rf_id, methods: ["eth_call"])
@@ -213,10 +213,10 @@ end
 # ── IP custom header ──────────────────────────────────────────────────────────
 
 resp = qn.admin.create_or_update_ip_custom_header(id: endpoint_id, header_name: "X-Custom-Header")
-puts "create_or_update_ip_custom_header: #{resp.data}"
+puts "create_or_update_ip_custom_header: #{resp[:data]}"
 
 resp = qn.admin.delete_ip_custom_header(id: endpoint_id)
-puts "delete_ip_custom_header: #{resp.data}"
+puts "delete_ip_custom_header: #{resp[:data]}"
 
 sleep 0.5
 
@@ -226,15 +226,15 @@ sleep 0.5
 #puts "update_rate_limits: ok"
 
 resp = qn.admin.get_method_rate_limits(id: endpoint_id)
-puts "get_method_rate_limits: #{resp.data}"
+puts "get_method_rate_limits: #{resp[:data]}"
 
 resp = qn.admin.create_method_rate_limit(id: endpoint_id, interval: "second", methods: ["eth_call"], rate: 5)
-mrl_id = resp.data&.id
-puts "create_method_rate_limit: #{resp.data}"
+mrl_id = resp.dig(:data, :id)
+puts "create_method_rate_limit: #{resp[:data]}"
 
 if mrl_id
   resp = qn.admin.update_method_rate_limit(id: endpoint_id, method_rate_limit_id: mrl_id, rate: 10)
-  puts "update_method_rate_limit: #{resp.data}"
+  puts "update_method_rate_limit: #{resp[:data]}"
 
   qn.admin.delete_method_rate_limit(id: endpoint_id, method_rate_limit_id: mrl_id)
   puts "delete_method_rate_limit: ok"
@@ -255,29 +255,29 @@ sleep 0.5
 # ── Bulk endpoint ops (single-endpoint batch) ────────────────────────────────
 
 resp = qn.admin.bulk_update_endpoint_status(ids: [endpoint_id], status: "paused")
-puts "bulk_update_endpoint_status paused: #{resp.data}"
+puts "bulk_update_endpoint_status paused: #{resp[:data]}"
 
 resp = qn.admin.bulk_update_endpoint_status(ids: [endpoint_id], status: "active")
-puts "bulk_update_endpoint_status active: #{resp.data}"
+puts "bulk_update_endpoint_status active: #{resp[:data]}"
 
 # ── Account-level tags (bulk_add/remove + rename/delete) ─────────────────────
 
 tag_suffix = SecureRandom.hex(4)
 resp = qn.admin.bulk_add_tag(ids: [endpoint_id], label: "sdk-bulk-#{tag_suffix}")
-puts "bulk_add_tag: #{resp.data}"
-bulk_tag_id = resp.data&.tag&.tag_id
+puts "bulk_add_tag: #{resp[:data]}"
+bulk_tag_id = resp.dig(:data, :tag, :tag_id)
 
 sleep 0.5
 
 if bulk_tag_id
   resp = qn.admin.rename_tag(id: bulk_tag_id, label: "sdk-renamed-#{tag_suffix}")
-  puts "rename_tag: #{resp.data}"
+  puts "rename_tag: #{resp[:data]}"
 
   resp = qn.admin.bulk_remove_tag(ids: [endpoint_id], tag_id: bulk_tag_id)
-  puts "bulk_remove_tag: #{resp.data}"
+  puts "bulk_remove_tag: #{resp[:data]}"
 
   resp = qn.admin.delete_account_tag(id: bulk_tag_id)
-  puts "delete_account_tag: #{resp.data}"
+  puts "delete_account_tag: #{resp[:data]}"
 end
 
 sleep 0.5
@@ -285,27 +285,27 @@ sleep 0.5
 # ── Teams ─────────────────────────────────────────────────────────────────────
 
 resp = qn.admin.create_team(name: "sdk-example-team")
-team_id = resp.data&.id
-puts "create_team: #{resp.data}"
+team_id = resp.dig(:data, :id)
+puts "create_team: #{resp[:data]}"
 
 sleep 0.5
 if team_id
   resp = qn.admin.get_team(id: team_id)
-  puts "get_team: #{resp.data.name}"
+  puts "get_team: #{resp.dig(:data, :name)}"
 
   resp = qn.admin.list_team_endpoints(id: team_id)
-  puts "list_team_endpoints: #{resp.data.length} endpoints"
+  puts "list_team_endpoints: #{resp[:data].length} endpoints"
 
   sleep 0.5
 
   resp = qn.admin.update_team_endpoints(id: team_id, endpoint_ids: [endpoint_id])
-  puts "update_team_endpoints: #{resp.data}"
+  puts "update_team_endpoints: #{resp[:data]}"
 
   sleep 0.5
 
   begin
     resp = qn.admin.invite_team_member(id: team_id, email: "placeholder@example.com")
-    puts "invite_team_member: #{resp.data}"
+    puts "invite_team_member: #{resp[:data]}"
   rescue => e
     puts "invite_team_member error (expected with placeholder email): #{e}"
   end
@@ -313,7 +313,7 @@ if team_id
   sleep 0.5
 
   resp = qn.admin.delete_team(id: team_id)
-  puts "delete_team: #{resp.data}"
+  puts "delete_team: #{resp[:data]}"
 end
 
 sleep 0.5
