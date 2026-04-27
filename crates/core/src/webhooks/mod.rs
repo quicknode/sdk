@@ -6,7 +6,8 @@ pub use webhook::{
     HyperliquidWalletEventsFilterTemplate, ListWebhooksResponse, SolanaWalletFilterTemplate,
     StellarWalletTransactionsFilterTemplate, TemplateArgs, UpdateWebhookParams,
     UpdateWebhookTemplateParams, Webhook, WebhookDestinationAttributes,
-    WebhookEnabledCountResponse, WebhookStartFrom, WebhookTemplateId, XrplWalletFilterTemplate,
+    WebhookEnabledCountResponse, WebhookPageInfo, WebhookStartFrom, WebhookTemplateId,
+    XrplWalletFilterTemplate,
 };
 
 use crate::{config::WebhooksConfig, errors::SdkError, SdkConfig};
@@ -263,30 +264,17 @@ impl WebhooksApiClient {
         &self,
         params: &CreateWebhookFromTemplateParams,
     ) -> Result<Webhook, SdkError> {
-        let template_id = params.template_args.template_id.as_str();
+        let template_id = params.template_args.tag().as_str();
         let url = self
             .config
             .webhooks()
             .base_url
             .join(&format!("webhooks/template/{template_id}"))?;
-
-        #[allow(clippy::needless_borrows_for_generic_args)]
-        let mut body =
-            serde_json::to_value(&params).map_err(|e| SdkError::Config(e.to_string()))?;
-        let obj = body.as_object_mut().ok_or_else(|| {
-            SdkError::Config("failed to serialize request body as JSON object".into())
-        })?;
-        obj.insert(
-            "templateArgs".to_string(),
-            serde_json::from_str(&params.template_args.value)
-                .map_err(|e| SdkError::Config(e.to_string()))?,
-        );
-
         let resp = self
             .config
             .http_client()
             .post(url)
-            .json(&body)
+            .json(params)
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -309,30 +297,17 @@ impl WebhooksApiClient {
         webhook_id: &str,
         params: &UpdateWebhookTemplateParams,
     ) -> Result<Webhook, SdkError> {
-        let template_id = params.template_args.template_id.as_str();
+        let template_id = params.template_args.tag().as_str();
         let url = self
             .config
             .webhooks()
             .base_url
             .join(&format!("webhooks/{webhook_id}/template/{template_id}"))?;
-
-        #[allow(clippy::needless_borrows_for_generic_args)]
-        let mut body =
-            serde_json::to_value(&params).map_err(|e| SdkError::Config(e.to_string()))?;
-        let obj = body.as_object_mut().ok_or_else(|| {
-            SdkError::Config("failed to serialize request body as JSON object".into())
-        })?;
-        obj.insert(
-            "templateArgs".to_string(),
-            serde_json::from_str(&params.template_args.value)
-                .map_err(|e| SdkError::Config(e.to_string()))?,
-        );
-
         let resp = self
             .config
             .http_client()
             .patch(url)
-            .json(&body)
+            .json(params)
             .send()
             .await
             .map_err(SdkError::Http)?;
@@ -384,7 +359,12 @@ mod tests {
     async fn list_webhooks_success() {
         let server = MockServer::start().await;
         let response = serde_json::json!({
-            "data": [webhook_response_json()]
+            "data": [webhook_response_json()],
+            "pageInfo": {
+                "limit": 20,
+                "offset": 0,
+                "total": 1,
+            }
         });
         Mock::given(method("GET"))
             .and(path("/webhooks"))
@@ -399,6 +379,9 @@ mod tests {
             .unwrap();
         assert_eq!(resp.data.len(), 1);
         assert_eq!(resp.data[0].id, "wh-1234-5678");
+        assert_eq!(resp.page_info.limit, 20);
+        assert_eq!(resp.page_info.offset, 0);
+        assert_eq!(resp.page_info.total, 1);
     }
 
     #[tokio::test]
@@ -650,10 +633,9 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::evm_wallet_filter(&EvmWalletFilterTemplate {
+        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
             wallets: vec!["0xabc".to_string()],
-        })
-        .unwrap();
+        });
         let params = CreateWebhookFromTemplateParams {
             name: "test-webhook".to_string(),
             network: "ethereum-mainnet".to_string(),
@@ -682,10 +664,9 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::evm_wallet_filter(&EvmWalletFilterTemplate {
+        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
             wallets: vec!["0xabc".to_string()],
-        })
-        .unwrap();
+        });
         let params = CreateWebhookFromTemplateParams {
             name: "test-webhook".to_string(),
             network: "ethereum-mainnet".to_string(),
@@ -714,10 +695,9 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::evm_wallet_filter(&EvmWalletFilterTemplate {
+        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
             wallets: vec!["0xabc".to_string()],
-        })
-        .unwrap();
+        });
         let params = UpdateWebhookTemplateParams {
             name: None,
             notification_email: None,
@@ -741,10 +721,9 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::evm_wallet_filter(&EvmWalletFilterTemplate {
+        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
             wallets: vec!["0xabc".to_string()],
-        })
-        .unwrap();
+        });
         let params = UpdateWebhookTemplateParams {
             name: None,
             notification_email: None,

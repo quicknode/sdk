@@ -72,6 +72,36 @@ export type ListStreamsResponse = Omit<_ListStreamsResponseNode, "data"> & {
   data: Stream[];
 };
 
+// Webhook template args (input). The inner key is `args` rather than the
+// wire's `templateArgs` to avoid `templateArgs.templateArgs.wallets`; the
+// Node binding renames it back before the request.
+export type TemplateArgsInput =
+  | { templateId: "evmWalletFilter"; args: EvmWalletFilterTemplate }
+  | { templateId: "evmContractEvents"; args: EvmContractEventsTemplate }
+  | { templateId: "evmAbiFilter"; args: EvmAbiFilterTemplate }
+  | { templateId: "solanaWalletFilter"; args: SolanaWalletFilterTemplate }
+  | { templateId: "bitcoinWalletFilter"; args: BitcoinWalletFilterTemplate }
+  | { templateId: "xrplWalletFilter"; args: XrplWalletFilterTemplate }
+  | { templateId: "hyperliquidWalletEventsFilter"; args: HyperliquidWalletEventsFilterTemplate }
+  | {
+      templateId: "stellarWalletTransactionsSourceAccountFilter";
+      args: StellarWalletTransactionsFilterTemplate;
+    };
+
+// Replace the napi-generated JSON-blob templateArgs with typed unions.
+type _CreateWebhookFromTemplateParamsNode = import("./index").CreateWebhookFromTemplateParamsNode;
+type _UpdateWebhookTemplateParamsNode = import("./index").UpdateWebhookTemplateParamsNode;
+
+export type CreateWebhookFromTemplateParams =
+  Omit<_CreateWebhookFromTemplateParamsNode, "templateArgs"> & {
+    templateArgs: TemplateArgsInput;
+  };
+
+export type UpdateWebhookTemplateParams =
+  Omit<_UpdateWebhookTemplateParamsNode, "templateArgs"> & {
+    templateArgs: TemplateArgsInput;
+  };
+
 export type {
   SdkFullConfig,
   HttpConfig,
@@ -236,11 +266,10 @@ export type {
   UpdateWebhookParams,
   Webhook,
   ListWebhooksResponse,
+  WebhookPageInfo,
   WebhookEnabledCountResponse,
   WebhookDestinationAttributes,
   ActivateWebhookParams,
-  CreateWebhookFromTemplateParams,
-  UpdateWebhookTemplateParams,
   EvmWalletFilterTemplate,
   EvmContractEventsTemplate,
   EvmAbiFilterTemplate,
@@ -301,27 +330,48 @@ export interface StreamsApiClientTyped {
   getEnabledCount(streamType?: string | undefined | null): Promise<import("./index").EnabledCountResponse>;
 }
 
+// Retypes napi's `any` templateArgs to the discriminated union. Keep method
+// signatures in sync with the napi-generated WebhooksApiClient in ./index.d.ts.
+export interface WebhooksApiClientTyped {
+  listWebhooks(params?: import("./index").GetWebhooksParams | undefined | null): Promise<import("./index").ListWebhooksResponse>;
+  deleteAllWebhooks(): Promise<void>;
+  getWebhook(id: string): Promise<import("./index").Webhook>;
+  updateWebhook(
+    id: string,
+    params: import("./index").UpdateWebhookParams
+  ): Promise<import("./index").Webhook>;
+  deleteWebhook(id: string): Promise<void>;
+  pauseWebhook(id: string): Promise<void>;
+  activateWebhook(id: string, params: import("./index").ActivateWebhookParams): Promise<void>;
+  getEnabledCount(): Promise<import("./index").WebhookEnabledCountResponse>;
+  createWebhookFromTemplate(params: CreateWebhookFromTemplateParams): Promise<import("./index").Webhook>;
+  updateWebhookTemplate(
+    webhookId: string,
+    params: UpdateWebhookTemplateParams
+  ): Promise<import("./index").Webhook>;
+}
+
 export class QuicknodeSdk {
   constructor(config: SdkFullConfig);
   static fromEnv(): QuicknodeSdk;
   admin: _QuicknodeSdk["admin"];
   streams: StreamsApiClientTyped;
-  webhooks: _QuicknodeSdk["webhooks"];
+  webhooks: WebhooksApiClientTyped;
   kvstore: _QuicknodeSdk["kvstore"];
 }
 
-export class TemplateArgs {
-  templateId: WebhookTemplateId;
-  value: string;
-  static evmWalletFilter(attrs: EvmWalletFilterTemplate): TemplateArgs;
-  static evmContractEvents(attrs: EvmContractEventsTemplate): TemplateArgs;
-  static evmAbiFilter(attrs: EvmAbiFilterTemplate): TemplateArgs;
-  static solanaWalletFilter(attrs: SolanaWalletFilterTemplate): TemplateArgs;
-  static bitcoinWalletFilter(attrs: BitcoinWalletFilterTemplate): TemplateArgs;
-  static xrplWalletFilter(attrs: XrplWalletFilterTemplate): TemplateArgs;
-  static hyperliquidWalletEventsFilter(attrs: HyperliquidWalletEventsFilterTemplate): TemplateArgs;
-  static stellarWalletTransactionsFilter(attrs: StellarWalletTransactionsFilterTemplate): TemplateArgs;
-}
+// Typed static factory methods producing each discriminated variant of
+// TemplateArgsInput. Consumers can also construct the object literal directly.
+export const TemplateArgs: {
+  evmWalletFilter(attrs: EvmWalletFilterTemplate): Extract<TemplateArgsInput, { templateId: "evmWalletFilter" }>;
+  evmContractEvents(attrs: EvmContractEventsTemplate): Extract<TemplateArgsInput, { templateId: "evmContractEvents" }>;
+  evmAbiFilter(attrs: EvmAbiFilterTemplate): Extract<TemplateArgsInput, { templateId: "evmAbiFilter" }>;
+  solanaWalletFilter(attrs: SolanaWalletFilterTemplate): Extract<TemplateArgsInput, { templateId: "solanaWalletFilter" }>;
+  bitcoinWalletFilter(attrs: BitcoinWalletFilterTemplate): Extract<TemplateArgsInput, { templateId: "bitcoinWalletFilter" }>;
+  xrplWalletFilter(attrs: XrplWalletFilterTemplate): Extract<TemplateArgsInput, { templateId: "xrplWalletFilter" }>;
+  hyperliquidWalletEventsFilter(attrs: HyperliquidWalletEventsFilterTemplate): Extract<TemplateArgsInput, { templateId: "hyperliquidWalletEventsFilter" }>;
+  stellarWalletTransactionsFilter(attrs: StellarWalletTransactionsFilterTemplate): Extract<TemplateArgsInput, { templateId: "stellarWalletTransactionsSourceAccountFilter" }>;
+};
 
 // Typed error hierarchy. Any SDK call can throw one of these; catch
 // QuicknodeError to handle them all, or a specific subclass for finer control.

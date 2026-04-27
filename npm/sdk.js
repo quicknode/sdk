@@ -32,59 +32,45 @@ class QuicknodeSdk {
   }
 }
 
-// TemplateArgs.value is a pre-serialized JSON string; napi forwards camelCase
-// keys from JS but the API expects snake_case, so stringify through these.
-function toSnakeCase(str) {
-  return str.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-}
-
-function keysToSnakeCase(obj) {
-  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) return obj;
-  return Object.fromEntries(
-    Object.entries(obj).map(([k, v]) => [toSnakeCase(k), keysToSnakeCase(v)])
-  );
-}
-
-// TemplateArgs wraps the napi-rs generated plain object with typed
-// static factory methods. The underlying object has `templateId` (string enum)
-// and `value` (JSON string) fields — callers should use the factory methods
-// rather than constructing the object directly.
+// TemplateArgs wraps the webhook template input with typed static factory
+// methods. The underlying object is `{ templateId, args }` — callers should
+// use the factory methods rather than constructing the object directly.
 class TemplateArgs {
-  constructor(templateId, value) {
+  constructor(templateId, args) {
     this.templateId = templateId;
-    this.value = value;
+    this.args = args;
   }
 
   static evmWalletFilter(attrs) {
-    return new TemplateArgs("EvmWalletFilter", JSON.stringify(keysToSnakeCase(attrs)));
+    return new TemplateArgs("evmWalletFilter", attrs);
   }
 
   static evmContractEvents(attrs) {
-    return new TemplateArgs("EvmContractEvents", JSON.stringify(keysToSnakeCase(attrs)));
+    return new TemplateArgs("evmContractEvents", attrs);
   }
 
   static evmAbiFilter(attrs) {
-    return new TemplateArgs("EvmAbiFilter", JSON.stringify(keysToSnakeCase(attrs)));
+    return new TemplateArgs("evmAbiFilter", attrs);
   }
 
   static solanaWalletFilter(attrs) {
-    return new TemplateArgs("SolanaWalletFilter", JSON.stringify(keysToSnakeCase(attrs)));
+    return new TemplateArgs("solanaWalletFilter", attrs);
   }
 
   static bitcoinWalletFilter(attrs) {
-    return new TemplateArgs("BitcoinWalletFilter", JSON.stringify(keysToSnakeCase(attrs)));
+    return new TemplateArgs("bitcoinWalletFilter", attrs);
   }
 
   static xrplWalletFilter(attrs) {
-    return new TemplateArgs("XrplWalletFilter", JSON.stringify(keysToSnakeCase(attrs)));
+    return new TemplateArgs("xrplWalletFilter", attrs);
   }
 
   static hyperliquidWalletEventsFilter(attrs) {
-    return new TemplateArgs("HyperliquidWalletEventsFilter", JSON.stringify(keysToSnakeCase(attrs)));
+    return new TemplateArgs("hyperliquidWalletEventsFilter", attrs);
   }
 
   static stellarWalletTransactionsFilter(attrs) {
-    return new TemplateArgs("StellarWalletTransactionsSourceAccountFilter", JSON.stringify(keysToSnakeCase(attrs)));
+    return new TemplateArgs("stellarWalletTransactionsSourceAccountFilter", attrs);
   }
 }
 

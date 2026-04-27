@@ -4,7 +4,7 @@ require_relative "../lib/quicknode_sdk"
 qn = QuicknodeSdk::SDK.from_env
 
 before = JSON.parse(qn.webhooks.list_webhooks({}))
-puts "webhooks before: #{before["data"].length}"
+puts "webhooks before: #{before["data"].length} (total=#{before["pageInfo"]["total"]})"
 
 count = JSON.parse(qn.webhooks.get_enabled_count)
 puts "enabled count: #{count["total"]}"
@@ -15,8 +15,8 @@ destination_attributes = JSON.generate({
 })
 
 template_args = JSON.generate({
-  template_id: "evmWalletFilter",
-  value: JSON.generate({ wallets: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"] })
+  templateId: "evmWalletFilter",
+  templateArgs: { wallets: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"] }
 })
 
 webhook = JSON.parse(qn.webhooks.create_webhook_from_template(
@@ -45,4 +45,4 @@ puts "deleted: #{id}"
 sleep 1
 
 after = JSON.parse(qn.webhooks.list_webhooks({}))
-puts "webhooks after: #{after["data"].length}"
+puts "webhooks after: #{after["data"].length} (total=#{after["pageInfo"]["total"]})"

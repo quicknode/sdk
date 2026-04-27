@@ -2542,7 +2542,7 @@ Paginated list of webhooks.
 
 **Parameters** (all optional): `limit` (i64), `offset` (i64).
 
-**Returns**: `ListWebhooksResponse` with `data: Webhook[]` and `pageInfo`.
+**Returns**: `ListWebhooksResponse` with `data: Webhook[]` and `pageInfo: WebhookPageInfo { limit, offset, total }`.
 
 ```rust
 // Rust
@@ -2596,15 +2596,15 @@ webhook = JSON.parse(qn.webhooks.get_webhook(id: "wh-1"))
 
 Creates a webhook from a predefined filter template.
 
-**Parameters**: `name` (required), `network` (required), `destination_attributes` (`WebhookDestinationAttributes`, required), `template_args` (`TemplateArgs`, required), `notification_email` (optional).
+**Parameters**: `name` (required), `network` (required), `destination_attributes` (`WebhookDestinationAttributes`, required), `template_args` (required — use the `TemplateArgs` enum variant for the chosen template), `notification_email` (optional).
 
 **Returns**: `Webhook`.
 
 ```rust
 // Rust
-let template_args = TemplateArgs::evm_wallet_filter(&EvmWalletFilterTemplate {
+let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
     wallets: vec!["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".to_string()],
-})?;
+});
 let params = CreateWebhookFromTemplateParams {
     name: "Wallet Webhook".to_string(),
     network: "ethereum-mainnet".to_string(),
@@ -2621,13 +2621,13 @@ let webhook = qn.webhooks.create_webhook_from_template(&params).await?;
 
 ```python
 # Python
-from sdk import EvmWalletFilterTemplate, TemplateArgs, WebhookDestinationAttributes
+from sdk import EvmWalletFilterArgs, EvmWalletFilterTemplate, WebhookDestinationAttributes
 
 webhook = await qn.webhooks.create_webhook_from_template(
     name="Wallet Webhook",
     network="ethereum-mainnet",
     destination_attributes=WebhookDestinationAttributes(url="https://webhook.site/..."),
-    template_args=TemplateArgs.evm_wallet_filter(
+    template_args=EvmWalletFilterArgs(
         EvmWalletFilterTemplate(wallets=["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"])
     ),
 )
@@ -2654,8 +2654,8 @@ destination_attributes = JSON.generate({
   compression: "none"
 })
 template_args = JSON.generate({
-  template_id: "evmWalletFilter",
-  value: JSON.generate({ wallets: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"] })
+  templateId: "evmWalletFilter",
+  templateArgs: { wallets: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"] }
 })
 webhook = JSON.parse(qn.webhooks.create_webhook_from_template(
   name: "Wallet Webhook",
@@ -2707,9 +2707,9 @@ Updates the template args (and optionally name, email, destination) on an existi
 
 ```rust
 // Rust
-let template_args = TemplateArgs::evm_wallet_filter(&EvmWalletFilterTemplate {
+let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
     wallets: vec!["0xnewwallet".to_string()],
-})?;
+});
 let params = UpdateWebhookTemplateParams {
     name: None,
     notification_email: None,
@@ -2723,7 +2723,7 @@ let webhook = qn.webhooks.update_webhook_template("wh-1", &params).await?;
 # Python
 webhook = await qn.webhooks.update_webhook_template(
     "wh-1",
-    template_args=TemplateArgs.evm_wallet_filter(
+    template_args=EvmWalletFilterArgs(
         EvmWalletFilterTemplate(wallets=["0xnewwallet"])
     ),
 )
@@ -2739,8 +2739,8 @@ const webhook = await qn.webhooks.updateWebhookTemplate("wh-1", {
 ```ruby
 # Ruby
 template_args = JSON.generate({
-  template_id: "evmWalletFilter",
-  value: JSON.generate({ wallets: ["0xnewwallet"] })
+  templateId: "evmWalletFilter",
+  templateArgs: { wallets: ["0xnewwallet"] }
 })
 webhook = JSON.parse(qn.webhooks.update_webhook_template(
   webhook_id: "wh-1",

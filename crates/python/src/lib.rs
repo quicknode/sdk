@@ -7,6 +7,7 @@ use quicknode_sdk as core;
 
 mod errors;
 mod streams_destination;
+mod webhooks_template;
 
 // ── Top-level SDK ──────────────────────────────────────────────
 
@@ -1966,10 +1967,14 @@ impl WebhooksApiClient {
         name: String,
         network: String,
         destination_attributes: core::webhooks::WebhookDestinationAttributes,
-        template_args: core::webhooks::TemplateArgs,
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs]"
+        ))]
+        template_args: &Bound<'py, PyAny>,
         notification_email: Option<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
+        let template_args = webhooks_template::extract_template_args(template_args)?;
         let params = core::webhooks::CreateWebhookFromTemplateParams {
             name,
             network,
@@ -1999,12 +2004,16 @@ impl WebhooksApiClient {
         &self,
         py: Python<'py>,
         webhook_id: String,
-        template_args: core::webhooks::TemplateArgs,
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs]"
+        ))]
+        template_args: &Bound<'py, PyAny>,
         name: Option<String>,
         notification_email: Option<String>,
         destination_attributes: Option<core::webhooks::WebhookDestinationAttributes>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
+        let template_args = webhooks_template::extract_template_args(template_args)?;
         let params = core::webhooks::UpdateWebhookTemplateParams {
             name,
             notification_email,
@@ -2434,10 +2443,18 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::streams::TestFilterResponse>()?;
     m.add_class::<core::streams::EnabledCountResponse>()?;
     m.add_class::<WebhooksApiClient>()?;
-    m.add_class::<core::webhooks::TemplateArgs>()?;
+    m.add_class::<webhooks_template::EvmWalletFilterArgs>()?;
+    m.add_class::<webhooks_template::EvmContractEventsArgs>()?;
+    m.add_class::<webhooks_template::EvmAbiFilterArgs>()?;
+    m.add_class::<webhooks_template::SolanaWalletFilterArgs>()?;
+    m.add_class::<webhooks_template::BitcoinWalletFilterArgs>()?;
+    m.add_class::<webhooks_template::XrplWalletFilterArgs>()?;
+    m.add_class::<webhooks_template::HyperliquidWalletEventsFilterArgs>()?;
+    m.add_class::<webhooks_template::StellarWalletTransactionsFilterArgs>()?;
     m.add_class::<core::webhooks::WebhookDestinationAttributes>()?;
     m.add_class::<core::webhooks::Webhook>()?;
     m.add_class::<core::webhooks::ListWebhooksResponse>()?;
+    m.add_class::<core::webhooks::WebhookPageInfo>()?;
     m.add_class::<core::webhooks::WebhookEnabledCountResponse>()?;
     m.add_class::<core::webhooks::GetWebhooksParams>()?;
     m.add_class::<core::webhooks::UpdateWebhookParams>()?;

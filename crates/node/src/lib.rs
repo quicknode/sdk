@@ -3,7 +3,9 @@ use napi_derive::napi;
 use quicknode_sdk as core;
 
 mod errors;
+mod key_case;
 mod streams_destination;
+mod webhooks_template;
 
 // ── Top-level SDK ──────────────────────────────────────────────
 
@@ -1146,8 +1148,9 @@ impl WebhooksApiClient {
     #[napi]
     pub async fn create_webhook_from_template(
         &self,
-        params: core::webhooks::CreateWebhookFromTemplateParams,
+        params: webhooks_template::CreateWebhookFromTemplateParamsNode,
     ) -> Result<core::webhooks::Webhook> {
+        let params = params.into_core()?;
         self.inner
             .create_webhook_from_template(&params)
             .await
@@ -1164,8 +1167,9 @@ impl WebhooksApiClient {
     pub async fn update_webhook_template(
         &self,
         webhook_id: String,
-        params: core::webhooks::UpdateWebhookTemplateParams,
+        params: webhooks_template::UpdateWebhookTemplateParamsNode,
     ) -> Result<core::webhooks::Webhook> {
+        let params = params.into_core()?;
         self.inner
             .update_webhook_template(&webhook_id, &params)
             .await
