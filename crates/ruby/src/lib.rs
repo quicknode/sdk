@@ -32,8 +32,13 @@ fn parse_err(e: serde_json::Error) -> Error {
     Error::new(ruby().exception_arg_error(), e.to_string())
 }
 
-fn to_json<T: serde::Serialize>(v: T) -> Result<String, Error> {
-    serde_json::to_string(&v).map_err(parse_err)
+fn to_ruby<T: serde::Serialize>(v: T) -> Result<magnus::Value, Error> {
+    serde_magnus::serialize(&v).map_err(|e| {
+        Error::new(
+            ruby().exception_runtime_error(),
+            format!("response serialization failed: {e}"),
+        )
+    })
 }
 
 fn parse_enum<T: serde::de::DeserializeOwned>(s: String) -> Result<T, Error> {
