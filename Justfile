@@ -78,7 +78,7 @@ lint:
 
 # Bump version across all manifests, commit, and tag for release.
 # Usage: just release 0.2.0
-release_version:
+release version:
   sed -i.bak 's/^version = ".*"/version = "{{version}}"/' Cargo.toml && rm Cargo.toml.bak
   sed -i.bak 's/^version = ".*"/version = "{{version}}"/' pyproject.toml && rm pyproject.toml.bak
   uv lock
