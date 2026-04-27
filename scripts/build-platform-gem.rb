@@ -3,7 +3,7 @@
 # that includes a prebuilt native library. Run from the ruby/ directory.
 #
 # Usage: ruby ../scripts/build-platform-gem.rb <platform> <lib_file>
-# Example: ruby ../scripts/build-platform-gem.rb arm64-darwin lib/quicknode_sdk.bundle
+# Example: ruby ../scripts/build-platform-gem.rb arm64-darwin lib/quicknode_sdk/quicknode_sdk.bundle
 
 platform, lib_file = ARGV
 abort "Usage: build-platform-gem.rb <platform> <lib_file>" unless platform && lib_file

@@ -159,7 +159,8 @@ jobs:
             cross: true
             gem_platform: aarch64-linux
           # musl targets are excluded: Rust cdylib is incompatible with musl (no dynamic linker).
-          # Users on musl Linux (e.g. Alpine) will use the source gem which compiles on install.
+          # Users on platforms without a published platform gem (musl Linux, Windows) will get
+          # a normal RubyGems "no compatible platform" error at install time.
           # Placeholder for future macOS support:
           # - target: aarch64-apple-darwin
           #   cross: false
@@ -188,21 +189,23 @@ jobs:
         if: matrix.cross
         run: |
           cargo zigbuild --release -p sdk-ruby --target ${{ matrix.target }}
-          cp target/${{ matrix.target }}/release/libquicknode_sdk.so ruby/lib/quicknode_sdk.so
+          mkdir -p ruby/lib/quicknode_sdk
+          cp target/${{ matrix.target }}/release/libquicknode_sdk.so ruby/lib/quicknode_sdk/quicknode_sdk.so
 
       - name: Build native extension (native)
         if: '!matrix.cross'
         run: |
           cargo build --release -p sdk-ruby
-          cp target/release/libquicknode_sdk.so ruby/lib/quicknode_sdk.so
+          mkdir -p ruby/lib/quicknode_sdk
+          cp target/release/libquicknode_sdk.so ruby/lib/quicknode_sdk/quicknode_sdk.so
 
       - name: Strip debug symbols
         run: |
           if [ "${{ matrix.cross }}" = "true" ]; then
             sudo apt-get install -y llvm
-            llvm-strip ruby/lib/quicknode_sdk.so
+            llvm-strip ruby/lib/quicknode_sdk/quicknode_sdk.so
           else
-            strip ruby/lib/quicknode_sdk.so
+            strip ruby/lib/quicknode_sdk/quicknode_sdk.so
           fi
 
       - name: Build platform gem
@@ -212,16 +215,11 @@ jobs:
             spec = Gem::Specification.load('quicknode_sdk.gemspec')
             spec.platform = Gem::Platform.new('${{ matrix.gem_platform }}')
             spec.extensions = []
-            spec.files += ['lib/quicknode_sdk.so']
+            spec.files += ['lib/quicknode_sdk/quicknode_sdk.so']
             File.write('quicknode_sdk_platform.gemspec', spec.to_ruby)
           "
           gem build quicknode_sdk_platform.gemspec
           rm quicknode_sdk_platform.gemspec
-
-      - name: Build source gem
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        working-directory: ruby
-        run: gem build quicknode_sdk.gemspec
 
       - uses: actions/upload-artifact@v4
         with:
