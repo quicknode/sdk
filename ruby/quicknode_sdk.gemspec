@@ -4,7 +4,7 @@ Gem::Specification.new do |s|
   s.summary     = "Quicknode SDK for Ruby"
   s.authors     = ["Quicknode"]
   s.license     = "MIT"
-  s.files       = Dir["lib/**/*.rb"] + ["lib/quicknode_sdk.bundle"]
+  s.files       = Dir["lib/**/*.rb"] + Dir["sig/**/*.rbs"] + ["lib/quicknode_sdk.bundle"]
   s.required_ruby_version = ">= 3.0"
   s.add_runtime_dependency "hashie", "~> 5.0"
 end

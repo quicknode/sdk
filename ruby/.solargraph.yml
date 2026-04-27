@@ -1,0 +1,8 @@
+include:
+  - "lib/**/*.rb"
+exclude:
+  - "lib/quicknode_sdk.bundle"
+  - "examples/**/*"
+require_paths:
+  - lib
+  - sig
