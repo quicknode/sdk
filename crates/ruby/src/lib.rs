@@ -266,7 +266,8 @@ impl QuicknodeSdk {
 
 // ── AdminApiClient ──────────────────────────────────────────────────────────
 //
-// All methods return JSON strings. Call JSON.parse on the result in Ruby.
+// Methods returning data return native Ruby Hash/Array via serde_magnus. The
+// Ruby package wraps these in Hashie::Mash before returning to the user.
 
 #[magnus::wrap(class = "QuicknodeSdk::Native::Admin", free_immediately, size)]
 #[derive(Clone)]
