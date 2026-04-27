@@ -116,12 +116,11 @@ console.log(`${resp.data.length} endpoints`);
 
 ```ruby
 # Ruby
-require "json"
 require "quicknode_sdk"
 
 qn = QuicknodeSdk::SDK.from_env
-resp = JSON.parse(qn.admin.get_endpoints({}))
-puts "#{resp["data"].length} endpoints"
+resp = qn.admin.get_endpoints
+puts "#{resp[:data].length} endpoints"
 ```
 
 ## Configuration
@@ -187,7 +186,7 @@ Each method below shows the call pattern in Rust, Python, Node.js, and Ruby in t
 - **Rust**: methods are `async` and return `Result<T, SdkError>`. Request structs use the [`bon`](https://docs.rs/bon) builder pattern via `::builder()`.
 - **Python**: methods are `async` — call with `await`. Parameters are kwargs; responses are native `pyclass` objects with attribute access.
 - **Node.js**: methods are `async` and take a single options object with camelCase keys.
-- **Ruby**: methods are **blocking** (not async). Parameters are a single Hash with symbol keys. Responses that carry data are returned as **JSON strings** — wrap calls with `JSON.parse`. Unknown keys raise `ArgumentError`.
+- **Ruby**: methods are **blocking** (not async). Parameters are a single Hash with symbol keys. Responses that carry data are returned as a `Hash` with indifferent access — `resp[:data]` and `resp["data"]` both work. Unknown parameter keys raise `ArgumentError`.
 
 ---
 
@@ -231,7 +230,7 @@ const resp = await qn.admin.getEndpoints({
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_endpoints(limit: 20, sort_by: "created_at", sort_direction: "desc"))
+resp = qn.admin.get_endpoints(limit: 20, sort_by: "created_at", sort_direction: "desc")
 ```
 
 ##### `create_endpoint` / `createEndpoint`
@@ -263,7 +262,7 @@ const resp = await qn.admin.createEndpoint({ chain: "ethereum", network: "mainne
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.create_endpoint(chain: "ethereum", network: "mainnet"))
+resp = qn.admin.create_endpoint(chain: "ethereum", network: "mainnet")
 ```
 
 ##### `show_endpoint` / `showEndpoint`
@@ -291,7 +290,7 @@ const resp = await qn.admin.showEndpoint("ep-123");
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.show_endpoint(id: "ep-123"))
+resp = qn.admin.show_endpoint(id: "ep-123")
 ```
 
 ##### `update_endpoint` / `updateEndpoint`
@@ -377,7 +376,7 @@ await qn.admin.updateEndpointStatus("ep-123", { status: "paused" });
 
 ```ruby
 # Ruby
-JSON.parse(qn.admin.update_endpoint_status(id: "ep-123", status: "paused"))
+qn.admin.update_endpoint_status(id: "ep-123", status: "paused")
 ```
 
 #### Endpoint Tags
@@ -468,7 +467,7 @@ const resp = await qn.admin.listTeams();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.list_teams)
+resp = qn.admin.list_teams
 ```
 
 ##### `create_team` / `createTeam`
@@ -497,7 +496,7 @@ const resp = await qn.admin.createTeam({ name: "Payments" });
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.create_team(name: "Payments"))
+resp = qn.admin.create_team(name: "Payments")
 ```
 
 ##### `get_team` / `getTeam`
@@ -525,7 +524,7 @@ const resp = await qn.admin.getTeam(42);
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_team(id: 42))
+resp = qn.admin.get_team(id: 42)
 ```
 
 ##### `delete_team` / `deleteTeam`
@@ -581,7 +580,7 @@ const resp = await qn.admin.listTeamEndpoints(42);
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.list_team_endpoints(id: 42))
+resp = qn.admin.list_team_endpoints(id: 42)
 ```
 
 ##### `update_team_endpoints` / `updateTeamEndpoints`
@@ -730,7 +729,7 @@ const resp = await qn.admin.getUsage();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_usage({}))
+resp = qn.admin.get_usage({})
 ```
 
 ##### `get_usage_by_endpoint` / `getUsageByEndpoint`
@@ -756,7 +755,7 @@ const resp = await qn.admin.getUsageByEndpoint();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_usage_by_endpoint({}))
+resp = qn.admin.get_usage_by_endpoint({})
 ```
 
 ##### `get_usage_by_method` / `getUsageByMethod`
@@ -782,7 +781,7 @@ const resp = await qn.admin.getUsageByMethod();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_usage_by_method({}))
+resp = qn.admin.get_usage_by_method({})
 ```
 
 ##### `get_usage_by_chain` / `getUsageByChain`
@@ -808,7 +807,7 @@ const resp = await qn.admin.getUsageByChain();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_usage_by_chain({}))
+resp = qn.admin.get_usage_by_chain({})
 ```
 
 ##### `get_usage_by_tag` / `getUsageByTag`
@@ -834,7 +833,7 @@ const resp = await qn.admin.getUsageByTag();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_usage_by_tag({}))
+resp = qn.admin.get_usage_by_tag({})
 ```
 
 #### Logs
@@ -878,12 +877,12 @@ const resp = await qn.admin.getEndpointLogs("ep-123", {
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_endpoint_logs(
+resp = qn.admin.get_endpoint_logs(
   id: "ep-123",
   from_time: "2026-04-01T00:00:00Z",
   to_time: "2026-04-02T00:00:00Z",
   limit: 100
-))
+)
 ```
 
 ##### `get_log_details` / `getLogDetails`
@@ -911,7 +910,7 @@ const resp = await qn.admin.getLogDetails("ep-123", "req-abc");
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_log_details(id: "ep-123", request_id: "req-abc"))
+resp = qn.admin.get_log_details(id: "ep-123", request_id: "req-abc")
 ```
 
 #### Endpoint Security
@@ -941,7 +940,7 @@ const resp = await qn.admin.getEndpointSecurity("ep-123");
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_endpoint_security(id: "ep-123"))
+resp = qn.admin.get_endpoint_security(id: "ep-123")
 ```
 
 #### Security Options
@@ -971,7 +970,7 @@ const resp = await qn.admin.getSecurityOptions("ep-123");
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_security_options(id: "ep-123"))
+resp = qn.admin.get_security_options(id: "ep-123")
 ```
 
 ##### `update_security_options` / `updateSecurityOptions`
@@ -1186,7 +1185,7 @@ await qn.admin.deleteIp("ep-123", "ip-1");
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.delete_ip(id: "ep-123", ip_id: "ip-1"))
+resp = qn.admin.delete_ip(id: "ep-123", ip_id: "ip-1")
 ```
 
 #### Domain Masks
@@ -1362,10 +1361,10 @@ const resp = await qn.admin.createRequestFilter("ep-123", {
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.create_request_filter(
+resp = qn.admin.create_request_filter(
   id: "ep-123",
   methods: ["eth_blockNumber", "eth_getBalance"]
-))
+)
 ```
 
 ##### `update_request_filter` / `updateRequestFilter`
@@ -1511,10 +1510,10 @@ await qn.admin.createOrUpdateIpCustomHeader("ep-123", { headerName: "X-Forwarded
 
 ```ruby
 # Ruby
-JSON.parse(qn.admin.create_or_update_ip_custom_header(
+qn.admin.create_or_update_ip_custom_header(
   id: "ep-123",
   header_name: "X-Forwarded-For"
-))
+)
 ```
 
 ##### `delete_ip_custom_header` / `deleteIpCustomHeader`
@@ -1542,7 +1541,7 @@ await qn.admin.deleteIpCustomHeader("ep-123");
 
 ```ruby
 # Ruby
-JSON.parse(qn.admin.delete_ip_custom_header(id: "ep-123"))
+qn.admin.delete_ip_custom_header(id: "ep-123")
 ```
 
 #### Method Rate Limits
@@ -1572,7 +1571,7 @@ const resp = await qn.admin.getMethodRateLimits("ep-123");
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_method_rate_limits(id: "ep-123"))
+resp = qn.admin.get_method_rate_limits(id: "ep-123")
 ```
 
 ##### `create_method_rate_limit` / `createMethodRateLimit`
@@ -1614,12 +1613,12 @@ const resp = await qn.admin.createMethodRateLimit("ep-123", {
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.create_method_rate_limit(
+resp = qn.admin.create_method_rate_limit(
   id: "ep-123",
   interval: "second",
   methods: ["eth_call"],
   rate: 10
-))
+)
 ```
 
 ##### `update_method_rate_limit` / `updateMethodRateLimit`
@@ -1648,7 +1647,7 @@ await qn.admin.updateMethodRateLimit("ep-123", "rl-1", { rate: 50 });
 
 ```ruby
 # Ruby
-JSON.parse(qn.admin.update_method_rate_limit(id: "ep-123", method_rate_limit_id: "rl-1", rate: 50))
+qn.admin.update_method_rate_limit(id: "ep-123", method_rate_limit_id: "rl-1", rate: 50)
 ```
 
 ##### `delete_method_rate_limit` / `deleteMethodRateLimit`
@@ -1749,11 +1748,11 @@ const resp = await qn.admin.getEndpointMetrics("ep-123", {
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_endpoint_metrics(
+resp = qn.admin.get_endpoint_metrics(
   id: "ep-123",
   period: "day",
   metric: "method_calls_over_time"
-))
+)
 ```
 
 ##### `get_account_metrics` / `getAccountMetrics`
@@ -1789,7 +1788,7 @@ const resp = await qn.admin.getAccountMetrics({
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.get_account_metrics(period: "day", metric: "credits_over_time"))
+resp = qn.admin.get_account_metrics(period: "day", metric: "credits_over_time")
 ```
 
 #### Chains
@@ -1819,7 +1818,7 @@ const resp = await qn.admin.listChains();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.list_chains)
+resp = qn.admin.list_chains
 ```
 
 #### Billing
@@ -1849,7 +1848,7 @@ const resp = await qn.admin.listInvoices();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.list_invoices)
+resp = qn.admin.list_invoices
 ```
 
 ##### `list_payments` / `listPayments`
@@ -1877,7 +1876,7 @@ const resp = await qn.admin.listPayments();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.list_payments)
+resp = qn.admin.list_payments
 ```
 
 #### Bulk Operations
@@ -1914,7 +1913,7 @@ const resp = await qn.admin.bulkUpdateEndpointStatus({
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.bulk_update_endpoint_status(ids: ["ep-1", "ep-2"], status: "paused"))
+resp = qn.admin.bulk_update_endpoint_status(ids: ["ep-1", "ep-2"], status: "paused")
 ```
 
 ##### `bulk_add_tag` / `bulkAddTag`
@@ -1946,7 +1945,7 @@ const resp = await qn.admin.bulkAddTag({ ids: ["ep-1", "ep-2"], label: "prod" })
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.bulk_add_tag(ids: ["ep-1", "ep-2"], label: "prod"))
+resp = qn.admin.bulk_add_tag(ids: ["ep-1", "ep-2"], label: "prod")
 ```
 
 ##### `bulk_remove_tag` / `bulkRemoveTag`
@@ -1978,7 +1977,7 @@ const resp = await qn.admin.bulkRemoveTag({ ids: ["ep-1", "ep-2"], tagId: 42 });
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.bulk_remove_tag(ids: ["ep-1", "ep-2"], tag_id: 42))
+resp = qn.admin.bulk_remove_tag(ids: ["ep-1", "ep-2"], tag_id: 42)
 ```
 
 #### Account Tags
@@ -2008,7 +2007,7 @@ const resp = await qn.admin.listTags();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.list_tags)
+resp = qn.admin.list_tags
 ```
 
 ##### `rename_tag` / `renameTag`
@@ -2037,7 +2036,7 @@ const resp = await qn.admin.renameTag(42, { label: "staging" });
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.admin.rename_tag(tag_id: 42, label: "staging"))
+resp = qn.admin.rename_tag(tag_id: 42, label: "staging")
 ```
 
 ##### `delete_account_tag` / `deleteAccountTag`
@@ -2065,7 +2064,7 @@ await qn.admin.deleteAccountTag(42);
 
 ```ruby
 # Ruby
-JSON.parse(qn.admin.delete_account_tag(id: 42))
+qn.admin.delete_account_tag(id: 42)
 ```
 
 ---
@@ -2202,7 +2201,7 @@ dest = QuicknodeSdk::DestinationAttributes.webhook(
   post_timeout_sec: 10,
   compression: "none"
 )
-stream = JSON.parse(qn.streams.create_stream(
+stream = qn.streams.create_stream(
   name: "My Stream",
   network: "ethereum-mainnet",
   dataset: "block",
@@ -2213,7 +2212,7 @@ stream = JSON.parse(qn.streams.create_stream(
   plan: "growth_plan",
   threshold_fetch_buffer: 1000,
   status: "active"
-))
+)
 ```
 
 ##### `list_streams` / `listStreams`
@@ -2241,7 +2240,7 @@ const resp = await qn.streams.listStreams();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.streams.list_streams({}))
+resp = qn.streams.list_streams({})
 ```
 
 ##### `get_stream` / `getStream`
@@ -2269,7 +2268,7 @@ const stream = await qn.streams.getStream("stream-id");
 
 ```ruby
 # Ruby
-stream = JSON.parse(qn.streams.get_stream(id: "stream-id"))
+stream = qn.streams.get_stream(id: "stream-id")
 ```
 
 ##### `update_stream` / `updateStream`
@@ -2301,7 +2300,7 @@ const stream = await qn.streams.updateStream("stream-id", { name: "Renamed" });
 
 ```ruby
 # Ruby
-stream = JSON.parse(qn.streams.update_stream(id: "stream-id", name: "Renamed"))
+stream = qn.streams.update_stream(id: "stream-id", name: "Renamed")
 ```
 
 ##### `delete_stream` / `deleteStream`
@@ -2459,11 +2458,11 @@ const resp = await qn.streams.testFilter({
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.streams.test_filter(
+resp = qn.streams.test_filter(
   network: "ethereum-mainnet",
   dataset: "block",
   block: "17811625"
-))
+)
 ```
 
 ##### `get_enabled_count` / `getEnabledCount`
@@ -2491,7 +2490,7 @@ const resp = await qn.streams.getEnabledCount();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.streams.get_enabled_count({}))
+resp = qn.streams.get_enabled_count({})
 ```
 
 ---
@@ -2561,7 +2560,7 @@ const resp = await qn.webhooks.listWebhooks();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.webhooks.list_webhooks({}))
+resp = qn.webhooks.list_webhooks({})
 ```
 
 ##### `get_webhook` / `getWebhook`
@@ -2589,7 +2588,7 @@ const webhook = await qn.webhooks.getWebhook("wh-1");
 
 ```ruby
 # Ruby
-webhook = JSON.parse(qn.webhooks.get_webhook(id: "wh-1"))
+webhook = qn.webhooks.get_webhook(id: "wh-1")
 ```
 
 ##### `create_webhook_from_template` / `createWebhookFromTemplate`
@@ -2657,12 +2656,12 @@ template_args = JSON.generate({
   templateId: "evmWalletFilter",
   templateArgs: { wallets: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"] }
 })
-webhook = JSON.parse(qn.webhooks.create_webhook_from_template(
+webhook = qn.webhooks.create_webhook_from_template(
   name: "Wallet Webhook",
   network: "ethereum-mainnet",
   destination_attributes_json: destination_attributes,
   template_args_json: template_args
-))
+)
 ```
 
 ##### `update_webhook` / `updateWebhook`
@@ -2694,7 +2693,7 @@ const webhook = await qn.webhooks.updateWebhook("wh-1", { name: "Renamed Webhook
 
 ```ruby
 # Ruby
-webhook = JSON.parse(qn.webhooks.update_webhook(id: "wh-1", name: "Renamed Webhook"))
+webhook = qn.webhooks.update_webhook(id: "wh-1", name: "Renamed Webhook")
 ```
 
 ##### `update_webhook_template` / `updateWebhookTemplate`
@@ -2742,10 +2741,10 @@ template_args = JSON.generate({
   templateId: "evmWalletFilter",
   templateArgs: { wallets: ["0xnewwallet"] }
 })
-webhook = JSON.parse(qn.webhooks.update_webhook_template(
+webhook = qn.webhooks.update_webhook_template(
   webhook_id: "wh-1",
   template_args_json: template_args
-))
+)
 ```
 
 ##### `delete_webhook` / `deleteWebhook`
@@ -2888,7 +2887,7 @@ const resp = await qn.webhooks.getEnabledCount();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.webhooks.get_enabled_count)
+resp = qn.webhooks.get_enabled_count
 ```
 
 ---
@@ -2955,7 +2954,7 @@ const resp = await qn.kvstore.getSets();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.kvstore.get_sets({}))
+resp = qn.kvstore.get_sets({})
 ```
 
 ##### `get_set` / `getSet`
@@ -2983,7 +2982,7 @@ const resp = await qn.kvstore.getSet("my-key");
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.kvstore.get_set(key: "my-key"))
+resp = qn.kvstore.get_set(key: "my-key")
 ```
 
 ##### `bulk_sets` / `bulkSets`
@@ -3113,7 +3112,7 @@ const resp = await qn.kvstore.getLists();
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.kvstore.get_lists({}))
+resp = qn.kvstore.get_lists({})
 ```
 
 ##### `get_list` / `getList`
@@ -3141,7 +3140,7 @@ const resp = await qn.kvstore.getList("my-list");
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.kvstore.get_list(key: "my-list"))
+resp = qn.kvstore.get_list(key: "my-list")
 ```
 
 ##### `update_list` / `updateList`
@@ -3241,7 +3240,7 @@ const resp = await qn.kvstore.listContainsItem("my-list", "0x123");
 
 ```ruby
 # Ruby
-resp = JSON.parse(qn.kvstore.list_contains_item(key: "my-list", item: "0x123"))
+resp = qn.kvstore.list_contains_item(key: "my-list", item: "0x123")
 ```
 
 ##### `delete_list_item` / `deleteListItem`

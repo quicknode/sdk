@@ -1,0 +1,162 @@
+module QuicknodeSdk
+  def self.wrap: (untyped v) -> untyped
+
+  class Error < StandardError
+  end
+
+  class ConfigError < Error
+  end
+
+  class HttpError < Error
+  end
+
+  class TimeoutError < HttpError
+  end
+
+  class ConnectionError < HttpError
+  end
+
+  class ApiError < Error
+    attr_reader status: Integer
+    attr_reader body: String
+  end
+
+  class DecodeError < Error
+    attr_reader body: String
+  end
+
+  class SDK
+    def self.from_env: () -> SDK
+    def initialize: (untyped native) -> void
+    def admin: () -> Admin
+    def streams: () -> Streams
+    def webhooks: () -> Webhooks
+    def kvstore: () -> KvStore
+  end
+
+  class DestinationAttributes
+    def self.webhook: (url: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?post_timeout_sec: Integer, ?security_token: String, compression: String) -> DestinationAttributes
+    def self.s3: (endpoint: String, access_key: String, secret_key: String, bucket: String, object_prefix: String, compression: String, file_type: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?use_ssl: bool) -> DestinationAttributes
+    def self.azure: (storage_account: String, sas_token: String, container: String, compression: String, file_type: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?blob_prefix: String) -> DestinationAttributes
+    def self.postgres: (host: String, ?port: Integer, database: String, username: String, password: String, table_name: String, sslmode: String, ?max_retry: Integer, ?retry_interval_sec: Integer) -> DestinationAttributes
+    def self.mysql: (host: String, ?port: Integer, database: String, username: String, password: String, table_name: String, ?max_retry: Integer, ?retry_interval_sec: Integer) -> DestinationAttributes
+    def self.mongo: (host: String, database: String, username: String, password: String, collection_name: String, ?max_retry: Integer, ?retry_interval_sec: Integer) -> DestinationAttributes
+    def self.clickhouse: (hosts: String, database: String, username: String, password: String, table_name: String, default_table_engine_opts: String, ?default_granularity: Integer, default_compression: String, default_index_type: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?disable_datetime_precision: bool, ?dont_support_rename_column: bool, ?dont_support_empty_default_value: bool, ?skip_initialize_with_version: bool) -> DestinationAttributes
+    def self.snowflake: (account: String, host: String, ?port: Integer, protocol: String, database: String, schema: String, warehouse: String, username: String, password: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?table_name: String) -> DestinationAttributes
+    def self.kafka: (bootstrap_servers: String, topic_name: String, compression_type: String, ?batch_size: Integer, ?linger_ms: Integer, ?max_request_size: Integer, ?timeout_sec: Integer, ?max_retry: Integer, ?retry_interval_sec: Integer, ?username: String, ?password: String, ?protocol: String, ?mechanisms: String) -> DestinationAttributes
+    def self.redis: (host: String, ?port: Integer, ?database: Integer, username: String, password: String, key_name: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?tls: bool) -> DestinationAttributes
+  end
+
+  class Admin
+    def initialize: (untyped native) -> void
+
+    def get_endpoints: (?limit: Integer, ?offset: Integer, ?search: String, ?sort_by: String, ?sort_direction: String, ?networks: Array[String], ?statuses: Array[String], ?labels: Array[String], ?dedicated: bool, ?is_flat_rate: bool, ?tag_ids: Array[Integer], ?tag_labels: Array[String]) -> untyped
+    def create_endpoint: (?chain: String, ?network: String) -> untyped
+    def show_endpoint: (id: String) -> untyped
+    def update_endpoint: (id: String, ?label: String) -> void
+    def archive_endpoint: (id: String) -> void
+    def update_endpoint_status: (id: String, status: String) -> untyped
+    def create_tag: (id: String, ?label: String) -> void
+    def delete_tag: (id: String, tag_id: String) -> void
+    def get_usage: (?start_time: Integer, ?end_time: Integer) -> untyped
+    def get_usage_by_endpoint: (?start_time: Integer, ?end_time: Integer) -> untyped
+    def get_usage_by_method: (?start_time: Integer, ?end_time: Integer) -> untyped
+    def get_usage_by_chain: (?start_time: Integer, ?end_time: Integer) -> untyped
+    def get_endpoint_logs: (id: String, from_time: String, to_time: String, ?include_details: bool, ?limit: Integer, ?next_at: String) -> untyped
+    def get_log_details: (id: String, request_id: String) -> untyped
+    def get_security_options: (id: String) -> untyped
+    def update_security_options: (id: String, ?tokens: String, ?referrers: String, ?jwts: String, ?ips: String, ?domain_masks: String, ?hsts: String, ?cors: String, ?request_filters: String, ?ip_custom_header: String) -> untyped
+    def create_token: (id: String) -> void
+    def delete_token: (id: String, token_id: String) -> untyped
+    def create_referrer: (id: String, ?referrer: String) -> void
+    def delete_referrer: (id: String, referrer_id: String) -> untyped
+    def create_ip: (id: String, ?ip: String) -> void
+    def delete_ip: (id: String, ip_id: String) -> untyped
+    def create_domain_mask: (id: String, ?domain_mask: String) -> void
+    def delete_domain_mask: (id: String, domain_mask_id: String) -> untyped
+    def create_jwt: (id: String, ?public_key: String, ?kid: String, ?name: String) -> void
+    def delete_jwt: (id: String, jwt_id: String) -> void
+    def create_request_filter: (id: String, ?methods: Array[String]) -> untyped
+    def update_request_filter: (id: String, request_filter_id: String, ?methods: Array[String]) -> void
+    def delete_request_filter: (id: String, request_filter_id: String) -> void
+    def enable_multichain: (id: String) -> void
+    def disable_multichain: (id: String) -> void
+    def create_or_update_ip_custom_header: (id: String, header_name: String) -> untyped
+    def delete_ip_custom_header: (id: String) -> untyped
+    def get_method_rate_limits: (id: String) -> untyped
+    def create_method_rate_limit: (id: String, interval: String, methods: Array[String], rate: Integer) -> untyped
+    def update_method_rate_limit: (id: String, method_rate_limit_id: String, ?methods: Array[String], ?status: String, ?rate: Integer) -> untyped
+    def delete_method_rate_limit: (id: String, method_rate_limit_id: String) -> void
+    def update_rate_limits: (id: String, ?rps: Integer, ?rpm: Integer, ?rpd: Integer) -> void
+    def get_endpoint_metrics: (id: String, period: String, metric: String) -> untyped
+    def get_account_metrics: (period: String, metric: String, ?percentile: String) -> untyped
+    def list_chains: () -> untyped
+    def list_invoices: () -> untyped
+    def list_payments: () -> untyped
+    def list_teams: () -> untyped
+    def create_team: (name: String) -> untyped
+    def get_team: (id: Integer) -> untyped
+    def delete_team: (id: Integer) -> untyped
+    def list_team_endpoints: (id: Integer) -> untyped
+    def update_team_endpoints: (id: Integer, endpoint_ids: Array[String]) -> untyped
+    def invite_team_member: (id: Integer, email: String, ?full_name: String, ?role: String) -> untyped
+    def remove_team_member: (id: Integer, user_id: Integer, ?destroy_user: bool) -> untyped
+    def resend_team_invite: (id: Integer, user_id: Integer) -> untyped
+    def bulk_update_endpoint_status: (ids: Array[String], status: String) -> untyped
+    def bulk_add_tag: (ids: Array[String], label: String) -> untyped
+    def bulk_remove_tag: (ids: Array[String], tag_id: Integer) -> untyped
+    def list_tags: () -> untyped
+    def rename_tag: (id: Integer, label: String) -> untyped
+    def delete_account_tag: (id: Integer) -> untyped
+    def get_usage_by_tag: (?start_time: Integer, ?end_time: Integer) -> untyped
+    def get_endpoint_security: (id: String) -> untyped
+  end
+
+  class Streams
+    def initialize: (untyped native) -> void
+
+    def create_stream: (name: String, network: String, dataset: String, region: String, start_range: Integer, end_range: Integer, destination_attributes: DestinationAttributes, plan: String, threshold_fetch_buffer: Integer, ?dataset_batch_size: Integer, ?max_batch_size: Integer, ?max_buffer_range_size: Integer, ?max_buffer_processing_workers: Integer, ?keep_distance_from_tip: Integer, ?filter_function: String, ?filter_language: String, ?include_stream_metadata: String, ?product_type: String, ?status: String, ?notification_email: String, ?charge_min_cap: Integer, ?fix_block_reorgs: Integer, ?elastic_batch_enabled: bool, ?extra_destinations: Array[DestinationAttributes]) -> untyped
+    def list_streams: (?stream_type: String, ?offset: Integer, ?limit: Integer, ?order_by: String, ?order_direction: String) -> untyped
+    def delete_all_streams: () -> void
+    def get_stream: (id: String) -> untyped
+    def update_stream: (id: String, ?name: String, ?network: String, ?dataset: String, ?region: String, ?start_range: Integer, ?end_range: Integer, ?destination_attributes: DestinationAttributes, ?plan: String, ?threshold_fetch_buffer: Integer, ?dataset_batch_size: Integer, ?max_batch_size: Integer, ?max_buffer_range_size: Integer, ?max_buffer_processing_workers: Integer, ?keep_distance_from_tip: Integer, ?filter_function: String, ?filter_language: String, ?include_stream_metadata: String, ?notification_email: String, ?charge_min_cap: Integer, ?fix_block_reorgs: Integer, ?elastic_batch_enabled: bool, ?status: String, ?memo: String, ?extra_destinations: Array[DestinationAttributes]) -> untyped
+    def delete_stream: (id: String) -> void
+    def activate_stream: (id: String) -> void
+    def pause_stream: (id: String) -> void
+    def test_filter: (network: String, dataset: String, block: String, ?filter_function: String, ?filter_language: String) -> untyped
+    def get_enabled_count: (?stream_type: String) -> untyped
+  end
+
+  class Webhooks
+    def initialize: (untyped native) -> void
+
+    def list_webhooks: (?limit: Integer, ?offset: Integer) -> untyped
+    def delete_all_webhooks: () -> void
+    def get_webhook: (id: String) -> untyped
+    def update_webhook: (id: String, ?name: String, ?notification_email: String, ?destination_attributes_json: String) -> untyped
+    def delete_webhook: (id: String) -> void
+    def pause_webhook: (id: String) -> void
+    def activate_webhook: (id: String, start_from: String) -> void
+    def get_enabled_count: () -> untyped
+    def create_webhook_from_template: (name: String, network: String, destination_attributes_json: String, template_args_json: String, ?notification_email: String) -> untyped
+    def update_webhook_template: (webhook_id: String, template_args_json: String, ?name: String, ?notification_email: String) -> untyped
+  end
+
+  class KvStore
+    def initialize: (untyped native) -> void
+
+    def create_set: (key: String, value: String) -> void
+    def get_sets: (?limit: Integer, ?cursor: String) -> untyped
+    def get_set: (key: String) -> untyped
+    def bulk_sets: (?add_sets: Hash[String, String], ?delete_sets: Array[String]) -> void
+    def delete_set: (key: String) -> void
+    def create_list: (key: String, items: Array[String]) -> void
+    def get_lists: (?limit: Integer, ?cursor: String) -> untyped
+    def get_list: (key: String, ?limit: Integer, ?cursor: String) -> untyped
+    def update_list: (key: String, ?add_items: Array[String], ?remove_items: Array[String]) -> void
+    def add_list_item: (key: String, item: String) -> void
+    def list_contains_item: (key: String, item: String) -> untyped
+    def delete_list_item: (key: String, item: String) -> void
+    def delete_list: (key: String) -> void
+  end
+end

@@ -32,8 +32,13 @@ fn parse_err(e: serde_json::Error) -> Error {
     Error::new(ruby().exception_arg_error(), e.to_string())
 }
 
-fn to_json<T: serde::Serialize>(v: T) -> Result<String, Error> {
-    serde_json::to_string(&v).map_err(parse_err)
+fn to_ruby<T: serde::Serialize>(v: T) -> Result<magnus::Value, Error> {
+    serde_magnus::serialize(&ruby(), &v).map_err(|e| {
+        Error::new(
+            ruby().exception_runtime_error(),
+            format!("response serialization failed: {e}"),
+        )
+    })
 }
 
 fn parse_enum<T: serde::de::DeserializeOwned>(s: String) -> Result<T, Error> {
@@ -222,7 +227,7 @@ fn hash_get_extra_destinations(
 
 // ── QuicknodeSdk ────────────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuicknodeSdk::SDK", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::SDK", free_immediately, size)]
 pub struct QuicknodeSdk {
     inner: core::QuicknodeSdk,
 }
@@ -261,9 +266,11 @@ impl QuicknodeSdk {
 
 // ── AdminApiClient ──────────────────────────────────────────────────────────
 //
-// All methods return JSON strings. Call JSON.parse on the result in Ruby.
+// Methods returning data return native Ruby Hash/Array via serde_magnus. The
+// Ruby package wraps these in QuicknodeSdk::IndifferentHash (a Hash subclass
+// with Hashie::Extensions::IndifferentAccess) before returning to the user.
 
-#[magnus::wrap(class = "QuicknodeSdk::Admin", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::Admin", free_immediately, size)]
 #[derive(Clone)]
 pub struct AdminApiClient {
     inner: core::admin::AdminApiClient,
@@ -271,7 +278,7 @@ pub struct AdminApiClient {
 
 #[allow(clippy::needless_pass_by_value)]
 impl AdminApiClient {
-    fn get_endpoints(&self, opts: RHash) -> Result<String, Error> {
+    fn get_endpoints(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
             &[
@@ -307,10 +314,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_endpoints(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn create_endpoint(&self, opts: RHash) -> Result<String, Error> {
+    fn create_endpoint(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["chain", "network"])?;
         let client = self.inner.clone();
         let params = core::admin::CreateEndpointRequest {
@@ -320,17 +327,17 @@ impl AdminApiClient {
         runtime()
             .block_on(client.create_endpoint(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn show_endpoint(&self, opts: RHash) -> Result<String, Error> {
+    fn show_endpoint(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.show_endpoint(&id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn update_endpoint(&self, opts: RHash) -> Result<(), Error> {
@@ -354,7 +361,7 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
-    fn update_endpoint_status(&self, opts: RHash) -> Result<String, Error> {
+    fn update_endpoint_status(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "status"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -364,7 +371,7 @@ impl AdminApiClient {
         runtime()
             .block_on(client.update_endpoint_status(&id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn create_tag(&self, opts: RHash) -> Result<(), Error> {
@@ -389,7 +396,7 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
-    fn get_usage(&self, opts: RHash) -> Result<String, Error> {
+    fn get_usage(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["start_time", "end_time"])?;
         let client = self.inner.clone();
         let params = core::admin::GetUsageRequest {
@@ -399,10 +406,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_usage(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_usage_by_endpoint(&self, opts: RHash) -> Result<String, Error> {
+    fn get_usage_by_endpoint(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["start_time", "end_time"])?;
         let client = self.inner.clone();
         let params = core::admin::GetUsageRequest {
@@ -412,10 +419,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_usage_by_endpoint(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_usage_by_method(&self, opts: RHash) -> Result<String, Error> {
+    fn get_usage_by_method(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["start_time", "end_time"])?;
         let client = self.inner.clone();
         let params = core::admin::GetUsageRequest {
@@ -425,10 +432,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_usage_by_method(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_usage_by_chain(&self, opts: RHash) -> Result<String, Error> {
+    fn get_usage_by_chain(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["start_time", "end_time"])?;
         let client = self.inner.clone();
         let params = core::admin::GetUsageRequest {
@@ -438,10 +445,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_usage_by_chain(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_endpoint_logs(&self, opts: RHash) -> Result<String, Error> {
+    fn get_endpoint_logs(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
             &[
@@ -465,10 +472,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_endpoint_logs(&id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_log_details(&self, opts: RHash) -> Result<String, Error> {
+    fn get_log_details(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "request_id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -476,20 +483,20 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_log_details(&id, &request_id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_security_options(&self, opts: RHash) -> Result<String, Error> {
+    fn get_security_options(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.get_security_options(&id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn update_security_options(&self, opts: RHash) -> Result<String, Error> {
+    fn update_security_options(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
             &[
@@ -523,7 +530,7 @@ impl AdminApiClient {
         runtime()
             .block_on(client.update_security_options(&id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn create_token(&self, opts: RHash) -> Result<(), Error> {
@@ -535,7 +542,7 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
-    fn delete_token(&self, opts: RHash) -> Result<String, Error> {
+    fn delete_token(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "token_id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -543,7 +550,7 @@ impl AdminApiClient {
         runtime()
             .block_on(client.delete_token(&id, &token_id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn create_referrer(&self, opts: RHash) -> Result<(), Error> {
@@ -558,7 +565,7 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
-    fn delete_referrer(&self, opts: RHash) -> Result<String, Error> {
+    fn delete_referrer(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "referrer_id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -566,7 +573,7 @@ impl AdminApiClient {
         runtime()
             .block_on(client.delete_referrer(&id, &referrer_id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn create_ip(&self, opts: RHash) -> Result<(), Error> {
@@ -581,7 +588,7 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
-    fn delete_ip(&self, opts: RHash) -> Result<String, Error> {
+    fn delete_ip(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "ip_id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -589,7 +596,7 @@ impl AdminApiClient {
         runtime()
             .block_on(client.delete_ip(&id, &ip_id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn create_domain_mask(&self, opts: RHash) -> Result<(), Error> {
@@ -604,7 +611,7 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
-    fn delete_domain_mask(&self, opts: RHash) -> Result<String, Error> {
+    fn delete_domain_mask(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "domain_mask_id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -612,7 +619,7 @@ impl AdminApiClient {
         runtime()
             .block_on(client.delete_domain_mask(&id, &domain_mask_id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn create_jwt(&self, opts: RHash) -> Result<(), Error> {
@@ -639,7 +646,7 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
-    fn create_request_filter(&self, opts: RHash) -> Result<String, Error> {
+    fn create_request_filter(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "methods"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -649,7 +656,7 @@ impl AdminApiClient {
         runtime()
             .block_on(client.create_request_filter(&id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn update_request_filter(&self, opts: RHash) -> Result<(), Error> {
@@ -693,7 +700,7 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
-    fn create_or_update_ip_custom_header(&self, opts: RHash) -> Result<String, Error> {
+    fn create_or_update_ip_custom_header(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "header_name"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -703,30 +710,30 @@ impl AdminApiClient {
         runtime()
             .block_on(client.create_or_update_ip_custom_header(&id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn delete_ip_custom_header(&self, opts: RHash) -> Result<String, Error> {
+    fn delete_ip_custom_header(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.delete_ip_custom_header(&id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_method_rate_limits(&self, opts: RHash) -> Result<String, Error> {
+    fn get_method_rate_limits(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.get_method_rate_limits(&id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn create_method_rate_limit(&self, opts: RHash) -> Result<String, Error> {
+    fn create_method_rate_limit(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "interval", "methods", "rate"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -738,10 +745,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.create_method_rate_limit(&id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn update_method_rate_limit(&self, opts: RHash) -> Result<String, Error> {
+    fn update_method_rate_limit(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
             &["id", "method_rate_limit_id", "methods", "status", "rate"],
@@ -757,7 +764,7 @@ impl AdminApiClient {
         runtime()
             .block_on(client.update_method_rate_limit(&id, &method_rate_limit_id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn delete_method_rate_limit(&self, opts: RHash) -> Result<(), Error> {
@@ -786,7 +793,7 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
-    fn get_endpoint_metrics(&self, opts: RHash) -> Result<String, Error> {
+    fn get_endpoint_metrics(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "period", "metric"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -797,10 +804,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_endpoint_metrics(&id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_account_metrics(&self, opts: RHash) -> Result<String, Error> {
+    fn get_account_metrics(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["period", "metric", "percentile"])?;
         let client = self.inner.clone();
         let params = core::admin::GetAccountMetricsRequest {
@@ -811,42 +818,42 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_account_metrics(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn list_chains(&self) -> Result<String, Error> {
+    fn list_chains(&self) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         runtime()
             .block_on(client.list_chains())
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn list_invoices(&self) -> Result<String, Error> {
+    fn list_invoices(&self) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         runtime()
             .block_on(client.list_invoices())
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn list_payments(&self) -> Result<String, Error> {
+    fn list_payments(&self) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         runtime()
             .block_on(client.list_payments())
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn list_teams(&self) -> Result<String, Error> {
+    fn list_teams(&self) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         runtime()
             .block_on(client.list_teams())
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn create_team(&self, opts: RHash) -> Result<String, Error> {
+    fn create_team(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["name"])?;
         let client = self.inner.clone();
         let params = core::admin::CreateTeamRequest {
@@ -855,40 +862,40 @@ impl AdminApiClient {
         runtime()
             .block_on(client.create_team(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_team(&self, opts: RHash) -> Result<String, Error> {
+    fn get_team(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_i64(&opts, "id")?;
         runtime()
             .block_on(client.get_team(id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn delete_team(&self, opts: RHash) -> Result<String, Error> {
+    fn delete_team(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_i64(&opts, "id")?;
         runtime()
             .block_on(client.delete_team(id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn list_team_endpoints(&self, opts: RHash) -> Result<String, Error> {
+    fn list_team_endpoints(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_i64(&opts, "id")?;
         runtime()
             .block_on(client.list_team_endpoints(id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn update_team_endpoints(&self, opts: RHash) -> Result<String, Error> {
+    fn update_team_endpoints(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "endpoint_ids"])?;
         let client = self.inner.clone();
         let id = hash_require_i64(&opts, "id")?;
@@ -898,10 +905,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.update_team_endpoints(id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn invite_team_member(&self, opts: RHash) -> Result<String, Error> {
+    fn invite_team_member(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "email", "full_name", "role"])?;
         let client = self.inner.clone();
         let id = hash_require_i64(&opts, "id")?;
@@ -913,10 +920,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.invite_team_member(id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn remove_team_member(&self, opts: RHash) -> Result<String, Error> {
+    fn remove_team_member(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "user_id", "destroy_user"])?;
         let client = self.inner.clone();
         let id = hash_require_i64(&opts, "id")?;
@@ -927,10 +934,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.remove_team_member(id, user_id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn resend_team_invite(&self, opts: RHash) -> Result<String, Error> {
+    fn resend_team_invite(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "user_id"])?;
         let client = self.inner.clone();
         let id = hash_require_i64(&opts, "id")?;
@@ -938,10 +945,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.resend_team_invite(id, user_id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn bulk_update_endpoint_status(&self, opts: RHash) -> Result<String, Error> {
+    fn bulk_update_endpoint_status(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["ids", "status"])?;
         let client = self.inner.clone();
         let params = core::admin::BulkUpdateEndpointStatusRequest {
@@ -951,10 +958,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.bulk_update_endpoint_status(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn bulk_add_tag(&self, opts: RHash) -> Result<String, Error> {
+    fn bulk_add_tag(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["ids", "label"])?;
         let client = self.inner.clone();
         let params = core::admin::BulkAddTagRequest {
@@ -964,10 +971,10 @@ impl AdminApiClient {
         runtime()
             .block_on(client.bulk_add_tag(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn bulk_remove_tag(&self, opts: RHash) -> Result<String, Error> {
+    fn bulk_remove_tag(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["ids", "tag_id"])?;
         let client = self.inner.clone();
         let params = core::admin::BulkRemoveTagRequest {
@@ -977,18 +984,18 @@ impl AdminApiClient {
         runtime()
             .block_on(client.bulk_remove_tag(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn list_tags(&self) -> Result<String, Error> {
+    fn list_tags(&self) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         runtime()
             .block_on(client.list_tags())
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn rename_tag(&self, opts: RHash) -> Result<String, Error> {
+    fn rename_tag(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "label"])?;
         let client = self.inner.clone();
         let id = hash_require_i32(&opts, "id")?;
@@ -998,20 +1005,20 @@ impl AdminApiClient {
         runtime()
             .block_on(client.rename_tag(id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn delete_account_tag(&self, opts: RHash) -> Result<String, Error> {
+    fn delete_account_tag(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_i32(&opts, "id")?;
         runtime()
             .block_on(client.delete_account_tag(id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_usage_by_tag(&self, opts: RHash) -> Result<String, Error> {
+    fn get_usage_by_tag(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["start_time", "end_time"])?;
         let client = self.inner.clone();
         let params = core::admin::GetUsageRequest {
@@ -1021,17 +1028,17 @@ impl AdminApiClient {
         runtime()
             .block_on(client.get_usage_by_tag(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_endpoint_security(&self, opts: RHash) -> Result<String, Error> {
+    fn get_endpoint_security(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.get_endpoint_security(&id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 }
 
@@ -1227,7 +1234,7 @@ impl DestinationAttributes {
 
 // ── StreamsApiClient ────────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuicknodeSdk::Streams", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::Streams", free_immediately, size)]
 #[derive(Clone)]
 pub struct StreamsApiClient {
     inner: core::streams::StreamsApiClient,
@@ -1238,7 +1245,7 @@ impl StreamsApiClient {
     // create_stream accepts a Ruby Hash because the param count exceeds magnus arity limit of 15.
     // Required keys: name, network, dataset, region, start_range, end_range,
     // destination_attributes, plan, threshold_fetch_buffer
-    fn create_stream(&self, opts: RHash) -> Result<String, Error> {
+    fn create_stream(&self, opts: RHash) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         let name = hash_require_string(&opts, "name")?;
         let network = hash_require_string(&opts, "network")?;
@@ -1298,10 +1305,10 @@ impl StreamsApiClient {
         runtime()
             .block_on(client.create_stream(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn list_streams(&self, opts: RHash) -> Result<String, Error> {
+    fn list_streams(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
             &[
@@ -1323,7 +1330,7 @@ impl StreamsApiClient {
         runtime()
             .block_on(client.list_streams(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn delete_all_streams(&self) -> Result<(), Error> {
@@ -1333,18 +1340,18 @@ impl StreamsApiClient {
             .map_err(map_err)
     }
 
-    fn get_stream(&self, opts: RHash) -> Result<String, Error> {
+    fn get_stream(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.get_stream(&id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     // update_stream accepts id + a Ruby Hash (opts) because the param count exceeds 15.
-    fn update_stream(&self, opts: RHash) -> Result<String, Error> {
+    fn update_stream(&self, opts: RHash) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         let dataset =
@@ -1391,7 +1398,7 @@ impl StreamsApiClient {
         runtime()
             .block_on(client.update_stream(&id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn delete_stream(&self, opts: RHash) -> Result<(), Error> {
@@ -1421,7 +1428,7 @@ impl StreamsApiClient {
             .map_err(map_err)
     }
 
-    fn test_filter(&self, opts: RHash) -> Result<String, Error> {
+    fn test_filter(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
             &[
@@ -1450,23 +1457,23 @@ impl StreamsApiClient {
         runtime()
             .block_on(client.test_filter(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_enabled_count(&self, opts: RHash) -> Result<String, Error> {
+    fn get_enabled_count(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["stream_type"])?;
         let client = self.inner.clone();
         let stream_type = hash_get_string(&opts, "stream_type")?;
         runtime()
             .block_on(client.get_enabled_count(stream_type.as_deref()))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 }
 
 // ── WebhooksApiClient ───────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuicknodeSdk::Webhooks", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::Webhooks", free_immediately, size)]
 #[derive(Clone)]
 pub struct WebhooksApiClient {
     inner: core::webhooks::WebhooksApiClient,
@@ -1474,7 +1481,7 @@ pub struct WebhooksApiClient {
 
 #[allow(clippy::needless_pass_by_value)]
 impl WebhooksApiClient {
-    fn list_webhooks(&self, opts: RHash) -> Result<String, Error> {
+    fn list_webhooks(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["limit", "offset"])?;
         let client = self.inner.clone();
         let params = core::webhooks::GetWebhooksParams {
@@ -1484,7 +1491,7 @@ impl WebhooksApiClient {
         runtime()
             .block_on(client.list_webhooks(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn delete_all_webhooks(&self) -> Result<(), Error> {
@@ -1494,17 +1501,17 @@ impl WebhooksApiClient {
             .map_err(map_err)
     }
 
-    fn get_webhook(&self, opts: RHash) -> Result<String, Error> {
+    fn get_webhook(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         runtime()
             .block_on(client.get_webhook(&id))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn update_webhook(&self, opts: RHash) -> Result<String, Error> {
+    fn update_webhook(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
             &[
@@ -1531,7 +1538,7 @@ impl WebhooksApiClient {
         runtime()
             .block_on(client.update_webhook(&id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn delete_webhook(&self, opts: RHash) -> Result<(), Error> {
@@ -1566,15 +1573,15 @@ impl WebhooksApiClient {
             .map_err(map_err)
     }
 
-    fn get_enabled_count(&self) -> Result<String, Error> {
+    fn get_enabled_count(&self) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         runtime()
             .block_on(client.get_enabled_count())
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn create_webhook_from_template(&self, opts: RHash) -> Result<String, Error> {
+    fn create_webhook_from_template(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
             &[
@@ -1603,10 +1610,10 @@ impl WebhooksApiClient {
         runtime()
             .block_on(client.create_webhook_from_template(&params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn update_webhook_template(&self, opts: RHash) -> Result<String, Error> {
+    fn update_webhook_template(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
             &[
@@ -1630,13 +1637,13 @@ impl WebhooksApiClient {
         runtime()
             .block_on(client.update_webhook_template(&webhook_id, &params))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 }
 
 // ── KvStoreApiClient ────────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuicknodeSdk::KvStore", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::KvStore", free_immediately, size)]
 #[derive(Clone)]
 pub struct KvStoreApiClient {
     inner: core::kvstore::KvStoreApiClient,
@@ -1655,7 +1662,7 @@ impl KvStoreApiClient {
             .map_err(map_err)
     }
 
-    fn get_sets(&self, opts: RHash) -> Result<String, Error> {
+    fn get_sets(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["limit", "cursor"])?;
         let client = self.inner.clone();
         runtime()
@@ -1664,17 +1671,17 @@ impl KvStoreApiClient {
                 cursor: hash_get_string(&opts, "cursor")?,
             }))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_set(&self, opts: RHash) -> Result<String, Error> {
+    fn get_set(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["key"])?;
         let client = self.inner.clone();
         let key = hash_require_string(&opts, "key")?;
         runtime()
             .block_on(client.get_set(&key))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn bulk_sets(&self, opts: RHash) -> Result<(), Error> {
@@ -1706,7 +1713,7 @@ impl KvStoreApiClient {
             .map_err(map_err)
     }
 
-    fn get_lists(&self, opts: RHash) -> Result<String, Error> {
+    fn get_lists(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["limit", "cursor"])?;
         let client = self.inner.clone();
         runtime()
@@ -1715,10 +1722,10 @@ impl KvStoreApiClient {
                 cursor: hash_get_string(&opts, "cursor")?,
             }))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
-    fn get_list(&self, opts: RHash) -> Result<String, Error> {
+    fn get_list(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["key", "limit", "cursor"])?;
         let client = self.inner.clone();
         let key = hash_require_string(&opts, "key")?;
@@ -1731,7 +1738,7 @@ impl KvStoreApiClient {
                 },
             ))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn update_list(&self, opts: RHash) -> Result<(), Error> {
@@ -1763,7 +1770,7 @@ impl KvStoreApiClient {
             .map_err(map_err)
     }
 
-    fn list_contains_item(&self, opts: RHash) -> Result<String, Error> {
+    fn list_contains_item(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["key", "item"])?;
         let client = self.inner.clone();
         let key = hash_require_string(&opts, "key")?;
@@ -1771,7 +1778,7 @@ impl KvStoreApiClient {
         runtime()
             .block_on(client.list_contains_item(&key, &item))
             .map_err(map_err)
-            .and_then(to_json)
+            .and_then(to_ruby)
     }
 
     fn delete_list_item(&self, opts: RHash) -> Result<(), Error> {
@@ -1804,8 +1811,10 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     // can use them from the first call onward.
     errors::init(ruby, &module)?;
 
+    let native = module.define_module("Native")?;
+
     // ── SDK root ──────────────────────────────────────────────
-    let sdk = module.define_class("SDK", ruby.class_object())?;
+    let sdk = native.define_class("SDK", ruby.class_object())?;
     sdk.define_singleton_method("from_env", function!(QuicknodeSdk::from_env, 0))?;
     sdk.define_method("admin", method!(QuicknodeSdk::admin, 0))?;
     sdk.define_method("streams", method!(QuicknodeSdk::streams, 0))?;
@@ -1813,7 +1822,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     sdk.define_method("kvstore", method!(QuicknodeSdk::kvstore, 0))?;
 
     // ── Admin ─────────────────────────────────────────────────
-    let admin = module.define_class("Admin", ruby.class_object())?;
+    let admin = native.define_class("Admin", ruby.class_object())?;
     admin.define_method("get_endpoints", method!(AdminApiClient::get_endpoints, 1))?;
     admin.define_method(
         "create_endpoint",
@@ -2011,7 +2020,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     dest_attrs.define_singleton_method("redis", function!(DestinationAttributes::redis, 1))?;
 
     // ── Streams ───────────────────────────────────────────────
-    let streams = module.define_class("Streams", ruby.class_object())?;
+    let streams = native.define_class("Streams", ruby.class_object())?;
     streams.define_method("create_stream", method!(StreamsApiClient::create_stream, 1))?;
     streams.define_method("list_streams", method!(StreamsApiClient::list_streams, 1))?;
     streams.define_method(
@@ -2033,7 +2042,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
 
     // ── Webhooks ──────────────────────────────────────────────
-    let webhooks = module.define_class("Webhooks", ruby.class_object())?;
+    let webhooks = native.define_class("Webhooks", ruby.class_object())?;
     webhooks.define_method(
         "list_webhooks",
         method!(WebhooksApiClient::list_webhooks, 1),
@@ -2073,7 +2082,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
 
     // ── KvStore ───────────────────────────────────────────────
-    let kvstore = module.define_class("KvStore", ruby.class_object())?;
+    let kvstore = native.define_class("KvStore", ruby.class_object())?;
     kvstore.define_method("create_set", method!(KvStoreApiClient::create_set, 1))?;
     kvstore.define_method("get_sets", method!(KvStoreApiClient::get_sets, 1))?;
     kvstore.define_method("get_set", method!(KvStoreApiClient::get_set, 1))?;
