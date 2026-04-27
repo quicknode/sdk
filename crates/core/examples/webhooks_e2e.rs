@@ -20,7 +20,11 @@ async fn main() {
         .list_webhooks(&GetWebhooksParams::default())
         .await
         .expect("list_webhooks failed");
-    println!("webhooks before: {}", before.data.len());
+    println!(
+        "webhooks before: {} (total={})",
+        before.data.len(),
+        before.page_info.total
+    );
 
     let count = qn
         .webhooks
@@ -29,10 +33,9 @@ async fn main() {
         .expect("get_enabled_count failed");
     println!("enabled count: {}", count.total);
 
-    let template_args = TemplateArgs::evm_wallet_filter(&EvmWalletFilterTemplate {
+    let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
         wallets: vec!["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".to_string()],
-    })
-    .expect("template args are valid");
+    });
 
     let create_params = CreateWebhookFromTemplateParams {
         name: "E2E Test Webhook".to_string(),
@@ -100,5 +103,9 @@ async fn main() {
         .list_webhooks(&GetWebhooksParams::default())
         .await
         .expect("list_webhooks failed");
-    println!("webhooks after: {}", after.data.len());
+    println!(
+        "webhooks after: {} (total={})",
+        after.data.len(),
+        after.page_info.total
+    );
 }

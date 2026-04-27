@@ -9,6 +9,7 @@ __all__ = [
     "AdminApiClient",
     "AdminConfig",
     "AzureAttributes",
+    "BitcoinWalletFilterArgs",
     "BitcoinWalletFilterTemplate",
     "BulkAddTagData",
     "BulkAddTagRequest",
@@ -63,8 +64,11 @@ __all__ = [
     "EndpointTag",
     "EndpointToken",
     "EndpointUsage",
+    "EvmAbiFilterArgs",
     "EvmAbiFilterTemplate",
+    "EvmContractEventsArgs",
     "EvmContractEventsTemplate",
+    "EvmWalletFilterArgs",
     "EvmWalletFilterTemplate",
     "GetAccountMetricsRequest",
     "GetAccountMetricsResponse",
@@ -94,6 +98,7 @@ __all__ = [
     "GetUsageResponse",
     "GetWebhooksParams",
     "HttpConfig",
+    "HyperliquidWalletEventsFilterArgs",
     "HyperliquidWalletEventsFilterTemplate",
     "InviteTeamMemberRequest",
     "InviteTeamMemberResponse",
@@ -140,7 +145,9 @@ __all__ = [
     "ShowEndpointResponse",
     "SingleEndpoint",
     "SnowflakeAttributes",
+    "SolanaWalletFilterArgs",
     "SolanaWalletFilterTemplate",
+    "StellarWalletTransactionsFilterArgs",
     "StellarWalletTransactionsFilterTemplate",
     "Stream",
     "StreamAzureDestination",
@@ -161,7 +168,6 @@ __all__ = [
     "TeamMessageData",
     "TeamSummary",
     "TeamUser",
-    "TemplateArgs",
     "TestFilterResponse",
     "UpdateEndpointRequest",
     "UpdateEndpointStatusRequest",
@@ -176,7 +182,6 @@ __all__ = [
     "UpdateTeamEndpointsRequest",
     "UpdateTeamEndpointsResponse",
     "UpdateWebhookParams",
-    "UpdateWebhookTemplateParams",
     "UsageByChainData",
     "UsageByEndpointData",
     "UsageByMethodData",
@@ -186,8 +191,10 @@ __all__ = [
     "WebhookAttributes",
     "WebhookDestinationAttributes",
     "WebhookEnabledCountResponse",
+    "WebhookPageInfo",
     "WebhooksApiClient",
     "WebhooksConfig",
+    "XrplWalletFilterArgs",
     "XrplWalletFilterTemplate",
 ]
 
@@ -679,6 +686,12 @@ class AzureAttributes:
         Optional name prefix prepended to each written blob.
         """
     def __new__(cls, storage_account: builtins.str, sas_token: builtins.str, container: builtins.str, compression: builtins.str, file_type: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, blob_prefix: typing.Optional[builtins.str] = None) -> AzureAttributes: ...
+
+@typing.final
+class BitcoinWalletFilterArgs:
+    @property
+    def attributes(self) -> BitcoinWalletFilterTemplate: ...
+    def __new__(cls, attrs: BitcoinWalletFilterTemplate) -> BitcoinWalletFilterArgs: ...
 
 @typing.final
 class BitcoinWalletFilterTemplate:
@@ -2589,6 +2602,12 @@ class EndpointUsage:
         """
 
 @typing.final
+class EvmAbiFilterArgs:
+    @property
+    def attributes(self) -> EvmAbiFilterTemplate: ...
+    def __new__(cls, attrs: EvmAbiFilterTemplate) -> EvmAbiFilterArgs: ...
+
+@typing.final
 class EvmAbiFilterTemplate:
     r"""
     Template arguments for an EVM ABI filter: decodes and filters events for a
@@ -2617,6 +2636,12 @@ class EvmAbiFilterTemplate:
     def __new__(cls, abi: builtins.str, contracts: typing.Sequence[builtins.str]) -> EvmAbiFilterTemplate: ...
 
 @typing.final
+class EvmContractEventsArgs:
+    @property
+    def attributes(self) -> EvmContractEventsTemplate: ...
+    def __new__(cls, attrs: EvmContractEventsTemplate) -> EvmContractEventsArgs: ...
+
+@typing.final
 class EvmContractEventsTemplate:
     r"""
     Template arguments for filtering EVM contract events, optionally scoped to
@@ -2643,6 +2668,12 @@ class EvmContractEventsTemplate:
         Optional list of event topic hashes to restrict the filter to specific events.
         """
     def __new__(cls, contracts: typing.Sequence[builtins.str], event_hashes: typing.Optional[typing.Sequence[builtins.str]] = None) -> EvmContractEventsTemplate: ...
+
+@typing.final
+class EvmWalletFilterArgs:
+    @property
+    def attributes(self) -> EvmWalletFilterTemplate: ...
+    def __new__(cls, attrs: EvmWalletFilterTemplate) -> EvmWalletFilterArgs: ...
 
 @typing.final
 class EvmWalletFilterTemplate:
@@ -3485,6 +3516,12 @@ class HttpConfig:
     def __new__(cls, timeout_secs: typing.Optional[builtins.int] = None, pool_max_idle_per_host: typing.Optional[builtins.int] = None) -> HttpConfig: ...
 
 @typing.final
+class HyperliquidWalletEventsFilterArgs:
+    @property
+    def attributes(self) -> HyperliquidWalletEventsFilterTemplate: ...
+    def __new__(cls, attrs: HyperliquidWalletEventsFilterTemplate) -> HyperliquidWalletEventsFilterArgs: ...
+
+@typing.final
 class HyperliquidWalletEventsFilterTemplate:
     r"""
     Template arguments for a Hyperliquid wallet-events filter.
@@ -4185,6 +4222,16 @@ class ListWebhooksResponse:
     def data(self, value: builtins.list[Webhook]) -> None:
         r"""
         Webhooks on the current page.
+        """
+    @property
+    def page_info(self) -> WebhookPageInfo:
+        r"""
+        Pagination metadata for the response.
+        """
+    @page_info.setter
+    def page_info(self, value: WebhookPageInfo) -> None:
+        r"""
+        Pagination metadata for the response.
         """
 
 @typing.final
@@ -5525,6 +5572,12 @@ class SnowflakeAttributes:
     def __new__(cls, account: builtins.str, host: builtins.str, port: builtins.int, protocol: builtins.str, database: builtins.str, schema: builtins.str, warehouse: builtins.str, username: builtins.str, password: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, table_name: typing.Optional[builtins.str] = None) -> SnowflakeAttributes: ...
 
 @typing.final
+class SolanaWalletFilterArgs:
+    @property
+    def attributes(self) -> SolanaWalletFilterTemplate: ...
+    def __new__(cls, attrs: SolanaWalletFilterTemplate) -> SolanaWalletFilterArgs: ...
+
+@typing.final
 class SolanaWalletFilterTemplate:
     r"""
     Template arguments for a Solana wallet filter: matches activity for a list
@@ -5541,6 +5594,12 @@ class SolanaWalletFilterTemplate:
         Solana account addresses to match against.
         """
     def __new__(cls, accounts: typing.Sequence[builtins.str]) -> SolanaWalletFilterTemplate: ...
+
+@typing.final
+class StellarWalletTransactionsFilterArgs:
+    @property
+    def attributes(self) -> StellarWalletTransactionsFilterTemplate: ...
+    def __new__(cls, attrs: StellarWalletTransactionsFilterTemplate) -> StellarWalletTransactionsFilterArgs: ...
 
 @typing.final
 class StellarWalletTransactionsFilterTemplate:
@@ -6064,31 +6123,6 @@ class TeamUser:
         """
 
 @typing.final
-class TemplateArgs:
-    r"""
-    Template identifier paired with its arguments, consumed by
-    `create_webhook_from_template` and `update_webhook_template`. Construct via
-    the typed static factory methods (one per template); do not set fields
-    directly.
-    """
-    @staticmethod
-    def evm_wallet_filter(attrs: EvmWalletFilterTemplate) -> TemplateArgs: ...
-    @staticmethod
-    def evm_contract_events(attrs: EvmContractEventsTemplate) -> TemplateArgs: ...
-    @staticmethod
-    def evm_abi_filter(attrs: EvmAbiFilterTemplate) -> TemplateArgs: ...
-    @staticmethod
-    def solana_wallet_filter(attrs: SolanaWalletFilterTemplate) -> TemplateArgs: ...
-    @staticmethod
-    def bitcoin_wallet_filter(attrs: BitcoinWalletFilterTemplate) -> TemplateArgs: ...
-    @staticmethod
-    def xrpl_wallet_filter(attrs: XrplWalletFilterTemplate) -> TemplateArgs: ...
-    @staticmethod
-    def hyperliquid_wallet_events_filter(attrs: HyperliquidWalletEventsFilterTemplate) -> TemplateArgs: ...
-    @staticmethod
-    def stellar_wallet_transactions_filter(attrs: StellarWalletTransactionsFilterTemplate) -> TemplateArgs: ...
-
-@typing.final
 class TestFilterResponse:
     r"""
     Result of a `test_filter` call.
@@ -6403,53 +6437,6 @@ class UpdateWebhookParams:
         New destination configuration.
         """
     def __new__(cls, name: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, destination_attributes: typing.Optional[WebhookDestinationAttributes] = None) -> UpdateWebhookParams: ...
-
-@typing.final
-class UpdateWebhookTemplateParams:
-    r"""
-    Parameters for `update_webhook_template`.
-    """
-    @property
-    def name(self) -> typing.Optional[builtins.str]:
-        r"""
-        New human-readable name.
-        """
-    @name.setter
-    def name(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        New human-readable name.
-        """
-    @property
-    def notification_email(self) -> typing.Optional[builtins.str]:
-        r"""
-        New notification email.
-        """
-    @notification_email.setter
-    def notification_email(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        New notification email.
-        """
-    @property
-    def destination_attributes(self) -> typing.Optional[WebhookDestinationAttributes]:
-        r"""
-        New destination configuration.
-        """
-    @destination_attributes.setter
-    def destination_attributes(self, value: typing.Optional[WebhookDestinationAttributes]) -> None:
-        r"""
-        New destination configuration.
-        """
-    @property
-    def template_args(self) -> TemplateArgs:
-        r"""
-        New template identifier and arguments.
-        """
-    @template_args.setter
-    def template_args(self, value: TemplateArgs) -> None:
-        r"""
-        New template identifier and arguments.
-        """
-    def __new__(cls, template_args: TemplateArgs, name: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, destination_attributes: typing.Optional[WebhookDestinationAttributes] = None) -> UpdateWebhookTemplateParams: ...
 
 @typing.final
 class UsageByChainData:
@@ -6878,6 +6865,42 @@ class WebhookEnabledCountResponse:
         """
 
 @typing.final
+class WebhookPageInfo:
+    r"""
+    Pagination metadata returned alongside a paginated webhooks list.
+    """
+    @property
+    def limit(self) -> builtins.int:
+        r"""
+        Page size used for this response.
+        """
+    @limit.setter
+    def limit(self, value: builtins.int) -> None:
+        r"""
+        Page size used for this response.
+        """
+    @property
+    def offset(self) -> builtins.int:
+        r"""
+        Starting index of this page within the full result set.
+        """
+    @offset.setter
+    def offset(self, value: builtins.int) -> None:
+        r"""
+        Starting index of this page within the full result set.
+        """
+    @property
+    def total(self) -> builtins.int:
+        r"""
+        Total number of webhooks matching the query across all pages.
+        """
+    @total.setter
+    def total(self, value: builtins.int) -> None:
+        r"""
+        Total number of webhooks matching the query across all pages.
+        """
+
+@typing.final
 class WebhooksApiClient:
     def list_webhooks(self, limit: typing.Optional[builtins.int] = None, offset: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, ListWebhooksResponse]:
         r"""
@@ -6929,7 +6952,7 @@ class WebhooksApiClient:
         Returns the total number of enabled webhooks currently configured on
         the account.
         """
-    def create_webhook_from_template(self, name: builtins.str, network: builtins.str, destination_attributes: WebhookDestinationAttributes, template_args: TemplateArgs, notification_email: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, Webhook]:
+    def create_webhook_from_template(self, name: builtins.str, network: builtins.str, destination_attributes: WebhookDestinationAttributes, template_args: typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs], notification_email: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, Webhook]:
         r"""
         Creates a new webhook from a predefined filter template. Requires a
         descriptive name, a target blockchain network, and destination
@@ -6939,7 +6962,7 @@ class WebhooksApiClient:
         filters. An optional `notification_email` receives alerts if the
         webhook terminates.
         """
-    def update_webhook_template(self, webhook_id: builtins.str, template_args: TemplateArgs, name: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, destination_attributes: typing.Optional[WebhookDestinationAttributes] = None) -> typing.Coroutine[typing.Any, typing.Any, Webhook]:
+    def update_webhook_template(self, webhook_id: builtins.str, template_args: typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs], name: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, destination_attributes: typing.Optional[WebhookDestinationAttributes] = None) -> typing.Coroutine[typing.Any, typing.Any, Webhook]:
         r"""
         Updates an existing template-backed webhook, modifying its template
         arguments and optionally its name, notification email, and destination
@@ -6956,6 +6979,12 @@ class WebhooksConfig:
     @base_url.setter
     def base_url(self, value: typing.Optional[builtins.str]) -> None: ...
     def __new__(cls, base_url: typing.Optional[builtins.str] = None) -> WebhooksConfig: ...
+
+@typing.final
+class XrplWalletFilterArgs:
+    @property
+    def attributes(self) -> XrplWalletFilterTemplate: ...
+    def __new__(cls, attrs: XrplWalletFilterTemplate) -> XrplWalletFilterArgs: ...
 
 @typing.final
 class XrplWalletFilterTemplate:

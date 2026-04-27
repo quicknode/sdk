@@ -10,7 +10,7 @@ async function main() {
   const qn = QuicknodeSdk.fromEnv();
 
   const before = await qn.webhooks.listWebhooks();
-  console.log(`webhooks before: ${before.data.length}`);
+  console.log(`webhooks before: ${before.data.length} (total=${before.pageInfo.total})`);
 
   const count = await qn.webhooks.getEnabledCount();
   console.log(`enabled count: ${count.total}`);
@@ -33,7 +33,9 @@ async function main() {
   const fetched = await qn.webhooks.getWebhook(id);
   console.log(`fetched: ${fetched.id} | ${fetched.name}`);
 
-  const updateParams: UpdateWebhookParams = { name: "E2E Test Webhook Updated" };
+  const updateParams: UpdateWebhookParams = {
+    name: "E2E Test Webhook Updated",
+  };
   const updated = await qn.webhooks.updateWebhook(id, updateParams);
   console.log(`updated name: ${updated.name}`);
 
@@ -48,7 +50,7 @@ async function main() {
   await sleep(1000);
 
   const after = await qn.webhooks.listWebhooks();
-  console.log(`webhooks after: ${after.data.length}`);
+  console.log(`webhooks after: ${after.data.length} (total=${after.pageInfo.total})`);
 }
 
 main();

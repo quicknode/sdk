@@ -1,9 +1,9 @@
 import asyncio
 
 from sdk import (
+    EvmWalletFilterArgs,
     EvmWalletFilterTemplate,
     QuicknodeSdk,
-    TemplateArgs,
     WebhookDestinationAttributes,
 )
 
@@ -12,7 +12,7 @@ async def main():
     qn = QuicknodeSdk.from_env()
 
     before = await qn.webhooks.list_webhooks()
-    print(f"webhooks before: {len(before.data)}")
+    print(f"webhooks before: {len(before.data)} (total={before.page_info.total})")
 
     count = await qn.webhooks.get_enabled_count()
     print(f"enabled count: {count.total}")
@@ -23,7 +23,7 @@ async def main():
         destination_attributes=WebhookDestinationAttributes(
             url="https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
         ),
-        template_args=TemplateArgs.evm_wallet_filter(
+        template_args=EvmWalletFilterArgs(
             EvmWalletFilterTemplate(wallets=["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"])
         ),
     )
@@ -46,7 +46,7 @@ async def main():
     print(f"deleted: {webhook_id}")
 
     after = await qn.webhooks.list_webhooks()
-    print(f"webhooks after: {len(after.data)}")
+    print(f"webhooks after: {len(after.data)} (total={after.page_info.total})")
 
 
 asyncio.run(main())

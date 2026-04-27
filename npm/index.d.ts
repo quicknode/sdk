@@ -1638,18 +1638,6 @@ export interface StellarWalletTransactionsFilterTemplate {
   /** Stellar wallet addresses to match against. */
   wallets: Array<string>
 }
-/**
- * Template identifier paired with its arguments, consumed by
- * `create_webhook_from_template` and `update_webhook_template`. Construct via
- * the typed static factory methods (one per template); do not set fields
- * directly.
- */
-export interface TemplateArgs {
-  /** Which filter template these arguments correspond to. */
-  templateId: WebhookTemplateId
-  /** Template arguments, pre-serialized as a JSON string. */
-  value: string
-}
 /** Destination configuration for a webhook. */
 export interface WebhookDestinationAttributes {
   /** Target URL that receives webhook payloads. */
@@ -1683,30 +1671,6 @@ export interface ActivateWebhookParams {
   /** Position to begin (or resume) delivery from. */
   startFrom: WebhookStartFrom
 }
-/** Parameters for `create_webhook_from_template`. */
-export interface CreateWebhookFromTemplateParams {
-  /** Human-readable label for the webhook. */
-  name: string
-  /** Blockchain network to watch (e.g. `ethereum-mainnet`). */
-  network: string
-  /** Optional email that receives alerts if the webhook terminates. */
-  notificationEmail?: string
-  /** Destination configuration for delivered payloads. */
-  destinationAttributes: WebhookDestinationAttributes
-  /** Filter template identifier and its arguments. */
-  templateArgs: TemplateArgs
-}
-/** Parameters for `update_webhook_template`. */
-export interface UpdateWebhookTemplateParams {
-  /** New human-readable name. */
-  name?: string
-  /** New notification email. */
-  notificationEmail?: string
-  /** New destination configuration. */
-  destinationAttributes?: WebhookDestinationAttributes
-  /** New template identifier and arguments. */
-  templateArgs: TemplateArgs
-}
 /** A webhook's full configuration and current state. */
 export interface Webhook {
   /** Unique webhook identifier. */
@@ -1728,10 +1692,21 @@ export interface Webhook {
   /** Destination-specific configuration as a JSON string. */
   destinationAttributes?: string
 }
+/** Pagination metadata returned alongside a paginated webhooks list. */
+export interface WebhookPageInfo {
+  /** Page size used for this response. */
+  limit: number
+  /** Starting index of this page within the full result set. */
+  offset: number
+  /** Total number of webhooks matching the query across all pages. */
+  total: number
+}
 /** Response from `list_webhooks`. */
 export interface ListWebhooksResponse {
   /** Webhooks on the current page. */
   data: Array<Webhook>
+  /** Pagination metadata for the response. */
+  pageInfo: WebhookPageInfo
 }
 /** Response from `get_enabled_count` for webhooks. */
 export interface WebhookEnabledCountResponse {
@@ -1829,6 +1804,19 @@ export interface StreamNode {
 export interface ListStreamsResponseNode {
   data: Array<StreamNode>
   pageInfo: PageInfo
+}
+export interface CreateWebhookFromTemplateParamsNode {
+  name: string
+  network: string
+  notificationEmail?: string
+  destinationAttributes: WebhookDestinationAttributes
+  templateArgs: any
+}
+export interface UpdateWebhookTemplateParamsNode {
+  name?: string
+  notificationEmail?: string
+  destinationAttributes?: WebhookDestinationAttributes
+  templateArgs: any
 }
 export declare class QuicknodeSdk {
   /** Creates a new SDK instance from an explicit configuration. */
@@ -2250,7 +2238,7 @@ export declare class WebhooksApiClient {
    * filters. An optional `notification_email` receives alerts if the
    * webhook terminates.
    */
-  createWebhookFromTemplate(params: CreateWebhookFromTemplateParams): Promise<Webhook>
+  createWebhookFromTemplate(params: CreateWebhookFromTemplateParamsNode): Promise<Webhook>
   /**
    * Updates an existing template-backed webhook, modifying its template
    * arguments and optionally its name, notification email, and destination
@@ -2259,7 +2247,7 @@ export declare class WebhooksApiClient {
    * generated automatically if not provided. Templates cover EVM chains,
    * Solana, Bitcoin, XRPL, Hyperliquid, and Stellar.
    */
-  updateWebhookTemplate(webhookId: string, params: UpdateWebhookTemplateParams): Promise<Webhook>
+  updateWebhookTemplate(webhookId: string, params: UpdateWebhookTemplateParamsNode): Promise<Webhook>
 }
 export declare class KvStoreApiClient {
   /** Creates a new set, storing a single string value under the given key. */

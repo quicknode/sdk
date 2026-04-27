@@ -3,12 +3,10 @@ use bon::Builder;
 #[cfg(feature = "node")]
 use napi_derive::napi;
 #[cfg(feature = "python")]
-use pyo3::{exceptions::PyValueError, pyclass, pymethods, PyResult};
+use pyo3::{pyclass, pymethods};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use serde::{Deserialize, Deserializer, Serialize};
-
-use crate::errors::SdkError;
 
 fn deserialize_as_optional_json_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
@@ -256,165 +254,51 @@ impl StellarWalletTransactionsFilterTemplate {
 
 // ── Template Args ──────────────────────────────────────────────────────────
 
-// The API expects a `template_id` string and a `template_args` object whose
-// shape depends on which template is selected. The natural Rust model would be
-// an enum with per-variant data, but napi-rs and PyO3 cannot represent Rust
-// discriminated unions at the FFI boundary — they require flat structs.
-// Instead, `TemplateArgs` is a flat wrapper struct that bundles the template
-// variant with its pre-serialized JSON value. Callers construct it via typed
-// static factory methods (one per template), so they never interact with raw
-// JSON.
-
-/// Template identifier paired with its arguments, consumed by
-/// `create_webhook_from_template` and `update_webhook_template`. Construct via
-/// the typed static factory methods (one per template); do not set fields
-/// directly.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass)]
-#[cfg_attr(feature = "node", napi(object))]
+/// Template identifier paired with its arguments. Exactly one variant selects
+/// which filter is applied. Consumed by `create_webhook_from_template` and
+/// `update_webhook_template`.
+// Pure-Rust discriminated union; no #[pyclass] / #[napi(object)] because PyO3
+// and napi-rs cannot represent enum-with-data. Each language binding crate
+// wraps this type for its own FFI surface.
+// The serde tag/content pair matches the API wire format when flattened into
+// a request struct.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TemplateArgs {
-    /// Which filter template these arguments correspond to.
-    // pub fields required for napi(object) to expose them in TypeScript.
-    // Callers should use the typed factory methods rather than setting fields
-    // directly — the value field is a pre-serialized JSON string.
-    pub template_id: WebhookTemplateId,
-    /// Template arguments, pre-serialized as a JSON string.
-    // Stored as a JSON string so napi(object) can represent it (serde_json::Value
-    // is not supported by napi-rs). Parsed back to Value in the client.
-    pub value: String,
+#[serde(tag = "templateId", content = "templateArgs", rename_all = "camelCase")]
+pub enum TemplateArgs {
+    /// EVM wallet filter: matches activity for a list of wallet addresses.
+    EvmWalletFilter(EvmWalletFilterTemplate),
+    /// EVM contract events filter, optionally scoped to specific event topic hashes.
+    EvmContractEvents(EvmContractEventsTemplate),
+    /// EVM ABI filter: decodes and filters events using a provided ABI.
+    EvmAbiFilter(EvmAbiFilterTemplate),
+    /// Solana wallet filter.
+    SolanaWalletFilter(SolanaWalletFilterTemplate),
+    /// Bitcoin wallet filter.
+    BitcoinWalletFilter(BitcoinWalletFilterTemplate),
+    /// XRPL wallet filter.
+    XrplWalletFilter(XrplWalletFilterTemplate),
+    /// Hyperliquid wallet-events filter.
+    HyperliquidWalletEventsFilter(HyperliquidWalletEventsFilterTemplate),
+    /// Stellar wallet-transactions filter (source-account match).
+    StellarWalletTransactionsSourceAccountFilter(StellarWalletTransactionsFilterTemplate),
 }
 
-// napi(object) on params structs requires all fields to implement Default so
-// napi can handle cases where the field is absent in JS. In practice,
-// template_args is always required — the default is never used.
-impl Default for TemplateArgs {
-    fn default() -> Self {
-        Self {
-            template_id: WebhookTemplateId::EvmWalletFilter,
-            value: "null".to_string(),
+impl TemplateArgs {
+    pub fn tag(&self) -> WebhookTemplateId {
+        match self {
+            Self::EvmWalletFilter(_) => WebhookTemplateId::EvmWalletFilter,
+            Self::EvmContractEvents(_) => WebhookTemplateId::EvmContractEvents,
+            Self::EvmAbiFilter(_) => WebhookTemplateId::EvmAbiFilter,
+            Self::SolanaWalletFilter(_) => WebhookTemplateId::SolanaWalletFilter,
+            Self::BitcoinWalletFilter(_) => WebhookTemplateId::BitcoinWalletFilter,
+            Self::XrplWalletFilter(_) => WebhookTemplateId::XrplWalletFilter,
+            Self::HyperliquidWalletEventsFilter(_) => {
+                WebhookTemplateId::HyperliquidWalletEventsFilter
+            }
+            Self::StellarWalletTransactionsSourceAccountFilter(_) => {
+                WebhookTemplateId::StellarWalletTransactionsSourceAccountFilter
+            }
         }
-    }
-}
-
-impl TemplateArgs {
-    pub fn evm_wallet_filter(attrs: &EvmWalletFilterTemplate) -> Result<Self, SdkError> {
-        Ok(Self {
-            template_id: WebhookTemplateId::EvmWalletFilter,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn evm_contract_events(attrs: &EvmContractEventsTemplate) -> Result<Self, SdkError> {
-        Ok(Self {
-            template_id: WebhookTemplateId::EvmContractEvents,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn evm_abi_filter(attrs: &EvmAbiFilterTemplate) -> Result<Self, SdkError> {
-        Ok(Self {
-            template_id: WebhookTemplateId::EvmAbiFilter,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn solana_wallet_filter(attrs: &SolanaWalletFilterTemplate) -> Result<Self, SdkError> {
-        Ok(Self {
-            template_id: WebhookTemplateId::SolanaWalletFilter,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn bitcoin_wallet_filter(attrs: &BitcoinWalletFilterTemplate) -> Result<Self, SdkError> {
-        Ok(Self {
-            template_id: WebhookTemplateId::BitcoinWalletFilter,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn xrpl_wallet_filter(attrs: &XrplWalletFilterTemplate) -> Result<Self, SdkError> {
-        Ok(Self {
-            template_id: WebhookTemplateId::XrplWalletFilter,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn hyperliquid_wallet_events_filter(
-        attrs: &HyperliquidWalletEventsFilterTemplate,
-    ) -> Result<Self, SdkError> {
-        Ok(Self {
-            template_id: WebhookTemplateId::HyperliquidWalletEventsFilter,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-
-    pub fn stellar_wallet_transactions_filter(
-        attrs: &StellarWalletTransactionsFilterTemplate,
-    ) -> Result<Self, SdkError> {
-        Ok(Self {
-            template_id: WebhookTemplateId::StellarWalletTransactionsSourceAccountFilter,
-            value: serde_json::to_string(attrs).map_err(|e| SdkError::Config(e.to_string()))?,
-        })
-    }
-}
-
-#[cfg(feature = "python")]
-#[gen_stub_pymethods]
-#[pymethods]
-impl TemplateArgs {
-    #[staticmethod]
-    #[pyo3(name = "evm_wallet_filter")]
-    fn py_evm_wallet_filter(attrs: &EvmWalletFilterTemplate) -> PyResult<Self> {
-        Self::evm_wallet_filter(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "evm_contract_events")]
-    fn py_evm_contract_events(attrs: &EvmContractEventsTemplate) -> PyResult<Self> {
-        Self::evm_contract_events(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "evm_abi_filter")]
-    fn py_evm_abi_filter(attrs: &EvmAbiFilterTemplate) -> PyResult<Self> {
-        Self::evm_abi_filter(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "solana_wallet_filter")]
-    fn py_solana_wallet_filter(attrs: &SolanaWalletFilterTemplate) -> PyResult<Self> {
-        Self::solana_wallet_filter(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "bitcoin_wallet_filter")]
-    fn py_bitcoin_wallet_filter(attrs: &BitcoinWalletFilterTemplate) -> PyResult<Self> {
-        Self::bitcoin_wallet_filter(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "xrpl_wallet_filter")]
-    fn py_xrpl_wallet_filter(attrs: &XrplWalletFilterTemplate) -> PyResult<Self> {
-        Self::xrpl_wallet_filter(attrs).map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "hyperliquid_wallet_events_filter")]
-    fn py_hyperliquid_wallet_events_filter(
-        attrs: &HyperliquidWalletEventsFilterTemplate,
-    ) -> PyResult<Self> {
-        Self::hyperliquid_wallet_events_filter(attrs)
-            .map_err(|e| PyValueError::new_err(e.to_string()))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "stellar_wallet_transactions_filter")]
-    fn py_stellar_wallet_transactions_filter(
-        attrs: &StellarWalletTransactionsFilterTemplate,
-    ) -> PyResult<Self> {
-        Self::stellar_wallet_transactions_filter(attrs)
-            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 }
 
@@ -529,9 +413,7 @@ pub struct ActivateWebhookParams {
 
 /// Parameters for `create_webhook_from_template`.
 #[cfg_attr(feature = "rust", derive(Builder))]
-#[cfg_attr(feature = "node", napi(object))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateWebhookFromTemplateParams {
     /// Human-readable label for the webhook.
     pub name: String,
@@ -543,18 +425,13 @@ pub struct CreateWebhookFromTemplateParams {
     /// Destination configuration for delivered payloads.
     pub destination_attributes: WebhookDestinationAttributes,
     /// Filter template identifier and its arguments.
-    // template_args is skipped here and inserted manually into the request body
-    // in the client, so serde doesn't try to serialize it as a field of this struct.
-    #[serde(skip)]
+    // Flattening the enum's tag/content produces { templateId, templateArgs }.
+    #[serde(flatten)]
     pub template_args: TemplateArgs,
 }
 
 /// Parameters for `update_webhook_template`.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateWebhookTemplateParams {
     /// New human-readable name.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -566,31 +443,9 @@ pub struct UpdateWebhookTemplateParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub destination_attributes: Option<WebhookDestinationAttributes>,
     /// New template identifier and arguments.
-    // template_id and template_args are skipped here and inserted manually into
-    // the request body in the client.
-    #[serde(skip)]
+    // Flattening the enum's tag/content produces { templateId, templateArgs }.
+    #[serde(flatten)]
     pub template_args: TemplateArgs,
-}
-
-#[cfg(feature = "python")]
-#[gen_stub_pymethods]
-#[pymethods]
-impl UpdateWebhookTemplateParams {
-    #[new]
-    #[pyo3(signature = (template_args, name=None, notification_email=None, destination_attributes=None))]
-    pub fn new(
-        template_args: TemplateArgs,
-        name: Option<String>,
-        notification_email: Option<String>,
-        destination_attributes: Option<WebhookDestinationAttributes>,
-    ) -> Self {
-        Self {
-            name,
-            notification_email,
-            destination_attributes,
-            template_args,
-        }
-    }
 }
 
 // ── Response Types ─────────────────────────────────────────────────────────
@@ -629,6 +484,20 @@ pub struct Webhook {
     pub destination_attributes: Option<String>,
 }
 
+/// Pagination metadata returned alongside a paginated webhooks list.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebhookPageInfo {
+    /// Page size used for this response.
+    pub limit: i64,
+    /// Starting index of this page within the full result set.
+    pub offset: i64,
+    /// Total number of webhooks matching the query across all pages.
+    pub total: i64,
+}
+
 /// Response from `list_webhooks`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
@@ -637,6 +506,9 @@ pub struct Webhook {
 pub struct ListWebhooksResponse {
     /// Webhooks on the current page.
     pub data: Vec<Webhook>,
+    /// Pagination metadata for the response.
+    #[serde(rename = "pageInfo")]
+    pub page_info: WebhookPageInfo,
 }
 
 /// Response from `get_enabled_count` for webhooks.
@@ -647,4 +519,136 @@ pub struct ListWebhooksResponse {
 pub struct WebhookEnabledCountResponse {
     /// Total count of enabled webhooks on the account.
     pub total: i64,
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod template_args_tests {
+    use super::*;
+
+    #[test]
+    fn evm_wallet_filter_roundtrip() {
+        let args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
+            wallets: vec!["0xabc".to_string()],
+        });
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""templateId":"evmWalletFilter""#));
+        assert!(json.contains(r#""wallets":["0xabc"]"#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, TemplateArgs::EvmWalletFilter(_)));
+        assert!(matches!(parsed.tag(), WebhookTemplateId::EvmWalletFilter));
+    }
+
+    #[test]
+    fn evm_contract_events_roundtrip() {
+        let args = TemplateArgs::EvmContractEvents(EvmContractEventsTemplate {
+            contracts: vec!["0xdef".to_string()],
+            event_hashes: Some(vec!["0x1234".to_string()]),
+        });
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""templateId":"evmContractEvents""#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, TemplateArgs::EvmContractEvents(_)));
+    }
+
+    #[test]
+    fn evm_abi_filter_roundtrip() {
+        let args = TemplateArgs::EvmAbiFilter(EvmAbiFilterTemplate {
+            abi: "[]".to_string(),
+            contracts: vec!["0xdef".to_string()],
+        });
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""templateId":"evmAbiFilter""#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, TemplateArgs::EvmAbiFilter(_)));
+    }
+
+    #[test]
+    fn solana_wallet_filter_roundtrip() {
+        let args = TemplateArgs::SolanaWalletFilter(SolanaWalletFilterTemplate {
+            accounts: vec!["acc".to_string()],
+        });
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""templateId":"solanaWalletFilter""#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, TemplateArgs::SolanaWalletFilter(_)));
+    }
+
+    #[test]
+    fn bitcoin_wallet_filter_roundtrip() {
+        let args = TemplateArgs::BitcoinWalletFilter(BitcoinWalletFilterTemplate {
+            wallets: vec!["bc1".to_string()],
+        });
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""templateId":"bitcoinWalletFilter""#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, TemplateArgs::BitcoinWalletFilter(_)));
+    }
+
+    #[test]
+    fn xrpl_wallet_filter_roundtrip() {
+        let args = TemplateArgs::XrplWalletFilter(XrplWalletFilterTemplate {
+            wallets: vec!["r1".to_string()],
+        });
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""templateId":"xrplWalletFilter""#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, TemplateArgs::XrplWalletFilter(_)));
+    }
+
+    #[test]
+    fn hyperliquid_wallet_events_filter_roundtrip() {
+        let args =
+            TemplateArgs::HyperliquidWalletEventsFilter(HyperliquidWalletEventsFilterTemplate {
+                wallets: vec!["0xhl".to_string()],
+            });
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""templateId":"hyperliquidWalletEventsFilter""#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(
+            parsed,
+            TemplateArgs::HyperliquidWalletEventsFilter(_)
+        ));
+    }
+
+    #[test]
+    fn stellar_wallet_transactions_filter_roundtrip() {
+        let args = TemplateArgs::StellarWalletTransactionsSourceAccountFilter(
+            StellarWalletTransactionsFilterTemplate {
+                wallets: vec!["G...".to_string()],
+            },
+        );
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""templateId":"stellarWalletTransactionsSourceAccountFilter""#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(
+            parsed,
+            TemplateArgs::StellarWalletTransactionsSourceAccountFilter(_)
+        ));
+    }
+
+    #[test]
+    fn create_params_flattens_template_args() {
+        let params = CreateWebhookFromTemplateParams {
+            name: "n".to_string(),
+            network: "ethereum-mainnet".to_string(),
+            notification_email: None,
+            destination_attributes: WebhookDestinationAttributes {
+                url: "https://x".to_string(),
+                security_token: None,
+                compression: None,
+            },
+            template_args: TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
+                wallets: vec!["0xabc".to_string()],
+            }),
+        };
+        let json = serde_json::to_value(&params).unwrap();
+        let obj = json.as_object().unwrap();
+        assert_eq!(
+            obj.get("templateId").and_then(|v| v.as_str()),
+            Some("evmWalletFilter")
+        );
+        assert!(obj.get("templateArgs").unwrap().is_object());
+        assert_eq!(obj["templateArgs"]["wallets"][0].as_str(), Some("0xabc"));
+    }
 }
