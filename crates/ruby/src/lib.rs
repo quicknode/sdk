@@ -227,7 +227,7 @@ fn hash_get_extra_destinations(
 
 // ── QuicknodeSdk ────────────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuicknodeSdk::SDK", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::SDK", free_immediately, size)]
 pub struct QuicknodeSdk {
     inner: core::QuicknodeSdk,
 }
@@ -268,7 +268,7 @@ impl QuicknodeSdk {
 //
 // All methods return JSON strings. Call JSON.parse on the result in Ruby.
 
-#[magnus::wrap(class = "QuicknodeSdk::Admin", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::Admin", free_immediately, size)]
 #[derive(Clone)]
 pub struct AdminApiClient {
     inner: core::admin::AdminApiClient,
@@ -1232,7 +1232,7 @@ impl DestinationAttributes {
 
 // ── StreamsApiClient ────────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuicknodeSdk::Streams", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::Streams", free_immediately, size)]
 #[derive(Clone)]
 pub struct StreamsApiClient {
     inner: core::streams::StreamsApiClient,
@@ -1471,7 +1471,7 @@ impl StreamsApiClient {
 
 // ── WebhooksApiClient ───────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuicknodeSdk::Webhooks", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::Webhooks", free_immediately, size)]
 #[derive(Clone)]
 pub struct WebhooksApiClient {
     inner: core::webhooks::WebhooksApiClient,
@@ -1641,7 +1641,7 @@ impl WebhooksApiClient {
 
 // ── KvStoreApiClient ────────────────────────────────────────────────────────
 
-#[magnus::wrap(class = "QuicknodeSdk::KvStore", free_immediately, size)]
+#[magnus::wrap(class = "QuicknodeSdk::Native::KvStore", free_immediately, size)]
 #[derive(Clone)]
 pub struct KvStoreApiClient {
     inner: core::kvstore::KvStoreApiClient,
@@ -1809,8 +1809,10 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     // can use them from the first call onward.
     errors::init(ruby, &module)?;
 
+    let native = module.define_module("Native")?;
+
     // ── SDK root ──────────────────────────────────────────────
-    let sdk = module.define_class("SDK", ruby.class_object())?;
+    let sdk = native.define_class("SDK", ruby.class_object())?;
     sdk.define_singleton_method("from_env", function!(QuicknodeSdk::from_env, 0))?;
     sdk.define_method("admin", method!(QuicknodeSdk::admin, 0))?;
     sdk.define_method("streams", method!(QuicknodeSdk::streams, 0))?;
@@ -1818,7 +1820,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     sdk.define_method("kvstore", method!(QuicknodeSdk::kvstore, 0))?;
 
     // ── Admin ─────────────────────────────────────────────────
-    let admin = module.define_class("Admin", ruby.class_object())?;
+    let admin = native.define_class("Admin", ruby.class_object())?;
     admin.define_method("get_endpoints", method!(AdminApiClient::get_endpoints, 1))?;
     admin.define_method(
         "create_endpoint",
@@ -2016,7 +2018,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     dest_attrs.define_singleton_method("redis", function!(DestinationAttributes::redis, 1))?;
 
     // ── Streams ───────────────────────────────────────────────
-    let streams = module.define_class("Streams", ruby.class_object())?;
+    let streams = native.define_class("Streams", ruby.class_object())?;
     streams.define_method("create_stream", method!(StreamsApiClient::create_stream, 1))?;
     streams.define_method("list_streams", method!(StreamsApiClient::list_streams, 1))?;
     streams.define_method(
@@ -2038,7 +2040,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
 
     // ── Webhooks ──────────────────────────────────────────────
-    let webhooks = module.define_class("Webhooks", ruby.class_object())?;
+    let webhooks = native.define_class("Webhooks", ruby.class_object())?;
     webhooks.define_method(
         "list_webhooks",
         method!(WebhooksApiClient::list_webhooks, 1),
@@ -2078,7 +2080,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
 
     // ── KvStore ───────────────────────────────────────────────
-    let kvstore = module.define_class("KvStore", ruby.class_object())?;
+    let kvstore = native.define_class("KvStore", ruby.class_object())?;
     kvstore.define_method("create_set", method!(KvStoreApiClient::create_set, 1))?;
     kvstore.define_method("get_sets", method!(KvStoreApiClient::get_sets, 1))?;
     kvstore.define_method("get_set", method!(KvStoreApiClient::get_set, 1))?;
