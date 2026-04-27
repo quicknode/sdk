@@ -1,21 +1,20 @@
-require "json"
 require_relative "../lib/quicknode_sdk"
 
 qn = QuicknodeSdk::SDK.from_env
 
-before = JSON.parse(qn.streams.list_streams({}))
-puts "streams before: #{before["pageInfo"]["total"]}"
+before = qn.streams.list_streams({})
+puts "streams before: #{before.pageInfo.total}"
 
-count = JSON.parse(qn.streams.get_enabled_count({}))
-puts "enabled count: #{count["total"]}"
+count = qn.streams.get_enabled_count({})
+puts "enabled count: #{count.total}"
 
-filter_result = JSON.parse(qn.streams.test_filter(
+filter_result = qn.streams.test_filter(
   network: "ethereum-mainnet",
   dataset: "block",
   block: "17811625",
   filter_function: "ZnVuY3Rpb24gbWFpbihkYXRhKSB7IHJldHVybiBkYXRhOyB9"
-))
-puts "filter logs: #{filter_result["logs"]}"
+)
+puts "filter logs: #{filter_result.logs}"
 sleep 1
 
 dest = QuicknodeSdk::DestinationAttributes.webhook(
@@ -34,7 +33,7 @@ extra_dest = QuicknodeSdk::DestinationAttributes.webhook(
   compression: "none"
 )
 
-stream = JSON.parse(qn.streams.create_stream({
+stream = qn.streams.create_stream(
   name: "E2E Test Stream",
   network: "ethereum-mainnet",
   dataset: "block",
@@ -51,15 +50,15 @@ stream = JSON.parse(qn.streams.create_stream({
   keep_distance_from_tip: 0,
   elastic_batch_enabled: true,
   status: "active"
-}))
-stream_id = stream["id"]
-puts "created: #{stream_id} | #{stream["status"]}"
+)
+stream_id = stream.id
+puts "created: #{stream_id} | #{stream.status}"
 
-fetched = JSON.parse(qn.streams.get_stream(id: stream_id))
-puts "fetched: #{fetched["id"]} | #{fetched["name"]}"
+fetched = qn.streams.get_stream(id: stream_id)
+puts "fetched: #{fetched.id} | #{fetched.name}"
 
-updated = JSON.parse(qn.streams.update_stream(id: stream_id, name: "E2E Test Stream Updated"))
-puts "updated name: #{updated["name"]}"
+updated = qn.streams.update_stream(id: stream_id, name: "E2E Test Stream Updated")
+puts "updated name: #{updated.name}"
 sleep 1
 
 qn.streams.pause_stream(id: stream_id)
@@ -72,5 +71,5 @@ qn.streams.delete_stream(id: stream_id)
 puts "deleted: #{stream_id}"
 sleep 1
 
-after = JSON.parse(qn.streams.list_streams({}))
-puts "streams after: #{after["pageInfo"]["total"]}"
+after = qn.streams.list_streams({})
+puts "streams after: #{after.pageInfo.total}"
