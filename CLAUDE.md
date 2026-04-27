@@ -184,7 +184,15 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 
 ### Documentation
 - Keep inline documentation comments updated with each change
-- Keep README.md updated with each change
+- The repo has **five READMEs**, each with a defined scope:
+  - Root `README.md` — project landing page: structure, install index, development, releasing. **Do not** add per-language API examples here.
+  - `crates/core/README.md` — Rust-only docs (renders on crates.io)
+  - `python/README.md` — Python-only docs (renders on PyPI)
+  - `npm/README.md` — Node.js-only docs (renders on npmjs)
+  - `ruby/README.md` — Ruby-only docs (renders on RubyGems)
+- Any user-facing change to a method, parameter, return type, error class, or environment variable must be reflected in **all four** per-language READMEs in the same PR. This matches the polyglot consistency rule for `__init__.py`, `sdk.d.ts`, and `quicknode_sdk.rbs` documented in §SDK-Specific Guidelines → Polyglot consistency.
+- The Configuration env-var table and the Error Handling class table are duplicated verbatim across all four per-language READMEs. When one changes, update all four — keep them byte-identical.
+- Per-language READMEs are wired into package metadata (`crates/core/Cargo.toml` `readme`, `pyproject.toml` `readme`, `npm/package.json` `files`, `ruby/quicknode_sdk.gemspec` `s.files`). When adding a new language or moving a README, update the corresponding manifest.
 
 ## Code style
 

@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "quicknode-sdk"
 version = "0.1.0a6"
 description = "Quicknode SDK"
-readme = "README.md"
+readme = "python/README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "John Mitsch", email = "john@quicknode.com" }]
