@@ -107,6 +107,15 @@ fn hash_get_bool(h: &RHash, key: &str) -> Result<Option<bool>, Error> {
     }
 }
 
+fn hash_require_bool(h: &RHash, key: &str) -> Result<bool, Error> {
+    hash_get_bool(h, key)?.ok_or_else(|| {
+        Error::new(
+            ruby().exception_arg_error(),
+            format!("missing required key: {key}"),
+        )
+    })
+}
+
 fn hash_require_i32(h: &RHash, key: &str) -> Result<i32, Error> {
     hash_get_i32(h, key)?.ok_or_else(|| {
         Error::new(
@@ -1058,7 +1067,7 @@ impl DestinationAttributes {
             retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
             post_timeout_sec: hash_get_i32(&opts, "post_timeout_sec")?.unwrap_or(0),
             security_token: hash_get_string(&opts, "security_token")?,
-            compression: hash_require_string(&opts, "compression")?,
+            compression: hash_get_string(&opts, "compression")?,
         };
         Ok(Self {
             inner: core::streams::DestinationAttributes::Webhook(attrs),
@@ -1116,83 +1125,6 @@ impl DestinationAttributes {
         })
     }
 
-    fn mysql(opts: RHash) -> Result<Self, Error> {
-        let attrs = core::streams::MysqlAttributes {
-            host: hash_require_string(&opts, "host")?,
-            port: hash_get_i32(&opts, "port")?.unwrap_or(3306),
-            database: hash_require_string(&opts, "database")?,
-            username: hash_require_string(&opts, "username")?,
-            password: hash_require_string(&opts, "password")?,
-            table_name: hash_require_string(&opts, "table_name")?,
-            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
-            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
-        };
-        Ok(Self {
-            inner: core::streams::DestinationAttributes::Mysql(attrs),
-        })
-    }
-
-    fn mongo(opts: RHash) -> Result<Self, Error> {
-        let attrs = core::streams::MongoAttributes {
-            host: hash_require_string(&opts, "host")?,
-            database: hash_require_string(&opts, "database")?,
-            username: hash_require_string(&opts, "username")?,
-            password: hash_require_string(&opts, "password")?,
-            collection_name: hash_require_string(&opts, "collection_name")?,
-            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
-            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
-        };
-        Ok(Self {
-            inner: core::streams::DestinationAttributes::Mongo(attrs),
-        })
-    }
-
-    fn clickhouse(opts: RHash) -> Result<Self, Error> {
-        let attrs = core::streams::ClickhouseAttributes {
-            hosts: hash_require_string(&opts, "hosts")?,
-            database: hash_require_string(&opts, "database")?,
-            username: hash_require_string(&opts, "username")?,
-            password: hash_require_string(&opts, "password")?,
-            table_name: hash_require_string(&opts, "table_name")?,
-            default_table_engine_opts: hash_require_string(&opts, "default_table_engine_opts")?,
-            default_granularity: hash_get_i32(&opts, "default_granularity")?.unwrap_or(0),
-            default_compression: hash_require_string(&opts, "default_compression")?,
-            default_index_type: hash_require_string(&opts, "default_index_type")?,
-            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
-            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
-            disable_datetime_precision: hash_get_bool(&opts, "disable_datetime_precision")?,
-            dont_support_rename_column: hash_get_bool(&opts, "dont_support_rename_column")?,
-            dont_support_empty_default_value: hash_get_bool(
-                &opts,
-                "dont_support_empty_default_value",
-            )?,
-            skip_initialize_with_version: hash_get_bool(&opts, "skip_initialize_with_version")?,
-        };
-        Ok(Self {
-            inner: core::streams::DestinationAttributes::Clickhouse(attrs),
-        })
-    }
-
-    fn snowflake(opts: RHash) -> Result<Self, Error> {
-        let attrs = core::streams::SnowflakeAttributes {
-            account: hash_require_string(&opts, "account")?,
-            host: hash_require_string(&opts, "host")?,
-            port: hash_get_i32(&opts, "port")?.unwrap_or(443),
-            protocol: hash_require_string(&opts, "protocol")?,
-            database: hash_require_string(&opts, "database")?,
-            schema: hash_require_string(&opts, "schema")?,
-            warehouse: hash_require_string(&opts, "warehouse")?,
-            username: hash_require_string(&opts, "username")?,
-            password: hash_require_string(&opts, "password")?,
-            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
-            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
-            table_name: hash_get_string(&opts, "table_name")?,
-        };
-        Ok(Self {
-            inner: core::streams::DestinationAttributes::Snowflake(attrs),
-        })
-    }
-
     fn kafka(opts: RHash) -> Result<Self, Error> {
         let attrs = core::streams::KafkaAttributes {
             bootstrap_servers: hash_require_string(&opts, "bootstrap_servers")?,
@@ -1200,7 +1132,7 @@ impl DestinationAttributes {
             compression_type: hash_require_string(&opts, "compression_type")?,
             batch_size: hash_get_i32(&opts, "batch_size")?.unwrap_or(0),
             linger_ms: hash_get_i32(&opts, "linger_ms")?.unwrap_or(0),
-            max_request_size: hash_get_i32(&opts, "max_request_size")?.unwrap_or(0),
+            max_message_bytes: hash_get_i32(&opts, "max_message_bytes")?.unwrap_or(0),
             timeout_sec: hash_get_i32(&opts, "timeout_sec")?.unwrap_or(0),
             max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
             retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
@@ -1211,23 +1143,6 @@ impl DestinationAttributes {
         };
         Ok(Self {
             inner: core::streams::DestinationAttributes::Kafka(attrs),
-        })
-    }
-
-    fn redis(opts: RHash) -> Result<Self, Error> {
-        let attrs = core::streams::RedisAttributes {
-            host: hash_require_string(&opts, "host")?,
-            port: hash_get_i32(&opts, "port")?.unwrap_or(6379),
-            database: hash_get_i32(&opts, "database")?.unwrap_or(0),
-            username: hash_require_string(&opts, "username")?,
-            password: hash_require_string(&opts, "password")?,
-            key_name: hash_require_string(&opts, "key_name")?,
-            max_retry: hash_get_i32(&opts, "max_retry")?.unwrap_or(0),
-            retry_interval_sec: hash_get_i32(&opts, "retry_interval_sec")?.unwrap_or(0),
-            tls: hash_get_bool(&opts, "tls")?,
-        };
-        Ok(Self {
-            inner: core::streams::DestinationAttributes::Redis(attrs),
         })
     }
 }
@@ -1260,8 +1175,10 @@ impl StreamsApiClient {
                     "missing required key: destination_attributes",
                 )
             })?;
-        let plan = hash_require_string(&opts, "plan")?;
-        let threshold_fetch_buffer = hash_require_i64(&opts, "threshold_fetch_buffer")?;
+        let plan = hash_get_string(&opts, "plan")?;
+        let threshold_fetch_buffer = hash_get_i64(&opts, "threshold_fetch_buffer")?;
+        let dataset_batch_size = hash_require_i64(&opts, "dataset_batch_size")?;
+        let elastic_batch_enabled = hash_require_bool(&opts, "elastic_batch_enabled")?;
         let dataset = parse_enum::<core::streams::StreamDataset>(dataset_s)?;
         let region = parse_enum::<core::streams::StreamRegion>(region_s)?;
         let filter_language = parse_enum_opt::<core::streams::FilterLanguage>(hash_get_string(
@@ -1285,7 +1202,7 @@ impl StreamsApiClient {
             destination_attributes,
             plan,
             threshold_fetch_buffer,
-            dataset_batch_size: hash_get_i64(&opts, "dataset_batch_size")?,
+            dataset_batch_size,
             max_batch_size: hash_get_i64(&opts, "max_batch_size")?,
             max_buffer_range_size: hash_get_i64(&opts, "max_buffer_range_size")?,
             max_buffer_processing_workers: hash_get_i64(&opts, "max_buffer_processing_workers")?,
@@ -1299,7 +1216,7 @@ impl StreamsApiClient {
             notification_email: hash_get_string(&opts, "notification_email")?,
             charge_min_cap: hash_get_i32(&opts, "charge_min_cap")?,
             fix_block_reorgs: hash_get_i32(&opts, "fix_block_reorgs")?,
-            elastic_batch_enabled: hash_get_bool(&opts, "elastic_batch_enabled")?,
+            elastic_batch_enabled,
             extra_destinations: hash_get_extra_destinations(&opts, "extra_destinations")?,
         };
         runtime()
@@ -2008,16 +1925,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     dest_attrs.define_singleton_method("azure", function!(DestinationAttributes::azure, 1))?;
     dest_attrs
         .define_singleton_method("postgres", function!(DestinationAttributes::postgres, 1))?;
-    dest_attrs.define_singleton_method("mysql", function!(DestinationAttributes::mysql, 1))?;
-    dest_attrs.define_singleton_method("mongo", function!(DestinationAttributes::mongo, 1))?;
-    dest_attrs.define_singleton_method(
-        "clickhouse",
-        function!(DestinationAttributes::clickhouse, 1),
-    )?;
-    dest_attrs
-        .define_singleton_method("snowflake", function!(DestinationAttributes::snowflake, 1))?;
     dest_attrs.define_singleton_method("kafka", function!(DestinationAttributes::kafka, 1))?;
-    dest_attrs.define_singleton_method("redis", function!(DestinationAttributes::redis, 1))?;
 
     // ── Streams ───────────────────────────────────────────────
     let streams = native.define_class("Streams", ruby.class_object())?;

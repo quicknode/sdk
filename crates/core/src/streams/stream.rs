@@ -65,12 +65,7 @@ pub enum StreamDestination {
     S3,
     Azure,
     Postgres,
-    Clickhouse,
-    Snowflake,
-    Mysql,
-    Mongo,
     Kafka,
-    Redis,
 }
 
 /// Language a stream's filter function is written in.
@@ -131,17 +126,18 @@ pub enum StreamStatus {
 pub struct WebhookAttributes {
     /// Destination URL that receives batched stream payloads.
     pub url: String,
-    /// Maximum number of retry attempts for a failed delivery.
+    /// Maximum number of retry attempts for a failed delivery. Must be in the range 1–10.
     pub max_retry: i32,
     /// Seconds to wait between retry attempts.
     pub retry_interval_sec: i32,
     /// Timeout in seconds for each POST request.
     pub post_timeout_sec: i32,
-    /// Optional token included with each request so the receiver can verify authenticity.
+    /// Optional token included with each request so the receiver can verify authenticity. When supplied, must be at least 32 bytes (256 bits).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub security_token: Option<String>,
-    /// Compression applied to the payload (e.g. `none`, `gzip`).
-    pub compression: String,
+    /// Compression applied to the payload (e.g. `none`, `gzip`). When omitted the server defaults to no compression.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compression: Option<String>,
 }
 
 #[cfg(feature = "python")]
@@ -149,13 +145,13 @@ pub struct WebhookAttributes {
 #[pymethods]
 impl WebhookAttributes {
     #[new]
-    #[pyo3(signature = (url, max_retry, retry_interval_sec, post_timeout_sec, compression, security_token=None))]
+    #[pyo3(signature = (url, max_retry, retry_interval_sec, post_timeout_sec, compression=None, security_token=None))]
     pub fn new(
         url: String,
         max_retry: i32,
         retry_interval_sec: i32,
         post_timeout_sec: i32,
-        compression: String,
+        compression: Option<String>,
         security_token: Option<String>,
     ) -> Self {
         Self {
@@ -305,7 +301,7 @@ pub struct PostgresAttributes {
     pub password: String,
     /// Destination table for inserted rows.
     pub table_name: String,
-    /// Postgres SSL mode (e.g. `disable`, `require`, `verify-full`).
+    /// Postgres SSL mode. The Quicknode API accepts only `disable` or `require`.
     pub sslmode: String,
     /// Maximum number of retry attempts for a failed write.
     pub max_retry: i32,
@@ -344,264 +340,6 @@ impl PostgresAttributes {
     }
 }
 
-/// Configuration for delivering stream batches to a MySQL database.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MysqlAttributes {
-    /// Database host.
-    pub host: String,
-    /// Database port.
-    pub port: i32,
-    /// Database name.
-    pub database: String,
-    /// Username used to authenticate.
-    pub username: String,
-    /// Password used to authenticate.
-    pub password: String,
-    /// Destination table for inserted rows.
-    pub table_name: String,
-    /// Maximum number of retry attempts for a failed write.
-    pub max_retry: i32,
-    /// Seconds to wait between retry attempts.
-    pub retry_interval_sec: i32,
-}
-
-#[cfg(feature = "python")]
-#[gen_stub_pymethods]
-#[pymethods]
-impl MysqlAttributes {
-    #[new]
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        host: String,
-        port: i32,
-        database: String,
-        username: String,
-        password: String,
-        table_name: String,
-        max_retry: i32,
-        retry_interval_sec: i32,
-    ) -> Self {
-        Self {
-            host,
-            port,
-            database,
-            username,
-            password,
-            table_name,
-            max_retry,
-            retry_interval_sec,
-        }
-    }
-}
-
-/// Configuration for delivering stream batches to a MongoDB database.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MongoAttributes {
-    /// Database host (connection string or hostname).
-    pub host: String,
-    /// Database name.
-    pub database: String,
-    /// Username used to authenticate.
-    pub username: String,
-    /// Password used to authenticate.
-    pub password: String,
-    /// Destination collection for inserted documents.
-    pub collection_name: String,
-    /// Maximum number of retry attempts for a failed write.
-    pub max_retry: i32,
-    /// Seconds to wait between retry attempts.
-    pub retry_interval_sec: i32,
-}
-
-#[cfg(feature = "python")]
-#[gen_stub_pymethods]
-#[pymethods]
-impl MongoAttributes {
-    #[new]
-    pub fn new(
-        host: String,
-        database: String,
-        username: String,
-        password: String,
-        collection_name: String,
-        max_retry: i32,
-        retry_interval_sec: i32,
-    ) -> Self {
-        Self {
-            host,
-            database,
-            username,
-            password,
-            collection_name,
-            max_retry,
-            retry_interval_sec,
-        }
-    }
-}
-
-/// Configuration for delivering stream batches to a ClickHouse cluster.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClickhouseAttributes {
-    /// Comma-separated list of ClickHouse hosts.
-    pub hosts: String,
-    /// Database name.
-    pub database: String,
-    /// Username used to authenticate.
-    pub username: String,
-    /// Password used to authenticate.
-    pub password: String,
-    /// Destination table for inserted rows.
-    pub table_name: String,
-    /// Default table engine options applied when a table is created.
-    pub default_table_engine_opts: String,
-    /// Default index granularity for created tables.
-    pub default_granularity: i32,
-    /// Default compression codec for created tables.
-    pub default_compression: String,
-    /// Default secondary index type for created tables.
-    pub default_index_type: String,
-    /// Maximum number of retry attempts for a failed write.
-    pub max_retry: i32,
-    /// Seconds to wait between retry attempts.
-    pub retry_interval_sec: i32,
-    /// Disable datetime precision for older ClickHouse versions that don't support it.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub disable_datetime_precision: Option<bool>,
-    /// Enable when the target ClickHouse server does not support `RENAME COLUMN`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub dont_support_rename_column: Option<bool>,
-    /// Enable when the target ClickHouse server does not support empty default values.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub dont_support_empty_default_value: Option<bool>,
-    /// Skip writing version metadata during initialization.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub skip_initialize_with_version: Option<bool>,
-}
-
-#[cfg(feature = "python")]
-#[gen_stub_pymethods]
-#[pymethods]
-impl ClickhouseAttributes {
-    #[new]
-    #[pyo3(signature = (hosts, database, username, password, table_name, default_table_engine_opts, default_granularity, default_compression, default_index_type, max_retry, retry_interval_sec, disable_datetime_precision=None, dont_support_rename_column=None, dont_support_empty_default_value=None, skip_initialize_with_version=None))]
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        hosts: String,
-        database: String,
-        username: String,
-        password: String,
-        table_name: String,
-        default_table_engine_opts: String,
-        default_granularity: i32,
-        default_compression: String,
-        default_index_type: String,
-        max_retry: i32,
-        retry_interval_sec: i32,
-        disable_datetime_precision: Option<bool>,
-        dont_support_rename_column: Option<bool>,
-        dont_support_empty_default_value: Option<bool>,
-        skip_initialize_with_version: Option<bool>,
-    ) -> Self {
-        Self {
-            hosts,
-            database,
-            username,
-            password,
-            table_name,
-            default_table_engine_opts,
-            default_granularity,
-            default_compression,
-            default_index_type,
-            max_retry,
-            retry_interval_sec,
-            disable_datetime_precision,
-            dont_support_rename_column,
-            dont_support_empty_default_value,
-            skip_initialize_with_version,
-        }
-    }
-}
-
-/// Configuration for delivering stream batches to a Snowflake data warehouse.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SnowflakeAttributes {
-    /// Snowflake account identifier.
-    pub account: String,
-    /// Snowflake host.
-    pub host: String,
-    /// Snowflake port.
-    pub port: i32,
-    /// Connection protocol (e.g. `https`).
-    pub protocol: String,
-    /// Database name.
-    pub database: String,
-    /// Schema within the database.
-    pub schema: String,
-    /// Warehouse used to run inserts.
-    pub warehouse: String,
-    /// Username used to authenticate.
-    pub username: String,
-    /// Password used to authenticate.
-    pub password: String,
-    /// Maximum number of retry attempts for a failed write.
-    pub max_retry: i32,
-    /// Seconds to wait between retry attempts.
-    pub retry_interval_sec: i32,
-    /// Optional destination table for inserted rows.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub table_name: Option<String>,
-}
-
-#[cfg(feature = "python")]
-#[gen_stub_pymethods]
-#[pymethods]
-impl SnowflakeAttributes {
-    #[new]
-    #[pyo3(signature = (account, host, port, protocol, database, schema, warehouse, username, password, max_retry, retry_interval_sec, table_name=None))]
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        account: String,
-        host: String,
-        port: i32,
-        protocol: String,
-        database: String,
-        schema: String,
-        warehouse: String,
-        username: String,
-        password: String,
-        max_retry: i32,
-        retry_interval_sec: i32,
-        table_name: Option<String>,
-    ) -> Self {
-        Self {
-            account,
-            host,
-            port,
-            protocol,
-            database,
-            schema,
-            warehouse,
-            username,
-            password,
-            max_retry,
-            retry_interval_sec,
-            table_name,
-        }
-    }
-}
-
 /// Configuration for delivering stream batches to a Kafka topic.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
@@ -618,8 +356,8 @@ pub struct KafkaAttributes {
     pub batch_size: i32,
     /// Milliseconds the producer waits to batch additional messages.
     pub linger_ms: i32,
-    /// Maximum request size in bytes.
-    pub max_request_size: i32,
+    /// Maximum size in bytes of a single Kafka message (`max_message_bytes`).
+    pub max_message_bytes: i32,
     /// Request timeout in seconds.
     pub timeout_sec: i32,
     /// Maximum number of retry attempts for a failed produce.
@@ -645,7 +383,7 @@ pub struct KafkaAttributes {
 #[pymethods]
 impl KafkaAttributes {
     #[new]
-    #[pyo3(signature = (bootstrap_servers, topic_name, compression_type, batch_size, linger_ms, max_request_size, timeout_sec, max_retry, retry_interval_sec, username=None, password=None, protocol=None, mechanisms=None))]
+    #[pyo3(signature = (bootstrap_servers, topic_name, compression_type, batch_size, linger_ms, max_message_bytes, timeout_sec, max_retry, retry_interval_sec, username=None, password=None, protocol=None, mechanisms=None))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         bootstrap_servers: String,
@@ -653,7 +391,7 @@ impl KafkaAttributes {
         compression_type: String,
         batch_size: i32,
         linger_ms: i32,
-        max_request_size: i32,
+        max_message_bytes: i32,
         timeout_sec: i32,
         max_retry: i32,
         retry_interval_sec: i32,
@@ -668,7 +406,7 @@ impl KafkaAttributes {
             compression_type,
             batch_size,
             linger_ms,
-            max_request_size,
+            max_message_bytes,
             timeout_sec,
             max_retry,
             retry_interval_sec,
@@ -676,65 +414,6 @@ impl KafkaAttributes {
             password,
             protocol,
             mechanisms,
-        }
-    }
-}
-
-/// Configuration for delivering stream batches to a Redis instance.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
-#[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RedisAttributes {
-    /// Redis host.
-    pub host: String,
-    /// Redis port.
-    pub port: i32,
-    /// Redis logical database index.
-    pub database: i32,
-    /// Username used to authenticate.
-    pub username: String,
-    /// Password used to authenticate.
-    pub password: String,
-    /// Redis key that receives written payloads.
-    pub key_name: String,
-    /// Maximum number of retry attempts for a failed write.
-    pub max_retry: i32,
-    /// Seconds to wait between retry attempts.
-    pub retry_interval_sec: i32,
-    /// Whether to connect over TLS.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tls: Option<bool>,
-}
-
-#[cfg(feature = "python")]
-#[gen_stub_pymethods]
-#[pymethods]
-impl RedisAttributes {
-    #[new]
-    #[pyo3(signature = (host, port, database, username, password, key_name, max_retry, retry_interval_sec, tls=None))]
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        host: String,
-        port: i32,
-        database: i32,
-        username: String,
-        password: String,
-        key_name: String,
-        max_retry: i32,
-        retry_interval_sec: i32,
-        tls: Option<bool>,
-    ) -> Self {
-        Self {
-            host,
-            port,
-            database,
-            username,
-            password,
-            key_name,
-            max_retry,
-            retry_interval_sec,
-            tls,
         }
     }
 }
@@ -800,18 +479,8 @@ pub enum DestinationAttributes {
     Azure(AzureAttributes),
     /// PostgreSQL database destination.
     Postgres(PostgresAttributes),
-    /// MySQL database destination.
-    Mysql(MysqlAttributes),
-    /// MongoDB database destination.
-    Mongo(MongoAttributes),
-    /// ClickHouse analytics database destination.
-    Clickhouse(ClickhouseAttributes),
-    /// Snowflake data warehouse destination.
-    Snowflake(SnowflakeAttributes),
     /// Kafka topic destination.
     Kafka(KafkaAttributes),
-    /// Redis in-memory data store destination.
-    Redis(RedisAttributes),
 }
 
 impl DestinationAttributes {
@@ -821,12 +490,7 @@ impl DestinationAttributes {
             Self::S3(_) => StreamDestination::S3,
             Self::Azure(_) => StreamDestination::Azure,
             Self::Postgres(_) => StreamDestination::Postgres,
-            Self::Mysql(_) => StreamDestination::Mysql,
-            Self::Mongo(_) => StreamDestination::Mongo,
-            Self::Clickhouse(_) => StreamDestination::Clickhouse,
-            Self::Snowflake(_) => StreamDestination::Snowflake,
             Self::Kafka(_) => StreamDestination::Kafka,
-            Self::Redis(_) => StreamDestination::Redis,
         }
     }
 }
@@ -853,13 +517,14 @@ pub struct CreateStreamParams {
     // Flattening the enum's tag/content produces { destination, destination_attributes }.
     #[serde(flatten)]
     pub destination_attributes: DestinationAttributes,
-    /// Billing plan associated with the stream.
-    pub plan: String,
-    /// Buffer size used by the stream fetcher before delivery.
-    pub threshold_fetch_buffer: i64,
-    /// Number of blocks grouped together per delivered batch.
+    /// Billing plan associated with the stream. Optional; the server applies the account default when omitted.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub dataset_batch_size: Option<i64>,
+    pub plan: Option<String>,
+    /// Buffer size used by the stream fetcher before delivery. Optional; the server applies its default when omitted.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub threshold_fetch_buffer: Option<i64>,
+    /// Number of blocks grouped together per delivered batch. Required by the API.
+    pub dataset_batch_size: i64,
     /// Upper bound on batch size when elastic batching is enabled.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_batch_size: Option<i64>,
@@ -899,9 +564,8 @@ pub struct CreateStreamParams {
     /// Flag (0 or 1) enabling automatic re-streaming of blocks affected by chain reorganizations.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fix_block_reorgs: Option<i32>,
-    /// When enabled, batch size is reduced toward 1 as the stream catches up to the chain tip.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub elastic_batch_enabled: Option<bool>,
+    /// When enabled, batch size is reduced toward 1 as the stream catches up to the chain tip. Required by the API.
+    pub elastic_batch_enabled: bool,
     /// Additional destinations that receive the same batches alongside the primary.
     // Not flattened: each element serializes as its own {destination, destination_attributes} pair.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1188,7 +852,7 @@ mod destination_attributes_tests {
             max_retry: 3,
             retry_interval_sec: 5,
             post_timeout_sec: 10,
-            compression: "none".to_string(),
+            compression: Some("none".to_string()),
             security_token: None,
         });
         let json = serde_json::to_string(&attrs).unwrap();
@@ -1257,88 +921,6 @@ mod destination_attributes_tests {
     }
 
     #[test]
-    fn mysql_roundtrip() {
-        let attrs = DestinationAttributes::Mysql(MysqlAttributes {
-            host: "h".to_string(),
-            port: 3306,
-            database: "db".to_string(),
-            username: "u".to_string(),
-            password: "p".to_string(),
-            table_name: "t".to_string(),
-            max_retry: 3,
-            retry_interval_sec: 5,
-        });
-        let json = serde_json::to_string(&attrs).unwrap();
-        assert!(json.contains(r#""destination":"mysql""#));
-        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
-        assert!(matches!(parsed, DestinationAttributes::Mysql(_)));
-    }
-
-    #[test]
-    fn mongo_roundtrip() {
-        let attrs = DestinationAttributes::Mongo(MongoAttributes {
-            host: "h".to_string(),
-            database: "db".to_string(),
-            username: "u".to_string(),
-            password: "p".to_string(),
-            collection_name: "c".to_string(),
-            max_retry: 3,
-            retry_interval_sec: 5,
-        });
-        let json = serde_json::to_string(&attrs).unwrap();
-        assert!(json.contains(r#""destination":"mongo""#));
-        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
-        assert!(matches!(parsed, DestinationAttributes::Mongo(_)));
-    }
-
-    #[test]
-    fn clickhouse_roundtrip() {
-        let attrs = DestinationAttributes::Clickhouse(ClickhouseAttributes {
-            hosts: "h".to_string(),
-            database: "db".to_string(),
-            username: "u".to_string(),
-            password: "p".to_string(),
-            table_name: "t".to_string(),
-            default_table_engine_opts: "()".to_string(),
-            default_granularity: 8192,
-            default_compression: "lz4".to_string(),
-            default_index_type: "minmax".to_string(),
-            max_retry: 3,
-            retry_interval_sec: 5,
-            disable_datetime_precision: None,
-            dont_support_rename_column: None,
-            dont_support_empty_default_value: None,
-            skip_initialize_with_version: None,
-        });
-        let json = serde_json::to_string(&attrs).unwrap();
-        assert!(json.contains(r#""destination":"clickhouse""#));
-        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
-        assert!(matches!(parsed, DestinationAttributes::Clickhouse(_)));
-    }
-
-    #[test]
-    fn snowflake_roundtrip() {
-        let attrs = DestinationAttributes::Snowflake(SnowflakeAttributes {
-            account: "acct".to_string(),
-            host: "h".to_string(),
-            port: 443,
-            protocol: "https".to_string(),
-            database: "db".to_string(),
-            schema: "s".to_string(),
-            warehouse: "w".to_string(),
-            username: "u".to_string(),
-            password: "p".to_string(),
-            max_retry: 3,
-            retry_interval_sec: 5,
-            table_name: Some("t".to_string()),
-        });
-        let json = serde_json::to_string(&attrs).unwrap();
-        assert!(json.contains(r#""destination":"snowflake""#));
-        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
-        assert!(matches!(parsed, DestinationAttributes::Snowflake(_)));
-    }
-
-    #[test]
     fn kafka_roundtrip() {
         let attrs = DestinationAttributes::Kafka(KafkaAttributes {
             bootstrap_servers: "host:9092".to_string(),
@@ -1346,7 +928,7 @@ mod destination_attributes_tests {
             compression_type: "gzip".to_string(),
             batch_size: 100,
             linger_ms: 10,
-            max_request_size: 1024,
+            max_message_bytes: 1024,
             timeout_sec: 30,
             max_retry: 3,
             retry_interval_sec: 5,
@@ -1359,24 +941,5 @@ mod destination_attributes_tests {
         assert!(json.contains(r#""destination":"kafka""#));
         let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
         assert!(matches!(parsed, DestinationAttributes::Kafka(_)));
-    }
-
-    #[test]
-    fn redis_roundtrip() {
-        let attrs = DestinationAttributes::Redis(RedisAttributes {
-            host: "h".to_string(),
-            port: 6379,
-            database: 0,
-            username: "u".to_string(),
-            password: "p".to_string(),
-            key_name: "k".to_string(),
-            max_retry: 3,
-            retry_interval_sec: 5,
-            tls: Some(false),
-        });
-        let json = serde_json::to_string(&attrs).unwrap();
-        assert!(json.contains(r#""destination":"redis""#));
-        let parsed: DestinationAttributes = serde_json::from_str(&json).unwrap();
-        assert!(matches!(parsed, DestinationAttributes::Redis(_)));
     }
 }

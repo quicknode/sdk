@@ -1,10 +1,8 @@
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use quicknode_sdk::streams::{
-    AddressBookConfig, AzureAttributes, ClickhouseAttributes, DestinationAttributes,
-    KafkaAttributes, ListStreamsResponse, MongoAttributes, MysqlAttributes, PageInfo,
-    PostgresAttributes, RedisAttributes, S3Attributes, SnowflakeAttributes, Stream,
-    WebhookAttributes,
+    AddressBookConfig, AzureAttributes, DestinationAttributes, KafkaAttributes,
+    ListStreamsResponse, PageInfo, PostgresAttributes, S3Attributes, Stream, WebhookAttributes,
 };
 
 // Per-destination typed wrappers. PyO3 cannot represent a Rust enum-with-data,
@@ -51,16 +49,7 @@ destination_wrapper!(StreamWebhookDestination, WebhookAttributes, Webhook);
 destination_wrapper!(StreamS3Destination, S3Attributes, S3);
 destination_wrapper!(StreamAzureDestination, AzureAttributes, Azure);
 destination_wrapper!(StreamPostgresDestination, PostgresAttributes, Postgres);
-destination_wrapper!(StreamMysqlDestination, MysqlAttributes, Mysql);
-destination_wrapper!(StreamMongoDestination, MongoAttributes, Mongo);
-destination_wrapper!(
-    StreamClickhouseDestination,
-    ClickhouseAttributes,
-    Clickhouse
-);
-destination_wrapper!(StreamSnowflakeDestination, SnowflakeAttributes, Snowflake);
 destination_wrapper!(StreamKafkaDestination, KafkaAttributes, Kafka);
-destination_wrapper!(StreamRedisDestination, RedisAttributes, Redis);
 
 // ── Conversion helpers ─────────────────────────────────────────────────────
 
@@ -77,22 +66,7 @@ pub fn extract_destination_attributes(obj: &Bound<'_, PyAny>) -> PyResult<Destin
     if let Ok(v) = obj.extract::<StreamPostgresDestination>() {
         return Ok(v.to_core());
     }
-    if let Ok(v) = obj.extract::<StreamMysqlDestination>() {
-        return Ok(v.to_core());
-    }
-    if let Ok(v) = obj.extract::<StreamMongoDestination>() {
-        return Ok(v.to_core());
-    }
-    if let Ok(v) = obj.extract::<StreamClickhouseDestination>() {
-        return Ok(v.to_core());
-    }
-    if let Ok(v) = obj.extract::<StreamSnowflakeDestination>() {
-        return Ok(v.to_core());
-    }
     if let Ok(v) = obj.extract::<StreamKafkaDestination>() {
-        return Ok(v.to_core());
-    }
-    if let Ok(v) = obj.extract::<StreamRedisDestination>() {
         return Ok(v.to_core());
     }
     let received = obj
@@ -102,9 +76,7 @@ pub fn extract_destination_attributes(obj: &Bound<'_, PyAny>) -> PyResult<Destin
     Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
         "destination_attributes must be one of StreamWebhookDestination, \
          StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, \
-         StreamMysqlDestination, StreamMongoDestination, StreamClickhouseDestination, \
-         StreamSnowflakeDestination, StreamKafkaDestination, StreamRedisDestination — \
-         got {received}"
+         StreamKafkaDestination — got {received}"
     )))
 }
 
@@ -152,22 +124,7 @@ pub fn destination_attributes_to_py(
         DestinationAttributes::Postgres(a) => StreamPostgresDestination::from_core(a)
             .into_pyobject(py)?
             .into(),
-        DestinationAttributes::Mysql(a) => StreamMysqlDestination::from_core(a)
-            .into_pyobject(py)?
-            .into(),
-        DestinationAttributes::Mongo(a) => StreamMongoDestination::from_core(a)
-            .into_pyobject(py)?
-            .into(),
-        DestinationAttributes::Clickhouse(a) => StreamClickhouseDestination::from_core(a)
-            .into_pyobject(py)?
-            .into(),
-        DestinationAttributes::Snowflake(a) => StreamSnowflakeDestination::from_core(a)
-            .into_pyobject(py)?
-            .into(),
         DestinationAttributes::Kafka(a) => StreamKafkaDestination::from_core(a)
-            .into_pyobject(py)?
-            .into(),
-        DestinationAttributes::Redis(a) => StreamRedisDestination::from_core(a)
             .into_pyobject(py)?
             .into(),
     })
@@ -298,10 +255,10 @@ impl PyStream {
 impl PyStream {
     // Exposed as a getter so pyo3_stub_gen can override the stub to a typed
     // Union. Without the override, the stub would be `Optional[Any]` and IDEs
-    // couldn't surface the 10 destination classes.
+    // couldn't surface the destination classes.
     #[getter]
     #[gen_stub(override_return_type(
-        type_repr = "typing.Optional[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamMysqlDestination, StreamMongoDestination, StreamClickhouseDestination, StreamSnowflakeDestination, StreamKafkaDestination, StreamRedisDestination]]"
+        type_repr = "typing.Optional[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamKafkaDestination]]"
     ))]
     fn destination_attributes<'py>(&self, py: Python<'py>) -> Option<Py<PyAny>> {
         self.destination_attributes
@@ -309,11 +266,11 @@ impl PyStream {
             .map(|v| v.clone_ref(py))
     }
 
-    // Typed Union list so IDEs can see the 10 destination classes inside the
+    // Typed Union list so IDEs can see the destination classes inside the
     // list, rather than `Optional[List[Any]]`.
     #[getter]
     #[gen_stub(override_return_type(
-        type_repr = "typing.Optional[typing.List[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamMysqlDestination, StreamMongoDestination, StreamClickhouseDestination, StreamSnowflakeDestination, StreamKafkaDestination, StreamRedisDestination]]]"
+        type_repr = "typing.Optional[typing.List[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamKafkaDestination]]]"
     ))]
     fn extra_destinations<'py>(&self, py: Python<'py>) -> Option<Vec<Py<PyAny>>> {
         self.extra_destinations

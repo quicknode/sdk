@@ -87,9 +87,9 @@ pub struct CreateStreamParamsNode {
     pub start_range: i64,
     pub end_range: i64,
     pub destination_attributes: serde_json::Value,
-    pub plan: String,
-    pub threshold_fetch_buffer: i64,
-    pub dataset_batch_size: Option<i64>,
+    pub plan: Option<String>,
+    pub threshold_fetch_buffer: Option<i64>,
+    pub dataset_batch_size: i64,
     pub max_batch_size: Option<i64>,
     pub max_buffer_range_size: Option<i64>,
     pub max_buffer_processing_workers: Option<i64>,
@@ -103,7 +103,7 @@ pub struct CreateStreamParamsNode {
     pub notification_email: Option<String>,
     pub charge_min_cap: Option<i32>,
     pub fix_block_reorgs: Option<i32>,
-    pub elastic_batch_enabled: Option<bool>,
+    pub elastic_batch_enabled: bool,
     // Each element carries the same { destination, attributes } shape as the
     // primary destination; we rewrite to core's wire format in node_da_to_core.
     pub extra_destinations: Option<Vec<serde_json::Value>>,

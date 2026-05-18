@@ -412,7 +412,7 @@ pub struct UpdateEndpointStatusResponse {
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CreateTagRequest {
-    /// Label for the new tag.
+    /// Label for the new tag. Maximum 25 characters.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
 }

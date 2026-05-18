@@ -35,16 +35,11 @@ module QuicknodeSdk
   end
 
   class DestinationAttributes
-    def self.webhook: (url: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?post_timeout_sec: Integer, ?security_token: String, compression: String) -> DestinationAttributes
+    def self.webhook: (url: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?post_timeout_sec: Integer, ?security_token: String, ?compression: String) -> DestinationAttributes
     def self.s3: (endpoint: String, access_key: String, secret_key: String, bucket: String, object_prefix: String, compression: String, file_type: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?use_ssl: bool) -> DestinationAttributes
     def self.azure: (storage_account: String, sas_token: String, container: String, compression: String, file_type: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?blob_prefix: String) -> DestinationAttributes
     def self.postgres: (host: String, ?port: Integer, database: String, username: String, password: String, table_name: String, sslmode: String, ?max_retry: Integer, ?retry_interval_sec: Integer) -> DestinationAttributes
-    def self.mysql: (host: String, ?port: Integer, database: String, username: String, password: String, table_name: String, ?max_retry: Integer, ?retry_interval_sec: Integer) -> DestinationAttributes
-    def self.mongo: (host: String, database: String, username: String, password: String, collection_name: String, ?max_retry: Integer, ?retry_interval_sec: Integer) -> DestinationAttributes
-    def self.clickhouse: (hosts: String, database: String, username: String, password: String, table_name: String, default_table_engine_opts: String, ?default_granularity: Integer, default_compression: String, default_index_type: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?disable_datetime_precision: bool, ?dont_support_rename_column: bool, ?dont_support_empty_default_value: bool, ?skip_initialize_with_version: bool) -> DestinationAttributes
-    def self.snowflake: (account: String, host: String, ?port: Integer, protocol: String, database: String, schema: String, warehouse: String, username: String, password: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?table_name: String) -> DestinationAttributes
-    def self.kafka: (bootstrap_servers: String, topic_name: String, compression_type: String, ?batch_size: Integer, ?linger_ms: Integer, ?max_request_size: Integer, ?timeout_sec: Integer, ?max_retry: Integer, ?retry_interval_sec: Integer, ?username: String, ?password: String, ?protocol: String, ?mechanisms: String) -> DestinationAttributes
-    def self.redis: (host: String, ?port: Integer, ?database: Integer, username: String, password: String, key_name: String, ?max_retry: Integer, ?retry_interval_sec: Integer, ?tls: bool) -> DestinationAttributes
+    def self.kafka: (bootstrap_servers: String, topic_name: String, compression_type: String, ?batch_size: Integer, ?linger_ms: Integer, ?max_message_bytes: Integer, ?timeout_sec: Integer, ?max_retry: Integer, ?retry_interval_sec: Integer, ?username: String, ?password: String, ?protocol: String, ?mechanisms: String) -> DestinationAttributes
   end
 
   class Admin
@@ -115,7 +110,7 @@ module QuicknodeSdk
   class Streams
     def initialize: (untyped native) -> void
 
-    def create_stream: (name: String, network: String, dataset: String, region: String, start_range: Integer, end_range: Integer, destination_attributes: DestinationAttributes, plan: String, threshold_fetch_buffer: Integer, ?dataset_batch_size: Integer, ?max_batch_size: Integer, ?max_buffer_range_size: Integer, ?max_buffer_processing_workers: Integer, ?keep_distance_from_tip: Integer, ?filter_function: String, ?filter_language: String, ?include_stream_metadata: String, ?product_type: String, ?status: String, ?notification_email: String, ?charge_min_cap: Integer, ?fix_block_reorgs: Integer, ?elastic_batch_enabled: bool, ?extra_destinations: Array[DestinationAttributes]) -> untyped
+    def create_stream: (name: String, network: String, dataset: String, region: String, start_range: Integer, end_range: Integer, destination_attributes: DestinationAttributes, dataset_batch_size: Integer, elastic_batch_enabled: bool, ?plan: String, ?threshold_fetch_buffer: Integer, ?max_batch_size: Integer, ?max_buffer_range_size: Integer, ?max_buffer_processing_workers: Integer, ?keep_distance_from_tip: Integer, ?filter_function: String, ?filter_language: String, ?include_stream_metadata: String, ?product_type: String, ?status: String, ?notification_email: String, ?charge_min_cap: Integer, ?fix_block_reorgs: Integer, ?extra_destinations: Array[DestinationAttributes]) -> untyped
     def list_streams: (?stream_type: String, ?offset: Integer, ?limit: Integer, ?order_by: String, ?order_direction: String) -> untyped
     def delete_all_streams: () -> void
     def get_stream: (id: String) -> untyped
