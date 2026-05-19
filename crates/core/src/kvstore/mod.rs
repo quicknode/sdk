@@ -938,9 +938,9 @@ mod tests {
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
-    // Wire-inspection regressions for DX-5341 / DX-5342: confirm that addSets
-    // and deleteSets reach the wire under the names the API expects. If these
-    // pass, the silent no-op is server-side.
+    // Wire-inspection regressions: confirm that addSets and deleteSets reach
+    // the wire under the names the API expects, so any future serde rename of
+    // these fields fails loudly.
     #[tokio::test]
     async fn bulk_sets_wire_body_add_sets() {
         let server = MockServer::start().await;
@@ -1245,9 +1245,9 @@ mod tests {
             .unwrap();
     }
 
-    // Wire-inspection regression for DX-5343: confirm addItems/removeItems
-    // reach the wire under the names the API expects. If this passes, the
-    // silent no-op is server-side.
+    // Wire-inspection regression: confirm addItems/removeItems reach the wire
+    // under the names the API expects, so any future serde rename of these
+    // fields fails loudly.
     #[tokio::test]
     async fn update_list_wire_body() {
         let server = MockServer::start().await;

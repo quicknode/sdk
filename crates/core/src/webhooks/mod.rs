@@ -712,9 +712,8 @@ mod tests {
         assert_eq!(resp.id, "wh-1234-5678");
     }
 
-    // Wire-inspection regression for DX-5347: confirm that `name` reaches the
-    // wire when supplied. If this passes, the "ignores name" behavior is
-    // server-side.
+    // Wire-inspection regression: confirm that `name` reaches the wire when
+    // supplied so any future serde rename/drop of the field fails loudly.
     #[tokio::test]
     async fn update_webhook_template_wire_body_includes_name() {
         use wiremock::matchers::body_partial_json;

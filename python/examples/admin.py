@@ -32,6 +32,12 @@ async def main():
     if tags.data is not None:
         print(f"account tags: {len(tags.data.tags)}")
 
+    metrics = await qn.admin.get_account_metrics(
+        period="day", metric="credits_over_time"
+    )
+    first_tag = ":".join(metrics.data[0].tag) if metrics.data else "<none>"
+    print(f"get_account_metrics: {len(metrics.data)} series, first tag: {first_tag}")
+
     if response.data:
         sec = await qn.admin.get_endpoint_security(response.data[0].id)
         print(f"get_endpoint_security: has_data={sec.data is not None}")

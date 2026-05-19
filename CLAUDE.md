@@ -197,3 +197,4 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 
 ### Comments
 - When doing anything out of the ordinary or breaking conventions or patterns, add a comment explaining the "why" behind it
+- Do not reference Linear issue IDs (e.g. `DX-1234`), PR numbers, ticket URLs, or other internal tracking identifiers in code comments. The "why" should be self-contained — describe the constraint or behaviour itself, not where to look it up. Internal context belongs in the commit message or PR description.

@@ -29,6 +29,13 @@ async function main() {
     console.log(`account tags: ${tags.data.tags.length}`);
   }
 
+  const metrics = await qn.admin.getAccountMetrics({
+    period: "day",
+    metric: "credits_over_time",
+  });
+  const firstTag = metrics.data[0]?.tag.join(":") ?? "<none>";
+  console.log(`getAccountMetrics: ${metrics.data.length} series, first tag: ${firstTag}`);
+
   if (response.data.length > 0) {
     const sec = await qn.admin.getEndpointSecurity(response.data[0].id);
     console.log(`getEndpointSecurity: has_data=${sec.data !== undefined && sec.data !== null}`);

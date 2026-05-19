@@ -2024,14 +2024,18 @@ class EndpointMetric:
         Data points, each as `[timestamp, value]`.
         """
     @property
-    def tag(self) -> builtins.str:
+    def tag(self) -> builtins.list[builtins.str]:
         r"""
-        Human-readable tag identifying the series.
+        Tag identifying the series. Single-axis metrics return a one-element
+        vector (e.g. `["total"]`, `["p95"]`); multi-axis metrics return the
+        key/value pair (e.g. `["network", "arbitrum-mainnet"]`).
         """
     @tag.setter
-    def tag(self, value: builtins.str) -> None:
+    def tag(self, value: builtins.list[builtins.str]) -> None:
         r"""
-        Human-readable tag identifying the series.
+        Tag identifying the series. Single-axis metrics return a one-element
+        vector (e.g. `["total"]`, `["p95"]`); multi-axis metrics return the
+        key/value pair (e.g. `["network", "arbitrum-mainnet"]`).
         """
 
 @typing.final

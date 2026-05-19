@@ -56,7 +56,8 @@ resp = qn.admin.list_tags
 puts "list_tags: #{resp.dig(:data, :tags)&.length || 0} tags"
 
 resp = qn.admin.get_account_metrics(period: "day", metric: "requests")
-puts "get_account_metrics: #{resp[:data].length} series"
+first_tag = resp[:data].first&.dig(:tag)&.join(":") || "<none>"
+puts "get_account_metrics: #{resp[:data].length} series, first tag: #{first_tag}"
 
 resp = qn.admin.list_invoices
 puts "list_invoices: #{resp[:data].inspect}"
@@ -122,7 +123,8 @@ puts "get_endpoint_logs: #{resp[:data].length} entries"
 sleep 1
 
 resp = qn.admin.get_endpoint_metrics(id: endpoint_id, period: "day", metric: "credits_over_time")
-puts "get_endpoint_metrics: #{resp[:data].length} series"
+first_tag = resp[:data].first&.dig(:tag)&.join(":") || "<none>"
+puts "get_endpoint_metrics: #{resp[:data].length} series, first tag: #{first_tag}"
 
 # ── Security options ──────────────────────────────────────────────────────────
 

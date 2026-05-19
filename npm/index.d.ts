@@ -208,8 +208,12 @@ export interface GetAccountMetricsRequest {
 export interface EndpointMetric {
   /** Data points, each as `[timestamp, value]`. */
   data: Array<Array<number>>
-  /** Human-readable tag identifying the series. */
-  tag: string
+  /**
+   * Tag identifying the series. Single-axis metrics return a one-element
+   * vector (e.g. `["total"]`, `["p95"]`); multi-axis metrics return the
+   * key/value pair (e.g. `["network", "arbitrum-mainnet"]`).
+   */
+  tag: Array<string>
 }
 /** Response from `get_endpoint_metrics`. */
 export interface GetEndpointMetricsResponse {
