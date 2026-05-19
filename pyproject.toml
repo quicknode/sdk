@@ -34,3 +34,6 @@ manifest-path = "crates/python/Cargo.toml"
 module-name = "sdk._core"
 python-source = "python"
 features = ["extension-module"]
+include = [
+    { path = "LICENSE", format = "sdist" },
+]
