@@ -1367,7 +1367,7 @@ impl StreamsApiClient {
             network: hash_require_string(&opts, "network")?,
             dataset,
             block: hash_require_string(&opts, "block")?,
-            filter_function: hash_get_string(&opts, "filter_function")?,
+            filter_function: hash_require_string(&opts, "filter_function")?,
             filter_language,
             address_book_config: None,
         };

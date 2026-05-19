@@ -806,9 +806,8 @@ pub struct TestFilterParams {
     pub dataset: StreamDataset,
     /// Specific block number to feed into the filter for the test.
     pub block: String,
-    /// Base64-encoded filter function to evaluate.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub filter_function: Option<String>,
+    /// Base64-encoded filter function to evaluate. Required by the API. To inspect raw block data with no transformation, supply a base64-encoded identity function such as `function main(d){return d;}`.
+    pub filter_function: String,
     /// Language the filter function is written in.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter_language: Option<FilterLanguage>,

@@ -1420,8 +1420,8 @@ export interface TestFilterParams {
   dataset: StreamDataset
   /** Specific block number to feed into the filter for the test. */
   block: string
-  /** Base64-encoded filter function to evaluate. */
-  filterFunction?: string
+  /** Base64-encoded filter function to evaluate. Required by the API. To inspect raw block data with no transformation, supply a base64-encoded identity function such as `function main(d){return d;}`. */
+  filterFunction: string
   /** Language the filter function is written in. */
   filterLanguage?: FilterLanguage
   /** Address book linked to the filter, if any. */

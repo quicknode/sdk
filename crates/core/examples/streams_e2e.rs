@@ -33,7 +33,7 @@ async fn main() {
         network: "ethereum-mainnet".to_string(),
         dataset: StreamDataset::Block,
         block: "17811625".to_string(),
-        filter_function: Some("ZnVuY3Rpb24gbWFpbihkYXRhKSB7IHJldHVybiBkYXRhOyB9".to_string()),
+        filter_function: "ZnVuY3Rpb24gbWFpbihkYXRhKSB7IHJldHVybiBkYXRhOyB9".to_string(),
         filter_language: None,
         address_book_config: None,
     };

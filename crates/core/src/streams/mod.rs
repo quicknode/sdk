@@ -944,7 +944,7 @@ mod tests {
             network: "ethereum-mainnet".to_string(),
             dataset: StreamDataset::Block,
             block: "17811625".to_string(),
-            filter_function: None,
+            filter_function: "ZnVuY3Rpb24gbWFpbihkYXRhKSB7IHJldHVybiBkYXRhOyB9".to_string(),
             filter_language: None,
             address_book_config: None,
         };
@@ -965,7 +965,7 @@ mod tests {
             network: "ethereum-mainnet".to_string(),
             dataset: StreamDataset::Block,
             block: "17811625".to_string(),
-            filter_function: None,
+            filter_function: "ZnVuY3Rpb24gbWFpbihkYXRhKSB7IHJldHVybiBkYXRhOyB9".to_string(),
             filter_language: None,
             address_book_config: None,
         };

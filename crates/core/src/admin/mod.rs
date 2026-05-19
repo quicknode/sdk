@@ -2932,6 +2932,29 @@ mod tests {
         assert!(resp.data.unwrap().success.unwrap());
     }
 
+    // Wire-inspection regression for DX-5352: confirm an empty endpoint_ids
+    // array reaches the wire as `[]` (not omitted). If this passes, the empty-
+    // array silent no-op is server-side.
+    #[tokio::test]
+    async fn update_team_endpoints_empty_array_wire_body() {
+        use wiremock::matchers::body_json;
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/teams/1/endpoints"))
+            .and(body_json(serde_json::json!({ "endpoint_ids": [] })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {"success": true},
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = UpdateTeamEndpointsRequest {
+            endpoint_ids: vec![],
+        };
+        sdk.admin.update_team_endpoints(1, &params).await.unwrap();
+    }
+
     #[tokio::test]
     async fn invite_team_member_success() {
         let server = MockServer::start().await;
