@@ -71,7 +71,7 @@ pub struct BulkUpdateEndpointStatusResponse {
 pub struct BulkAddTagRequest {
     /// Endpoint ids to tag.
     pub ids: Vec<String>,
-    /// Label of the tag to apply (created if it doesn't exist).
+    /// Label of the tag to apply (created if it doesn't exist). Maximum 25 characters.
     pub label: String,
 }
 

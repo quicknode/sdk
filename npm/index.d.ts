@@ -108,7 +108,7 @@ export interface BulkUpdateEndpointStatusResponse {
 export interface BulkAddTagRequest {
   /** Endpoint ids to tag. */
   ids: Array<string>
-  /** Label of the tag to apply (created if it doesn't exist). */
+  /** Label of the tag to apply (created if it doesn't exist). Maximum 25 characters. */
   label: string
 }
 /** Tag reference returned on bulk tag operations. */
@@ -662,7 +662,7 @@ export interface UpdateEndpointStatusResponse {
 }
 /** Parameters for `create_tag` (on a specific endpoint). */
 export interface CreateTagRequest {
-  /** Label for the new tag. */
+  /** Label for the new tag. Maximum 25 characters. */
   label?: string
 }
 /** Response from `get_endpoint_security`. */
@@ -1244,12 +1244,7 @@ export const enum StreamDestination {
   S3 = 'S3',
   Azure = 'Azure',
   Postgres = 'Postgres',
-  Clickhouse = 'Clickhouse',
-  Snowflake = 'Snowflake',
-  Mysql = 'Mysql',
-  Mongo = 'Mongo',
-  Kafka = 'Kafka',
-  Redis = 'Redis'
+  Kafka = 'Kafka'
 }
 /** Language a stream's filter function is written in. */
 export const enum FilterLanguage {
@@ -1280,16 +1275,16 @@ export const enum StreamStatus {
 export interface WebhookAttributes {
   /** Destination URL that receives batched stream payloads. */
   url: string
-  /** Maximum number of retry attempts for a failed delivery. */
+  /** Maximum number of retry attempts for a failed delivery. Must be in the range 1–10. */
   maxRetry: number
   /** Seconds to wait between retry attempts. */
   retryIntervalSec: number
   /** Timeout in seconds for each POST request. */
   postTimeoutSec: number
-  /** Optional token included with each request so the receiver can verify authenticity. */
+  /** Optional token included with each request so the receiver can verify authenticity. When supplied, must be at least 32 bytes (256 bits). */
   securityToken?: string
-  /** Compression applied to the payload (e.g. `none`, `gzip`). */
-  compression: string
+  /** Compression applied to the payload (e.g. `none`, `gzip`). When omitted the server defaults to no compression. */
+  compression?: string
 }
 /** Configuration for delivering stream batches to an S3-compatible object store. */
 export interface S3Attributes {
@@ -1347,108 +1342,12 @@ export interface PostgresAttributes {
   password: string
   /** Destination table for inserted rows. */
   tableName: string
-  /** Postgres SSL mode (e.g. `disable`, `require`, `verify-full`). */
+  /** Postgres SSL mode. The Quicknode API accepts only `disable` or `require`. */
   sslmode: string
   /** Maximum number of retry attempts for a failed write. */
   maxRetry: number
   /** Seconds to wait between retry attempts. */
   retryIntervalSec: number
-}
-/** Configuration for delivering stream batches to a MySQL database. */
-export interface MysqlAttributes {
-  /** Database host. */
-  host: string
-  /** Database port. */
-  port: number
-  /** Database name. */
-  database: string
-  /** Username used to authenticate. */
-  username: string
-  /** Password used to authenticate. */
-  password: string
-  /** Destination table for inserted rows. */
-  tableName: string
-  /** Maximum number of retry attempts for a failed write. */
-  maxRetry: number
-  /** Seconds to wait between retry attempts. */
-  retryIntervalSec: number
-}
-/** Configuration for delivering stream batches to a MongoDB database. */
-export interface MongoAttributes {
-  /** Database host (connection string or hostname). */
-  host: string
-  /** Database name. */
-  database: string
-  /** Username used to authenticate. */
-  username: string
-  /** Password used to authenticate. */
-  password: string
-  /** Destination collection for inserted documents. */
-  collectionName: string
-  /** Maximum number of retry attempts for a failed write. */
-  maxRetry: number
-  /** Seconds to wait between retry attempts. */
-  retryIntervalSec: number
-}
-/** Configuration for delivering stream batches to a ClickHouse cluster. */
-export interface ClickhouseAttributes {
-  /** Comma-separated list of ClickHouse hosts. */
-  hosts: string
-  /** Database name. */
-  database: string
-  /** Username used to authenticate. */
-  username: string
-  /** Password used to authenticate. */
-  password: string
-  /** Destination table for inserted rows. */
-  tableName: string
-  /** Default table engine options applied when a table is created. */
-  defaultTableEngineOpts: string
-  /** Default index granularity for created tables. */
-  defaultGranularity: number
-  /** Default compression codec for created tables. */
-  defaultCompression: string
-  /** Default secondary index type for created tables. */
-  defaultIndexType: string
-  /** Maximum number of retry attempts for a failed write. */
-  maxRetry: number
-  /** Seconds to wait between retry attempts. */
-  retryIntervalSec: number
-  /** Disable datetime precision for older ClickHouse versions that don't support it. */
-  disableDatetimePrecision?: boolean
-  /** Enable when the target ClickHouse server does not support `RENAME COLUMN`. */
-  dontSupportRenameColumn?: boolean
-  /** Enable when the target ClickHouse server does not support empty default values. */
-  dontSupportEmptyDefaultValue?: boolean
-  /** Skip writing version metadata during initialization. */
-  skipInitializeWithVersion?: boolean
-}
-/** Configuration for delivering stream batches to a Snowflake data warehouse. */
-export interface SnowflakeAttributes {
-  /** Snowflake account identifier. */
-  account: string
-  /** Snowflake host. */
-  host: string
-  /** Snowflake port. */
-  port: number
-  /** Connection protocol (e.g. `https`). */
-  protocol: string
-  /** Database name. */
-  database: string
-  /** Schema within the database. */
-  schema: string
-  /** Warehouse used to run inserts. */
-  warehouse: string
-  /** Username used to authenticate. */
-  username: string
-  /** Password used to authenticate. */
-  password: string
-  /** Maximum number of retry attempts for a failed write. */
-  maxRetry: number
-  /** Seconds to wait between retry attempts. */
-  retryIntervalSec: number
-  /** Optional destination table for inserted rows. */
-  tableName?: string
 }
 /** Configuration for delivering stream batches to a Kafka topic. */
 export interface KafkaAttributes {
@@ -1462,8 +1361,8 @@ export interface KafkaAttributes {
   batchSize: number
   /** Milliseconds the producer waits to batch additional messages. */
   lingerMs: number
-  /** Maximum request size in bytes. */
-  maxRequestSize: number
+  /** Maximum size in bytes of a single Kafka message (`max_message_bytes`). */
+  maxMessageBytes: number
   /** Request timeout in seconds. */
   timeoutSec: number
   /** Maximum number of retry attempts for a failed produce. */
@@ -1478,27 +1377,6 @@ export interface KafkaAttributes {
   protocol?: string
   /** Optional SASL mechanism (e.g. `PLAIN`, `SCRAM-SHA-256`). */
   mechanisms?: string
-}
-/** Configuration for delivering stream batches to a Redis instance. */
-export interface RedisAttributes {
-  /** Redis host. */
-  host: string
-  /** Redis port. */
-  port: number
-  /** Redis logical database index. */
-  database: number
-  /** Username used to authenticate. */
-  username: string
-  /** Password used to authenticate. */
-  password: string
-  /** Redis key that receives written payloads. */
-  keyName: string
-  /** Maximum number of retry attempts for a failed write. */
-  maxRetry: number
-  /** Seconds to wait between retry attempts. */
-  retryIntervalSec: number
-  /** Whether to connect over TLS. */
-  tls?: boolean
 }
 /**
  * Links a stream's filter to an address book so JSON paths resolve against its
@@ -1721,9 +1599,9 @@ export interface CreateStreamParamsNode {
   startRange: number
   endRange: number
   destinationAttributes: any
-  plan: string
-  thresholdFetchBuffer: number
-  datasetBatchSize?: number
+  plan?: string
+  thresholdFetchBuffer?: number
+  datasetBatchSize: number
   maxBatchSize?: number
   maxBufferRangeSize?: number
   maxBufferProcessingWorkers?: number
@@ -1737,7 +1615,7 @@ export interface CreateStreamParamsNode {
   notificationEmail?: string
   chargeMinCap?: number
   fixBlockReorgs?: number
-  elasticBatchEnabled?: boolean
+  elasticBatchEnabled: boolean
   extraDestinations?: Array<any>
 }
 export interface UpdateStreamParamsNode {

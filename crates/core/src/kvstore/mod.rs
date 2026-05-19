@@ -8,9 +8,19 @@ use napi_derive::napi;
 use pyo3::{pyclass, pymethods};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{config::KvStoreConfig, errors::SdkError, SdkConfig};
+
+// The KV index endpoints return `data: null` when the store has no entries.
+// Map that to the default value so consumers get `[]` (or an empty struct) instead of a decode error.
+fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Option::<T>::deserialize(deserializer).map(Option::unwrap_or_default)
+}
 
 const KV_STORE_BASE_URL: &str = "https://api.quicknode.com/kv/rest/v1/";
 
@@ -172,6 +182,7 @@ impl KvSetEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetSetsResponse {
     /// Key/value entries on the current page.
+    #[serde(default, deserialize_with = "null_as_default")]
     pub data: Vec<KvSetEntry>,
     /// Cursor for the next page; empty string when there are no more pages.
     pub cursor: String,
@@ -213,7 +224,7 @@ impl GetSetResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GetListsData {
     /// List keys on the current page.
     pub keys: Vec<String>,
@@ -237,6 +248,7 @@ impl GetListsData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetListsResponse {
     /// List keys on the current page.
+    #[serde(default, deserialize_with = "null_as_default")]
     pub data: GetListsData,
     /// Cursor for the next page; empty string when there are no more pages.
     pub cursor: String,
@@ -768,6 +780,26 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn get_sets_null_data_empty_store() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/sets"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({"code": 200, "msg": "", "data": null, "cursor": ""}),
+            ))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk
+            .kvstore
+            .get_sets(&GetSetsParams::default())
+            .await
+            .unwrap();
+        assert!(resp.data.is_empty());
+        assert_eq!(resp.cursor, "");
+    }
+
+    #[tokio::test]
     async fn get_sets_api_error() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -1027,6 +1059,26 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.data.keys, vec!["list1", "list2"]);
+    }
+
+    #[tokio::test]
+    async fn get_lists_null_data_empty_store() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/lists"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({"code": 200, "msg": "", "data": null, "cursor": ""}),
+            ))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk
+            .kvstore
+            .get_lists(&GetListsParams::default())
+            .await
+            .unwrap();
+        assert!(resp.data.keys.is_empty());
+        assert_eq!(resp.cursor, "");
     }
 
     #[tokio::test]

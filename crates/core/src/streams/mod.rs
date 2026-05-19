@@ -1,12 +1,11 @@
 pub mod stream;
 
 pub use stream::{
-    AddressBookConfig, AzureAttributes, ClickhouseAttributes, CreateStreamParams,
-    DestinationAttributes, EnabledCountResponse, FilterLanguage, KafkaAttributes,
-    ListStreamsParams, ListStreamsResponse, MongoAttributes, MysqlAttributes, PageInfo,
-    PostgresAttributes, ProductType, RedisAttributes, S3Attributes, SnowflakeAttributes, Stream,
-    StreamDataset, StreamDestination, StreamMetadataLocation, StreamRegion, StreamStatus,
-    TestFilterParams, TestFilterResponse, UpdateStreamParams, WebhookAttributes,
+    AddressBookConfig, AzureAttributes, CreateStreamParams, DestinationAttributes,
+    EnabledCountResponse, FilterLanguage, KafkaAttributes, ListStreamsParams, ListStreamsResponse,
+    PageInfo, PostgresAttributes, ProductType, S3Attributes, Stream, StreamDataset,
+    StreamDestination, StreamMetadataLocation, StreamRegion, StreamStatus, TestFilterParams,
+    TestFilterResponse, UpdateStreamParams, WebhookAttributes,
 };
 
 use crate::{config::StreamsConfig, errors::SdkError, SdkConfig};
@@ -345,12 +344,12 @@ mod tests {
                 max_retry: 3,
                 retry_interval_sec: 1,
                 post_timeout_sec: 10,
-                compression: "none".to_string(),
+                compression: Some("none".to_string()),
                 security_token: None,
             }),
-            plan: "growth_plan".to_string(),
-            threshold_fetch_buffer: 1000,
-            dataset_batch_size: None,
+            plan: Some("growth_plan".to_string()),
+            threshold_fetch_buffer: Some(1000),
+            dataset_batch_size: 1,
             max_batch_size: None,
             max_buffer_range_size: None,
             max_buffer_processing_workers: None,
@@ -364,7 +363,7 @@ mod tests {
             notification_email: None,
             charge_min_cap: None,
             fix_block_reorgs: None,
-            elastic_batch_enabled: None,
+            elastic_batch_enabled: true,
             extra_destinations: None,
         }
     }
@@ -451,7 +450,7 @@ mod tests {
                 max_retry: 3,
                 retry_interval_sec: 1,
                 post_timeout_sec: 10,
-                compression: "none".to_string(),
+                compression: Some("none".to_string()),
                 security_token: None,
             }),
             ..webhook_params()
@@ -506,7 +505,7 @@ mod tests {
                     max_retry: 5,
                     retry_interval_sec: 2,
                     post_timeout_sec: 15,
-                    compression: "none".to_string(),
+                    compression: Some("none".to_string()),
                     security_token: None,
                 }),
                 DestinationAttributes::S3(S3Attributes {
@@ -559,7 +558,7 @@ mod tests {
                 max_retry: 1,
                 retry_interval_sec: 1,
                 post_timeout_sec: 5,
-                compression: "none".to_string(),
+                compression: Some("none".to_string()),
                 security_token: None,
             })]),
             ..Default::default()

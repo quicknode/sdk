@@ -56,7 +56,7 @@ async fn main() {
         .include_stream_metadata(StreamMetadataLocation::Body)
         .destination_attributes(DestinationAttributes::Webhook(WebhookAttributes {
             url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef".to_string(),
-            compression: "none".to_string(),
+            compression: Some("none".to_string()),
             max_retry: 3,
             retry_interval_sec: 1,
             post_timeout_sec: 10,
@@ -64,7 +64,7 @@ async fn main() {
         }))
         .extra_destinations(vec![DestinationAttributes::Webhook(WebhookAttributes {
             url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef".to_string(),
-            compression: "none".to_string(),
+            compression: Some("none".to_string()),
             max_retry: 3,
             retry_interval_sec: 1,
             post_timeout_sec: 10,

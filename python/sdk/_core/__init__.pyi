@@ -25,7 +25,6 @@ __all__ = [
     "Chain",
     "ChainNetwork",
     "ChainUsage",
-    "ClickhouseAttributes",
     "CreateDomainMaskRequest",
     "CreateEndpointRequest",
     "CreateEndpointResponse",
@@ -124,15 +123,12 @@ __all__ = [
     "LogDetails",
     "MethodRateLimiter",
     "MethodUsage",
-    "MongoAttributes",
-    "MysqlAttributes",
     "PageInfo",
     "Pagination",
     "Payment",
     "PostgresAttributes",
     "QuicknodeSdk",
     "RateLimitSettings",
-    "RedisAttributes",
     "RemoveTeamMemberRequest",
     "RemoveTeamMemberResponse",
     "RenameTagRequest",
@@ -144,21 +140,15 @@ __all__ = [
     "SecurityOptionsUpdate",
     "ShowEndpointResponse",
     "SingleEndpoint",
-    "SnowflakeAttributes",
     "SolanaWalletFilterArgs",
     "SolanaWalletFilterTemplate",
     "StellarWalletTransactionsFilterArgs",
     "StellarWalletTransactionsFilterTemplate",
     "Stream",
     "StreamAzureDestination",
-    "StreamClickhouseDestination",
     "StreamKafkaDestination",
-    "StreamMongoDestination",
-    "StreamMysqlDestination",
     "StreamPostgresDestination",
-    "StreamRedisDestination",
     "StreamS3Destination",
-    "StreamSnowflakeDestination",
     "StreamWebhookDestination",
     "StreamsApiClient",
     "StreamsConfig",
@@ -784,12 +774,12 @@ class BulkAddTagRequest:
     @property
     def label(self) -> builtins.str:
         r"""
-        Label of the tag to apply (created if it doesn't exist).
+        Label of the tag to apply (created if it doesn't exist). Maximum 25 characters.
         """
     @label.setter
     def label(self, value: builtins.str) -> None:
         r"""
-        Label of the tag to apply (created if it doesn't exist).
+        Label of the tag to apply (created if it doesn't exist). Maximum 25 characters.
         """
 
 @typing.final
@@ -1165,163 +1155,6 @@ class ChainUsage:
         """
 
 @typing.final
-class ClickhouseAttributes:
-    r"""
-    Configuration for delivering stream batches to a ClickHouse cluster.
-    """
-    @property
-    def hosts(self) -> builtins.str:
-        r"""
-        Comma-separated list of ClickHouse hosts.
-        """
-    @hosts.setter
-    def hosts(self, value: builtins.str) -> None:
-        r"""
-        Comma-separated list of ClickHouse hosts.
-        """
-    @property
-    def database(self) -> builtins.str:
-        r"""
-        Database name.
-        """
-    @database.setter
-    def database(self, value: builtins.str) -> None:
-        r"""
-        Database name.
-        """
-    @property
-    def username(self) -> builtins.str:
-        r"""
-        Username used to authenticate.
-        """
-    @username.setter
-    def username(self, value: builtins.str) -> None:
-        r"""
-        Username used to authenticate.
-        """
-    @property
-    def password(self) -> builtins.str:
-        r"""
-        Password used to authenticate.
-        """
-    @password.setter
-    def password(self, value: builtins.str) -> None:
-        r"""
-        Password used to authenticate.
-        """
-    @property
-    def table_name(self) -> builtins.str:
-        r"""
-        Destination table for inserted rows.
-        """
-    @table_name.setter
-    def table_name(self, value: builtins.str) -> None:
-        r"""
-        Destination table for inserted rows.
-        """
-    @property
-    def default_table_engine_opts(self) -> builtins.str:
-        r"""
-        Default table engine options applied when a table is created.
-        """
-    @default_table_engine_opts.setter
-    def default_table_engine_opts(self, value: builtins.str) -> None:
-        r"""
-        Default table engine options applied when a table is created.
-        """
-    @property
-    def default_granularity(self) -> builtins.int:
-        r"""
-        Default index granularity for created tables.
-        """
-    @default_granularity.setter
-    def default_granularity(self, value: builtins.int) -> None:
-        r"""
-        Default index granularity for created tables.
-        """
-    @property
-    def default_compression(self) -> builtins.str:
-        r"""
-        Default compression codec for created tables.
-        """
-    @default_compression.setter
-    def default_compression(self, value: builtins.str) -> None:
-        r"""
-        Default compression codec for created tables.
-        """
-    @property
-    def default_index_type(self) -> builtins.str:
-        r"""
-        Default secondary index type for created tables.
-        """
-    @default_index_type.setter
-    def default_index_type(self, value: builtins.str) -> None:
-        r"""
-        Default secondary index type for created tables.
-        """
-    @property
-    def max_retry(self) -> builtins.int:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @max_retry.setter
-    def max_retry(self, value: builtins.int) -> None:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @property
-    def retry_interval_sec(self) -> builtins.int:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    @retry_interval_sec.setter
-    def retry_interval_sec(self, value: builtins.int) -> None:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    @property
-    def disable_datetime_precision(self) -> typing.Optional[builtins.bool]:
-        r"""
-        Disable datetime precision for older ClickHouse versions that don't support it.
-        """
-    @disable_datetime_precision.setter
-    def disable_datetime_precision(self, value: typing.Optional[builtins.bool]) -> None:
-        r"""
-        Disable datetime precision for older ClickHouse versions that don't support it.
-        """
-    @property
-    def dont_support_rename_column(self) -> typing.Optional[builtins.bool]:
-        r"""
-        Enable when the target ClickHouse server does not support `RENAME COLUMN`.
-        """
-    @dont_support_rename_column.setter
-    def dont_support_rename_column(self, value: typing.Optional[builtins.bool]) -> None:
-        r"""
-        Enable when the target ClickHouse server does not support `RENAME COLUMN`.
-        """
-    @property
-    def dont_support_empty_default_value(self) -> typing.Optional[builtins.bool]:
-        r"""
-        Enable when the target ClickHouse server does not support empty default values.
-        """
-    @dont_support_empty_default_value.setter
-    def dont_support_empty_default_value(self, value: typing.Optional[builtins.bool]) -> None:
-        r"""
-        Enable when the target ClickHouse server does not support empty default values.
-        """
-    @property
-    def skip_initialize_with_version(self) -> typing.Optional[builtins.bool]:
-        r"""
-        Skip writing version metadata during initialization.
-        """
-    @skip_initialize_with_version.setter
-    def skip_initialize_with_version(self, value: typing.Optional[builtins.bool]) -> None:
-        r"""
-        Skip writing version metadata during initialization.
-        """
-    def __new__(cls, hosts: builtins.str, database: builtins.str, username: builtins.str, password: builtins.str, table_name: builtins.str, default_table_engine_opts: builtins.str, default_granularity: builtins.int, default_compression: builtins.str, default_index_type: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, disable_datetime_precision: typing.Optional[builtins.bool] = None, dont_support_rename_column: typing.Optional[builtins.bool] = None, dont_support_empty_default_value: typing.Optional[builtins.bool] = None, skip_initialize_with_version: typing.Optional[builtins.bool] = None) -> ClickhouseAttributes: ...
-
-@typing.final
 class CreateDomainMaskRequest:
     r"""
     Parameters for `create_domain_mask`.
@@ -1627,12 +1460,12 @@ class CreateTagRequest:
     @property
     def label(self) -> typing.Optional[builtins.str]:
         r"""
-        Label for the new tag.
+        Label for the new tag. Maximum 25 characters.
         """
     @label.setter
     def label(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Label for the new tag.
+        Label for the new tag. Maximum 25 characters.
         """
 
 @typing.final
@@ -3804,14 +3637,14 @@ class KafkaAttributes:
         Milliseconds the producer waits to batch additional messages.
         """
     @property
-    def max_request_size(self) -> builtins.int:
+    def max_message_bytes(self) -> builtins.int:
         r"""
-        Maximum request size in bytes.
+        Maximum size in bytes of a single Kafka message (`max_message_bytes`).
         """
-    @max_request_size.setter
-    def max_request_size(self, value: builtins.int) -> None:
+    @max_message_bytes.setter
+    def max_message_bytes(self, value: builtins.int) -> None:
         r"""
-        Maximum request size in bytes.
+        Maximum size in bytes of a single Kafka message (`max_message_bytes`).
         """
     @property
     def timeout_sec(self) -> builtins.int:
@@ -3883,7 +3716,7 @@ class KafkaAttributes:
         r"""
         Optional SASL mechanism (e.g. `PLAIN`, `SCRAM-SHA-256`).
         """
-    def __new__(cls, bootstrap_servers: builtins.str, topic_name: builtins.str, compression_type: builtins.str, batch_size: builtins.int, linger_ms: builtins.int, max_request_size: builtins.int, timeout_sec: builtins.int, max_retry: builtins.int, retry_interval_sec: builtins.int, username: typing.Optional[builtins.str] = None, password: typing.Optional[builtins.str] = None, protocol: typing.Optional[builtins.str] = None, mechanisms: typing.Optional[builtins.str] = None) -> KafkaAttributes: ...
+    def __new__(cls, bootstrap_servers: builtins.str, topic_name: builtins.str, compression_type: builtins.str, batch_size: builtins.int, linger_ms: builtins.int, max_message_bytes: builtins.int, timeout_sec: builtins.int, max_retry: builtins.int, retry_interval_sec: builtins.int, username: typing.Optional[builtins.str] = None, password: typing.Optional[builtins.str] = None, protocol: typing.Optional[builtins.str] = None, mechanisms: typing.Optional[builtins.str] = None) -> KafkaAttributes: ...
 
 @typing.final
 class KvSetEntry:
@@ -4383,170 +4216,6 @@ class MethodUsage:
         """
 
 @typing.final
-class MongoAttributes:
-    r"""
-    Configuration for delivering stream batches to a MongoDB database.
-    """
-    @property
-    def host(self) -> builtins.str:
-        r"""
-        Database host (connection string or hostname).
-        """
-    @host.setter
-    def host(self, value: builtins.str) -> None:
-        r"""
-        Database host (connection string or hostname).
-        """
-    @property
-    def database(self) -> builtins.str:
-        r"""
-        Database name.
-        """
-    @database.setter
-    def database(self, value: builtins.str) -> None:
-        r"""
-        Database name.
-        """
-    @property
-    def username(self) -> builtins.str:
-        r"""
-        Username used to authenticate.
-        """
-    @username.setter
-    def username(self, value: builtins.str) -> None:
-        r"""
-        Username used to authenticate.
-        """
-    @property
-    def password(self) -> builtins.str:
-        r"""
-        Password used to authenticate.
-        """
-    @password.setter
-    def password(self, value: builtins.str) -> None:
-        r"""
-        Password used to authenticate.
-        """
-    @property
-    def collection_name(self) -> builtins.str:
-        r"""
-        Destination collection for inserted documents.
-        """
-    @collection_name.setter
-    def collection_name(self, value: builtins.str) -> None:
-        r"""
-        Destination collection for inserted documents.
-        """
-    @property
-    def max_retry(self) -> builtins.int:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @max_retry.setter
-    def max_retry(self, value: builtins.int) -> None:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @property
-    def retry_interval_sec(self) -> builtins.int:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    @retry_interval_sec.setter
-    def retry_interval_sec(self, value: builtins.int) -> None:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    def __new__(cls, host: builtins.str, database: builtins.str, username: builtins.str, password: builtins.str, collection_name: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int) -> MongoAttributes: ...
-
-@typing.final
-class MysqlAttributes:
-    r"""
-    Configuration for delivering stream batches to a MySQL database.
-    """
-    @property
-    def host(self) -> builtins.str:
-        r"""
-        Database host.
-        """
-    @host.setter
-    def host(self, value: builtins.str) -> None:
-        r"""
-        Database host.
-        """
-    @property
-    def port(self) -> builtins.int:
-        r"""
-        Database port.
-        """
-    @port.setter
-    def port(self, value: builtins.int) -> None:
-        r"""
-        Database port.
-        """
-    @property
-    def database(self) -> builtins.str:
-        r"""
-        Database name.
-        """
-    @database.setter
-    def database(self, value: builtins.str) -> None:
-        r"""
-        Database name.
-        """
-    @property
-    def username(self) -> builtins.str:
-        r"""
-        Username used to authenticate.
-        """
-    @username.setter
-    def username(self, value: builtins.str) -> None:
-        r"""
-        Username used to authenticate.
-        """
-    @property
-    def password(self) -> builtins.str:
-        r"""
-        Password used to authenticate.
-        """
-    @password.setter
-    def password(self, value: builtins.str) -> None:
-        r"""
-        Password used to authenticate.
-        """
-    @property
-    def table_name(self) -> builtins.str:
-        r"""
-        Destination table for inserted rows.
-        """
-    @table_name.setter
-    def table_name(self, value: builtins.str) -> None:
-        r"""
-        Destination table for inserted rows.
-        """
-    @property
-    def max_retry(self) -> builtins.int:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @max_retry.setter
-    def max_retry(self, value: builtins.int) -> None:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @property
-    def retry_interval_sec(self) -> builtins.int:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    @retry_interval_sec.setter
-    def retry_interval_sec(self, value: builtins.int) -> None:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    def __new__(cls, host: builtins.str, port: builtins.int, database: builtins.str, username: builtins.str, password: builtins.str, table_name: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int) -> MysqlAttributes: ...
-
-@typing.final
 class PageInfo:
     r"""
     Pagination metadata returned alongside a paginated result set.
@@ -4752,12 +4421,12 @@ class PostgresAttributes:
     @property
     def sslmode(self) -> builtins.str:
         r"""
-        Postgres SSL mode (e.g. `disable`, `require`, `verify-full`).
+        Postgres SSL mode. The Quicknode API accepts only `disable` or `require`.
         """
     @sslmode.setter
     def sslmode(self, value: builtins.str) -> None:
         r"""
-        Postgres SSL mode (e.g. `disable`, `require`, `verify-full`).
+        Postgres SSL mode. The Quicknode API accepts only `disable` or `require`.
         """
     @property
     def max_retry(self) -> builtins.int:
@@ -4836,103 +4505,6 @@ class RateLimitSettings:
         r"""
         Requests per day.
         """
-
-@typing.final
-class RedisAttributes:
-    r"""
-    Configuration for delivering stream batches to a Redis instance.
-    """
-    @property
-    def host(self) -> builtins.str:
-        r"""
-        Redis host.
-        """
-    @host.setter
-    def host(self, value: builtins.str) -> None:
-        r"""
-        Redis host.
-        """
-    @property
-    def port(self) -> builtins.int:
-        r"""
-        Redis port.
-        """
-    @port.setter
-    def port(self, value: builtins.int) -> None:
-        r"""
-        Redis port.
-        """
-    @property
-    def database(self) -> builtins.int:
-        r"""
-        Redis logical database index.
-        """
-    @database.setter
-    def database(self, value: builtins.int) -> None:
-        r"""
-        Redis logical database index.
-        """
-    @property
-    def username(self) -> builtins.str:
-        r"""
-        Username used to authenticate.
-        """
-    @username.setter
-    def username(self, value: builtins.str) -> None:
-        r"""
-        Username used to authenticate.
-        """
-    @property
-    def password(self) -> builtins.str:
-        r"""
-        Password used to authenticate.
-        """
-    @password.setter
-    def password(self, value: builtins.str) -> None:
-        r"""
-        Password used to authenticate.
-        """
-    @property
-    def key_name(self) -> builtins.str:
-        r"""
-        Redis key that receives written payloads.
-        """
-    @key_name.setter
-    def key_name(self, value: builtins.str) -> None:
-        r"""
-        Redis key that receives written payloads.
-        """
-    @property
-    def max_retry(self) -> builtins.int:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @max_retry.setter
-    def max_retry(self, value: builtins.int) -> None:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @property
-    def retry_interval_sec(self) -> builtins.int:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    @retry_interval_sec.setter
-    def retry_interval_sec(self, value: builtins.int) -> None:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    @property
-    def tls(self) -> typing.Optional[builtins.bool]:
-        r"""
-        Whether to connect over TLS.
-        """
-    @tls.setter
-    def tls(self, value: typing.Optional[builtins.bool]) -> None:
-        r"""
-        Whether to connect over TLS.
-        """
-    def __new__(cls, host: builtins.str, port: builtins.int, database: builtins.int, username: builtins.str, password: builtins.str, key_name: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, tls: typing.Optional[builtins.bool] = None) -> RedisAttributes: ...
 
 @typing.final
 class RemoveTeamMemberRequest:
@@ -5445,133 +5017,6 @@ class SingleEndpoint:
         """
 
 @typing.final
-class SnowflakeAttributes:
-    r"""
-    Configuration for delivering stream batches to a Snowflake data warehouse.
-    """
-    @property
-    def account(self) -> builtins.str:
-        r"""
-        Snowflake account identifier.
-        """
-    @account.setter
-    def account(self, value: builtins.str) -> None:
-        r"""
-        Snowflake account identifier.
-        """
-    @property
-    def host(self) -> builtins.str:
-        r"""
-        Snowflake host.
-        """
-    @host.setter
-    def host(self, value: builtins.str) -> None:
-        r"""
-        Snowflake host.
-        """
-    @property
-    def port(self) -> builtins.int:
-        r"""
-        Snowflake port.
-        """
-    @port.setter
-    def port(self, value: builtins.int) -> None:
-        r"""
-        Snowflake port.
-        """
-    @property
-    def protocol(self) -> builtins.str:
-        r"""
-        Connection protocol (e.g. `https`).
-        """
-    @protocol.setter
-    def protocol(self, value: builtins.str) -> None:
-        r"""
-        Connection protocol (e.g. `https`).
-        """
-    @property
-    def database(self) -> builtins.str:
-        r"""
-        Database name.
-        """
-    @database.setter
-    def database(self, value: builtins.str) -> None:
-        r"""
-        Database name.
-        """
-    @property
-    def schema(self) -> builtins.str:
-        r"""
-        Schema within the database.
-        """
-    @schema.setter
-    def schema(self, value: builtins.str) -> None:
-        r"""
-        Schema within the database.
-        """
-    @property
-    def warehouse(self) -> builtins.str:
-        r"""
-        Warehouse used to run inserts.
-        """
-    @warehouse.setter
-    def warehouse(self, value: builtins.str) -> None:
-        r"""
-        Warehouse used to run inserts.
-        """
-    @property
-    def username(self) -> builtins.str:
-        r"""
-        Username used to authenticate.
-        """
-    @username.setter
-    def username(self, value: builtins.str) -> None:
-        r"""
-        Username used to authenticate.
-        """
-    @property
-    def password(self) -> builtins.str:
-        r"""
-        Password used to authenticate.
-        """
-    @password.setter
-    def password(self, value: builtins.str) -> None:
-        r"""
-        Password used to authenticate.
-        """
-    @property
-    def max_retry(self) -> builtins.int:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @max_retry.setter
-    def max_retry(self, value: builtins.int) -> None:
-        r"""
-        Maximum number of retry attempts for a failed write.
-        """
-    @property
-    def retry_interval_sec(self) -> builtins.int:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    @retry_interval_sec.setter
-    def retry_interval_sec(self, value: builtins.int) -> None:
-        r"""
-        Seconds to wait between retry attempts.
-        """
-    @property
-    def table_name(self) -> typing.Optional[builtins.str]:
-        r"""
-        Optional destination table for inserted rows.
-        """
-    @table_name.setter
-    def table_name(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        Optional destination table for inserted rows.
-        """
-    def __new__(cls, account: builtins.str, host: builtins.str, port: builtins.int, protocol: builtins.str, database: builtins.str, schema: builtins.str, warehouse: builtins.str, username: builtins.str, password: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, table_name: typing.Optional[builtins.str] = None) -> SnowflakeAttributes: ...
-
-@typing.final
 class SolanaWalletFilterArgs:
     @property
     def attributes(self) -> SolanaWalletFilterTemplate: ...
@@ -5682,9 +5127,9 @@ class Stream:
     @property
     def address_book_config(self) -> typing.Optional[AddressBookConfig]: ...
     @property
-    def destination_attributes(self) -> typing.Optional[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamMysqlDestination, StreamMongoDestination, StreamClickhouseDestination, StreamSnowflakeDestination, StreamKafkaDestination, StreamRedisDestination]]: ...
+    def destination_attributes(self) -> typing.Optional[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamKafkaDestination]]: ...
     @property
-    def extra_destinations(self) -> typing.Optional[typing.List[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamMysqlDestination, StreamMongoDestination, StreamClickhouseDestination, StreamSnowflakeDestination, StreamKafkaDestination, StreamRedisDestination]]]: ...
+    def extra_destinations(self) -> typing.Optional[typing.List[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamKafkaDestination]]]: ...
 
 @typing.final
 class StreamAzureDestination:
@@ -5693,28 +5138,10 @@ class StreamAzureDestination:
     def __new__(cls, attrs: AzureAttributes) -> StreamAzureDestination: ...
 
 @typing.final
-class StreamClickhouseDestination:
-    @property
-    def attributes(self) -> ClickhouseAttributes: ...
-    def __new__(cls, attrs: ClickhouseAttributes) -> StreamClickhouseDestination: ...
-
-@typing.final
 class StreamKafkaDestination:
     @property
     def attributes(self) -> KafkaAttributes: ...
     def __new__(cls, attrs: KafkaAttributes) -> StreamKafkaDestination: ...
-
-@typing.final
-class StreamMongoDestination:
-    @property
-    def attributes(self) -> MongoAttributes: ...
-    def __new__(cls, attrs: MongoAttributes) -> StreamMongoDestination: ...
-
-@typing.final
-class StreamMysqlDestination:
-    @property
-    def attributes(self) -> MysqlAttributes: ...
-    def __new__(cls, attrs: MysqlAttributes) -> StreamMysqlDestination: ...
 
 @typing.final
 class StreamPostgresDestination:
@@ -5723,22 +5150,10 @@ class StreamPostgresDestination:
     def __new__(cls, attrs: PostgresAttributes) -> StreamPostgresDestination: ...
 
 @typing.final
-class StreamRedisDestination:
-    @property
-    def attributes(self) -> RedisAttributes: ...
-    def __new__(cls, attrs: RedisAttributes) -> StreamRedisDestination: ...
-
-@typing.final
 class StreamS3Destination:
     @property
     def attributes(self) -> S3Attributes: ...
     def __new__(cls, attrs: S3Attributes) -> StreamS3Destination: ...
-
-@typing.final
-class StreamSnowflakeDestination:
-    @property
-    def attributes(self) -> SnowflakeAttributes: ...
-    def __new__(cls, attrs: SnowflakeAttributes) -> StreamSnowflakeDestination: ...
 
 @typing.final
 class StreamWebhookDestination:
@@ -5748,7 +5163,7 @@ class StreamWebhookDestination:
 
 @typing.final
 class StreamsApiClient:
-    def create_stream(self, name: builtins.str, network: builtins.str, dataset: builtins.str, region: builtins.str, start_range: builtins.int, end_range: builtins.int, destination_attributes: typing.Any, plan: builtins.str, threshold_fetch_buffer: builtins.int, dataset_batch_size: typing.Optional[builtins.int] = None, max_batch_size: typing.Optional[builtins.int] = None, max_buffer_range_size: typing.Optional[builtins.int] = None, max_buffer_processing_workers: typing.Optional[builtins.int] = None, keep_distance_from_tip: typing.Optional[builtins.int] = None, filter_function: typing.Optional[builtins.str] = None, filter_language: typing.Optional[builtins.str] = None, include_stream_metadata: typing.Optional[builtins.str] = None, product_type: typing.Optional[builtins.str] = None, status: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, charge_min_cap: typing.Optional[builtins.int] = None, fix_block_reorgs: typing.Optional[builtins.int] = None, elastic_batch_enabled: typing.Optional[builtins.bool] = None, extra_destinations: typing.Optional[typing.Any] = None) -> typing.Coroutine[typing.Any, typing.Any, Stream]:
+    def create_stream(self, name: builtins.str, network: builtins.str, dataset: builtins.str, region: builtins.str, start_range: builtins.int, end_range: builtins.int, destination_attributes: typing.Any, dataset_batch_size: builtins.int, elastic_batch_enabled: builtins.bool, plan: typing.Optional[builtins.str] = None, threshold_fetch_buffer: typing.Optional[builtins.int] = None, max_batch_size: typing.Optional[builtins.int] = None, max_buffer_range_size: typing.Optional[builtins.int] = None, max_buffer_processing_workers: typing.Optional[builtins.int] = None, keep_distance_from_tip: typing.Optional[builtins.int] = None, filter_function: typing.Optional[builtins.str] = None, filter_language: typing.Optional[builtins.str] = None, include_stream_metadata: typing.Optional[builtins.str] = None, product_type: typing.Optional[builtins.str] = None, status: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, charge_min_cap: typing.Optional[builtins.int] = None, fix_block_reorgs: typing.Optional[builtins.int] = None, extra_destinations: typing.Optional[typing.Any] = None) -> typing.Coroutine[typing.Any, typing.Any, Stream]:
         r"""
         Creates a new Stream on a given blockchain network and dataset, delivering
         batches to the configured destination. Start from a specific block for
@@ -6762,12 +6177,12 @@ class WebhookAttributes:
     @property
     def max_retry(self) -> builtins.int:
         r"""
-        Maximum number of retry attempts for a failed delivery.
+        Maximum number of retry attempts for a failed delivery. Must be in the range 1–10.
         """
     @max_retry.setter
     def max_retry(self, value: builtins.int) -> None:
         r"""
-        Maximum number of retry attempts for a failed delivery.
+        Maximum number of retry attempts for a failed delivery. Must be in the range 1–10.
         """
     @property
     def retry_interval_sec(self) -> builtins.int:
@@ -6792,24 +6207,24 @@ class WebhookAttributes:
     @property
     def security_token(self) -> typing.Optional[builtins.str]:
         r"""
-        Optional token included with each request so the receiver can verify authenticity.
+        Optional token included with each request so the receiver can verify authenticity. When supplied, must be at least 32 bytes (256 bits).
         """
     @security_token.setter
     def security_token(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Optional token included with each request so the receiver can verify authenticity.
+        Optional token included with each request so the receiver can verify authenticity. When supplied, must be at least 32 bytes (256 bits).
         """
     @property
-    def compression(self) -> builtins.str:
+    def compression(self) -> typing.Optional[builtins.str]:
         r"""
-        Compression applied to the payload (e.g. `none`, `gzip`).
+        Compression applied to the payload (e.g. `none`, `gzip`). When omitted the server defaults to no compression.
         """
     @compression.setter
-    def compression(self, value: builtins.str) -> None:
+    def compression(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Compression applied to the payload (e.g. `none`, `gzip`).
+        Compression applied to the payload (e.g. `none`, `gzip`). When omitted the server defaults to no compression.
         """
-    def __new__(cls, url: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, post_timeout_sec: builtins.int, compression: builtins.str, security_token: typing.Optional[builtins.str] = None) -> WebhookAttributes: ...
+    def __new__(cls, url: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, post_timeout_sec: builtins.int, compression: typing.Optional[builtins.str] = None, security_token: typing.Optional[builtins.str] = None) -> WebhookAttributes: ...
 
 @typing.final
 class WebhookDestinationAttributes:

@@ -1368,9 +1368,10 @@ impl StreamsApiClient {
         start_range,
         end_range,
         destination_attributes,
-        plan,
-        threshold_fetch_buffer,
-        dataset_batch_size=None,
+        dataset_batch_size,
+        elastic_batch_enabled,
+        plan=None,
+        threshold_fetch_buffer=None,
         max_batch_size=None,
         max_buffer_range_size=None,
         max_buffer_processing_workers=None,
@@ -1383,7 +1384,6 @@ impl StreamsApiClient {
         notification_email=None,
         charge_min_cap=None,
         fix_block_reorgs=None,
-        elastic_batch_enabled=None,
         extra_destinations=None
     ))]
     #[gen_stub(override_return_type(
@@ -1399,9 +1399,10 @@ impl StreamsApiClient {
         start_range: i64,
         end_range: i64,
         destination_attributes: &Bound<'py, PyAny>,
-        plan: String,
-        threshold_fetch_buffer: i64,
-        dataset_batch_size: Option<i64>,
+        dataset_batch_size: i64,
+        elastic_batch_enabled: bool,
+        plan: Option<String>,
+        threshold_fetch_buffer: Option<i64>,
         max_batch_size: Option<i64>,
         max_buffer_range_size: Option<i64>,
         max_buffer_processing_workers: Option<i64>,
@@ -1414,7 +1415,6 @@ impl StreamsApiClient {
         notification_email: Option<String>,
         charge_min_cap: Option<i32>,
         fix_block_reorgs: Option<i32>,
-        elastic_batch_enabled: Option<bool>,
         extra_destinations: Option<Bound<'py, PyAny>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -2422,23 +2422,13 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<streams_destination::StreamS3Destination>()?;
     m.add_class::<streams_destination::StreamAzureDestination>()?;
     m.add_class::<streams_destination::StreamPostgresDestination>()?;
-    m.add_class::<streams_destination::StreamMysqlDestination>()?;
-    m.add_class::<streams_destination::StreamMongoDestination>()?;
-    m.add_class::<streams_destination::StreamClickhouseDestination>()?;
-    m.add_class::<streams_destination::StreamSnowflakeDestination>()?;
     m.add_class::<streams_destination::StreamKafkaDestination>()?;
-    m.add_class::<streams_destination::StreamRedisDestination>()?;
     m.add_class::<core::streams::AddressBookConfig>()?;
     m.add_class::<core::streams::WebhookAttributes>()?;
     m.add_class::<core::streams::S3Attributes>()?;
     m.add_class::<core::streams::AzureAttributes>()?;
     m.add_class::<core::streams::PostgresAttributes>()?;
-    m.add_class::<core::streams::MysqlAttributes>()?;
-    m.add_class::<core::streams::MongoAttributes>()?;
-    m.add_class::<core::streams::ClickhouseAttributes>()?;
-    m.add_class::<core::streams::SnowflakeAttributes>()?;
     m.add_class::<core::streams::KafkaAttributes>()?;
-    m.add_class::<core::streams::RedisAttributes>()?;
     m.add_class::<core::streams::PageInfo>()?;
     m.add_class::<core::streams::TestFilterResponse>()?;
     m.add_class::<core::streams::EnabledCountResponse>()?;

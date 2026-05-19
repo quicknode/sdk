@@ -6,12 +6,7 @@ import {
   S3Attributes,
   AzureAttributes,
   PostgresAttributes,
-  MysqlAttributes,
-  MongoAttributes,
-  ClickhouseAttributes,
-  SnowflakeAttributes,
   KafkaAttributes,
-  RedisAttributes,
   WebhookTemplateId,
   EvmWalletFilterTemplate,
   EvmContractEventsTemplate,
@@ -32,12 +27,7 @@ export type StreamDestinationAttributesInput =
   | { destination: "s3"; attributes: S3Attributes }
   | { destination: "azure"; attributes: AzureAttributes }
   | { destination: "postgres"; attributes: PostgresAttributes }
-  | { destination: "mysql"; attributes: MysqlAttributes }
-  | { destination: "mongo"; attributes: MongoAttributes }
-  | { destination: "clickhouse"; attributes: ClickhouseAttributes }
-  | { destination: "snowflake"; attributes: SnowflakeAttributes }
-  | { destination: "kafka"; attributes: KafkaAttributes }
-  | { destination: "redis"; attributes: RedisAttributes };
+  | { destination: "kafka"; attributes: KafkaAttributes };
 
 // Stream destination attributes (response). Mirrors the input shape so a
 // response can be round-tripped back into an update call without renaming.
@@ -117,12 +107,7 @@ export type {
   S3Attributes,
   AzureAttributes,
   PostgresAttributes,
-  MysqlAttributes,
-  MongoAttributes,
-  ClickhouseAttributes,
-  SnowflakeAttributes,
   KafkaAttributes,
-  RedisAttributes,
   AddressBookConfig,
   StreamsApiClient,
   // billing
