@@ -118,7 +118,7 @@ module QuicknodeSdk
     def delete_stream: (id: String) -> void
     def activate_stream: (id: String) -> void
     def pause_stream: (id: String) -> void
-    def test_filter: (network: String, dataset: String, block: String, ?filter_function: String, ?filter_language: String) -> untyped
+    def test_filter: (network: String, dataset: String, block: String, filter_function: String, ?filter_language: String) -> untyped
     def get_enabled_count: (?stream_type: String) -> untyped
   end
 

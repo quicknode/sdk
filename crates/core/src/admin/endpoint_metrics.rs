@@ -4,7 +4,34 @@ use napi_derive::napi;
 use pyo3::pyclass;
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::gen_stub_pyclass;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+// The metrics endpoints return `tag` as either a plain string (single-axis
+// series like `"total"` or `"p95"`) or a tuple like `["network", "mainnet"]`
+// (multi-axis series). Normalise both to a `Vec<String>` so callers always
+// see an array.
+fn tag_as_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+    match serde_json::Value::deserialize(deserializer)? {
+        serde_json::Value::String(s) => Ok(vec![s]),
+        serde_json::Value::Array(items) => items
+            .into_iter()
+            .map(|v| match v {
+                serde_json::Value::String(s) => Ok(s),
+                other => Err(D::Error::custom(format!(
+                    "expected string in tag array, got {other}"
+                ))),
+            })
+            .collect(),
+        serde_json::Value::Null => Ok(Vec::new()),
+        other => Err(D::Error::custom(format!(
+            "expected string or array of strings for tag, got {other}"
+        ))),
+    }
+}
 
 /// Parameters for `get_endpoint_metrics`.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
@@ -41,8 +68,11 @@ pub struct GetAccountMetricsRequest {
 pub struct EndpointMetric {
     /// Data points, each as `[timestamp, value]`.
     pub data: Vec<Vec<i64>>,
-    /// Human-readable tag identifying the series.
-    pub tag: String,
+    /// Tag identifying the series. Single-axis metrics return a one-element
+    /// vector (e.g. `["total"]`, `["p95"]`); multi-axis metrics return the
+    /// key/value pair (e.g. `["network", "arbitrum-mainnet"]`).
+    #[serde(deserialize_with = "tag_as_vec")]
+    pub tag: Vec<String>,
 }
 
 /// Response from `get_endpoint_metrics`.
@@ -69,4 +99,50 @@ pub struct GetAccountMetricsResponse {
     pub data: Vec<EndpointMetric>,
     /// Error message when the request did not succeed.
     pub error: Option<String>,
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::EndpointMetric;
+
+    #[test]
+    fn tag_deserializes_from_string() {
+        let m: EndpointMetric =
+            serde_json::from_str(r#"{"data": [[1, 2]], "tag": "total"}"#).unwrap();
+        assert_eq!(m.tag, vec!["total".to_string()]);
+    }
+
+    #[test]
+    fn tag_deserializes_from_tuple() {
+        let m: EndpointMetric =
+            serde_json::from_str(r#"{"data": [[1, 2]], "tag": ["network", "arbitrum-mainnet"]}"#)
+                .unwrap();
+        assert_eq!(
+            m.tag,
+            vec!["network".to_string(), "arbitrum-mainnet".to_string()]
+        );
+    }
+
+    #[test]
+    fn tag_deserializes_from_null() {
+        let m: EndpointMetric = serde_json::from_str(r#"{"data": [[1, 2]], "tag": null}"#).unwrap();
+        assert!(m.tag.is_empty());
+    }
+
+    #[test]
+    fn tag_rejects_mixed_array() {
+        let err =
+            serde_json::from_str::<EndpointMetric>(r#"{"data": [], "tag": ["x", 5]}"#).unwrap_err();
+        assert!(err.to_string().contains("expected string in tag array"));
+    }
+
+    #[test]
+    fn tag_rejects_object() {
+        let err = serde_json::from_str::<EndpointMetric>(r#"{"data": [], "tag": {"k": "v"}}"#)
+            .unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("expected string or array of strings for tag"));
+    }
 }

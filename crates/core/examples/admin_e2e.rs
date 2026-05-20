@@ -97,7 +97,17 @@ async fn main() {
         })
         .await
     {
-        Ok(resp) => println!("get_account_metrics: {} series", resp.data.len()),
+        Ok(resp) => {
+            let first = resp
+                .data
+                .first()
+                .map(|m| m.tag.join(":"))
+                .unwrap_or_else(|| "<none>".to_string());
+            println!(
+                "get_account_metrics: {} series, first tag: {first}",
+                resp.data.len()
+            );
+        }
         Err(e) => eprintln!("get_account_metrics error: {e}"),
     }
 
@@ -254,7 +264,17 @@ async fn main() {
         )
         .await
     {
-        Ok(resp) => println!("get_endpoint_metrics: {} series", resp.data.len()),
+        Ok(resp) => {
+            let first = resp
+                .data
+                .first()
+                .map(|m| m.tag.join(":"))
+                .unwrap_or_else(|| "<none>".to_string());
+            println!(
+                "get_endpoint_metrics: {} series, first tag: {first}",
+                resp.data.len()
+            );
+        }
         Err(e) => eprintln!("get_endpoint_metrics error: {e}"),
     }
 

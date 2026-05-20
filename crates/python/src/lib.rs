@@ -1729,7 +1729,7 @@ impl StreamsApiClient {
     /// Runs a filter function against a specified block on a given network and
     /// dataset, returning the filter's output so it can be validated before
     /// being attached to a live stream.
-    #[pyo3(signature = (network, dataset, block, filter_function=None, filter_language=None))]
+    #[pyo3(signature = (network, dataset, block, filter_function, filter_language=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, TestFilterResponse]"
     ))]
@@ -1739,7 +1739,7 @@ impl StreamsApiClient {
         network: String,
         dataset: String,
         block: String,
-        filter_function: Option<String>,
+        filter_function: String,
         filter_language: Option<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();

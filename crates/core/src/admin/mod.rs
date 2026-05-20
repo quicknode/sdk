@@ -2638,7 +2638,7 @@ mod tests {
         Mock::given(method("GET"))
             .and(path("/endpoints/ep123/metrics"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "data": [{"data": [[1700000000, 42]], "tag": "mainnet"}],
+                "data": [{"data": [[1700000000, 42]], "tag": ["network", "mainnet"]}],
                 "error": null
             })))
             .mount(&server)
@@ -2655,7 +2655,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.data.len(), 1);
-        assert_eq!(resp.data[0].tag, "mainnet");
+        assert_eq!(
+            resp.data[0].tag,
+            vec!["network".to_string(), "mainnet".to_string()]
+        );
     }
 
     #[tokio::test]
@@ -2679,6 +2682,47 @@ mod tests {
         };
         let resp = sdk.admin.get_account_metrics(&params).await.unwrap();
         assert_eq!(resp.data.len(), 1);
+        assert_eq!(resp.data[0].tag, vec!["total".to_string()]);
+    }
+
+    // Regression: the metrics endpoints return `tag` as either a plain string
+    // (single-axis series) or a `[key, value]` tuple (multi-axis series).
+    // Exercise both shapes so any future serde change that breaks either
+    // branch fails loudly.
+    #[tokio::test]
+    async fn get_account_metrics_decodes_tuple_tag() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/metrics"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": [
+                    {"tag": ["network", "arbitrum-mainnet"], "data": [[1779109200, 40]]},
+                    {"tag": ["network", "mainnet"], "data": [[1779116400, 40]]},
+                    {"tag": "p95", "data": [[1779116400, 12]]}
+                ],
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = GetAccountMetricsRequest {
+            period: "day".to_string(),
+            metric: "credits_over_time".to_string(),
+            percentile: None,
+        };
+        let resp = sdk.admin.get_account_metrics(&params).await.unwrap();
+        assert_eq!(resp.data.len(), 3);
+        assert_eq!(
+            resp.data[0].tag,
+            vec!["network".to_string(), "arbitrum-mainnet".to_string()]
+        );
+        assert_eq!(
+            resp.data[1].tag,
+            vec!["network".to_string(), "mainnet".to_string()]
+        );
+        assert_eq!(resp.data[2].tag, vec!["p95".to_string()]);
     }
 
     #[tokio::test]
@@ -2930,6 +2974,29 @@ mod tests {
         };
         let resp = sdk.admin.update_team_endpoints(1, &params).await.unwrap();
         assert!(resp.data.unwrap().success.unwrap());
+    }
+
+    // Wire-inspection regression: confirm an empty endpoint_ids array reaches
+    // the wire as `[]` (not omitted), so any future `skip_serializing_if`
+    // change that drops the empty case fails loudly.
+    #[tokio::test]
+    async fn update_team_endpoints_empty_array_wire_body() {
+        use wiremock::matchers::body_json;
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/teams/1/endpoints"))
+            .and(body_json(serde_json::json!({ "endpoint_ids": [] })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {"success": true},
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let params = UpdateTeamEndpointsRequest {
+            endpoint_ids: vec![],
+        };
+        sdk.admin.update_team_endpoints(1, &params).await.unwrap();
     }
 
     #[tokio::test]

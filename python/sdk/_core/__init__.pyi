@@ -2024,14 +2024,18 @@ class EndpointMetric:
         Data points, each as `[timestamp, value]`.
         """
     @property
-    def tag(self) -> builtins.str:
+    def tag(self) -> builtins.list[builtins.str]:
         r"""
-        Human-readable tag identifying the series.
+        Tag identifying the series. Single-axis metrics return a one-element
+        vector (e.g. `["total"]`, `["p95"]`); multi-axis metrics return the
+        key/value pair (e.g. `["network", "arbitrum-mainnet"]`).
         """
     @tag.setter
-    def tag(self, value: builtins.str) -> None:
+    def tag(self, value: builtins.list[builtins.str]) -> None:
         r"""
-        Human-readable tag identifying the series.
+        Tag identifying the series. Single-axis metrics return a one-element
+        vector (e.g. `["total"]`, `["p95"]`); multi-axis metrics return the
+        key/value pair (e.g. `["network", "arbitrum-mainnet"]`).
         """
 
 @typing.final
@@ -5211,7 +5215,7 @@ class StreamsApiClient:
         r"""
         Pauses a stream by ID, halting delivery until it is activated again.
         """
-    def test_filter(self, network: builtins.str, dataset: builtins.str, block: builtins.str, filter_function: typing.Optional[builtins.str] = None, filter_language: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, TestFilterResponse]:
+    def test_filter(self, network: builtins.str, dataset: builtins.str, block: builtins.str, filter_function: builtins.str, filter_language: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, TestFilterResponse]:
         r"""
         Runs a filter function against a specified block on a given network and
         dataset, returning the filter's output so it can be validated before

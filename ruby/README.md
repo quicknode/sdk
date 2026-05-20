@@ -791,7 +791,7 @@ Returns metric series for an endpoint over a time period.
 
 **Parameters**: `id` (endpoint id, required); body: `period` (`"hour"` | `"day"` | `"week"` | `"month"`), `metric` (e.g. `"method_calls_over_time"`, `"response_status_breakdown"`).
 
-**Returns**: `GetEndpointMetricsResponse` with `data: EndpointMetric[]`.
+**Returns**: `GetEndpointMetricsResponse` (as a `Hashie::Mash`) with `data: Array<EndpointMetric>`. Each `EndpointMetric` has `tag: Array<String>` and `data: Array<Array<Integer>>` of `[timestamp, value]` pairs. Single-axis series (e.g. `response_time_over_time` with a percentile) come back as a one-element tag like `["p95"]`; multi-axis series come back as `["network", "arbitrum-mainnet"]`.
 
 ```ruby
 # Ruby
@@ -808,7 +808,7 @@ Returns account-level metric series. Supports an optional `percentile` (e.g. `"p
 
 **Parameters**: `period` (required), `metric` (required), `percentile` (string, optional).
 
-**Returns**: `GetAccountMetricsResponse` with `data: EndpointMetric[]`.
+**Returns**: `GetAccountMetricsResponse` (as a `Hashie::Mash`) with `data: Array<EndpointMetric>`. See `get_endpoint_metrics` above for the `tag: Array<String>` shape.
 
 ```ruby
 # Ruby

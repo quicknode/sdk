@@ -681,7 +681,7 @@ impl KvStoreApiClient {
 mod tests {
     use super::*;
     use crate::{KvStoreConfig, QuicknodeSdk, SdkFullConfig};
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{body_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn make_sdk(base_url: String) -> QuicknodeSdk {
@@ -938,6 +938,59 @@ mod tests {
         assert!(matches!(err, SdkError::Api { .. }));
     }
 
+    // Wire-inspection regressions: confirm that addSets and deleteSets reach
+    // the wire under the names the API expects, so any future serde rename of
+    // these fields fails loudly.
+    #[tokio::test]
+    async fn bulk_sets_wire_body_add_sets() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/sets/bulk"))
+            .and(body_json(serde_json::json!({
+                "add_sets": {"k1": "v1"}
+            })))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let mut add = HashMap::new();
+        add.insert("k1".to_string(), "v1".to_string());
+        sdk.kvstore
+            .bulk_sets(&BulkSetsParams {
+                add_sets: Some(add),
+                delete_sets: None,
+            })
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn bulk_sets_wire_body_delete_sets() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/sets/bulk"))
+            .and(body_json(serde_json::json!({
+                "delete_sets": ["k1", "k2"]
+            })))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        sdk.kvstore
+            .bulk_sets(&BulkSetsParams {
+                add_sets: None,
+                delete_sets: Some(vec!["k1".to_string(), "k2".to_string()]),
+            })
+            .await
+            .unwrap();
+    }
+
     #[tokio::test]
     async fn delete_set_success() {
         let server = MockServer::start().await;
@@ -1186,6 +1239,37 @@ mod tests {
                 &UpdateListParams {
                     add_items: Some(vec!["item3".to_string()]),
                     remove_items: None,
+                },
+            )
+            .await
+            .unwrap();
+    }
+
+    // Wire-inspection regression: confirm addItems/removeItems reach the wire
+    // under the names the API expects, so any future serde rename of these
+    // fields fails loudly.
+    #[tokio::test]
+    async fn update_list_wire_body() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/lists/my-list"))
+            .and(body_json(serde_json::json!({
+                "add_items": ["c"],
+                "remove_items": ["a"]
+            })))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        sdk.kvstore
+            .update_list(
+                "my-list",
+                &UpdateListParams {
+                    add_items: Some(vec!["c".to_string()]),
+                    remove_items: Some(vec!["a".to_string()]),
                 },
             )
             .await

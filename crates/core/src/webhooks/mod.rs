@@ -712,6 +712,34 @@ mod tests {
         assert_eq!(resp.id, "wh-1234-5678");
     }
 
+    // Wire-inspection regression: confirm that `name` reaches the wire when
+    // supplied so any future serde rename/drop of the field fails loudly.
+    #[tokio::test]
+    async fn update_webhook_template_wire_body_includes_name() {
+        use wiremock::matchers::body_partial_json;
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path_regex("/webhooks/test-id/template/evmWalletFilter"))
+            .and(body_partial_json(serde_json::json!({"name": "new-name"})))
+            .respond_with(ResponseTemplate::new(200).set_body_json(webhook_response_json()))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
+            wallets: vec!["0xabc".to_string()],
+        });
+        let params = UpdateWebhookTemplateParams {
+            name: Some("new-name".to_string()),
+            notification_email: None,
+            destination_attributes: None,
+            template_args,
+        };
+        sdk.webhooks
+            .update_webhook_template("test-id", &params)
+            .await
+            .unwrap();
+    }
+
     #[tokio::test]
     async fn update_webhook_template_api_error() {
         let server = MockServer::start().await;
