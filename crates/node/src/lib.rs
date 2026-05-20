@@ -591,9 +591,11 @@ impl AdminApiClient {
             .map_err(errors::map_sdk_err)
     }
 
-    /// Updates the overall rate limits on an endpoint. Accepts `rps`
-    /// (requests per second), `rpm` (requests per minute), and `rpd` (requests
-    /// per day).
+    /// Partial update of the endpoint-level rate-limit overrides. Accepts
+    /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
+    /// (requests per day). Only buckets included are modified — omitted
+    /// buckets are left unchanged. Values are capped by the account's plan
+    /// tier.
     #[napi]
     pub async fn update_rate_limits(
         &self,
@@ -602,6 +604,43 @@ impl AdminApiClient {
     ) -> Result<()> {
         self.inner
             .update_rate_limits(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Returns the endpoint-level rate limits currently enforced, with each
+    /// row identifying its bucket (`rps`/`rpm`/`rpd`), value, and source
+    /// (`plan_default` or `user_override`). User-set overrides expose an
+    /// `overrideId` that can be passed to `deleteRateLimitOverride`.
+    #[napi]
+    pub async fn get_rate_limits(&self, id: String) -> Result<core::admin::GetRateLimitsResponse> {
+        self.inner
+            .get_rate_limits(&id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Deletes a user-set rate-limit override by its UUID. Plan defaults are
+    /// not deletable.
+    #[napi]
+    pub async fn delete_rate_limit_override(&self, id: String, override_id: String) -> Result<()> {
+        self.inner
+            .delete_rate_limit_override(&id, &override_id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Returns the HTTP and WebSocket URLs for the endpoint without fetching
+    /// the full endpoint record. For multichain endpoints, `multichainUrls`
+    /// is a per-network mapping of additional URLs; for single-chain endpoints
+    /// it is `null`.
+    #[napi]
+    pub async fn get_endpoint_urls(
+        &self,
+        id: String,
+    ) -> Result<core::admin::GetEndpointUrlsResponse> {
+        self.inner
+            .get_endpoint_urls(&id)
             .await
             .map_err(errors::map_sdk_err)
     }

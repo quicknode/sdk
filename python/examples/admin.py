@@ -25,7 +25,7 @@ async def main():
     for ep in response.data:
         print(
             f"{ep.id} | {ep.name} | {ep.status} | {ep.network} | "
-            f"dedicated={ep.is_dedicated} flat={ep.is_flat_rate}"
+            f"dedicated={ep.is_dedicated} flat={ep.is_flat_rate} multichain={ep.is_multichain}"
         )
 
     tags = await qn.admin.list_tags()
@@ -39,8 +39,21 @@ async def main():
     print(f"get_account_metrics: {len(metrics.data)} series, first tag: {first_tag}")
 
     if response.data:
-        sec = await qn.admin.get_endpoint_security(response.data[0].id)
+        ep_id = response.data[0].id
+        sec = await qn.admin.get_endpoint_security(ep_id)
         print(f"get_endpoint_security: has_data={sec.data is not None}")
+
+        urls = await qn.admin.get_endpoint_urls(ep_id)
+        if urls.data is not None:
+            mc = urls.data.multichain_urls
+            print(
+                f"get_endpoint_urls: http={urls.data.http_url} "
+                f"multichain_networks={list(mc.keys()) if mc is not None else None}"
+            )
+
+        rl = await qn.admin.get_rate_limits(ep_id)
+        if rl.data is not None:
+            print(f"get_rate_limits: {len(rl.data.rate_limits)} rows")
 
     # ── Error handling ──────────────────────────────────────────────────
     # 1) API error path — 404 on a bogus endpoint id.
@@ -50,6 +63,15 @@ async def main():
         assert isinstance(e, QuicknodeError)
         assert e.status == 404
         print(f"api error {e.status}: {e.body[:80]}")
+
+    # 1b) Rate-limit override delete with a bogus override id — also a 404.
+    try:
+        await qn.admin.delete_rate_limit_override(
+            "does-not-exist", "00000000-0000-0000-0000-000000000000"
+        )
+    except ApiError as e:
+        assert e.status == 404
+        print(f"delete_rate_limit_override api error {e.status}: {e.body[:80]}")
 
     # 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.
     blackhole = QuicknodeSdk(

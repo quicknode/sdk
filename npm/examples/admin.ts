@@ -20,7 +20,7 @@ async function main() {
   for (const ep of response.data) {
     console.log(
       `${ep.id} | ${ep.name} | ${ep.status} | ${ep.network} | ` +
-        `dedicated=${ep.isDedicated} flat=${ep.isFlatRate}`,
+        `dedicated=${ep.isDedicated} flat=${ep.isFlatRate} multichain=${ep.isMultichain}`,
     );
   }
 
@@ -37,8 +37,21 @@ async function main() {
   console.log(`getAccountMetrics: ${metrics.data.length} series, first tag: ${firstTag}`);
 
   if (response.data.length > 0) {
-    const sec = await qn.admin.getEndpointSecurity(response.data[0].id);
+    const epId = response.data[0].id;
+    const sec = await qn.admin.getEndpointSecurity(epId);
     console.log(`getEndpointSecurity: has_data=${sec.data !== undefined && sec.data !== null}`);
+
+    const urls = await qn.admin.getEndpointUrls(epId);
+    if (urls.data) {
+      const mc = urls.data.multichainUrls;
+      const networks = mc ? Object.keys(mc) : null;
+      console.log(`getEndpointUrls: http=${urls.data.httpUrl} multichain_networks=${networks}`);
+    }
+
+    const rl = await qn.admin.getRateLimits(epId);
+    if (rl.data) {
+      console.log(`getRateLimits: ${rl.data.rateLimits.length} rows`);
+    }
   }
 
   // ── Error handling ──────────────────────────────────────────────────
@@ -50,6 +63,18 @@ async function main() {
     console.assert(e instanceof QuicknodeError);
     console.assert(e.status === 404);
     console.log(`api error ${e.status}: ${e.body.slice(0, 80)}`);
+  }
+
+  // 1b) Rate-limit override delete with a bogus override id — also a 404.
+  try {
+    await qn.admin.deleteRateLimitOverride(
+      "does-not-exist",
+      "00000000-0000-0000-0000-000000000000",
+    );
+  } catch (e) {
+    if (!(e instanceof ApiError)) throw e;
+    console.assert(e.status === 404);
+    console.log(`deleteRateLimitOverride api error ${e.status}: ${e.body.slice(0, 80)}`);
   }
 
   // 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.

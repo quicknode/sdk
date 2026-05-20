@@ -12,7 +12,7 @@ async fn main() {
         .sort_direction("desc".to_string())
         .build();
 
-    match qn.admin.get_endpoints(&params).await {
+    let first_endpoint_id = match qn.admin.get_endpoints(&params).await {
         Ok(resp) => {
             if let Some(p) = &resp.pagination {
                 println!(
@@ -25,11 +25,35 @@ async fn main() {
             }
             for ep in &resp.data {
                 println!(
-                    "{} | {} | {} | {} | dedicated={} flat={}",
-                    ep.id, ep.name, ep.status, ep.chain, ep.is_dedicated, ep.is_flat_rate
+                    "{} | {} | {} | {} | dedicated={} flat={} multichain={}",
+                    ep.id,
+                    ep.name,
+                    ep.status,
+                    ep.chain,
+                    ep.is_dedicated,
+                    ep.is_flat_rate,
+                    ep.is_multichain
                 );
             }
+            resp.data.first().map(|ep| ep.id.clone())
         }
-        Err(e) => eprintln!("Error: {e}"),
+        Err(e) => {
+            eprintln!("get_endpoints error: {e}");
+            None
+        }
+    };
+
+    let Some(endpoint_id) = first_endpoint_id else {
+        return;
+    };
+
+    match qn.admin.get_rate_limits(&endpoint_id).await {
+        Ok(resp) => println!("get_rate_limits: {:?}", resp.data),
+        Err(e) => eprintln!("get_rate_limits error: {e}"),
+    }
+
+    match qn.admin.get_endpoint_urls(&endpoint_id).await {
+        Ok(resp) => println!("get_endpoint_urls: {:?}", resp.data),
+        Err(e) => eprintln!("get_endpoint_urls error: {e}"),
     }
 }

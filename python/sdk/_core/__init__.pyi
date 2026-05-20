@@ -62,6 +62,7 @@ __all__ = [
     "EndpointSecurityOptions",
     "EndpointTag",
     "EndpointToken",
+    "EndpointUrl",
     "EndpointUsage",
     "EvmAbiFilterArgs",
     "EvmAbiFilterTemplate",
@@ -76,6 +77,8 @@ __all__ = [
     "GetEndpointMetricsRequest",
     "GetEndpointMetricsResponse",
     "GetEndpointSecurityResponse",
+    "GetEndpointUrlsData",
+    "GetEndpointUrlsResponse",
     "GetEndpointsRequest",
     "GetEndpointsResponse",
     "GetListData",
@@ -85,6 +88,8 @@ __all__ = [
     "GetLogDetailsResponse",
     "GetMethodRateLimitsData",
     "GetMethodRateLimitsResponse",
+    "GetRateLimitsData",
+    "GetRateLimitsResponse",
     "GetSecurityOptionsResponse",
     "GetSetResponse",
     "GetSetsResponse",
@@ -128,6 +133,7 @@ __all__ = [
     "Payment",
     "PostgresAttributes",
     "QuicknodeSdk",
+    "RateLimitEntry",
     "RateLimitSettings",
     "RemoveTeamMemberRequest",
     "RemoveTeamMemberResponse",
@@ -458,9 +464,29 @@ class AdminApiClient:
         """
     def update_rate_limits(self, id: builtins.str, rps: typing.Optional[builtins.int] = None, rpm: typing.Optional[builtins.int] = None, rpd: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
-        Updates the overall rate limits on an endpoint. Accepts `rps`
-        (requests per second), `rpm` (requests per minute), and `rpd` (requests
-        per day).
+        Partial update of the endpoint-level rate-limit overrides. Accepts
+        `rps` (requests per second), `rpm` (requests per minute), and `rpd`
+        (requests per day). Only buckets passed are modified — omitted buckets
+        are left unchanged. Values are capped by the account's plan tier.
+        """
+    def get_rate_limits(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetRateLimitsResponse]:
+        r"""
+        Returns the endpoint-level rate limits currently enforced, with each
+        row identifying its bucket (`rps`/`rpm`/`rpd`), value, and source
+        (`plan_default` or `user_override`). User-set overrides expose an
+        `override_id` that can be passed to `delete_rate_limit_override`.
+        """
+    def delete_rate_limit_override(self, id: builtins.str, override_id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, None]:
+        r"""
+        Deletes a user-set rate-limit override by its UUID. Plan defaults are
+        not deletable.
+        """
+    def get_endpoint_urls(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetEndpointUrlsResponse]:
+        r"""
+        Returns the HTTP and WebSocket URLs for the endpoint without fetching
+        the full endpoint record. For multichain endpoints, `multichain_urls`
+        is a per-network mapping of additional URLs; for single-chain endpoints
+        it is `None`.
         """
     def get_endpoint_metrics(self, id: builtins.str, period: builtins.str, metric: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetEndpointMetricsResponse]:
         r"""
@@ -1797,6 +1823,16 @@ class Endpoint:
         r"""
         Tags applied to the endpoint.
         """
+    @property
+    def is_multichain(self) -> builtins.bool:
+        r"""
+        Whether the endpoint is configured to serve multiple chains/networks.
+        """
+    @is_multichain.setter
+    def is_multichain(self, value: builtins.bool) -> None:
+        r"""
+        Whether the endpoint is configured to serve multiple chains/networks.
+        """
 
 @typing.final
 class EndpointDomainMask:
@@ -2353,6 +2389,32 @@ class EndpointToken:
         """
 
 @typing.final
+class EndpointUrl:
+    r"""
+    HTTP/WSS URL pair for a single network on a multichain endpoint.
+    """
+    @property
+    def http_url(self) -> builtins.str:
+        r"""
+        HTTP RPC URL.
+        """
+    @http_url.setter
+    def http_url(self, value: builtins.str) -> None:
+        r"""
+        HTTP RPC URL.
+        """
+    @property
+    def wss_url(self) -> typing.Optional[builtins.str]:
+        r"""
+        WebSocket RPC URL, when available.
+        """
+    @wss_url.setter
+    def wss_url(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        WebSocket RPC URL, when available.
+        """
+
+@typing.final
 class EndpointUsage:
     r"""
     Per-endpoint usage row.
@@ -2753,6 +2815,69 @@ class GetEndpointSecurityResponse:
         """
 
 @typing.final
+class GetEndpointUrlsData:
+    r"""
+    Inner data for `get_endpoint_urls` — the http/wss URLs for the endpoint and,
+    when the endpoint is multichain, a per-network map of additional URLs.
+    """
+    @property
+    def http_url(self) -> builtins.str:
+        r"""
+        HTTP RPC URL.
+        """
+    @http_url.setter
+    def http_url(self, value: builtins.str) -> None:
+        r"""
+        HTTP RPC URL.
+        """
+    @property
+    def wss_url(self) -> typing.Optional[builtins.str]:
+        r"""
+        WebSocket RPC URL, when available.
+        """
+    @wss_url.setter
+    def wss_url(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        WebSocket RPC URL, when available.
+        """
+    @property
+    def multichain_urls(self) -> typing.Optional[builtins.dict[builtins.str, EndpointUrl]]:
+        r"""
+        Per-network URLs for multichain endpoints; `None` for single-chain endpoints.
+        """
+    @multichain_urls.setter
+    def multichain_urls(self, value: typing.Optional[builtins.dict[builtins.str, EndpointUrl]]) -> None:
+        r"""
+        Per-network URLs for multichain endpoints; `None` for single-chain endpoints.
+        """
+
+@typing.final
+class GetEndpointUrlsResponse:
+    r"""
+    Response from `get_endpoint_urls`.
+    """
+    @property
+    def data(self) -> typing.Optional[GetEndpointUrlsData]:
+        r"""
+        URLs for the endpoint.
+        """
+    @data.setter
+    def data(self, value: typing.Optional[GetEndpointUrlsData]) -> None:
+        r"""
+        URLs for the endpoint.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error message when the request did not succeed.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error message when the request did not succeed.
+        """
+
+@typing.final
 class GetEndpointsRequest:
     r"""
     Parameters for `get_endpoints`.
@@ -3048,6 +3173,48 @@ class GetMethodRateLimitsResponse:
     def data(self, value: typing.Optional[GetMethodRateLimitsData]) -> None:
         r"""
         Rate limiters payload.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error message when the request did not succeed.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error message when the request did not succeed.
+        """
+
+@typing.final
+class GetRateLimitsData:
+    r"""
+    Inner data for `get_rate_limits`.
+    """
+    @property
+    def rate_limits(self) -> builtins.list[RateLimitEntry]:
+        r"""
+        One row per enforced bucket.
+        """
+    @rate_limits.setter
+    def rate_limits(self, value: builtins.list[RateLimitEntry]) -> None:
+        r"""
+        One row per enforced bucket.
+        """
+
+@typing.final
+class GetRateLimitsResponse:
+    r"""
+    Response from `get_rate_limits`.
+    """
+    @property
+    def data(self) -> typing.Optional[GetRateLimitsData]:
+        r"""
+        Rate-limit rows with their source.
+        """
+    @data.setter
+    def data(self, value: typing.Optional[GetRateLimitsData]) -> None:
+        r"""
+        Rate-limit rows with their source.
         """
     @property
     def error(self) -> typing.Optional[builtins.str]:
@@ -4475,6 +4642,56 @@ class QuicknodeSdk:
         """
 
 @typing.final
+class RateLimitEntry:
+    r"""
+    A single rate-limit row returned by `get_rate_limits`, identifying the
+    bucket (`rps`/`rpm`/`rpd`), the value enforced, and whether the value comes
+    from the plan default or a user-set override.
+    """
+    @property
+    def bucket(self) -> builtins.str:
+        r"""
+        Which bucket this row applies to: `rps`, `rpm`, or `rpd`.
+        """
+    @bucket.setter
+    def bucket(self, value: builtins.str) -> None:
+        r"""
+        Which bucket this row applies to: `rps`, `rpm`, or `rpd`.
+        """
+    @property
+    def value(self) -> builtins.int:
+        r"""
+        The enforced value for this bucket.
+        """
+    @value.setter
+    def value(self, value: builtins.int) -> None:
+        r"""
+        The enforced value for this bucket.
+        """
+    @property
+    def source(self) -> builtins.str:
+        r"""
+        Where the value comes from: `plan_default` or `user_override`.
+        """
+    @source.setter
+    def source(self, value: builtins.str) -> None:
+        r"""
+        Where the value comes from: `plan_default` or `user_override`.
+        """
+    @property
+    def override_id(self) -> typing.Optional[builtins.str]:
+        r"""
+        Identifier of the user-set override, present only when `source` is
+        `user_override`. Pass this to `delete_rate_limit_override` to remove it.
+        """
+    @override_id.setter
+    def override_id(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Identifier of the user-set override, present only when `source` is
+        `user_override`. Pass this to `delete_rate_limit_override` to remove it.
+        """
+
+@typing.final
 class RateLimitSettings:
     r"""
     Endpoint-wide rate limit settings.
@@ -5018,6 +5235,16 @@ class SingleEndpoint:
     def tags(self, value: builtins.list[EndpointTag]) -> None:
         r"""
         Tags applied to the endpoint.
+        """
+    @property
+    def is_multichain(self) -> builtins.bool:
+        r"""
+        Whether the endpoint is configured to serve multiple chains/networks.
+        """
+    @is_multichain.setter
+    def is_multichain(self, value: builtins.bool) -> None:
+        r"""
+        Whether the endpoint is configured to serve multiple chains/networks.
         """
 
 @typing.final

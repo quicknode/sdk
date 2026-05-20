@@ -111,6 +111,9 @@ pub struct Endpoint {
     /// Tags applied to the endpoint.
     #[serde(default)]
     pub tags: Vec<EndpointTag>,
+    /// Whether the endpoint is configured to serve multiple chains/networks.
+    #[serde(default)]
+    pub is_multichain: bool,
 }
 
 /// Tag reference as returned on an endpoint.
@@ -179,6 +182,9 @@ pub struct SingleEndpoint {
     /// Tags applied to the endpoint.
     #[serde(default)]
     pub tags: Vec<EndpointTag>,
+    /// Whether the endpoint is configured to serve multiple chains/networks.
+    #[serde(default)]
+    pub is_multichain: bool,
 }
 
 /// Rate limits applied to an endpoint.

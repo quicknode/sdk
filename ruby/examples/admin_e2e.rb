@@ -243,6 +243,12 @@ sleep 0.5
 #qn.admin.update_rate_limits(id: endpoint_id, rps: 3)
 #puts "update_rate_limits: ok"
 
+resp = qn.admin.get_rate_limits(id: endpoint_id)
+puts "get_rate_limits: #{resp[:data]}"
+
+resp = qn.admin.get_endpoint_urls(id: endpoint_id)
+puts "get_endpoint_urls: http=#{resp.dig(:data, :http_url)} multichain_networks=#{resp.dig(:data, :multichain_urls)&.keys}"
+
 resp = qn.admin.get_method_rate_limits(id: endpoint_id)
 puts "get_method_rate_limits: #{resp[:data]}"
 
@@ -351,6 +357,18 @@ rescue QuicknodeSdk::ApiError => e
   raise "expected QuicknodeSdk::Error subclass" unless e.is_a?(QuicknodeSdk::Error)
   raise "expected 404, got #{e.status}" unless e.status == 404
   puts "api error #{e.status}: #{e.body[0, 80]}"
+end
+
+# 1b) Rate-limit override delete with a bogus override id — also a 404.
+begin
+  qn.admin.delete_rate_limit_override(
+    id: "does-not-exist",
+    override_id: "00000000-0000-0000-0000-000000000000"
+  )
+  raise "expected 404"
+rescue QuicknodeSdk::ApiError => e
+  raise "expected 404, got #{e.status}" unless e.status == 404
+  puts "delete_rate_limit_override api error #{e.status}: #{e.body[0, 80]}"
 end
 
 # 2) Timeout path — unreachable base URL + 1s timeout forces a timeout

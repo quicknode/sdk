@@ -28,6 +28,7 @@ This is one of four language bindings published from the same Rust core. See the
     - [IP Custom Headers](#ip-custom-headers)
     - [Method Rate Limits](#method-rate-limits)
     - [Endpoint Rate Limits](#endpoint-rate-limits)
+    - [Endpoint URLs](#endpoint-urls)
     - [Metrics](#metrics)
     - [Chains](#chains)
     - [Billing](#billing)
@@ -777,7 +778,7 @@ await qn.admin.deleteMethodRateLimit("ep-123", "rl-1");
 
 ##### `update_rate_limits` / `updateRateLimits`
 
-Updates the endpoint-level RPS / RPM / RPD caps.
+Partial update of the endpoint-level RPS / RPM / RPD caps. Only buckets included in the request are modified — omitted buckets are left unchanged. Values are capped by the account's plan tier. Sends `PATCH`.
 
 **Parameters**: `id` (endpoint id, required); `rate_limits`: `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional).
 
@@ -786,6 +787,56 @@ Updates the endpoint-level RPS / RPM / RPD caps.
 ```typescript
 // Node.js
 await qn.admin.updateRateLimits("ep-123", { rateLimits: { rps: 100, rpm: 5000 } });
+```
+
+##### `get_rate_limits` / `getRateLimits`
+
+Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `value`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `override_id` / `overrideId` you can pass to `deleteRateLimitOverride`.
+
+**Parameters**: `id` (endpoint id, required).
+
+**Returns**: `GetRateLimitsResponse` with `data.rateLimits: RateLimitEntry[]`.
+
+```typescript
+// Node.js
+const resp = await qn.admin.getRateLimits("ep-123");
+for (const row of resp.data.rateLimits) {
+  console.log(row.bucket, row.value, row.source, row.overrideId);
+}
+```
+
+##### `delete_rate_limit_override` / `deleteRateLimitOverride`
+
+Deletes a user-set rate-limit override by UUID. Plan defaults are not deletable — passing a UUID that does not match a user-set override on the endpoint returns 404.
+
+**Parameters**: `id` (endpoint id, required); `override_id` / `overrideId` (UUID returned by `getRateLimits`, required).
+
+**Returns**: nothing.
+
+```typescript
+// Node.js
+await qn.admin.deleteRateLimitOverride("ep-123", "ovr-uuid");
+```
+
+#### Endpoint URLs
+
+##### `get_endpoint_urls` / `getEndpointUrls`
+
+Returns the HTTP and WebSocket URLs for the endpoint without fetching the full endpoint record. For multichain endpoints, `multichain_urls` / `multichainUrls` is a per-network map of additional URLs; for single-chain endpoints it is `null`.
+
+**Parameters**: `id` (endpoint id, required).
+
+**Returns**: `GetEndpointUrlsResponse` with `data.httpUrl`, `data.wssUrl`, and `data.multichainUrls`.
+
+```typescript
+// Node.js
+const resp = await qn.admin.getEndpointUrls("ep-123");
+console.log(resp.data.httpUrl);
+if (resp.data.multichainUrls) {
+  for (const [network, urls] of Object.entries(resp.data.multichainUrls)) {
+    console.log(network, urls.httpUrl);
+  }
+}
 ```
 
 #### Metrics
