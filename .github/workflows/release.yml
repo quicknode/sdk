@@ -33,8 +33,12 @@ jobs:
         # Placeholder for future macOS support:
         # - aarch64-apple-darwin
         include:
+          # All Linux targets cross-build with zig so wheels link against an older
+          # glibc (manylinux2014, glibc 2.17) instead of the ubuntu-latest runner's
+          # glibc 2.39. Without this, the native x64 wheel would only load on
+          # Ubuntu 24.04+ hosts.
           - target: x86_64-unknown-linux-gnu
-            cross: false
+            cross: true
           - target: aarch64-unknown-linux-gnu
             cross: true
           - target: x86_64-unknown-linux-musl
@@ -90,8 +94,13 @@ jobs:
         # Placeholder for future macOS support:
         # - aarch64-apple-darwin
         include:
+          # gnu targets use napi-rs's prebuilt manylinux2014 sysroot (glibc 2.17)
+          # via --use-napi-cross. musl targets use napi-rs's separate zig-based
+          # cross path. Building x86_64-unknown-linux-gnu natively on ubuntu-latest
+          # would link against the runner's glibc (currently 2.39), which breaks
+          # loading on every LTS distro still in support.
           - target: x86_64-unknown-linux-gnu
-            cross: false
+            cross: true
           - target: aarch64-unknown-linux-gnu
             cross: true
           - target: x86_64-unknown-linux-musl
@@ -111,7 +120,7 @@ jobs:
           node-version: '20'
 
       - name: Install Zig
-        if: matrix.cross
+        if: matrix.cross && contains(matrix.target, 'musl')
         uses: goto-bus-stop/setup-zig@v2
 
       - name: Install npm dependencies
@@ -124,6 +133,7 @@ jobs:
           npx napi build --release \
             --platform \
             --target ${{ matrix.target }} \
+            ${{ contains(matrix.target, 'gnu') && '--use-napi-cross' || '' }} \
             --cargo-cwd ../crates/node
 
       - name: Strip debug symbols
@@ -152,8 +162,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # x86_64-unknown-linux-gnu uses cargo-zigbuild so the .so links against
+          # an older glibc (manylinux2014, glibc 2.17) instead of the runner's
+          # glibc 2.39. Without this, the native gem only loads on Ubuntu 24.04+.
           - target: x86_64-unknown-linux-gnu
-            cross: false
+            cross: true
             gem_platform: x86_64-linux
           - target: aarch64-unknown-linux-gnu
             cross: true
