@@ -4659,12 +4659,12 @@ class RateLimitEntry:
         Which bucket this row applies to: `rps`, `rpm`, or `rpd`.
         """
     @property
-    def value(self) -> builtins.int:
+    def rate_limit(self) -> builtins.int:
         r"""
         The enforced value for this bucket.
         """
-    @value.setter
-    def value(self, value: builtins.int) -> None:
+    @rate_limit.setter
+    def rate_limit(self, value: builtins.int) -> None:
         r"""
         The enforced value for this bucket.
         """
@@ -4679,16 +4679,18 @@ class RateLimitEntry:
         Where the value comes from: `plan_default` or `user_override`.
         """
     @property
-    def override_id(self) -> typing.Optional[builtins.str]:
+    def id(self) -> typing.Optional[builtins.str]:
         r"""
-        Identifier of the user-set override, present only when `source` is
-        `user_override`. Pass this to `delete_rate_limit_override` to remove it.
+        Row identifier. Present on `user_override` rows — pass it to
+        `delete_rate_limit_override` to remove the override. May be absent on
+        `plan_default` rows and cannot be deleted there.
         """
-    @override_id.setter
-    def override_id(self, value: typing.Optional[builtins.str]) -> None:
+    @id.setter
+    def id(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Identifier of the user-set override, present only when `source` is
-        `user_override`. Pass this to `delete_rate_limit_override` to remove it.
+        Row identifier. Present on `user_override` rows — pass it to
+        `delete_rate_limit_override` to remove the override. May be absent on
+        `plan_default` rows and cannot be deleted there.
         """
 
 @typing.final

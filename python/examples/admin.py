@@ -51,9 +51,24 @@ async def main():
                 f"multichain_networks={list(mc.keys()) if mc is not None else None}"
             )
 
-        rl = await qn.admin.get_rate_limits(ep_id)
-        if rl.data is not None:
-            print(f"get_rate_limits: {len(rl.data.rate_limits)} rows")
+        rl_before = await qn.admin.get_rate_limits(ep_id)
+        if rl_before.data is not None:
+            for row in rl_before.data.rate_limits:
+                print(
+                    f"get_rate_limits before PATCH: bucket={row.bucket} "
+                    f"rate_limit={row.rate_limit} source={row.source} id={row.id}"
+                )
+
+        await qn.admin.update_rate_limits(ep_id, rps=3)
+        print("update_rate_limits: ok")
+
+        rl_after = await qn.admin.get_rate_limits(ep_id)
+        if rl_after.data is not None:
+            for row in rl_after.data.rate_limits:
+                print(
+                    f"get_rate_limits after PATCH: bucket={row.bucket} "
+                    f"rate_limit={row.rate_limit} source={row.source} id={row.id}"
+                )
 
     # ── Error handling ──────────────────────────────────────────────────
     # 1) API error path — 404 on a bogus endpoint id.

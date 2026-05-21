@@ -149,12 +149,14 @@ pub struct RateLimitEntry {
     /// Which bucket this row applies to: `rps`, `rpm`, or `rpd`.
     pub bucket: String,
     /// The enforced value for this bucket.
-    pub value: i32,
+    pub rate_limit: i32,
     /// Where the value comes from: `plan_default` or `user_override`.
     pub source: String,
-    /// Identifier of the user-set override, present only when `source` is
-    /// `user_override`. Pass this to `delete_rate_limit_override` to remove it.
-    pub override_id: Option<String>,
+    /// Row identifier. Present on `user_override` rows — pass it to
+    /// `delete_rate_limit_override` to remove the override. May be absent on
+    /// `plan_default` rows and cannot be deleted there.
+    #[serde(default)]
+    pub id: Option<String>,
 }
 
 /// Inner data for `get_rate_limits`.

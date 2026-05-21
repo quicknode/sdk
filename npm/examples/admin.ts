@@ -48,9 +48,27 @@ async function main() {
       console.log(`getEndpointUrls: http=${urls.data.httpUrl} multichain_networks=${networks}`);
     }
 
-    const rl = await qn.admin.getRateLimits(epId);
-    if (rl.data) {
-      console.log(`getRateLimits: ${rl.data.rateLimits.length} rows`);
+    const rlBefore = await qn.admin.getRateLimits(epId);
+    if (rlBefore.data) {
+      for (const row of rlBefore.data.rateLimits) {
+        console.log(
+          `getRateLimits before PATCH: bucket=${row.bucket} ` +
+            `rate_limit=${row.rateLimit} source=${row.source} id=${row.id}`,
+        );
+      }
+    }
+
+    await qn.admin.updateRateLimits(epId, { rateLimits: { rps: 3 } });
+    console.log("updateRateLimits: ok");
+
+    const rlAfter = await qn.admin.getRateLimits(epId);
+    if (rlAfter.data) {
+      for (const row of rlAfter.data.rateLimits) {
+        console.log(
+          `getRateLimits after PATCH: bucket=${row.bucket} ` +
+            `rate_limit=${row.rateLimit} source=${row.source} id=${row.id}`,
+        );
+      }
     }
   }
 

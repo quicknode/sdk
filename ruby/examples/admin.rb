@@ -33,7 +33,7 @@ if first
   end
 
   rl = qn.admin.get_rate_limits(id: first[:id])
-  if rl[:data]
-    puts "get_rate_limits: #{rl.dig(:data, :rate_limits)&.length || 0} rows"
+  rl.dig(:data, :rate_limits)&.each do |row|
+    puts "get_rate_limits: bucket=#{row[:bucket]} rate_limit=#{row[:rate_limit]} source=#{row[:source]} id=#{row[:id]}"
   end
 end

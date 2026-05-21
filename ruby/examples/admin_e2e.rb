@@ -240,11 +240,14 @@ sleep 0.5
 
 # ── Rate limits ───────────────────────────────────────────────────────────────
 
-#qn.admin.update_rate_limits(id: endpoint_id, rps: 3)
-#puts "update_rate_limits: ok"
+resp = qn.admin.get_rate_limits(id: endpoint_id)
+puts "get_rate_limits before PATCH: #{resp[:data]}"
+
+qn.admin.update_rate_limits(id: endpoint_id, rps: 3)
+puts "update_rate_limits: ok"
 
 resp = qn.admin.get_rate_limits(id: endpoint_id)
-puts "get_rate_limits: #{resp[:data]}"
+puts "get_rate_limits after PATCH: #{resp[:data]}"
 
 resp = qn.admin.get_endpoint_urls(id: endpoint_id)
 puts "get_endpoint_urls: http=#{resp.dig(:data, :http_url)} multichain_networks=#{resp.dig(:data, :multichain_urls)&.keys}"

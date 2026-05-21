@@ -2729,8 +2729,8 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
                 "data": {
                     "rate_limits": [
-                        {"bucket": "rps", "value": 100, "source": "plan_default", "override_id": null},
-                        {"bucket": "rpm", "value": 6000, "source": "user_override", "override_id": "ovr-1"}
+                        {"bucket": "rps", "rate_limit": 100, "source": "plan_default"},
+                        {"bucket": "rpm", "rate_limit": 6000, "source": "user_override", "id": "ovr-1"}
                     ]
                 },
                 "error": null
@@ -2742,8 +2742,11 @@ mod tests {
         let resp = sdk.admin.get_rate_limits("ep123").await.unwrap();
         let rows = resp.data.unwrap().rate_limits;
         assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].source, "plan_default");
+        assert!(rows[0].id.is_none());
         assert_eq!(rows[1].source, "user_override");
-        assert_eq!(rows[1].override_id.as_deref(), Some("ovr-1"));
+        assert_eq!(rows[1].rate_limit, 6000);
+        assert_eq!(rows[1].id.as_deref(), Some("ovr-1"));
     }
 
     #[tokio::test]

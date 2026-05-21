@@ -786,7 +786,7 @@ qn.admin.update_rate_limits(id: "ep-123", rps: 100, rpm: 5000)
 
 ##### `get_rate_limits` / `getRateLimits`
 
-Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `value`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `override_id` you can pass to `delete_rate_limit_override`.
+Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `rate_limit`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `id` you can pass to `delete_rate_limit_override`.
 
 **Parameters**: `id` (endpoint id, required).
 
@@ -796,7 +796,7 @@ Returns the rate-limit rows currently enforced on the endpoint, each identifying
 # Ruby
 resp = qn.admin.get_rate_limits(id: "ep-123")
 resp.data.rate_limits.each do |row|
-  puts "#{row.bucket} #{row.value} #{row.source} #{row.override_id}"
+  puts "#{row.bucket} #{row.rate_limit} #{row.source} #{row.id}"
 end
 ```
 

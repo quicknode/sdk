@@ -831,7 +831,7 @@ qn.admin.update_rate_limits("ep-123", &params).await?;
 
 ##### `get_rate_limits` / `getRateLimits`
 
-Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `value`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `override_id` you can pass to `delete_rate_limit_override`.
+Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `rate_limit`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `id` you can pass to `delete_rate_limit_override`.
 
 **Parameters**: `id` (endpoint id, required).
 
@@ -841,7 +841,7 @@ Returns the rate-limit rows currently enforced on the endpoint, each identifying
 // Rust
 let resp = qn.admin.get_rate_limits("ep-123").await?;
 for row in resp.data.unwrap().rate_limits {
-    println!("{} {} {} {:?}", row.bucket, row.value, row.source, row.override_id);
+    println!("{} {} {} {:?}", row.bucket, row.rate_limit, row.source, row.id);
 }
 ```
 

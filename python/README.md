@@ -797,7 +797,7 @@ await qn.admin.update_rate_limits("ep-123", rps=100, rpm=5000)
 
 ##### `get_rate_limits` / `getRateLimits`
 
-Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `value`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `override_id` / `overrideId` you can pass to `delete_rate_limit_override`.
+Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `rate_limit`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `id` (camelCased `id` in Node) you can pass to `delete_rate_limit_override`.
 
 **Parameters**: `id` (endpoint id, required).
 
@@ -807,7 +807,7 @@ Returns the rate-limit rows currently enforced on the endpoint, each identifying
 # Python
 resp = await qn.admin.get_rate_limits("ep-123")
 for row in resp.data.rate_limits:
-    print(row.bucket, row.value, row.source, row.override_id)
+    print(row.bucket, row.rate_limit, row.source, row.id)
 ```
 
 ##### `delete_rate_limit_override` / `deleteRateLimitOverride`

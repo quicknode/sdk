@@ -311,14 +311,15 @@ export interface RateLimitEntry {
   /** Which bucket this row applies to: `rps`, `rpm`, or `rpd`. */
   bucket: string
   /** The enforced value for this bucket. */
-  value: number
+  rateLimit: number
   /** Where the value comes from: `plan_default` or `user_override`. */
   source: string
   /**
-   * Identifier of the user-set override, present only when `source` is
-   * `user_override`. Pass this to `delete_rate_limit_override` to remove it.
+   * Row identifier. Present on `user_override` rows — pass it to
+   * `delete_rate_limit_override` to remove the override. May be absent on
+   * `plan_default` rows and cannot be deleted there.
    */
-  overrideId?: string
+  id?: string
 }
 /** Inner data for `get_rate_limits`. */
 export interface GetRateLimitsData {

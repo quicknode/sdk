@@ -791,7 +791,7 @@ await qn.admin.updateRateLimits("ep-123", { rateLimits: { rps: 100, rpm: 5000 } 
 
 ##### `get_rate_limits` / `getRateLimits`
 
-Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `value`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `override_id` / `overrideId` you can pass to `deleteRateLimitOverride`.
+Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `rateLimit`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `id` you can pass to `deleteRateLimitOverride`.
 
 **Parameters**: `id` (endpoint id, required).
 
@@ -801,7 +801,7 @@ Returns the rate-limit rows currently enforced on the endpoint, each identifying
 // Node.js
 const resp = await qn.admin.getRateLimits("ep-123");
 for (const row of resp.data.rateLimits) {
-  console.log(row.bucket, row.value, row.source, row.overrideId);
+  console.log(row.bucket, row.rateLimit, row.source, row.id);
 }
 ```
 

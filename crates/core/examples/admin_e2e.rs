@@ -554,6 +554,11 @@ async fn main() {
 
     // --- Rate limits ---
 
+    match qn.admin.get_rate_limits(&endpoint_id).await {
+        Ok(resp) => println!("get_rate_limits before PATCH: {:?}", resp.data),
+        Err(e) => eprintln!("get_rate_limits error: {e}"),
+    }
+
     match qn
         .admin
         .update_rate_limits(
@@ -572,7 +577,7 @@ async fn main() {
     }
 
     match qn.admin.get_rate_limits(&endpoint_id).await {
-        Ok(resp) => println!("get_rate_limits: {:?}", resp.data),
+        Ok(resp) => println!("get_rate_limits after PATCH: {:?}", resp.data),
         Err(e) => eprintln!("get_rate_limits error: {e}"),
     }
 
