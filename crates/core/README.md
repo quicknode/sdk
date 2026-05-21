@@ -28,6 +28,7 @@ This is one of four language bindings published from the same Rust core. See the
     - [IP Custom Headers](#ip-custom-headers)
     - [Method Rate Limits](#method-rate-limits)
     - [Endpoint Rate Limits](#endpoint-rate-limits)
+    - [Endpoint URLs](#endpoint-urls)
     - [Metrics](#metrics)
     - [Chains](#chains)
     - [Billing](#billing)
@@ -815,7 +816,7 @@ qn.admin.delete_method_rate_limit("ep-123", "rl-1").await?;
 
 ##### `update_rate_limits` / `updateRateLimits`
 
-Updates the endpoint-level RPS / RPM / RPD caps.
+Partial update of the endpoint-level RPS / RPM / RPD caps. Only buckets included in the request are modified — omitted buckets are left unchanged. Values are capped by the account's plan tier. Sends `PATCH`.
 
 **Parameters**: `id` (endpoint id, required); `rate_limits`: `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional).
 
@@ -826,6 +827,58 @@ Updates the endpoint-level RPS / RPM / RPD caps.
 let rate_limits = RateLimitSettings::builder().rps(100).rpm(5000).build();
 let params = UpdateRateLimitsRequest { rate_limits };
 qn.admin.update_rate_limits("ep-123", &params).await?;
+```
+
+##### `get_rate_limits` / `getRateLimits`
+
+Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `rate_limit`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `id` you can pass to `delete_rate_limit_override`.
+
+**Parameters**: `id` (endpoint id, required).
+
+**Returns**: `GetRateLimitsResponse` with `data.rate_limits: Vec<RateLimitEntry>`.
+
+```rust
+// Rust
+let resp = qn.admin.get_rate_limits("123").await?;
+for row in resp.data.unwrap().rate_limits {
+    println!("{} {} {} {:?}", row.bucket, row.rate_limit, row.source, row.id);
+}
+```
+
+##### `delete_rate_limit_override` / `deleteRateLimitOverride`
+
+Deletes a user-set rate-limit override by UUID. Plan defaults are not deletable — passing a UUID that does not match a user-set override on the endpoint returns 404.
+
+**Parameters**: `id` (endpoint id, required); `override_id` (UUID returned by `get_rate_limits`, required).
+
+**Returns**: nothing.
+
+```rust
+// Rust
+qn.admin.delete_rate_limit_override("123", "ovr-uuid").await?;
+```
+
+#### Endpoint URLs
+
+##### `get_endpoint_urls` / `getEndpointUrls`
+
+Returns the HTTP and WebSocket URLs for the endpoint without fetching the full endpoint record. For multichain endpoints, `multichain_urls` is a per-network map of additional URLs; for single-chain endpoints it is `None`.
+
+**Parameters**: `id` (endpoint id, required).
+
+**Returns**: `GetEndpointUrlsResponse` with `data.http_url`, `data.wss_url`, and `data.multichain_urls`.
+
+```rust
+// Rust
+let resp = qn.admin.get_endpoint_urls("123").await?;
+if let Some(data) = resp.data {
+    println!("{}", data.http_url);
+    if let Some(mc) = data.multichain_urls {
+        for (network, urls) in mc {
+            println!("{network} {}", urls.http_url);
+        }
+    }
+}
 ```
 
 #### Metrics

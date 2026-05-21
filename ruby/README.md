@@ -28,6 +28,7 @@ This is one of four language bindings published from the same Rust core. See the
     - [IP Custom Headers](#ip-custom-headers)
     - [Method Rate Limits](#method-rate-limits)
     - [Endpoint Rate Limits](#endpoint-rate-limits)
+    - [Endpoint URLs](#endpoint-urls)
     - [Metrics](#metrics)
     - [Chains](#chains)
     - [Billing](#billing)
@@ -772,7 +773,7 @@ qn.admin.delete_method_rate_limit(id: "ep-123", method_rate_limit_id: "rl-1")
 
 ##### `update_rate_limits` / `updateRateLimits`
 
-Updates the endpoint-level RPS / RPM / RPD caps.
+Partial update of the endpoint-level RPS / RPM / RPD caps. Only buckets included in the request are modified — omitted buckets are left unchanged. Values are capped by the account's plan tier. Sends `PATCH`.
 
 **Parameters**: `id` (endpoint id, required); `rate_limits`: `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional).
 
@@ -781,6 +782,54 @@ Updates the endpoint-level RPS / RPM / RPD caps.
 ```ruby
 # Ruby
 qn.admin.update_rate_limits(id: "ep-123", rps: 100, rpm: 5000)
+```
+
+##### `get_rate_limits` / `getRateLimits`
+
+Returns the rate-limit rows currently enforced on the endpoint, each identifying its `bucket` (`"rps"` / `"rpm"` / `"rpd"`), `rate_limit`, and `source` (`"plan_default"` or `"user_override"`). User-set overrides expose an `id` you can pass to `delete_rate_limit_override`.
+
+**Parameters**: `id` (endpoint id, required).
+
+**Returns**: `GetRateLimitsResponse` (as a `Hashie::Mash`) with `data.rate_limits: Array<RateLimitEntry>`.
+
+```ruby
+# Ruby
+resp = qn.admin.get_rate_limits(id: "123")
+resp.data.rate_limits.each do |row|
+  puts "#{row.bucket} #{row.rate_limit} #{row.source} #{row.id}"
+end
+```
+
+##### `delete_rate_limit_override` / `deleteRateLimitOverride`
+
+Deletes a user-set rate-limit override by UUID. Plan defaults are not deletable — passing a UUID that does not match a user-set override on the endpoint returns 404.
+
+**Parameters**: `id` (endpoint id, required); `override_id` (UUID returned by `get_rate_limits`, required).
+
+**Returns**: nothing.
+
+```ruby
+# Ruby
+qn.admin.delete_rate_limit_override(id: "123", override_id: "ovr-uuid")
+```
+
+#### Endpoint URLs
+
+##### `get_endpoint_urls` / `getEndpointUrls`
+
+Returns the HTTP and WebSocket URLs for the endpoint without fetching the full endpoint record. For multichain endpoints, `multichain_urls` is a per-network map of additional URLs; for single-chain endpoints it is `nil`.
+
+**Parameters**: `id` (endpoint id, required).
+
+**Returns**: `GetEndpointUrlsResponse` (as a `Hashie::Mash`) with `data.http_url`, `data.wss_url`, and `data.multichain_urls`.
+
+```ruby
+# Ruby
+resp = qn.admin.get_endpoint_urls(id: "123")
+puts resp.data.http_url
+resp.data.multichain_urls&.each do |network, urls|
+  puts "#{network} #{urls.http_url}"
+end
 ```
 
 #### Metrics

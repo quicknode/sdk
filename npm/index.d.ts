@@ -302,6 +302,37 @@ export interface UpdateRateLimitsRequest {
   /** Rate limit values to apply. */
   rateLimits: RateLimitSettings
 }
+/**
+ * A single rate-limit row returned by `get_rate_limits`, identifying the
+ * bucket (`rps`/`rpm`/`rpd`), the value enforced, and whether the value comes
+ * from the plan default or a user-set override.
+ */
+export interface RateLimitEntry {
+  /** Which bucket this row applies to: `rps`, `rpm`, or `rpd`. */
+  bucket: string
+  /** The enforced value for this bucket. */
+  rateLimit: number
+  /** Where the value comes from: `plan_default` or `user_override`. */
+  source: string
+  /**
+   * Row identifier. Present on `user_override` rows — pass it to
+   * `delete_rate_limit_override` to remove the override. May be absent on
+   * `plan_default` rows and cannot be deleted there.
+   */
+  id?: string
+}
+/** Inner data for `get_rate_limits`. */
+export interface GetRateLimitsData {
+  /** One row per enforced bucket. */
+  rateLimits: Array<RateLimitEntry>
+}
+/** Response from `get_rate_limits`. */
+export interface GetRateLimitsResponse {
+  /** Rate-limit rows with their source. */
+  data?: GetRateLimitsData
+  /** Error message when the request did not succeed. */
+  error?: string
+}
 /** A single security feature's name, status, and optional value. */
 export interface SecurityOption {
   /** Name of the security feature (e.g. `tokens`, `jwts`, `ips`). */
@@ -424,6 +455,32 @@ export interface DeleteBoolResponse {
   /** Error message when the request did not succeed. */
   error?: string
 }
+/** HTTP/WSS URL pair for a single network on a multichain endpoint. */
+export interface EndpointUrl {
+  /** HTTP RPC URL. */
+  httpUrl: string
+  /** WebSocket RPC URL, when available. */
+  wssUrl?: string
+}
+/**
+ * Inner data for `get_endpoint_urls` — the http/wss URLs for the endpoint and,
+ * when the endpoint is multichain, a per-network map of additional URLs.
+ */
+export interface GetEndpointUrlsData {
+  /** HTTP RPC URL. */
+  httpUrl: string
+  /** WebSocket RPC URL, when available. */
+  wssUrl?: string
+  /** Per-network URLs for multichain endpoints; `None` for single-chain endpoints. */
+  multichainUrls?: Record<string, EndpointUrl>
+}
+/** Response from `get_endpoint_urls`. */
+export interface GetEndpointUrlsResponse {
+  /** URLs for the endpoint. */
+  data?: GetEndpointUrlsData
+  /** Error message when the request did not succeed. */
+  error?: string
+}
 /** Parameters for `get_endpoints`. */
 export interface GetEndpointsRequest {
   /** Maximum number of endpoints returned. */
@@ -493,6 +550,8 @@ export interface Endpoint {
   wssUrl?: string
   /** Tags applied to the endpoint. */
   tags: Array<EndpointTag>
+  /** Whether the endpoint is configured to serve multiple chains/networks. */
+  isMultichain: boolean
 }
 /** Tag reference as returned on an endpoint. */
 export interface EndpointTag {
@@ -537,6 +596,8 @@ export interface SingleEndpoint {
   rateLimits?: EndpointRateLimits
   /** Tags applied to the endpoint. */
   tags: Array<EndpointTag>
+  /** Whether the endpoint is configured to serve multiple chains/networks. */
+  isMultichain: boolean
 }
 /** Rate limits applied to an endpoint. */
 export interface EndpointRateLimits {
@@ -1886,11 +1947,32 @@ export declare class AdminApiClient {
   /** Removes a method rate limit from an endpoint by method rate limit id. */
   deleteMethodRateLimit(id: string, methodRateLimitId: string): Promise<void>
   /**
-   * Updates the overall rate limits on an endpoint. Accepts `rps`
-   * (requests per second), `rpm` (requests per minute), and `rpd` (requests
-   * per day).
+   * Partial update of the endpoint-level rate-limit overrides. Accepts
+   * `rps` (requests per second), `rpm` (requests per minute), and `rpd`
+   * (requests per day). Only buckets included are modified — omitted
+   * buckets are left unchanged. Values are capped by the account's plan
+   * tier.
    */
   updateRateLimits(id: string, params: UpdateRateLimitsRequest): Promise<void>
+  /**
+   * Returns the endpoint-level rate limits currently enforced, with each
+   * row identifying its bucket (`rps`/`rpm`/`rpd`), value, and source
+   * (`plan_default` or `user_override`). User-set overrides expose an
+   * `overrideId` that can be passed to `deleteRateLimitOverride`.
+   */
+  getRateLimits(id: string): Promise<GetRateLimitsResponse>
+  /**
+   * Deletes a user-set rate-limit override by its UUID. Plan defaults are
+   * not deletable.
+   */
+  deleteRateLimitOverride(id: string, overrideId: string): Promise<void>
+  /**
+   * Returns the HTTP and WebSocket URLs for the endpoint without fetching
+   * the full endpoint record. For multichain endpoints, `multichainUrls`
+   * is a per-network mapping of additional URLs; for single-chain endpoints
+   * it is `null`.
+   */
+  getEndpointUrls(id: string): Promise<GetEndpointUrlsResponse>
   /**
    * Returns time-series metrics for a specific endpoint. Requires a
    * `period` (`hour`, `day`, `week`, or `month`) and a metric type such as

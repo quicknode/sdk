@@ -48,6 +48,10 @@ name = "streams"
 required-features = ["rust"]
 
 [[example]]
+name = "streams_e2e"
+required-features = ["rust"]
+
+[[example]]
 name = "webhooks_e2e"
 required-features = ["rust"]
 

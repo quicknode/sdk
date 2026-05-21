@@ -900,9 +900,10 @@ impl AdminApiClient {
         })
     }
 
-    /// Updates the overall rate limits on an endpoint. Accepts `rps`
-    /// (requests per second), `rpm` (requests per minute), and `rpd` (requests
-    /// per day).
+    /// Partial update of the endpoint-level rate-limit overrides. Accepts
+    /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
+    /// (requests per day). Only buckets passed are modified — omitted buckets
+    /// are left unchanged. Values are capped by the account's plan tier.
     #[pyo3(signature = (id, rps=None, rpm=None, rpd=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_rate_limits<'py>(
@@ -920,6 +921,58 @@ impl AdminApiClient {
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .update_rate_limits(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Returns the endpoint-level rate limits currently enforced, with each
+    /// row identifying its bucket (`rps`/`rpm`/`rpd`), value, and source
+    /// (`plan_default` or `user_override`). User-set overrides expose an
+    /// `override_id` that can be passed to `delete_rate_limit_override`.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetRateLimitsResponse]"
+    ))]
+    fn get_rate_limits<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_rate_limits(&id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Deletes a user-set rate-limit override by its UUID. Plan defaults are
+    /// not deletable.
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn delete_rate_limit_override<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        override_id: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_rate_limit_override(&id, &override_id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Returns the HTTP and WebSocket URLs for the endpoint without fetching
+    /// the full endpoint record. For multichain endpoints, `multichain_urls`
+    /// is a per-network mapping of additional URLs; for single-chain endpoints
+    /// it is `None`.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetEndpointUrlsResponse]"
+    ))]
+    fn get_endpoint_urls<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_endpoint_urls(&id)
                 .await
                 .map_err(errors::map_sdk_err)
         })
@@ -2350,6 +2403,12 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::UpdateMethodRateLimitResponse>()?;
     m.add_class::<core::admin::RateLimitSettings>()?;
     m.add_class::<core::admin::UpdateRateLimitsRequest>()?;
+    m.add_class::<core::admin::RateLimitEntry>()?;
+    m.add_class::<core::admin::GetRateLimitsData>()?;
+    m.add_class::<core::admin::GetRateLimitsResponse>()?;
+    m.add_class::<core::admin::EndpointUrl>()?;
+    m.add_class::<core::admin::GetEndpointUrlsData>()?;
+    m.add_class::<core::admin::GetEndpointUrlsResponse>()?;
     m.add_class::<core::admin::GetEndpointMetricsRequest>()?;
     m.add_class::<core::admin::GetAccountMetricsRequest>()?;
     m.add_class::<core::admin::EndpointMetric>()?;

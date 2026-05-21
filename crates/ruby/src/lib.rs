@@ -802,6 +802,36 @@ impl AdminApiClient {
             .map_err(map_err)
     }
 
+    fn get_rate_limits(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(client.get_rate_limits(&id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn delete_rate_limit_override(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "override_id"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let override_id = hash_require_string(&opts, "override_id")?;
+        runtime()
+            .block_on(client.delete_rate_limit_override(&id, &override_id))
+            .map_err(map_err)
+    }
+
+    fn get_endpoint_urls(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(client.get_endpoint_urls(&id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
     fn get_endpoint_metrics(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["id", "period", "metric"])?;
         let client = self.inner.clone();
@@ -1858,6 +1888,18 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     admin.define_method(
         "update_rate_limits",
         method!(AdminApiClient::update_rate_limits, 1),
+    )?;
+    admin.define_method(
+        "get_rate_limits",
+        method!(AdminApiClient::get_rate_limits, 1),
+    )?;
+    admin.define_method(
+        "delete_rate_limit_override",
+        method!(AdminApiClient::delete_rate_limit_override, 1),
+    )?;
+    admin.define_method(
+        "get_endpoint_urls",
+        method!(AdminApiClient::get_endpoint_urls, 1),
     )?;
     admin.define_method(
         "get_endpoint_metrics",

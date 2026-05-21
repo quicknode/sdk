@@ -137,3 +137,47 @@ pub struct UpdateRateLimitsRequest {
     /// Rate limit values to apply.
     pub rate_limits: RateLimitSettings,
 }
+
+/// A single rate-limit row returned by `get_rate_limits`, identifying the
+/// bucket (`rps`/`rpm`/`rpd`), the value enforced, and whether the value comes
+/// from the plan default or a user-set override.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RateLimitEntry {
+    /// Which bucket this row applies to: `rps`, `rpm`, or `rpd`.
+    pub bucket: String,
+    /// The enforced value for this bucket.
+    pub rate_limit: i32,
+    /// Where the value comes from: `plan_default` or `user_override`.
+    pub source: String,
+    /// Row identifier. Present on `user_override` rows — pass it to
+    /// `delete_rate_limit_override` to remove the override. May be absent on
+    /// `plan_default` rows and cannot be deleted there.
+    #[serde(default)]
+    pub id: Option<String>,
+}
+
+/// Inner data for `get_rate_limits`.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetRateLimitsData {
+    /// One row per enforced bucket.
+    #[serde(default)]
+    pub rate_limits: Vec<RateLimitEntry>,
+}
+
+/// Response from `get_rate_limits`.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetRateLimitsResponse {
+    /// Rate-limit rows with their source.
+    pub data: Option<GetRateLimitsData>,
+    /// Error message when the request did not succeed.
+    pub error: Option<String>,
+}

@@ -4,6 +4,7 @@ pub mod chains;
 pub mod endpoint_metrics;
 pub mod endpoint_rate_limits;
 pub mod endpoint_security;
+pub mod endpoint_urls;
 pub mod endpoints;
 pub mod logs;
 pub mod tags;
@@ -26,8 +27,9 @@ pub use endpoint_metrics::{
 };
 pub use endpoint_rate_limits::{
     CreateMethodRateLimitRequest, CreateMethodRateLimitResponse, GetMethodRateLimitsData,
-    GetMethodRateLimitsResponse, MethodRateLimiter, RateLimitSettings,
-    UpdateMethodRateLimitRequest, UpdateMethodRateLimitResponse, UpdateRateLimitsRequest,
+    GetMethodRateLimitsResponse, GetRateLimitsData, GetRateLimitsResponse, MethodRateLimiter,
+    RateLimitEntry, RateLimitSettings, UpdateMethodRateLimitRequest, UpdateMethodRateLimitResponse,
+    UpdateRateLimitsRequest,
 };
 pub use endpoint_security::{
     CreateDomainMaskRequest, CreateIpRequest, CreateJwtRequest,
@@ -37,6 +39,7 @@ pub use endpoint_security::{
     IpCustomHeaderData, SecurityOption, SecurityOptionsUpdate, UpdateRequestFilterRequest,
     UpdateSecurityOptionsRequest, UpdateSecurityOptionsResponse,
 };
+pub use endpoint_urls::{EndpointUrl, GetEndpointUrlsData, GetEndpointUrlsResponse};
 pub use endpoints::{
     CreateEndpointRequest, CreateEndpointResponse, CreateTagRequest, Endpoint, EndpointDomainMask,
     EndpointIp, EndpointIpCustomHeaderOption, EndpointJwt, EndpointRateLimits, EndpointReferrer,
@@ -1363,9 +1366,11 @@ impl AdminApiClient {
         Ok(())
     }
 
-    /// Updates the overall rate limits on an endpoint. Accepts `rps`
-    /// (requests per second), `rpm` (requests per minute), and `rpd` (requests
-    /// per day).
+    /// Partial update of the endpoint-level rate-limit overrides. Accepts
+    /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
+    /// (requests per day). Only buckets included in the request body are
+    /// modified — omitted buckets are left unchanged. Values are capped by the
+    /// account's plan tier.
     pub async fn update_rate_limits(
         &self,
         id: &str,
@@ -1379,7 +1384,7 @@ impl AdminApiClient {
         let resp = self
             .config
             .http_client()
-            .put(url)
+            .patch(url)
             .json(params)
             .send()
             .await
@@ -1392,6 +1397,90 @@ impl AdminApiClient {
             return Err(SdkError::Api { status, body });
         }
         Ok(())
+    }
+
+    /// Returns the endpoint-level rate limits currently enforced, with each
+    /// row identifying its bucket (`rps`/`rpm`/`rpd`), value, and source
+    /// (`plan_default` or `user_override`). User-set overrides expose an
+    /// `override_id` that can be passed to `delete_rate_limit_override`.
+    pub async fn get_rate_limits(&self, id: &str) -> Result<GetRateLimitsResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/rate-limits", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Deletes a user-set rate-limit override by its UUID. Plan defaults are
+    /// not deletable — passing a UUID that does not match a user-set override
+    /// on the endpoint returns 404.
+    pub async fn delete_rate_limit_override(
+        &self,
+        id: &str,
+        override_id: &str,
+    ) -> Result<(), SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/rate-limits/{}", id, override_id))?;
+        let resp = self
+            .config
+            .http_client()
+            .delete(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        Ok(())
+    }
+
+    /// Returns the HTTP and WebSocket URLs for the endpoint without fetching
+    /// the full endpoint record. For multichain endpoints, `multichain_urls`
+    /// is a per-network map of additional URLs; for single-chain endpoints it
+    /// is `None`.
+    pub async fn get_endpoint_urls(&self, id: &str) -> Result<GetEndpointUrlsResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/urls", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
     /// Returns time-series metrics for a specific endpoint. Requires a
@@ -2611,7 +2700,7 @@ mod tests {
     async fn update_rate_limits_success() {
         let server = MockServer::start().await;
 
-        Mock::given(method("PUT"))
+        Mock::given(method("PATCH"))
             .and(path("/endpoints/ep123/rate-limits"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
             .mount(&server)
@@ -2629,6 +2718,149 @@ mod tests {
             .update_rate_limits("ep123", &params)
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn get_rate_limits_success() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/endpoints/ep123/rate-limits"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "rate_limits": [
+                        {"bucket": "rps", "rate_limit": 100, "source": "plan_default"},
+                        {"bucket": "rpm", "rate_limit": 6000, "source": "user_override", "id": "ovr-1"}
+                    ]
+                },
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.admin.get_rate_limits("ep123").await.unwrap();
+        let rows = resp.data.unwrap().rate_limits;
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].source, "plan_default");
+        assert!(rows[0].id.is_none());
+        assert_eq!(rows[1].source, "user_override");
+        assert_eq!(rows[1].rate_limit, 6000);
+        assert_eq!(rows[1].id.as_deref(), Some("ovr-1"));
+    }
+
+    #[tokio::test]
+    async fn get_rate_limits_api_error() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/endpoints/missing/rate-limits"))
+            .respond_with(ResponseTemplate::new(404).set_body_string("not found"))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk.admin.get_rate_limits("missing").await.unwrap_err();
+        match err {
+            SdkError::Api { status, .. } => assert_eq!(status.as_u16(), 404),
+            other => panic!("expected SdkError::Api, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn delete_rate_limit_override_success() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("DELETE"))
+            .and(path("/endpoints/ep123/rate-limits/ovr-1"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(""))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        sdk.admin
+            .delete_rate_limit_override("ep123", "ovr-1")
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn delete_rate_limit_override_not_found() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("DELETE"))
+            .and(path("/endpoints/ep123/rate-limits/bogus"))
+            .respond_with(ResponseTemplate::new(404).set_body_string("override not found"))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk
+            .admin
+            .delete_rate_limit_override("ep123", "bogus")
+            .await
+            .unwrap_err();
+        match err {
+            SdkError::Api { status, .. } => assert_eq!(status.as_u16(), 404),
+            other => panic!("expected SdkError::Api, got {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn get_endpoint_urls_success() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/endpoints/ep123/urls"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "http_url": "https://example.quiknode.pro/abc/",
+                    "wss_url": "wss://example.quiknode.pro/abc/",
+                    "multichain_urls": null
+                },
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.admin.get_endpoint_urls("ep123").await.unwrap();
+        let data = resp.data.unwrap();
+        assert_eq!(data.http_url, "https://example.quiknode.pro/abc/");
+        assert!(data.multichain_urls.is_none());
+    }
+
+    #[tokio::test]
+    async fn get_endpoint_urls_multichain() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/endpoints/ep123/urls"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "http_url": "https://example.quiknode.pro/abc/",
+                    "wss_url": null,
+                    "multichain_urls": {
+                        "ethereum-mainnet": {
+                            "http_url": "https://example.quiknode.pro/abc/eth/",
+                            "wss_url": "wss://example.quiknode.pro/abc/eth/"
+                        }
+                    }
+                },
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.admin.get_endpoint_urls("ep123").await.unwrap();
+        let data = resp.data.unwrap();
+        let mc = data.multichain_urls.unwrap();
+        assert_eq!(mc.len(), 1);
+        assert_eq!(
+            mc.get("ethereum-mainnet").unwrap().http_url,
+            "https://example.quiknode.pro/abc/eth/"
+        );
     }
 
     #[tokio::test]

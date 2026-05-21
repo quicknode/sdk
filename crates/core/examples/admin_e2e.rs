@@ -554,6 +554,11 @@ async fn main() {
 
     // --- Rate limits ---
 
+    match qn.admin.get_rate_limits(&endpoint_id).await {
+        Ok(resp) => println!("get_rate_limits before PATCH: {:?}", resp.data),
+        Err(e) => eprintln!("get_rate_limits error: {e}"),
+    }
+
     match qn
         .admin
         .update_rate_limits(
@@ -569,6 +574,16 @@ async fn main() {
     {
         Ok(()) => println!("update_rate_limits: ok"),
         Err(e) => eprintln!("update_rate_limits error: {e}"),
+    }
+
+    match qn.admin.get_rate_limits(&endpoint_id).await {
+        Ok(resp) => println!("get_rate_limits after PATCH: {:?}", resp.data),
+        Err(e) => eprintln!("get_rate_limits error: {e}"),
+    }
+
+    match qn.admin.get_endpoint_urls(&endpoint_id).await {
+        Ok(resp) => println!("get_endpoint_urls: {:?}", resp.data),
+        Err(e) => eprintln!("get_endpoint_urls error: {e}"),
     }
 
     match qn.admin.get_method_rate_limits(&endpoint_id).await {
@@ -824,6 +839,22 @@ async fn main() {
             assert_eq!(status.as_u16(), 404);
         }
         other => eprintln!("expected Api 404, got {other:?}"),
+    }
+
+    // 1b) Rate-limit override delete with a bogus override id — also a 404.
+    match qn
+        .admin
+        .delete_rate_limit_override("does-not-exist", "00000000-0000-0000-0000-000000000000")
+        .await
+    {
+        Err(SdkError::Api { status, body }) => {
+            println!(
+                "delete_rate_limit_override api error {status}: {}",
+                &body[..body.len().min(80)]
+            );
+            assert_eq!(status.as_u16(), 404);
+        }
+        other => eprintln!("expected Api 404 from delete_rate_limit_override, got {other:?}"),
     }
 
     // 2) Timeout path — unreachable base URL + 1s timeout forces a timeout

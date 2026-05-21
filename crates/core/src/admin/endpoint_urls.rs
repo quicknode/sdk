@@ -1,0 +1,47 @@
+#[cfg(feature = "node")]
+use napi_derive::napi;
+#[cfg(feature = "python")]
+use pyo3::pyclass;
+#[cfg(feature = "python")]
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+/// HTTP/WSS URL pair for a single network on a multichain endpoint.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EndpointUrl {
+    /// HTTP RPC URL.
+    pub http_url: String,
+    /// WebSocket RPC URL, when available.
+    pub wss_url: Option<String>,
+}
+
+/// Inner data for `get_endpoint_urls` — the http/wss URLs for the endpoint and,
+/// when the endpoint is multichain, a per-network map of additional URLs.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetEndpointUrlsData {
+    /// HTTP RPC URL.
+    pub http_url: String,
+    /// WebSocket RPC URL, when available.
+    pub wss_url: Option<String>,
+    /// Per-network URLs for multichain endpoints; `None` for single-chain endpoints.
+    pub multichain_urls: Option<HashMap<String, EndpointUrl>>,
+}
+
+/// Response from `get_endpoint_urls`.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetEndpointUrlsResponse {
+    /// URLs for the endpoint.
+    pub data: Option<GetEndpointUrlsData>,
+    /// Error message when the request did not succeed.
+    pub error: Option<String>,
+}

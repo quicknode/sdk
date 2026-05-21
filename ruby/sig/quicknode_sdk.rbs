@@ -83,6 +83,9 @@ module QuicknodeSdk
     def update_method_rate_limit: (id: String, method_rate_limit_id: String, ?methods: Array[String], ?status: String, ?rate: Integer) -> untyped
     def delete_method_rate_limit: (id: String, method_rate_limit_id: String) -> void
     def update_rate_limits: (id: String, ?rps: Integer, ?rpm: Integer, ?rpd: Integer) -> void
+    def get_rate_limits: (id: String) -> untyped
+    def delete_rate_limit_override: (id: String, override_id: String) -> void
+    def get_endpoint_urls: (id: String) -> untyped
     def get_endpoint_metrics: (id: String, period: String, metric: String) -> untyped
     def get_account_metrics: (period: String, metric: String, ?percentile: String) -> untyped
     def list_chains: () -> untyped

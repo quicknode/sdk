@@ -138,6 +138,13 @@ export type {
   UpdateMethodRateLimitResponse,
   RateLimitSettings,
   UpdateRateLimitsRequest,
+  RateLimitEntry,
+  GetRateLimitsData,
+  GetRateLimitsResponse,
+  // endpoint URLs
+  EndpointUrl,
+  GetEndpointUrlsData,
+  GetEndpointUrlsResponse,
   // security options
   SecurityOption,
   GetSecurityOptionsResponse,
