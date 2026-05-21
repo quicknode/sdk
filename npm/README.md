@@ -799,7 +799,7 @@ Returns the rate-limit rows currently enforced on the endpoint, each identifying
 
 ```typescript
 // Node.js
-const resp = await qn.admin.getRateLimits("ep-123");
+const resp = await qn.admin.getRateLimits("123");
 for (const row of resp.data.rateLimits) {
   console.log(row.bucket, row.rateLimit, row.source, row.id);
 }
@@ -815,7 +815,7 @@ Deletes a user-set rate-limit override by UUID. Plan defaults are not deletable 
 
 ```typescript
 // Node.js
-await qn.admin.deleteRateLimitOverride("ep-123", "ovr-uuid");
+await qn.admin.deleteRateLimitOverride("123", "ovr-uuid");
 ```
 
 #### Endpoint URLs
@@ -830,7 +830,7 @@ Returns the HTTP and WebSocket URLs for the endpoint without fetching the full e
 
 ```typescript
 // Node.js
-const resp = await qn.admin.getEndpointUrls("ep-123");
+const resp = await qn.admin.getEndpointUrls("123");
 console.log(resp.data.httpUrl);
 if (resp.data.multichainUrls) {
   for (const [network, urls] of Object.entries(resp.data.multichainUrls)) {

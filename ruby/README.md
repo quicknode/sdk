@@ -794,7 +794,7 @@ Returns the rate-limit rows currently enforced on the endpoint, each identifying
 
 ```ruby
 # Ruby
-resp = qn.admin.get_rate_limits(id: "ep-123")
+resp = qn.admin.get_rate_limits(id: "123")
 resp.data.rate_limits.each do |row|
   puts "#{row.bucket} #{row.rate_limit} #{row.source} #{row.id}"
 end
@@ -810,7 +810,7 @@ Deletes a user-set rate-limit override by UUID. Plan defaults are not deletable 
 
 ```ruby
 # Ruby
-qn.admin.delete_rate_limit_override(id: "ep-123", override_id: "ovr-uuid")
+qn.admin.delete_rate_limit_override(id: "123", override_id: "ovr-uuid")
 ```
 
 #### Endpoint URLs
@@ -825,7 +825,7 @@ Returns the HTTP and WebSocket URLs for the endpoint without fetching the full e
 
 ```ruby
 # Ruby
-resp = qn.admin.get_endpoint_urls(id: "ep-123")
+resp = qn.admin.get_endpoint_urls(id: "123")
 puts resp.data.http_url
 resp.data.multichain_urls&.each do |network, urls|
   puts "#{network} #{urls.http_url}"

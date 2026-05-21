@@ -839,7 +839,7 @@ Returns the rate-limit rows currently enforced on the endpoint, each identifying
 
 ```rust
 // Rust
-let resp = qn.admin.get_rate_limits("ep-123").await?;
+let resp = qn.admin.get_rate_limits("123").await?;
 for row in resp.data.unwrap().rate_limits {
     println!("{} {} {} {:?}", row.bucket, row.rate_limit, row.source, row.id);
 }
@@ -855,7 +855,7 @@ Deletes a user-set rate-limit override by UUID. Plan defaults are not deletable 
 
 ```rust
 // Rust
-qn.admin.delete_rate_limit_override("ep-123", "ovr-uuid").await?;
+qn.admin.delete_rate_limit_override("123", "ovr-uuid").await?;
 ```
 
 #### Endpoint URLs
@@ -870,7 +870,7 @@ Returns the HTTP and WebSocket URLs for the endpoint without fetching the full e
 
 ```rust
 // Rust
-let resp = qn.admin.get_endpoint_urls("ep-123").await?;
+let resp = qn.admin.get_endpoint_urls("123").await?;
 if let Some(data) = resp.data {
     println!("{}", data.http_url);
     if let Some(mc) = data.multichain_urls {

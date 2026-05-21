@@ -805,7 +805,7 @@ Returns the rate-limit rows currently enforced on the endpoint, each identifying
 
 ```python
 # Python
-resp = await qn.admin.get_rate_limits("ep-123")
+resp = await qn.admin.get_rate_limits("123")
 for row in resp.data.rate_limits:
     print(row.bucket, row.rate_limit, row.source, row.id)
 ```
@@ -820,7 +820,7 @@ Deletes a user-set rate-limit override by UUID. Plan defaults are not deletable 
 
 ```python
 # Python
-await qn.admin.delete_rate_limit_override("ep-123", "ovr-uuid")
+await qn.admin.delete_rate_limit_override("123", "ovr-uuid")
 ```
 
 #### Endpoint URLs
@@ -835,7 +835,7 @@ Returns the HTTP and WebSocket URLs for the endpoint without fetching the full e
 
 ```python
 # Python
-resp = await qn.admin.get_endpoint_urls("ep-123")
+resp = await qn.admin.get_endpoint_urls("123")
 print(resp.data.http_url)
 if resp.data.multichain_urls:
     for network, urls in resp.data.multichain_urls.items():
