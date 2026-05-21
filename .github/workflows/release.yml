@@ -134,7 +134,7 @@ jobs:
             --platform \
             --target ${{ matrix.target }} \
             ${{ contains(matrix.target, 'gnu') && '--use-napi-cross' || '' }} \
-            --cargo-cwd ../crates/node
+            --manifest-path ../crates/node/Cargo.toml
 
       - name: Strip debug symbols
         run: |
