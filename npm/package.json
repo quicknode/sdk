@@ -24,7 +24,7 @@
     "*.node"
   ],
   "napi": {
-    "binaryName": "quicknode-sdk",
+    "binaryName": "index",
     "targets": [
       "x86_64-unknown-linux-gnu",
       "aarch64-unknown-linux-gnu",
@@ -34,8 +34,8 @@
     ]
   },
   "scripts": {
-    "build": "napi build --platform --release --manifest-path ../crates/node/Cargo.toml",
-    "build:debug": "napi build --platform --manifest-path ../crates/node/Cargo.toml",
+    "build": "napi build --platform --release --manifest-path ../crates/node/Cargo.toml --output-dir .",
+    "build:debug": "napi build --platform --manifest-path ../crates/node/Cargo.toml --output-dir .",
     "test": "node test.js",
     "test:ts": "npx tsx example.ts"
   },

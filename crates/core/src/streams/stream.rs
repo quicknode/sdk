@@ -20,8 +20,7 @@ where
 
 /// Geographic region where a stream runs.
 #[cfg_attr(feature = "node", napi(string_enum))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamRegion {
     UsaEast,
@@ -31,8 +30,7 @@ pub enum StreamRegion {
 
 /// Type of on-chain data a stream delivers (blocks, transactions, logs, etc.).
 #[cfg_attr(feature = "node", napi(string_enum))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamDataset {
     Block,
@@ -57,8 +55,7 @@ pub enum StreamDataset {
 
 /// Destination kind a stream delivers to (webhook, S3, Postgres, etc.).
 #[cfg_attr(feature = "node", napi(string_enum))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamDestination {
     Webhook,
@@ -70,8 +67,7 @@ pub enum StreamDestination {
 
 /// Language a stream's filter function is written in.
 #[cfg_attr(feature = "node", napi(string_enum))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FilterLanguage {
     Javascript,
@@ -81,8 +77,7 @@ pub enum FilterLanguage {
 
 /// Where stream metadata is included in delivered payloads.
 #[cfg_attr(feature = "node", napi(string_enum))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamMetadataLocation {
     Body,
@@ -92,8 +87,7 @@ pub enum StreamMetadataLocation {
 
 /// Billing product type the stream is associated with.
 #[cfg_attr(feature = "node", napi(string_enum))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProductType {
     Stream,
@@ -102,8 +96,7 @@ pub enum ProductType {
 
 /// Operational state of a stream.
 #[cfg_attr(feature = "node", napi(string_enum))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamStatus {
     Active,
@@ -797,8 +790,7 @@ pub struct UpdateStreamParams {
 
 /// Parameters for `test_filter`.
 #[cfg_attr(feature = "node", napi(object))]
-#[cfg_attr(not(feature = "node"), derive(Clone))]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TestFilterParams {
     /// Blockchain network to run the test against (e.g. `ethereum-mainnet`).
     pub network: String,
