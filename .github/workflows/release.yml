@@ -94,11 +94,12 @@ jobs:
         # Placeholder for future macOS support:
         # - aarch64-apple-darwin
         include:
-          # All Linux targets cross-build with Zig so wheels link against an older
-          # glibc (manylinux2014, glibc 2.17) instead of the ubuntu-latest runner's
-          # glibc 2.39. gnu targets pin the glibc ABI via --zig-abi-suffix 2.17;
-          # musl targets statically link musl so no ABI pin is required. This
-          # mirrors the build-python job, which already does the same thing.
+          # gnu targets cross-build via `--use-cross`, which runs the build inside
+          # rust-cross/cross's Docker image. Cross.toml's [build.zig] makes cross
+          # use zig cc inside the image and pins glibc to 2.17 (manylinux2014).
+          # musl targets cross-build via `--cross-compile`, which uses host zig +
+          # cargo-zigbuild — musl is statically linked so no glibc pin needed.
+          # Either path keeps us off the ubuntu-latest runner's glibc 2.39.
           - target: x86_64-unknown-linux-gnu
             cross: true
           - target: aarch64-unknown-linux-gnu
@@ -120,8 +121,16 @@ jobs:
           node-version: '20'
 
       - name: Install Zig
-        if: matrix.cross
+        if: matrix.cross && contains(matrix.target, 'musl')
         uses: goto-bus-stop/setup-zig@v2
+
+      - name: Install cargo-zigbuild
+        if: matrix.cross && contains(matrix.target, 'musl')
+        run: cargo install cargo-zigbuild --locked
+
+      - name: Install cross
+        if: matrix.cross && contains(matrix.target, 'gnu')
+        run: cargo install cross --locked
 
       - name: Install npm dependencies
         working-directory: npm
@@ -133,8 +142,7 @@ jobs:
           npx napi build --release \
             --platform \
             --target ${{ matrix.target }} \
-            ${{ matrix.cross && '--zig' || '' }} \
-            ${{ contains(matrix.target, 'gnu') && '--zig-abi-suffix 2.17' || '' }} \
+            ${{ contains(matrix.target, 'gnu') && '--use-cross' || '--cross-compile' }} \
             --manifest-path ../crates/node/Cargo.toml
 
       - name: Strip debug symbols

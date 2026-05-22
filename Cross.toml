@@ -1,0 +1,18 @@
+# Cross-compile configuration for rust-cross/cross.
+#
+# `napi build --use-cross` delegates to cross for gnu Linux targets.
+# build.zig tells cross to use zig cc inside its Docker image and pin glibc
+# to 2.17 (manylinux2014) so the resulting .node loads on every LTS distro
+# still in support — including RHEL 7, Amazon Linux 2, and older Ubuntu.
+
+[build.zig]
+enable = true
+version = "2.17"
+
+[target.x86_64-unknown-linux-gnu.zig]
+enable = true
+version = "2.17"
+
+[target.aarch64-unknown-linux-gnu.zig]
+enable = true
+version = "2.17"
