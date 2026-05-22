@@ -94,11 +94,11 @@ jobs:
         # Placeholder for future macOS support:
         # - aarch64-apple-darwin
         include:
-          # gnu targets use napi-rs's prebuilt manylinux2014 sysroot (glibc 2.17)
-          # via --use-napi-cross. musl targets use napi-rs's separate zig-based
-          # cross path. Building x86_64-unknown-linux-gnu natively on ubuntu-latest
-          # would link against the runner's glibc (currently 2.39), which breaks
-          # loading on every LTS distro still in support.
+          # All Linux targets cross-build with Zig so wheels link against an older
+          # glibc (manylinux2014, glibc 2.17) instead of the ubuntu-latest runner's
+          # glibc 2.39. gnu targets pin the glibc ABI via --zig-abi-suffix 2.17;
+          # musl targets statically link musl so no ABI pin is required. This
+          # mirrors the build-python job, which already does the same thing.
           - target: x86_64-unknown-linux-gnu
             cross: true
           - target: aarch64-unknown-linux-gnu
@@ -120,7 +120,7 @@ jobs:
           node-version: '20'
 
       - name: Install Zig
-        if: matrix.cross && contains(matrix.target, 'musl')
+        if: matrix.cross
         uses: goto-bus-stop/setup-zig@v2
 
       - name: Install npm dependencies
@@ -133,7 +133,8 @@ jobs:
           npx napi build --release \
             --platform \
             --target ${{ matrix.target }} \
-            ${{ contains(matrix.target, 'gnu') && '--use-napi-cross' || '' }} \
+            ${{ matrix.cross && '--zig' || '' }} \
+            ${{ contains(matrix.target, 'gnu') && '--zig-abi-suffix 2.17' || '' }} \
             --manifest-path ../crates/node/Cargo.toml
 
       - name: Strip debug symbols
