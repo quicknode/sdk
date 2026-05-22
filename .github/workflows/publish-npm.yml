@@ -60,9 +60,6 @@ jobs:
         working-directory: npm
         run: mv artifacts/*.node . && mv artifacts/index.js . && rmdir artifacts
 
-      - name: Copy README into npm/
-        run: cp README.md npm/README.md
-
       - name: Assemble per-platform sub-packages
         working-directory: npm
         run: |

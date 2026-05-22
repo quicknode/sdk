@@ -26,7 +26,7 @@ macos-dist-python:
 
 macos-dist-node:
   cd npm && npm install
-  cd npm && npx napi build --release --platform --target aarch64-apple-darwin --cargo-cwd ../crates/node
+  cd npm && npx napi build --release --platform --target aarch64-apple-darwin --manifest-path ../crates/node/Cargo.toml --output-dir .
   mkdir -p dist
   cp npm/index.darwin-arm64.node dist/
   @echo "Built Node module:"
