@@ -60,7 +60,6 @@ python/sdk/*.dSYM/
 # Node.js
 node_modules/
 npm/*.node
-npm/index.js
 npm/dist/
 npm/quicknode-sdk-*.tgz
 

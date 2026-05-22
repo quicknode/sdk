@@ -36,9 +36,6 @@ jobs:
           gh release download "${{ inputs.tag }}" \
             --pattern 'index.*.node' \
             --dir npm/artifacts
-          gh release download "${{ inputs.tag }}" \
-            --pattern 'index.js' \
-            --dir npm/artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -54,11 +51,11 @@ jobs:
           for f in "${required[@]}"; do
             test -f "npm/artifacts/$f" || { echo "Missing $f"; exit 1; }
           done
-          test -f "npm/artifacts/index.js" || { echo "Missing index.js loader"; exit 1; }
+          test -f "npm/index.js" || { echo "Missing npm/index.js loader (should be committed in repo)"; exit 1; }
 
       - name: Move binaries into npm/
         working-directory: npm
-        run: mv artifacts/*.node . && mv artifacts/index.js . && rmdir artifacts
+        run: mv artifacts/*.node . && rmdir artifacts
 
       - name: Assemble per-platform sub-packages
         working-directory: npm

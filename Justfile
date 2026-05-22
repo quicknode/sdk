@@ -94,8 +94,13 @@ release-bump version:
   uv lock
   sed -i.bak "s/\"version\": \".*\"/\"version\": \"$npm_version\"/" npm/package.json && rm npm/package.json.bak
   cd npm && npm install --package-lock-only && cd ..
+  # Regenerate the napi platform loader so the version literals it embeds (~26 sites
+  # used by NAPI_RS_ENFORCE_VERSION_CHECK) match the bumped npm version. This runs
+  # a full Rust release build of crates/node — slow but the only way napi-cli emits
+  # an accurate loader.
+  cd npm && npm install && npm run build && cd ..
   sed -i.bak 's/s\.version *= *".*"/s.version = "{{version}}"/' ruby/quicknode_sdk.gemspec && rm ruby/quicknode_sdk.gemspec.bak
-  git add Cargo.toml crates/core/Cargo.toml pyproject.toml uv.lock npm/package.json npm/package-lock.json ruby/quicknode_sdk.gemspec
+  git add Cargo.toml crates/core/Cargo.toml pyproject.toml uv.lock npm/package.json npm/package-lock.json npm/index.js ruby/quicknode_sdk.gemspec
   git commit -m "chore: release v{{version}}"
   git tag v{{version}}
   echo "Tagged v{{version}}. Next: just release-prepare {{version}}  (or push manually with: just release-push {{version}})"
