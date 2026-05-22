@@ -1,6 +1,6 @@
 {
   "name": "@quicknode/sdk",
-  "version": "3.1.0-alpha.23",
+  "version": "3.1.0-alpha.24",
   "description": "Quicknode SDK",
   "main": "sdk.js",
   "types": "sdk.d.ts",
