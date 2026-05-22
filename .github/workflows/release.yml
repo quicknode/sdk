@@ -145,6 +145,13 @@ jobs:
             ${{ contains(matrix.target, 'gnu') && '--use-cross' || '--cross-compile' }} \
             --manifest-path ../crates/node/Cargo.toml
 
+      # Temporary: locate the .node artifact across possible v3 output locations.
+      # Remove once we've confirmed the canonical path for --use-cross builds.
+      - name: Locate build artifact
+        run: |
+          echo "=== find any .node under repo ==="
+          find . -name '*.node' -not -path './node_modules/*' 2>/dev/null || true
+
       - name: Strip debug symbols
         run: |
           if [ "${{ matrix.cross }}" = "true" ]; then
