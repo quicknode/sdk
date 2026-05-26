@@ -73,7 +73,9 @@ lint:
 # Ruby gemspec, and npm/package.json. The npm version is auto-translated from
 # 0.x.y... to 3.x.y... because @quicknode/sdk 2.x already exists on npm.
 # Usage: just release-bump 0.2.0
-# Bump versions across all manifests, commit + tag locally for release.
+# Bump versions across all manifests on a release/vX.Y.Z branch.
+# The branch is opened as a PR by release-prepare; the tag is created later
+# against the merge commit on main, not here.
 release-bump version:
   #!/usr/bin/env bash
   set -euo pipefail
@@ -86,6 +88,16 @@ release-bump version:
     echo "Error: version '{{version}}' must start with '0.' (npm auto-translate assumes 0.x → 3.x). Update release-bump when 0.x graduates." >&2
     exit 1
   fi
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  if [[ "$current_branch" != "main" ]]; then
+    echo "Error: must be on main to start a release (currently on '$current_branch')." >&2
+    exit 1
+  fi
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Error: working tree is not clean. Commit or stash changes before bumping." >&2
+    exit 1
+  fi
+  git checkout -b "release/v{{version}}"
   npm_version="3.${raw_version#0.}"
   py_version=$(echo "$raw_version" | sed -E 's/-alpha\.([0-9]+)$/a\1/; s/-beta\.([0-9]+)$/b\1/; s/-rc\.([0-9]+)$/rc\1/')
   sed -i.bak 's/^version = ".*"/version = "{{version}}"/' Cargo.toml && rm Cargo.toml.bak
@@ -102,13 +114,55 @@ release-bump version:
   sed -i.bak 's/s\.version *= *".*"/s.version = "{{version}}"/' ruby/quicknode_sdk.gemspec && rm ruby/quicknode_sdk.gemspec.bak
   git add Cargo.toml crates/core/Cargo.toml pyproject.toml uv.lock npm/package.json npm/package-lock.json npm/index.js ruby/quicknode_sdk.gemspec
   git commit -m "chore: release v{{version}}"
-  git tag v{{version}}
-  echo "Tagged v{{version}}. Next: just release-prepare {{version}}  (or push manually with: just release-push {{version}})"
+  echo "Committed bump on branch release/v{{version}}. Next: just release-prepare {{version}}"
 
-# Push the release commit + tag to origin.
-release-push version:
-  git push
-  git push origin v{{version}}
+# Push the release branch to origin and open a PR for the bump commit.
+release-open-pr version:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  git push -u origin "release/v{{version}}"
+  gh pr create \
+    --base main \
+    --head "release/v{{version}}" \
+    --title "chore: release v{{version}}" \
+    --body "Automated release bump for v{{version}}. Merging this PR triggers the rest of the release flow (tag, GitHub release, CI artifacts, macOS upload)."
+
+# Prompt to merge the release PR via `gh pr merge --squash --delete-branch`,
+# then poll until the PR shows MERGED.
+release-merge-pr version:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  pr_state=$(gh pr view "release/v{{version}}" --json state -q .state)
+  if [[ "$pr_state" == "MERGED" ]]; then
+    echo "PR for release/v{{version}} already merged."
+    exit 0
+  fi
+  read -r -p "Merge release PR for v{{version}} now via 'gh pr merge --squash --delete-branch'? [y/N] " response
+  if [[ "$response" =~ ^[Yy]$ ]]; then
+    gh pr merge "release/v{{version}}" --squash --delete-branch
+  else
+    echo "Aborted. Merge the PR manually in GitHub, then re-run: just release-prepare {{version}}" >&2
+    exit 1
+  fi
+  for attempt in $(seq 1 20); do
+    pr_state=$(gh pr view "release/v{{version}}" --json state -q .state)
+    if [[ "$pr_state" == "MERGED" ]]; then
+      echo "PR merged."
+      exit 0
+    fi
+    sleep 3
+  done
+  echo "Error: PR for release/v{{version}} did not reach MERGED state." >&2
+  exit 1
+
+# Tag the merge commit on main and push the tag.
+release-tag-main version:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  git checkout main
+  git pull --ff-only origin main
+  git tag "v{{version}}"
+  git push origin "v{{version}}"
 
 # Triggers .github/workflows/release.yml which builds Linux artifacts.
 # Create the GitHub release for the pushed tag, generating notes from commits.
@@ -163,19 +217,22 @@ release-trigger-all version npm_tag="next":
 # After this finishes, the GitHub release exists with all Linux + macOS
 # artifacts attached, but nothing has been published to a registry yet.
 # Pass yes=1 to skip the confirmation prompt (for automation).
-# Phase 1: bump → push → tag → wait for CI → build + upload macOS artifacts.
+# Phase 1: bump on a release branch → open PR → merge → tag merge commit →
+# create GitHub release → wait for CI → build + upload macOS artifacts.
 release-prepare version yes="0":
   #!/usr/bin/env bash
   set -euo pipefail
   if [[ "{{yes}}" != "1" ]]; then
     echo "About to release v{{version}}:"
     echo "  1. Bump versions across Cargo (core+workspace), pyproject, npm, gemspec"
-    echo "  2. Commit and tag locally"
+    echo "  2. Commit on branch release/v{{version}}"
     echo "  --- review diff and confirm before push ---"
-    echo "  3. Push commit + tag to origin"
-    echo "  4. Create GitHub release v{{version}}"
-    echo "  5. Wait for release.yml CI to attach Linux artifacts"
-    echo "  6. Build macOS arm64 artifacts locally and upload them to the release"
+    echo "  3. Push branch + open PR (review checkpoint)"
+    echo "  4. Merge PR via 'gh pr merge --squash --delete-branch'"
+    echo "  5. Tag the merge commit on main and push the tag"
+    echo "  6. Create GitHub release v{{version}}"
+    echo "  7. Wait for release.yml CI to attach Linux artifacts"
+    echo "  8. Build macOS arm64 artifacts locally and upload them to the release"
     echo
     read -r -p "Continue? [y/N] " response
     [[ "$response" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
@@ -185,19 +242,21 @@ release-prepare version yes="0":
   echo "=== Bump commit (HEAD) ==="
   git --no-pager show --stat HEAD
   echo
-  echo "=== Diff vs previous commit ==="
-  git --no-pager diff HEAD~1 HEAD -- Cargo.toml crates/core/Cargo.toml pyproject.toml npm/package.json ruby/quicknode_sdk.gemspec
+  echo "=== Diff vs main ==="
+  git --no-pager diff main...HEAD -- Cargo.toml crates/core/Cargo.toml pyproject.toml npm/package.json ruby/quicknode_sdk.gemspec
   echo
   if [[ "{{yes}}" != "1" ]]; then
-    echo "Review the bump above. Pushing will trigger CI builds against the tag."
-    read -r -p "Push commit + tag v{{version}} to origin? [y/N] " response
+    echo "Review the bump above. Pushing will open a PR for review."
+    read -r -p "Push branch release/v{{version}} and open PR? [y/N] " response
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
-      echo "Aborted before push. The bump commit and tag exist locally — undo with:"
-      echo "  git tag -d v{{version}} && git reset --hard HEAD~1"
+      echo "Aborted before push. The bump commit exists locally on release/v{{version}} — undo with:"
+      echo "  git checkout main && git branch -D release/v{{version}}"
       exit 1
     fi
   fi
-  just release-push {{version}}
+  just release-open-pr {{version}}
+  just release-merge-pr {{version}}
+  just release-tag-main {{version}}
   just release-create-tag {{version}}
   just release-wait-ci {{version}}
   just macos-build-and-publish {{version}}
