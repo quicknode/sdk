@@ -9,6 +9,7 @@ This is one of four language bindings published from the same Rust core. See the
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+- [Platform Support](#platform-support)
 - [API Reference](#api-reference)
   - [Admin Client](#admin-client)
     - [Endpoints](#endpoints)
@@ -96,6 +97,12 @@ Environment variables (prefix `QN_SDK__`, separator `__`):
 | `QN_SDK__STREAMS__BASE_URL` | no | `https://api.quicknode.com/streams/rest/v1/` | Override streams base URL |
 | `QN_SDK__WEBHOOKS__BASE_URL` | no | `https://api.quicknode.com/webhooks/rest/v1/` | Override webhooks base URL |
 | `QN_SDK__KVSTORE__BASE_URL` | no | `https://api.quicknode.com/kv/rest/v1/` | Override KV store base URL |
+
+## Platform Support
+
+`quicknode-sdk` is a pure-Rust source crate — it builds wherever `rustc` and `reqwest` are supported. It is regularly tested on Linux (glibc) and macOS (Apple Silicon). Windows is not tested.
+
+If you are using one of the language bindings (`quicknode-sdk` on PyPI, `@quicknode/sdk` on npm, `quicknode_sdk` on RubyGems), see that package's README for the precompiled-binary platform matrix.
 
 ## API Reference
 

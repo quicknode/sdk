@@ -189,6 +189,15 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 - The Configuration env-var table and the Error Handling class table are duplicated verbatim across all four per-language READMEs. When one changes, update all four — keep them byte-identical.
 - Per-language READMEs are wired into package metadata (`crates/core/Cargo.toml` `readme`, `pyproject.toml` `readme`, `npm/package.json` `files`, `ruby/quicknode_sdk.gemspec` `s.files`). When adding a new language or moving a README, update the corresponding manifest.
 
+### Platform support
+
+Precompiled binaries ship for these targets, controlled by `.github/workflows/release.yml` and `Cross.toml`:
+- **Linux glibc** (Python, Node, Ruby) — `x86_64`/`aarch64`, pinned to **glibc 2.17** via `cross` + `zig cc` (manylinux2014 baseline). Do not bump this floor without updating the per-language READMEs and confirming we're prepared to drop RHEL 7 / Ubuntu 14.04-era distros.
+- **Linux musl** (Python, Node only) — `x86_64`/`aarch64`. Ruby is excluded on purpose because the Rust `cdylib` is incompatible with musl (no dynamic linker); the source gem exists only as a Bundler fallback that raises `LoadError`.
+- **macOS** — `aarch64-apple-darwin` (Apple Silicon) only, built locally via `just macos-build-and-publish` during release. No Intel macOS, no Windows.
+
+If you change the target matrix in `release.yml`, `Cross.toml`, `npm/package.json`'s `napi.targets`, or `Justfile`'s `macos-build-and-publish`, update the **Platform Support** section in all four per-language READMEs in the same PR.
+
 ## Code style
 
 ### Imports
