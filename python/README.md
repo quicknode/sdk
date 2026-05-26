@@ -9,6 +9,7 @@ This is one of four language bindings published from the same Rust core. See the
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+- [Platform Support](#platform-support)
 - [API Reference](#api-reference)
   - [Admin Client](#admin-client)
     - [Endpoints](#endpoints)
@@ -97,6 +98,20 @@ Environment variables (prefix `QN_SDK__`, separator `__`):
 | `QN_SDK__STREAMS__BASE_URL` | no | `https://api.quicknode.com/streams/rest/v1/` | Override streams base URL |
 | `QN_SDK__WEBHOOKS__BASE_URL` | no | `https://api.quicknode.com/webhooks/rest/v1/` | Override webhooks base URL |
 | `QN_SDK__KVSTORE__BASE_URL` | no | `https://api.quicknode.com/kv/rest/v1/` | Override KV store base URL |
+
+## Platform Support
+
+Precompiled wheels are published for:
+
+| Platform | Targets |
+|---|---|
+| Linux (glibc) | `x86_64`, `aarch64` — glibc **2.17+** (manylinux2014) |
+| Linux (musl) | `x86_64`, `aarch64` — Alpine and other musl distros |
+| macOS | Apple Silicon (`arm64`) |
+
+Linux glibc wheels are built against glibc 2.17 so they load on any distro from 2014 onward — RHEL 7+, Ubuntu 14.04+, Debian 8+, Amazon Linux 2+, SLES 12+, Fedora 19+. If `pip install quicknode-sdk` resolves to a source distribution on your platform, you're on something we don't have a prebuilt wheel for — see the matrix above.
+
+**Not supported:** RHEL/CentOS 6 (glibc 2.12), Debian 7 (glibc 2.13), Ubuntu 12.04 (glibc 2.15), SLES 11 (glibc 2.11), Intel macOS, Windows.
 
 ## API Reference
 

@@ -77,6 +77,7 @@ pub struct GetSetsParams {
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BulkSetsParams {
     /// Key/value pairs to add.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -131,6 +132,7 @@ pub struct GetListParams {
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateListParams {
     /// Items to add to the list.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -947,7 +949,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/sets/bulk"))
             .and(body_json(serde_json::json!({
-                "add_sets": {"k1": "v1"}
+                "addSets": {"k1": "v1"}
             })))
             .respond_with(
                 ResponseTemplate::new(201)
@@ -973,7 +975,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/sets/bulk"))
             .and(body_json(serde_json::json!({
-                "delete_sets": ["k1", "k2"]
+                "deleteSets": ["k1", "k2"]
             })))
             .respond_with(
                 ResponseTemplate::new(201)
@@ -1254,8 +1256,8 @@ mod tests {
         Mock::given(method("PATCH"))
             .and(path("/lists/my-list"))
             .and(body_json(serde_json::json!({
-                "add_items": ["c"],
-                "remove_items": ["a"]
+                "addItems": ["c"],
+                "removeItems": ["a"]
             })))
             .respond_with(
                 ResponseTemplate::new(200)
