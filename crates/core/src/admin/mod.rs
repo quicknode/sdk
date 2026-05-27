@@ -3667,6 +3667,7 @@ mod tests {
             http: Some(HttpConfig {
                 timeout_secs: Some(-1),
                 pool_max_idle_per_host: None,
+                headers: None,
             }),
             admin: None,
             streams: None,

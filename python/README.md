@@ -98,6 +98,31 @@ Environment variables (prefix `QN_SDK__`, separator `__`):
 | `QN_SDK__STREAMS__BASE_URL` | no | `https://api.quicknode.com/streams/rest/v1/` | Override streams base URL |
 | `QN_SDK__WEBHOOKS__BASE_URL` | no | `https://api.quicknode.com/webhooks/rest/v1/` | Override webhooks base URL |
 | `QN_SDK__KVSTORE__BASE_URL` | no | `https://api.quicknode.com/kv/rest/v1/` | Override KV store base URL |
+| `QN_SDK__HTTP__HEADERS__<NAME>` | no | — | Custom HTTP header sent on every request. Overrides SDK-managed headers (see below). |
+
+### Custom headers and `User-Agent`
+
+Every outbound HTTP request includes an auto-generated `User-Agent` of the form:
+
+```
+quicknode-sdk-<language>/<sdk-version> (<os>-<arch>; <language>-<runtime-version>)
+```
+
+You can attach arbitrary headers via `HttpConfig.headers`. **These headers OVERRIDE any SDK-managed header with the same name**, including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`. Use this to inject correlation IDs, proxy auth, or to replace the default `User-Agent`. Header names are matched case-insensitively.
+
+```python
+from sdk import QuicknodeSdk, SdkFullConfig, HttpConfig
+
+qn = QuicknodeSdk(
+    SdkFullConfig(
+        api_key="your-key",
+        http=HttpConfig(headers={
+            "X-Correlation-Id": "abc-123",
+            "User-Agent": "my-app/1.0",  # overrides SDK default
+        }),
+    )
+)
+```
 
 ## Platform Support
 

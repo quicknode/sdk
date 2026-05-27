@@ -24,14 +24,44 @@ pub struct QuicknodeSdk {
     kvstore: KvStoreApiClient,
 }
 
+/// Build a [`core::ClientInfo`] from the live Python runtime so the SDK's
+/// `User-Agent` reflects the installed `quicknode-sdk` PyPI package and the
+/// running Python interpreter.
+fn python_client_info(py: Python<'_>) -> core::ClientInfo {
+    let language_version = py
+        .import("sys")
+        .and_then(|sys| sys.getattr("version_info"))
+        .and_then(|v| {
+            let major: u32 = v.getattr("major")?.extract()?;
+            let minor: u32 = v.getattr("minor")?.extract()?;
+            let micro: u32 = v.getattr("micro")?.extract()?;
+            Ok(format!("{major}.{minor}.{micro}"))
+        })
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    let sdk_version = py
+        .import("importlib.metadata")
+        .and_then(|m| m.call_method1("version", ("quicknode-sdk",)))
+        .and_then(|v| v.extract::<String>())
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    core::ClientInfo {
+        language: "python".to_string(),
+        language_version,
+        sdk_version,
+    }
+}
+
 #[gen_stub_pymethods]
 #[pymethods]
 impl QuicknodeSdk {
     /// Creates a new SDK instance from an explicit configuration.
     #[new]
     #[allow(clippy::needless_pass_by_value)]
-    fn new(config: core::SdkFullConfig) -> PyResult<Self> {
-        let sdk_config = core::SdkConfig::new(&config).map_err(errors::map_sdk_err)?;
+    fn new(py: Python<'_>, config: core::SdkFullConfig) -> PyResult<Self> {
+        let sdk_config =
+            core::SdkConfig::new_with_client_info(&config, Some(python_client_info(py)))
+                .map_err(errors::map_sdk_err)?;
         Ok(Self {
             admin: AdminApiClient {
                 inner: core::admin::AdminApiClient::new(sdk_config.clone()),
@@ -50,8 +80,8 @@ impl QuicknodeSdk {
 
     /// Creates a new SDK instance using configuration from environment variables.
     #[staticmethod]
-    fn from_env() -> PyResult<Self> {
-        core::QuicknodeSdk::from_env()
+    fn from_env(py: Python<'_>) -> PyResult<Self> {
+        core::QuicknodeSdk::from_env_with_client_info(Some(python_client_info(py)))
             .map(|sdk| Self {
                 admin: AdminApiClient { inner: sdk.admin },
                 streams: StreamsApiClient { inner: sdk.streams },

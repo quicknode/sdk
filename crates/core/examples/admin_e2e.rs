@@ -857,6 +857,34 @@ async fn main() {
         other => eprintln!("expected Api 404 from delete_rate_limit_override, got {other:?}"),
     }
 
+    // Custom headers smoke test — construct an SDK that overrides User-Agent
+    // and adds a correlation header. We don't verify what reaches the wire
+    // here; we just confirm the config is accepted and an API call succeeds.
+    let mut custom_headers = std::collections::HashMap::new();
+    custom_headers.insert("User-Agent".to_string(), "qn-e2e-rust/1.0".to_string());
+    custom_headers.insert("X-E2E-Correlation".to_string(), "rust-smoke".to_string());
+    let with_headers = SdkFullConfig {
+        api_key: config.api_key.clone(),
+        http: Some(HttpConfig {
+            timeout_secs: None,
+            pool_max_idle_per_host: None,
+            headers: Some(custom_headers),
+        }),
+        admin: config.admin.clone(),
+        streams: None,
+        webhooks: None,
+        kvstore: None,
+    };
+    let headered = QuicknodeSdk::new(&with_headers).expect("build sdk with custom headers");
+    match headered
+        .admin
+        .get_endpoints(&GetEndpointsRequest::builder().limit(1).build())
+        .await
+    {
+        Ok(_) => println!("custom-headers smoke: ok"),
+        Err(e) => eprintln!("custom-headers smoke error: {e}"),
+    }
+
     // 2) Timeout path — unreachable base URL + 1s timeout forces a timeout
     // from reqwest, which maps to SdkError::Http with http_kind() == Timeout.
     let blackhole = SdkFullConfig {
@@ -864,6 +892,7 @@ async fn main() {
         http: Some(HttpConfig {
             timeout_secs: Some(1),
             pool_max_idle_per_host: None,
+            headers: None,
         }),
         admin: Some(AdminConfig {
             base_url: Some("http://10.255.255.1/".to_string()),

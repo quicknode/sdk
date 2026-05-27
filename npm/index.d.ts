@@ -938,6 +938,15 @@ export interface GetWebhooksParams {
 export interface HttpConfig {
   timeoutSecs?: number
   poolMaxIdlePerHost?: number
+  /**
+   * Custom HTTP headers added to every outbound request.
+   *
+   * **These headers OVERRIDE any SDK-managed header with the same name**,
+   * including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`.
+   * Header names are matched case-insensitively. Use this to override the
+   * auto-generated User-Agent or inject correlation IDs, proxy auth, etc.
+   */
+  headers?: Record<string, string>
 }
 
 /** Template arguments for a Hyperliquid wallet-events filter. */
