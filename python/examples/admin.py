@@ -88,6 +88,24 @@ async def main():
         assert e.status == 404
         print(f"delete_rate_limit_override api error {e.status}: {e.body[:80]}")
 
+    # Custom headers smoke test — override User-Agent + add a correlation header.
+    headered = QuicknodeSdk(
+        SdkFullConfig(
+            api_key=os.environ["QN_SDK__API_KEY"],
+            http=HttpConfig(
+                headers={
+                    "User-Agent": "qn-e2e-python/1.0",
+                    "X-E2E-Correlation": "python-smoke",
+                }
+            ),
+        )
+    )
+    try:
+        resp = await headered.admin.get_endpoints(limit=1)
+        print(f"custom-headers smoke: ok ({len(resp.data)} endpoints)")
+    except QuicknodeError as e:
+        print(f"custom-headers smoke error: {e}")
+
     # 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.
     blackhole = QuicknodeSdk(
         SdkFullConfig(

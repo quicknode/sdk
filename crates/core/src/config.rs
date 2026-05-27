@@ -17,6 +17,13 @@ use crate::errors::SdkError;
 pub struct HttpConfig {
     pub timeout_secs: Option<i64>,
     pub pool_max_idle_per_host: Option<i32>,
+    /// Custom HTTP headers added to every outbound request.
+    ///
+    /// **These headers OVERRIDE any SDK-managed header with the same name**,
+    /// including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`.
+    /// Header names are matched case-insensitively. Use this to override the
+    /// auto-generated User-Agent or inject correlation IDs, proxy auth, etc.
+    pub headers: Option<std::collections::HashMap<String, String>>,
 }
 
 #[cfg(feature = "python")]
@@ -24,13 +31,33 @@ pub struct HttpConfig {
 #[pymethods]
 impl HttpConfig {
     #[new]
-    #[pyo3(signature = (timeout_secs=None, pool_max_idle_per_host=None))]
-    pub fn new(timeout_secs: Option<i64>, pool_max_idle_per_host: Option<i32>) -> Self {
+    #[pyo3(signature = (timeout_secs=None, pool_max_idle_per_host=None, headers=None))]
+    pub fn new(
+        timeout_secs: Option<i64>,
+        pool_max_idle_per_host: Option<i32>,
+        headers: Option<std::collections::HashMap<String, String>>,
+    ) -> Self {
         HttpConfig {
             timeout_secs,
             pool_max_idle_per_host,
+            headers,
         }
     }
+}
+
+/// Identifies the language and runtime making SDK calls. Each binding crate
+/// (Python, Node, Ruby) constructs this and passes it through
+/// [`SdkConfig::new_with_client_info`] so the SDK's auto-generated
+/// `User-Agent` reflects the actual caller, not the underlying Rust core.
+#[derive(Debug, Clone)]
+pub struct ClientInfo {
+    /// Short language identifier, e.g. `"python"`, `"node"`, `"ruby"`, `"rust"`.
+    pub language: String,
+    /// Runtime version of the language, e.g. `"3.12.4"`, `"20.10.0"`, `"3.3.0"`.
+    pub language_version: String,
+    /// Version string of the language-specific SDK package — read from the
+    /// language's own manifest (PyPI version, npm version, gem version).
+    pub sdk_version: String,
 }
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
@@ -237,5 +264,24 @@ mod tests {
             SdkFullConfig::from_config(cfg),
             Err(SdkError::Config(_))
         ));
+    }
+
+    #[test]
+    fn from_env_headers_round_trip() {
+        let cfg = build_config(&[
+            ("api_key", "k"),
+            ("http.headers.x-correlation-id", "abc"),
+            ("http.headers.user-agent", "custom-ua/1.0"),
+        ]);
+        let config = SdkFullConfig::from_config(cfg).unwrap();
+        let headers = config.http.unwrap().headers.unwrap();
+        assert_eq!(
+            headers.get("x-correlation-id").map(String::as_str),
+            Some("abc")
+        );
+        assert_eq!(
+            headers.get("user-agent").map(String::as_str),
+            Some("custom-ua/1.0")
+        );
     }
 }

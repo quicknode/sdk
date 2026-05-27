@@ -27,6 +27,7 @@ module QuicknodeSdk
 
   class SDK
     def self.from_env: () -> SDK
+    def self.from_config: (Hash[Symbol | String, untyped] opts) -> SDK
     def initialize: (untyped native) -> void
     def admin: () -> Admin
     def streams: () -> Streams

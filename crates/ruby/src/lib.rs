@@ -241,9 +241,43 @@ pub struct QuicknodeSdk {
     inner: core::QuicknodeSdk,
 }
 
+/// Build a [`core::ClientInfo`] from the live Ruby runtime so the SDK's
+/// `User-Agent` reflects the installed `quicknode_sdk` gem and the running
+/// Ruby interpreter. Failures fall back to `"unknown"` rather than
+/// aborting the SDK constructor.
+fn ruby_client_info() -> core::ClientInfo {
+    let language_version =
+        magnus::eval::<String>("RUBY_VERSION").unwrap_or_else(|_| "unknown".to_string());
+
+    core::ClientInfo {
+        language: "ruby".to_string(),
+        language_version,
+        sdk_version: env!("GEM_VERSION").to_string(),
+    }
+}
+
 impl QuicknodeSdk {
     fn from_env() -> Result<Self, Error> {
-        core::QuicknodeSdk::from_env()
+        core::QuicknodeSdk::from_env_with_client_info(Some(ruby_client_info()))
+            .map(|inner| Self { inner })
+            .map_err(map_err)
+    }
+
+    /// Build an SDK from an explicit configuration hash. Supports custom
+    /// headers, timeouts, and base URLs without going through env vars.
+    ///
+    /// Accepts the same nested shape `from_env` does, e.g.
+    /// `{ api_key: "...", http: { headers: { "X-Foo" => "bar" } } }`.
+    fn from_config(opts: RHash) -> Result<Self, Error> {
+        validate_keys(
+            &opts,
+            &["api_key", "http", "admin", "streams", "webhooks", "kvstore"],
+        )?;
+        let config: core::SdkFullConfig =
+            serde_magnus::deserialize(&ruby(), opts).map_err(|e| {
+                Error::new(ruby().exception_arg_error(), format!("invalid config: {e}"))
+            })?;
+        core::QuicknodeSdk::new_with_client_info(&config, Some(ruby_client_info()))
             .map(|inner| Self { inner })
             .map_err(map_err)
     }
@@ -1763,6 +1797,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     // ── SDK root ──────────────────────────────────────────────
     let sdk = native.define_class("SDK", ruby.class_object())?;
     sdk.define_singleton_method("from_env", function!(QuicknodeSdk::from_env, 0))?;
+    sdk.define_singleton_method("from_config", function!(QuicknodeSdk::from_config, 1))?;
     sdk.define_method("admin", method!(QuicknodeSdk::admin, 0))?;
     sdk.define_method("streams", method!(QuicknodeSdk::streams, 0))?;
     sdk.define_method("webhooks", method!(QuicknodeSdk::webhooks, 0))?;

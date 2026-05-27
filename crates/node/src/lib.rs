@@ -17,13 +17,35 @@ pub struct QuicknodeSdk {
     kvstore: KvStoreApiClient,
 }
 
+/// Build a [`core::ClientInfo`] from the live Node.js runtime so the SDK's
+/// `User-Agent` reflects the installed `@quicknode/sdk` npm package and the
+/// running Node.js interpreter. Failures fall back to `"unknown"` rather
+/// than aborting the SDK constructor.
+fn node_client_info(env: &Env) -> core::ClientInfo {
+    let language_version = (|| -> Result<String> {
+        let process: Object = env.get_global()?.get_named_property("process")?;
+        let s: String = process.get_named_property("version")?;
+        // Node's process.version is e.g. "v20.10.0" — strip the leading "v".
+        Ok(s.strip_prefix('v').unwrap_or(&s).to_string())
+    })()
+    .unwrap_or_else(|_| "unknown".to_string());
+
+    core::ClientInfo {
+        language: "node".to_string(),
+        language_version,
+        sdk_version: env!("NPM_PACKAGE_VERSION").to_string(),
+    }
+}
+
 #[napi]
 impl QuicknodeSdk {
     /// Creates a new SDK instance from an explicit configuration.
     #[napi(constructor)]
     #[allow(clippy::needless_pass_by_value)]
-    pub fn new(config: core::SdkFullConfig) -> Result<Self> {
-        let sdk_config = core::SdkConfig::new(&config).map_err(errors::map_sdk_err)?;
+    pub fn new(env: Env, config: core::SdkFullConfig) -> Result<Self> {
+        let sdk_config =
+            core::SdkConfig::new_with_client_info(&config, Some(node_client_info(&env)))
+                .map_err(errors::map_sdk_err)?;
         Ok(Self {
             admin: AdminApiClient {
                 inner: core::admin::AdminApiClient::new(sdk_config.clone()),

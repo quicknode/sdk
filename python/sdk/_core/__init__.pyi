@@ -3517,7 +3517,27 @@ class HttpConfig:
     def pool_max_idle_per_host(self) -> typing.Optional[builtins.int]: ...
     @pool_max_idle_per_host.setter
     def pool_max_idle_per_host(self, value: typing.Optional[builtins.int]) -> None: ...
-    def __new__(cls, timeout_secs: typing.Optional[builtins.int] = None, pool_max_idle_per_host: typing.Optional[builtins.int] = None) -> HttpConfig: ...
+    @property
+    def headers(self) -> typing.Optional[builtins.dict[builtins.str, builtins.str]]:
+        r"""
+        Custom HTTP headers added to every outbound request.
+        
+        **These headers OVERRIDE any SDK-managed header with the same name**,
+        including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`.
+        Header names are matched case-insensitively. Use this to override the
+        auto-generated User-Agent or inject correlation IDs, proxy auth, etc.
+        """
+    @headers.setter
+    def headers(self, value: typing.Optional[builtins.dict[builtins.str, builtins.str]]) -> None:
+        r"""
+        Custom HTTP headers added to every outbound request.
+        
+        **These headers OVERRIDE any SDK-managed header with the same name**,
+        including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`.
+        Header names are matched case-insensitively. Use this to override the
+        auto-generated User-Agent or inject correlation IDs, proxy auth, etc.
+        """
+    def __new__(cls, timeout_secs: typing.Optional[builtins.int] = None, pool_max_idle_per_host: typing.Optional[builtins.int] = None, headers: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> HttpConfig: ...
 
 @typing.final
 class HyperliquidWalletEventsFilterArgs:

@@ -374,6 +374,23 @@ rescue QuicknodeSdk::ApiError => e
   puts "delete_rate_limit_override api error #{e.status}: #{e.body[0, 80]}"
 end
 
+# Custom headers smoke test — override User-Agent + add a correlation header.
+headered = QuicknodeSdk::SDK.from_config(
+  api_key: ENV.fetch("QN_SDK__API_KEY"),
+  http: {
+    headers: {
+      "User-Agent" => "qn-e2e-ruby/1.0",
+      "X-E2E-Correlation" => "ruby-smoke",
+    },
+  },
+)
+begin
+  resp = headered.admin.get_endpoints(limit: 1)
+  puts "custom-headers smoke: ok (#{resp[:data].length} endpoints)"
+rescue QuicknodeSdk::Error => e
+  puts "custom-headers smoke error: #{e.message}"
+end
+
 # 2) Timeout path — unreachable base URL + 1s timeout forces a timeout
 prev_url = ENV["QN_SDK__ADMIN__BASE_URL"]
 prev_timeout = ENV["QN_SDK__HTTP__TIMEOUT_SECS"]

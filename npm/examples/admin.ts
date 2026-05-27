@@ -95,6 +95,24 @@ async function main() {
     console.log(`deleteRateLimitOverride api error ${e.status}: ${e.body.slice(0, 80)}`);
   }
 
+  // Custom headers smoke test — override User-Agent + add a correlation header.
+  const headered = new QuicknodeSdk({
+    apiKey: process.env.QN_SDK__API_KEY ?? "",
+    http: {
+      headers: {
+        "User-Agent": "qn-e2e-node/1.0",
+        "X-E2E-Correlation": "node-smoke",
+      },
+    },
+  });
+  try {
+    const resp = await headered.admin.getEndpoints({ limit: 1 });
+    console.log(`custom-headers smoke: ok (${resp.data.length} endpoints)`);
+  } catch (e) {
+    if (!(e instanceof QuicknodeError)) throw e;
+    console.log(`custom-headers smoke error: ${e.message}`);
+  }
+
   // 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.
   const blackhole = new QuicknodeSdk({
     apiKey: process.env.QN_SDK__API_KEY ?? "",

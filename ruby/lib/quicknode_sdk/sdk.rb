@@ -4,6 +4,17 @@ module QuicknodeSdk
       new(Native::SDK.from_env)
     end
 
+    # Build an SDK from an explicit config hash. Supports custom headers,
+    # timeouts, and base URLs without relying on env vars.
+    #
+    #   QuicknodeSdk::SDK.from_config(
+    #     api_key: "...",
+    #     http: { headers: { "X-Correlation-Id" => "abc" } }
+    #   )
+    def self.from_config(opts)
+      new(Native::SDK.from_config(opts))
+    end
+
     def initialize(native)
       @native = native
     end
