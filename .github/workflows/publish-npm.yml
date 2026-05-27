@@ -99,6 +99,9 @@ jobs:
               files: [binFile],
               description: pkg.description,
               license: pkg.license,
+              repository: pkg.repository,
+              homepage: pkg.homepage,
+              bugs: pkg.bugs,
               os: [t.os],
               cpu: [t.cpu],
             };
