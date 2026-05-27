@@ -263,9 +263,8 @@ impl QuicknodeSdk {
             .map_err(map_err)
     }
 
-    /// Build an SDK from an explicit configuration hash. Mirrors the
-    /// Python/Node constructor surface so callers can set custom headers,
-    /// timeouts, or base URLs directly without going through env vars.
+    /// Build an SDK from an explicit configuration hash. Supports custom
+    /// headers, timeouts, and base URLs without going through env vars.
     ///
     /// Accepts the same nested shape `from_env` does, e.g.
     /// `{ api_key: "...", http: { headers: { "X-Foo" => "bar" } } }`.

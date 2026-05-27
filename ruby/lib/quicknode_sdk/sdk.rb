@@ -4,9 +4,8 @@ module QuicknodeSdk
       new(Native::SDK.from_env)
     end
 
-    # Build an SDK from an explicit config hash. Mirrors the Python/Node
-    # constructor surface — supports custom headers, timeouts, and base URLs
-    # without relying on env vars.
+    # Build an SDK from an explicit config hash. Supports custom headers,
+    # timeouts, and base URLs without relying on env vars.
     #
     #   QuicknodeSdk::SDK.from_config(
     #     api_key: "...",
