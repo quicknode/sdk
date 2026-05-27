@@ -2,6 +2,14 @@
   "name": "@quicknode/sdk",
   "version": "3.1.0-alpha.29",
   "description": "Quicknode SDK",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quicknode/sdk.git"
+  },
+  "homepage": "https://github.com/quicknode/sdk",
+  "bugs": {
+    "url": "https://github.com/quicknode/sdk/issues"
+  },
   "main": "sdk.js",
   "types": "sdk.d.ts",
   "exports": {

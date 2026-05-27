@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Public repository
+
+This repo is **public**. Code, comments, commit messages, and PR descriptions are world-readable. Do not include internal-only details — only reference what is already public via the external REST APIs and the SDK's own public surface.
+
+- **OK to mention**: public REST endpoints, request/response shapes documented at quicknode.com/docs, the SDK's own exported types/methods, public package names (`@quicknode/sdk`, `quicknode-sdk`, `quicknode_sdk`).
+- **Do not mention**: internal service names, internal infra/hostnames, private repos or paths, Linear/Jira ticket IDs, Slack channels, employee names, internal incident details, internal API quirks not reflected in the public docs, or "why we chose X" reasoning that exposes internal strategy.
+- If a fix is driven by internal context (incident, ticket, private discussion), describe the **observable behavior** that's being fixed — not the internal trigger. The commit message and PR description should read as if written by an external contributor.
+- When in doubt, ask before publishing.
+
 ## Build & Development Commands
 
 ### Rust

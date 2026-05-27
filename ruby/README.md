@@ -2,7 +2,7 @@
 
 Ruby bindings for the Quicknode SDK.
 
-This is one of four language bindings published from the same Rust core. See the [project README](https://github.com/quiknode-labs/sdk/blob/main/README.md) for the polyglot overview, development setup, and release process.
+This is one of four language bindings published from the same Rust core. See the [project README](https://github.com/quicknode/sdk/blob/main/README.md) for the polyglot overview, development setup, and release process.
 
 ## Table of Contents
 

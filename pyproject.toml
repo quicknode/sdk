@@ -25,9 +25,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/quiknode-labs/sdk"
-Repository = "https://github.com/quiknode-labs/sdk"
-Issues = "https://github.com/quiknode-labs/sdk/issues"
+Homepage = "https://github.com/quicknode/sdk"
+Repository = "https://github.com/quicknode/sdk"
+Issues = "https://github.com/quicknode/sdk/issues"
 
 [tool.maturin]
 manifest-path = "crates/python/Cargo.toml"
