@@ -99,6 +99,7 @@ impl EvmWalletFilterTemplate {
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EvmContractEventsTemplate {
     /// Contract addresses to watch for events.
     pub contracts: Vec<String>,
@@ -547,6 +548,9 @@ mod template_args_tests {
         });
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"evmContractEvents""#));
+        // API expects camelCase `eventHashes` — snake_case is silently rejected with a 500.
+        assert!(json.contains(r#""eventHashes":["0x1234"]"#));
+        assert!(!json.contains("event_hashes"));
         let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
         assert!(matches!(parsed, TemplateArgs::EvmContractEvents(_)));
     }

@@ -740,6 +740,45 @@ mod tests {
             .unwrap();
     }
 
+    // Wire-inspection regression: the API expects `eventHashes` (camelCase)
+    // and returns 500 if it sees `event_hashes`. Confirm the field reaches the
+    // wire under the camelCase key.
+    #[tokio::test]
+    async fn create_webhook_from_template_wire_body_uses_camelcase_event_hashes() {
+        use wiremock::matchers::body_partial_json;
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path_regex("/webhooks/template/evmContractEvents"))
+            .and(body_partial_json(serde_json::json!({
+                "templateArgs": {
+                    "eventHashes": ["0xabcd"],
+                }
+            })))
+            .respond_with(ResponseTemplate::new(201).set_body_json(webhook_response_json()))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let template_args = TemplateArgs::EvmContractEvents(EvmContractEventsTemplate {
+            contracts: vec!["0xa0b8".to_string()],
+            event_hashes: Some(vec!["0xabcd".to_string()]),
+        });
+        let params = CreateWebhookFromTemplateParams {
+            name: "test-webhook".to_string(),
+            network: "ethereum-mainnet".to_string(),
+            notification_email: None,
+            destination_attributes: WebhookDestinationAttributes {
+                url: "https://example.com/hook".to_string(),
+                security_token: None,
+                compression: None,
+            },
+            template_args,
+        };
+        sdk.webhooks
+            .create_webhook_from_template(&params)
+            .await
+            .unwrap();
+    }
+
     #[tokio::test]
     async fn update_webhook_template_api_error() {
         let server = MockServer::start().await;
