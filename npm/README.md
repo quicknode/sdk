@@ -1064,13 +1064,8 @@ Destinations are expressed via `DestinationAttributes`. Each variant wraps an at
 | `Webhook` | `WebhookAttributes` | `url`, `max_retry`, `retry_interval_sec`, `post_timeout_sec`, `compression`, `security_token?` |
 | `S3` | `S3Attributes` | `endpoint`, `access_key`, `secret_key`, `bucket`, `object_prefix`, `compression`, `file_type`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
 | `Azure` | `AzureAttributes` | `storage_account`, `sas_token`, `container`, `compression`, `file_type`, `max_retry`, `retry_interval_sec`, `blob_prefix?` |
-| `Postgres` | `PostgresAttributes` | `host`, `port`, `username`, `password`, `database`, `schema`, `table`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
-| `Mysql` | `MysqlAttributes` | `host`, `port`, `username`, `password`, `database`, `table`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
-| `Mongo` | `MongoAttributes` | `connection_string`, `database`, `collection`, `max_retry`, `retry_interval_sec` |
-| `Clickhouse` | `ClickhouseAttributes` | `host`, `port`, `username`, `password`, `database`, `table`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
-| `Snowflake` | `SnowflakeAttributes` | `account`, `warehouse`, `database`, `schema`, `table`, `username`, `private_key`, `max_retry`, `retry_interval_sec` |
-| `Kafka` | `KafkaAttributes` | `bootstrap_servers`, `topic`, `compression`, `max_retry`, `retry_interval_sec` |
-| `Redis` | `RedisAttributes` | `host`, `port`, `username`, `password`, `key`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
+| `Postgres` | `PostgresAttributes` | `host`, `port`, `username`, `password`, `database`, `table_name`, `sslmode`, `max_retry`, `retry_interval_sec` |
+| `Kafka` | `KafkaAttributes` | `bootstrap_servers`, `topic_name`, `compression_type`, `batch_size`, `linger_ms`, `max_message_bytes`, `timeout_sec`, `max_retry`, `retry_interval_sec`, `username?`, `password?`, `protocol?`, `mechanisms?` |
 
 Wrapper naming per language:
 

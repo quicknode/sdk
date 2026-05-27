@@ -137,7 +137,9 @@ Snippets assume `qn` was already constructed via the Quick Start. Optional param
 
 ### Language conventions
 
-- Methods are **blocking** (not async). Parameters are a single Hash with symbol keys. Responses that carry data are returned as a `Hash` with indifferent access — `resp[:data]` and `resp["data"]` both work. Unknown parameter keys raise `ArgumentError`.
+- Methods are **blocking** (not async). Parameters are a single Hash with symbol keys. Unknown parameter keys raise `ArgumentError`.
+- **Response shape.** Every method that returns data returns a `QuicknodeSdk::IndifferentHash` — a plain `Hash` subclass with `Hashie::Extensions::IndifferentAccess`. Access values with `resp[:data]`, `resp["data"]`, or `resp.dig(:data, :id)`. Nested hashes and arrays are wrapped recursively, so symbol or string keys work at every level. **Dot accessors (`resp.data.id`) do not work** — there is no `MethodAccess` extension on this class. Use `[]` or `dig`.
+- **Pagination key naming differs across products** because the underlying APIs do. Admin list endpoints return `resp[:pagination]` (`{ total, limit, offset }`); streams and webhooks list endpoints return `resp[:pageInfo]` (same shape, camelCase). Per-method `**Returns**` blocks note which one applies.
 
 ---
 
@@ -833,13 +835,13 @@ Returns the rate-limit rows currently enforced on the endpoint, each identifying
 
 **Parameters**: `id` (endpoint id, required).
 
-**Returns**: `GetRateLimitsResponse` (as a `Hashie::Mash`) with `data.rate_limits: Array<RateLimitEntry>`.
+**Returns**: `GetRateLimitsResponse` (as an `IndifferentHash`) with `data[:rate_limits]: Array<RateLimitEntry>`.
 
 ```ruby
 # Ruby
 resp = qn.admin.get_rate_limits(id: "123")
-resp.data.rate_limits.each do |row|
-  puts "#{row.bucket} #{row.rate_limit} #{row.source} #{row.id}"
+resp.dig(:data, :rate_limits)&.each do |row|
+  puts "#{row[:bucket]} #{row[:rate_limit]} #{row[:source]} #{row[:id]}"
 end
 ```
 
@@ -864,14 +866,14 @@ Returns the HTTP and WebSocket URLs for the endpoint without fetching the full e
 
 **Parameters**: `id` (endpoint id, required).
 
-**Returns**: `GetEndpointUrlsResponse` (as a `Hashie::Mash`) with `data.http_url`, `data.wss_url`, and `data.multichain_urls`.
+**Returns**: `GetEndpointUrlsResponse` (as an `IndifferentHash`) with `data[:http_url]`, `data[:wss_url]`, and `data[:multichain_urls]`.
 
 ```ruby
 # Ruby
 resp = qn.admin.get_endpoint_urls(id: "123")
-puts resp.data.http_url
-resp.data.multichain_urls&.each do |network, urls|
-  puts "#{network} #{urls.http_url}"
+puts resp.dig(:data, :http_url)
+resp.dig(:data, :multichain_urls)&.each do |network, urls|
+  puts "#{network} #{urls[:http_url]}"
 end
 ```
 
@@ -883,7 +885,7 @@ Returns metric series for an endpoint over a time period.
 
 **Parameters**: `id` (endpoint id, required); body: `period` (`"hour"` | `"day"` | `"week"` | `"month"`), `metric` (e.g. `"method_calls_over_time"`, `"response_status_breakdown"`).
 
-**Returns**: `GetEndpointMetricsResponse` (as a `Hashie::Mash`) with `data: Array<EndpointMetric>`. Each `EndpointMetric` has `tag: Array<String>` and `data: Array<Array<Integer>>` of `[timestamp, value]` pairs. Single-axis series (e.g. `response_time_over_time` with a percentile) come back as a one-element tag like `["p95"]`; multi-axis series come back as `["network", "arbitrum-mainnet"]`.
+**Returns**: `GetEndpointMetricsResponse` (as an `IndifferentHash`) with `data: Array<EndpointMetric>`. Each `EndpointMetric` has `tag: Array<String>` and `data: Array<Array<Integer>>` of `[timestamp, value]` pairs. Single-axis series (e.g. `response_time_over_time` with a percentile) come back as a one-element tag like `["p95"]`; multi-axis series come back as `["network", "arbitrum-mainnet"]`.
 
 ```ruby
 # Ruby
@@ -900,7 +902,7 @@ Returns account-level metric series. Supports an optional `percentile` (e.g. `"p
 
 **Parameters**: `period` (required), `metric` (required), `percentile` (string, optional).
 
-**Returns**: `GetAccountMetricsResponse` (as a `Hashie::Mash`) with `data: Array<EndpointMetric>`. See `get_endpoint_metrics` above for the `tag: Array<String>` shape.
+**Returns**: `GetAccountMetricsResponse` (as an `IndifferentHash`) with `data: Array<EndpointMetric>`. See `get_endpoint_metrics` above for the `tag: Array<String>` shape.
 
 ```ruby
 # Ruby
@@ -1010,13 +1012,13 @@ resp = qn.admin.list_tags
 
 Renames an account-level tag.
 
-**Parameters**: `tag_id` (i32, required); body: `label` (string, required).
+**Parameters**: `id` (i32, required — the tag id); body: `label` (string, required).
 
 **Returns**: `RenameTagResponse` with updated `AccountTag`.
 
 ```ruby
 # Ruby
-resp = qn.admin.rename_tag(tag_id: 42, label: "staging")
+resp = qn.admin.rename_tag(id: 42, label: "staging")
 ```
 
 ##### `delete_account_tag` / `deleteAccountTag`
@@ -1031,6 +1033,24 @@ Deletes a tag from the account. The tag must first be removed from any endpoints
 # Ruby
 qn.admin.delete_account_tag(id: 42)
 ```
+
+#### Tag / delete method parameter quick-reference
+
+The pattern across the Admin client: `id:` always names the **parent** resource. The child resource takes its own `<child>_id:`. The two account-level tag operations collapse to a single `id:` (the tag id) because there is no parent endpoint.
+
+| Method | Required keys |
+|---|---|
+| `delete_tag` (per-endpoint) | `id:` (endpoint id), `tag_id:` |
+| `delete_account_tag` | `id:` (tag id) |
+| `rename_tag` | `id:` (tag id), `label:` |
+| `delete_token` | `id:` (endpoint id), `token_id:` |
+| `delete_referrer` | `id:`, `referrer_id:` |
+| `delete_ip` | `id:`, `ip_id:` |
+| `delete_domain_mask` | `id:`, `domain_mask_id:` |
+| `delete_jwt` | `id:`, `jwt_id:` |
+| `delete_method_rate_limit` | `id:`, `method_rate_limit_id:` |
+| `delete_request_filter` | `id:`, `request_filter_id:` |
+| `delete_rate_limit_override` | `id:`, `override_id:` |
 
 ---
 
@@ -1048,20 +1068,16 @@ Enums used across stream methods:
 - **`FilterLanguage`**: `Javascript`, `Go`, `Wasm`.
 - **`StreamMetadataLocation`**: `Body`, `Header`, `None`.
 
-Destinations are expressed via `DestinationAttributes`. Each variant wraps an attribute struct:
+Destinations are expressed via `DestinationAttributes`. Each variant wraps an attribute struct. On returned `Stream` records, `destination_attributes` is **flat** (no `attributes:` nesting) — access fields directly with `resp.dig(:destination_attributes, :url)`.
+
 
 | Variant | Struct | Key fields |
 |---|---|---|
 | `Webhook` | `WebhookAttributes` | `url`, `max_retry`, `retry_interval_sec`, `post_timeout_sec`, `compression`, `security_token?` |
 | `S3` | `S3Attributes` | `endpoint`, `access_key`, `secret_key`, `bucket`, `object_prefix`, `compression`, `file_type`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
 | `Azure` | `AzureAttributes` | `storage_account`, `sas_token`, `container`, `compression`, `file_type`, `max_retry`, `retry_interval_sec`, `blob_prefix?` |
-| `Postgres` | `PostgresAttributes` | `host`, `port`, `username`, `password`, `database`, `schema`, `table`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
-| `Mysql` | `MysqlAttributes` | `host`, `port`, `username`, `password`, `database`, `table`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
-| `Mongo` | `MongoAttributes` | `connection_string`, `database`, `collection`, `max_retry`, `retry_interval_sec` |
-| `Clickhouse` | `ClickhouseAttributes` | `host`, `port`, `username`, `password`, `database`, `table`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
-| `Snowflake` | `SnowflakeAttributes` | `account`, `warehouse`, `database`, `schema`, `table`, `username`, `private_key`, `max_retry`, `retry_interval_sec` |
-| `Kafka` | `KafkaAttributes` | `bootstrap_servers`, `topic`, `compression`, `max_retry`, `retry_interval_sec` |
-| `Redis` | `RedisAttributes` | `host`, `port`, `username`, `password`, `key`, `max_retry`, `retry_interval_sec`, `use_ssl?` |
+| `Postgres` | `PostgresAttributes` | `host`, `port?` (default `5432`), `username`, `password`, `database`, `table_name`, `sslmode`, `max_retry?`, `retry_interval_sec?` |
+| `Kafka` | `KafkaAttributes` | `bootstrap_servers`, `topic_name`, `compression_type`, `batch_size?`, `linger_ms?`, `max_message_bytes?`, `timeout_sec?`, `max_retry?`, `retry_interval_sec?`, `username?`, `password?`, `protocol?`, `mechanisms?` |
 
 Wrapper naming per language:
 
@@ -1109,7 +1125,7 @@ Paginated list of streams on the account.
 
 **Parameters** (all optional): `offset` (i64), `limit` (i64), `order_by` (string), `order_direction` (`"asc"` | `"desc"`), `stream_type` (string).
 
-**Returns**: `ListStreamsResponse` with `data: Stream[]` and `page_info`.
+**Returns**: `ListStreamsResponse` with `data: Stream[]` and `pageInfo` (camelCase on the wire — access as `resp[:pageInfo][:total]`).
 
 ```ruby
 # Ruby
@@ -1250,7 +1266,7 @@ Accessed as `qn.webhooks`. Creates webhooks from filter templates and manages th
 | Factory | Argument struct | Fields |
 |---|---|---|
 | `evm_wallet_filter` | `EvmWalletFilterTemplate` | `wallets: string[]` |
-| `evm_contract_events` | `EvmContractEventsTemplate` | `contracts: string[]`, `event_hashes?: string[]` |
+| `evm_contract_events` | `EvmContractEventsTemplate` | `contracts: string[]`, `eventHashes?: string[]` (camelCase — `event_hashes` is rejected by the API) |
 | `evm_abi_filter` | `EvmAbiFilterTemplate` | `abi: string` (JSON), `contracts: string[]` |
 | `solana_wallet_filter` | `SolanaWalletFilterTemplate` | `accounts: string[]` |
 | `bitcoin_wallet_filter` | `BitcoinWalletFilterTemplate` | `wallets: string[]` |
@@ -1262,7 +1278,7 @@ Accessed as `qn.webhooks`. Creates webhooks from filter templates and manages th
 
 `WebhookStartFrom`: `Last` (resume from last delivered block) or `Latest` (start from newest).
 
-In Ruby, `template_args` is passed as a JSON string under the key `template_args_json`; destination is passed as a JSON string under `destination_attributes_json`.
+In Ruby, `template_args` is passed as a JSON string under the key `template_args_json` on every template-aware method. The destination is passed as a JSON string under `destination_attributes_json` on `create_webhook_from_template` and `update_webhook`. **`update_webhook_template` cannot change the destination** — it accepts only `webhook_id`, `template_args_json`, `name?`, and `notification_email?`.
 
 #### Webhooks methods
 
@@ -1333,9 +1349,9 @@ webhook = qn.webhooks.update_webhook(id: "wh-1", name: "Renamed Webhook")
 
 ##### `update_webhook_template` / `updateWebhookTemplate`
 
-Updates the template args (and optionally name, email, destination) on an existing template-backed webhook.
+Updates the template args (and optionally name and notification email) on an existing template-backed webhook. The destination cannot be changed after creation — to point a webhook at a new URL or storage backend, create a new one.
 
-**Parameters**: `webhook_id` (required), `template_args` (required); optional: `name`, `notification_email`, `destination_attributes`.
+**Parameters**: `webhook_id` (required), `template_args_json` (required — JSON string); optional: `name`, `notification_email`.
 
 **Returns**: updated `Webhook`.
 
