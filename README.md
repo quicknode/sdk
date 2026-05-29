@@ -4,6 +4,8 @@ A unified SDK for building on Quicknode.
 
 Rust SDK with Python, Node.js, and Ruby bindings.
 
+> **Pre-1.0**: While on `0.x`, releases may contain breaking changes. Check the [release notes](https://github.com/quicknode/sdk/releases) before upgrading.
+
 ## Table of Contents
 
 - [Per-language docs](#per-language-docs)
