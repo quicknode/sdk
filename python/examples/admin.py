@@ -1,6 +1,6 @@
 import asyncio
 import os
-from sdk import (
+from quicknode_sdk import (
     QuicknodeSdk,
     SdkFullConfig,
     HttpConfig,

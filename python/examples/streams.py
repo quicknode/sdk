@@ -1,5 +1,5 @@
 import asyncio
-from sdk import QuicknodeSdk, WebhookAttributes, StreamWebhookDestination
+from quicknode_sdk import QuicknodeSdk, WebhookAttributes, StreamWebhookDestination
 
 
 async def main():

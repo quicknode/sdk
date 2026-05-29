@@ -1,6 +1,6 @@
 import asyncio
 
-from sdk import (
+from quicknode_sdk import (
     EvmWalletFilterArgs,
     EvmWalletFilterTemplate,
     QuicknodeSdk,

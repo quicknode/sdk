@@ -1,5 +1,5 @@
 # Need to manually keep this file updated with the exports
-from sdk._core import (
+from quicknode_sdk._core import (
     QuicknodeSdk,
     AdminApiClient,
     StreamsApiClient,

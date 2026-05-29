@@ -25,7 +25,7 @@ cargo run --example admin -p quicknode-sdk         # Run example (requires QN_AP
 ```bash
 just python-setup                                 # Create .venv and uv sync (one-time)
 just python-build                                 # Compile bindings + generate stubs
-cp python/sdk/init_manual_override.pyi python/sdk/__init__.pyi # Manually override __init__ so we can overwrite the commands
+cp python/quicknode_sdk/init_manual_override.pyi python/quicknode_sdk/__init__.pyi # Manually override __init__ so we can overwrite the commands
 ```
 Both recipes are shell-agnostic — they invoke `maturin` via `uvx`, so no venv activation is required and they work in bash, zsh, or fish without per-shell setup.
 
@@ -60,11 +60,11 @@ This is a polyglot SDK: one Rust core library with Python, Node.js, and Ruby bin
 
 ### Workspace Layout
 - `crates/core` — Pure Rust business logic (HTTP client, request/response types, errors)
-- `crates/python` — PyO3 wrapper crate, compiles to `sdk._core` Python extension
+- `crates/python` — PyO3 wrapper crate, compiles to `quicknode_sdk._core` Python extension
 - `crates/node` — napi-rs wrapper crate, compiles to native `.node` module
 - `crates/ruby` — Magnus wrapper crate, compiles to native `.bundle`/`.so` module
 - `crates/python-stubs` — Generates `.pyi` type stub files
-- `python/sdk/` — Python package directory (distributed via maturin)
+- `python/quicknode_sdk/` — Python package directory (distributed via maturin)
 - `npm/` — Node.js package directory
 - `ruby/` — Ruby package directory (`lib/quicknode_sdk.rb` entry point, `examples/`)
 
@@ -133,7 +133,7 @@ Each binding owns its mapping in a dedicated `errors.rs` file:
 When adding a new `SdkError` variant:
 1. Add the variant to `crates/core/src/errors.rs` and update `http_kind()` if it's transport-level.
 2. Update the `match` in each binding's `map_*_err` function — the compiler will flag missing arms in Python and Ruby (Node's match is also exhaustive on the kind string).
-3. If the new variant should surface as a new exception class, add it to all three bindings + `npm/errors.js` + the exports in `python/sdk/__init__.py` + `npm/sdk.d.ts` + `npm/sdk.mjs`.
+3. If the new variant should surface as a new exception class, add it to all three bindings + `npm/errors.js` + the exports in `python/quicknode_sdk/__init__.py` + `npm/sdk.d.ts` + `npm/sdk.mjs`.
 4. Update examples in all four languages to demonstrate the new class if user-facing.
 
 ### Python Binding Pattern
@@ -163,12 +163,12 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 - **Discriminated unions (Rust enum-with-data)** cannot be annotated with `#[pyclass]` or `#[napi(object)]`. Pattern: keep the enum pure-Rust in `crates/core` with `#[serde(tag = "...", content = "...")]`, then in each binding crate provide a typed surface that converts to/from the enum at the FFI boundary. Any core struct that flattens such an enum (e.g. via `#[serde(flatten)]`) also loses its `#[pyclass]` / `#[napi(object)]` and needs a wrapper in each binding. Reference implementations:
   - `crates/core/src/streams/stream.rs::DestinationAttributes` — stream destinations, wrapped by `crates/{python,node}/src/streams_destination.rs`.
   - `crates/core/src/webhooks/webhook.rs::TemplateArgs` — webhook filter templates, wrapped by `crates/{python,node}/src/webhooks_template.rs`. Ruby accepts the wire JSON directly (`{"templateId":..., "templateArgs":...}`) and relies on serde to deserialize into the enum.
-- `python/sdk/__init__.py` is **manually maintained** — it is NOT auto-generated. Every new public struct/type must be added to both the `from sdk._core import (...)` block and the `__all__` list in this file
+- `python/quicknode_sdk/__init__.py` is **manually maintained** — it is NOT auto-generated. Every new public struct/type must be added to both the `from quicknode_sdk._core import (...)` block and the `__all__` list in this file
 - When adding a new type with `#[cfg_attr(feature = "node", napi(object))]`, also add it to the named `export type { ... }` block in `npm/sdk.d.ts` — this is the user-facing type file and is not auto-updated by napi-rs
 - When adding a new `#[napi(string_enum)]` Rust enum, it generates a TypeScript `const enum` in `npm/index.d.ts`. In `npm/sdk.d.ts`, these must be re-exported using a regular `export { ... }` (not `export type { ... }`), otherwise TypeScript consumers cannot use them as values (e.g., `StreamDataset.Block`)
 - When updating `sdk.js` wrapper methods, verify the argument types match the underlying napi-rs constructor/method signature (object vs primitive)
 - When adding a new export to `sdk.js`, also add it to the named exports in `npm/sdk.mjs` — ESM named exports cannot be spread dynamically and must be listed explicitly
-- `python/sdk/__init__.pyi` is overwritten by `just python-build` — edit `init_manual_override.pyi` instead
+- `python/quicknode_sdk/__init__.pyi` is overwritten by `just python-build` — edit `init_manual_override.pyi` instead
 - `ruby/sig/quicknode_sdk.rbs` is **manually maintained** — it is NOT auto-generated. It provides RBS type signatures so editor LSPs (VSCode Ruby LSP, Solargraph, RubyMine, Steep) autocomplete method names and keyword argument keys for `QuicknodeSdk::Admin/Streams/Webhooks/KvStore/DestinationAttributes` and the exception classes. Every change to method registration in `crates/ruby/src/lib.rs` (new method, renamed key, new arg, removed arg, type change) must be mirrored here in the same PR. Responses are typed as `untyped` because they're wrapped in `QuicknodeSdk::IndifferentHash` at the Ruby boundary — that's intentional, do not try to type response shapes.
 - Always update examples alongside the code changes
 

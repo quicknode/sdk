@@ -1,6 +1,6 @@
 import asyncio
 import time
-from sdk import (
+from quicknode_sdk import (
     QuicknodeSdk,
     WebhookAttributes,
     StreamWebhookDestination,

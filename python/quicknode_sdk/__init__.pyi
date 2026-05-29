@@ -1,7 +1,7 @@
-## Source of truth for sdk/__init__.pyi
-## python/sdk/__init__.pyi is a build artifact — overwritten by `just python-build`.
+## Source of truth for quicknode_sdk/__init__.pyi
+## python/quicknode_sdk/__init__.pyi is a build artifact — overwritten by `just python-build`.
 ## Edit this file, not __init__.pyi directly.
-from sdk._core import (
+from quicknode_sdk._core import (
     QuicknodeSdk,
     AdminApiClient,
     StreamsApiClient,
