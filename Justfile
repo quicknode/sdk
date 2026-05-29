@@ -204,6 +204,110 @@ release-trigger-pypi version:
 release-trigger-npm version npm_tag="next":
   gh workflow run publish-npm.yml -f tag=v{{version}} -f npm_tag={{npm_tag}}
 
+# Promote an already-published npm version from the `next` dist-tag to `latest`.
+# Updates the main @quicknode/sdk package and every platform sub-package
+# (auto-discovered from npm/package.json's napi.targets).
+# Precondition: `npm login` with publish rights on @quicknode/sdk.
+# Usage: just release-promote-npm 3.1.1
+release-promote-npm version:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  npm_version="{{version}}"
+  if [[ "$npm_version" =~ ^v ]]; then
+    echo "Error: version '$npm_version' must not start with 'v'." >&2
+    exit 1
+  fi
+  pkg_names=$(cd npm && node -e '
+    const fs = require("fs");
+    const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+    const targetMap = {
+      "x86_64-unknown-linux-gnu":   "linux-x64-gnu",
+      "aarch64-unknown-linux-gnu":  "linux-arm64-gnu",
+      "x86_64-unknown-linux-musl":  "linux-x64-musl",
+      "aarch64-unknown-linux-musl": "linux-arm64-musl",
+      "aarch64-apple-darwin":       "darwin-arm64",
+    };
+    const names = pkg.napi.targets.map(t => {
+      if (!targetMap[t]) throw new Error("No abi for " + t);
+      return pkg.name + "-" + targetMap[t];
+    });
+    names.push(pkg.name);
+    console.log(names.join("\n"));
+  ')
+  echo "Pre-flight: verifying ${npm_version} is published for all packages..."
+  missing=()
+  while IFS= read -r pkg_name; do
+    if ! npm view "${pkg_name}@${npm_version}" version >/dev/null 2>&1; then
+      missing+=("${pkg_name}@${npm_version}")
+    fi
+  done <<< "$pkg_names"
+  if (( ${#missing[@]} > 0 )); then
+    echo "Error: the following packages are not published at ${npm_version}:" >&2
+    printf '  %s\n' "${missing[@]}" >&2
+    exit 1
+  fi
+  echo "Pre-flight OK."
+  # npm 2FA: dist-tag add requires --otp on each call. Prompt once and reuse;
+  # all calls run within seconds so a single 30s code covers the batch.
+  read -r -p "Enter npm OTP (or leave blank if 2FA is disabled): " otp
+  otp_flag=()
+  if [[ -n "$otp" ]]; then
+    otp_flag=(--otp="$otp")
+  fi
+  echo "Promoting..."
+  while IFS= read -r pkg_name; do
+    echo "+ npm dist-tag add ${pkg_name}@${npm_version} latest"
+    npm dist-tag add "${pkg_name}@${npm_version}" latest ${otp_flag[@]+"${otp_flag[@]}"}
+  done <<< "$pkg_names"
+  count=$(echo "$pkg_names" | wc -l | tr -d ' ')
+  echo "Promoted ${npm_version} → latest for ${count} packages (main + $((count - 1)) platform sub-packages)."
+  just release-remove-npm-next "${npm_version}" "${otp}"
+
+# Remove the `next` dist-tag from each npm package, but only on packages where
+# `next` currently points at the given version. Skips packages where `next`
+# points elsewhere (e.g. a newer pre-release) so in-flight betas aren't clobbered.
+# Auto-discovers sub-packages from npm/package.json's napi.targets.
+# Called automatically by release-promote-npm; can also be run standalone.
+# Usage: just release-remove-npm-next 3.1.1 [otp]
+release-remove-npm-next version otp="":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  npm_version="{{version}}"
+  otp="{{otp}}"
+  otp_flag=()
+  if [[ -n "$otp" ]]; then
+    otp_flag=(--otp="$otp")
+  fi
+  pkg_names=$(cd npm && node -e '
+    const fs = require("fs");
+    const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+    const targetMap = {
+      "x86_64-unknown-linux-gnu":   "linux-x64-gnu",
+      "aarch64-unknown-linux-gnu":  "linux-arm64-gnu",
+      "x86_64-unknown-linux-musl":  "linux-x64-musl",
+      "aarch64-unknown-linux-musl": "linux-arm64-musl",
+      "aarch64-apple-darwin":       "darwin-arm64",
+    };
+    const names = pkg.napi.targets.map(t => {
+      if (!targetMap[t]) throw new Error("No abi for " + t);
+      return pkg.name + "-" + targetMap[t];
+    });
+    names.push(pkg.name);
+    console.log(names.join("\n"));
+  ')
+  echo "Removing 'next' tag where it points at ${npm_version}..."
+  while IFS= read -r pkg_name; do
+    current=$(npm view "${pkg_name}" dist-tags.next 2>/dev/null || true)
+    if [[ -z "$current" ]]; then
+      echo "  - ${pkg_name}: no 'next' tag, skipping"
+    elif [[ "$current" != "$npm_version" ]]; then
+      echo "  - ${pkg_name}: 'next' points at ${current}, skipping"
+    else
+      echo "+ npm dist-tag rm ${pkg_name} next"
+      npm dist-tag rm "${pkg_name}" next ${otp_flag[@]+"${otp_flag[@]}"}
+    fi
+  done <<< "$pkg_names"
+
 # Trigger the RubyGems publish workflow for an existing release tag.
 release-trigger-rubygems version:
   gh workflow run publish-rubygems.yml -f tag=v{{version}}
