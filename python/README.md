@@ -4,6 +4,8 @@ Python bindings for the Quicknode SDK.
 
 This is one of four language bindings published from the same Rust core. See the [project README](https://github.com/quicknode/sdk/blob/main/README.md) for the polyglot overview, development setup, and release process.
 
+> **Pre-1.0**: While on `0.x`, releases may contain breaking changes. Check the [release notes](https://github.com/quicknode/sdk/releases) before upgrading.
+
 ## Table of Contents
 
 - [Installation](#installation)
@@ -58,7 +60,7 @@ Construct the SDK once, then reach into the four sub-clients (`admin`, `streams`
 ```python
 # Python
 import asyncio
-from sdk import QuicknodeSdk
+from quicknode_sdk import QuicknodeSdk
 
 async def main():
     qn = QuicknodeSdk.from_env()
@@ -76,7 +78,7 @@ There are two ways to configure the SDK.
 
 ```python
 # Python
-from sdk import QuicknodeSdk, SdkFullConfig, HttpConfig
+from quicknode_sdk import QuicknodeSdk, SdkFullConfig, HttpConfig
 qn = QuicknodeSdk(SdkFullConfig(api_key="your-key", http=HttpConfig(timeout_secs=30)))
 ```
 
@@ -111,7 +113,7 @@ quicknode-sdk-<language>/<sdk-version> (<os>-<arch>; <language>-<runtime-version
 You can attach arbitrary headers via `HttpConfig.headers`. **These headers OVERRIDE any SDK-managed header with the same name**, including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`. Use this to inject correlation IDs, proxy auth, or to replace the default `User-Agent`. Header names are matched case-insensitively.
 
 ```python
-from sdk import QuicknodeSdk, SdkFullConfig, HttpConfig
+from quicknode_sdk import QuicknodeSdk, SdkFullConfig, HttpConfig
 
 qn = QuicknodeSdk(
     SdkFullConfig(
@@ -1084,7 +1086,7 @@ Creates a new stream that delivers filtered data to the configured destination. 
 
 ```python
 # Python
-from sdk import WebhookAttributes, StreamWebhookDestination
+from quicknode_sdk import WebhookAttributes, StreamWebhookDestination
 
 stream = await qn.streams.create_stream(
     name="My Stream",
@@ -1307,7 +1309,7 @@ Creates a webhook from a predefined filter template.
 
 ```python
 # Python
-from sdk import EvmWalletFilterArgs, EvmWalletFilterTemplate, WebhookDestinationAttributes
+from quicknode_sdk import EvmWalletFilterArgs, EvmWalletFilterTemplate, WebhookDestinationAttributes
 
 webhook = await qn.webhooks.create_webhook_from_template(
     name="Wallet Webhook",
@@ -1617,11 +1619,11 @@ subclass to branch on transport vs. API semantics.
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
 
-Class names: Importable from `sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`.
+Class names: Importable from `quicknode_sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`.
 
 ```python
 # Python
-from sdk import ApiError, TimeoutError
+from quicknode_sdk import ApiError, TimeoutError
 try:
     await qn.admin.show_endpoint("missing")
 except ApiError as e:

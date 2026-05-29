@@ -1,5 +1,5 @@
 import asyncio
-from sdk import QuicknodeSdk
+from quicknode_sdk import QuicknodeSdk
 
 
 async def main():

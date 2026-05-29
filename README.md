@@ -4,6 +4,8 @@ A unified SDK for building on Quicknode.
 
 Rust SDK with Python, Node.js, and Ruby bindings.
 
+> **Pre-1.0**: While on `0.x`, releases may contain breaking changes. Check the [release notes](https://github.com/quicknode/sdk/releases) before upgrading.
+
 ## Table of Contents
 
 - [Per-language docs](#per-language-docs)
@@ -41,7 +43,7 @@ sdk/
 │   ├── python/        # PyO3 bindings
 │   ├── node/          # napi-rs bindings
 │   └── ruby/          # magnus bindings
-├── python/sdk/        # Python package with type hints
+├── python/quicknode_sdk/  # Python package with type hints
 ├── npm/               # Node.js package with TypeScript types
 ├── ruby/              # Ruby package
 └── pyproject.toml     # maturin build config

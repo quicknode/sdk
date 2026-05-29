@@ -2,5 +2,5 @@
 name = "quicknode-sdk"
 
 [tool.maturin]
-module-name = "sdk._core"
+module-name = "quicknode_sdk._core"
 python-source = "../../python"

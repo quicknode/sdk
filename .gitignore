@@ -53,9 +53,9 @@ build/
 *.dSYM/
 
 # Maturin
-python/sdk/*.so
-python/sdk/__pycache__/
-python/sdk/*.dSYM/
+python/quicknode_sdk/*.so
+python/quicknode_sdk/__pycache__/
+python/quicknode_sdk/*.dSYM/
 
 # Node.js
 node_modules/

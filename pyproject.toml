@@ -31,7 +31,7 @@ Issues = "https://github.com/quicknode/sdk/issues"
 
 [tool.maturin]
 manifest-path = "crates/python/Cargo.toml"
-module-name = "sdk._core"
+module-name = "quicknode_sdk._core"
 python-source = "python"
 features = ["extension-module"]
 include = [

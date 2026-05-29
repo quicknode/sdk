@@ -2,7 +2,7 @@ python-setup:
   uv venv && uv sync
 
 python-build:
-  uvx maturin develop && cargo run -p sdk-python-stubs && cp python/sdk/init_manual_override.pyi python/sdk/__init__.pyi
+  uvx maturin develop && cargo run -p sdk-python-stubs && cp python/quicknode_sdk/init_manual_override.pyi python/quicknode_sdk/__init__.pyi
 
 node-build:
   cd ./npm && npm install && npm run build && npm run test && cd ..
