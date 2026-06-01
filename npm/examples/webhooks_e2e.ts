@@ -49,6 +49,27 @@ async function main() {
   console.log(`deleted: ${id}`);
   await sleep(1000);
 
+  // Exercise the evm-contract-events template, which carries the multi-word
+  // eventHashes field. The API expects eventHashes on the wire.
+  const ceCreateParams: CreateWebhookFromTemplateParams = {
+    name: "E2E Test Webhook (evmContractEvents)",
+    network: "ethereum-mainnet",
+    destinationAttributes: {
+      url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
+    },
+    templateArgs: TemplateArgs.evmContractEvents({
+      contracts: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],
+      eventHashes: [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      ],
+    }),
+  };
+  const ceWebhook = await qn.webhooks.createWebhookFromTemplate(ceCreateParams);
+  console.log(`created (evmContractEvents): ${ceWebhook.id} | ${ceWebhook.status}`);
+  await qn.webhooks.deleteWebhook(ceWebhook.id);
+  console.log(`deleted (evmContractEvents): ${ceWebhook.id}`);
+  await sleep(1000);
+
   const after = await qn.webhooks.listWebhooks();
   console.log(`webhooks after: ${after.data.length} (total=${after.pageInfo.total})`);
 }
