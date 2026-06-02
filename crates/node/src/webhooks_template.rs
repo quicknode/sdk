@@ -100,8 +100,11 @@ mod tests {
         });
 
         let parsed = node_ta_to_core(input).unwrap();
-        let core::webhooks::TemplateArgs::EvmContractEvents(t) = &parsed else {
-            unreachable!("expected EvmContractEvents variant")
+        let core::webhooks::TemplateArgs::EvmContractEvents(
+            core::webhooks::EvmContractEventsInput::Inline(t),
+        ) = &parsed
+        else {
+            unreachable!("expected EvmContractEvents inline variant")
         };
         assert_eq!(
             t.event_hashes.as_slice(),

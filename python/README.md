@@ -1252,18 +1252,18 @@ Accessed as `qn.webhooks`. Creates webhooks from filter templates and manages th
 | `HyperliquidWalletEventsFilter` | `hyperliquidWalletEventsFilter` |
 | `StellarWalletTransactionsSourceAccountFilter` | `stellarWalletTransactionsSourceAccountFilter` |
 
-`TemplateArgs` carries the arguments; construct one per template via the factory methods:
+`TemplateArgs` carries the arguments. Each template supports two input forms — inline values (`*Args(*Template(...))`) or a reference to a pre-created list by name (`*ByListArgs(*ByListTemplate(...))`):
 
-| Factory | Argument struct | Fields |
+| Template | Inline class (fields) | ByList class (fields) |
 |---|---|---|
-| `evm_wallet_filter` | `EvmWalletFilterTemplate` | `wallets: string[]` |
-| `evm_contract_events` | `EvmContractEventsTemplate` | `contracts: string[]`, `event_hashes: string[]` |
-| `evm_abi_filter` | `EvmAbiFilterTemplate` | `abi: string` (JSON), `contracts: string[]` |
-| `solana_wallet_filter` | `SolanaWalletFilterTemplate` | `accounts: string[]` |
-| `bitcoin_wallet_filter` | `BitcoinWalletFilterTemplate` | `wallets: string[]` |
-| `xrpl_wallet_filter` | `XrplWalletFilterTemplate` | `wallets: string[]` |
-| `hyperliquid_wallet_events_filter` | `HyperliquidWalletEventsFilterTemplate` | `wallets: string[]` |
-| `stellar_wallet_transactions_filter` | `StellarWalletTransactionsFilterTemplate` | `source_accounts: string[]` |
+| EVM wallet filter | `EvmWalletFilterArgs(EvmWalletFilterTemplate(wallets=[...]))` | `EvmWalletFilterByListArgs(EvmWalletFilterByListTemplate(wallets_list_name=...))` |
+| EVM contract events | `EvmContractEventsArgs(EvmContractEventsTemplate(contracts=[...], event_hashes=[...]))` | `EvmContractEventsByListArgs(EvmContractEventsByListTemplate(contracts_list_name=..., event_hashes_list_name=...))` |
+| EVM ABI filter | `EvmAbiFilterArgs(EvmAbiFilterTemplate(abi="...", contracts=[...]))` | `EvmAbiFilterByListArgs(EvmAbiFilterByListTemplate(abi_json="...", contracts_list_name=...))` |
+| Solana wallet filter | `SolanaWalletFilterArgs(SolanaWalletFilterTemplate(accounts=[...]))` | `SolanaWalletFilterByListArgs(SolanaWalletFilterByListTemplate(accounts_list_name=...))` |
+| Bitcoin wallet filter | `BitcoinWalletFilterArgs(BitcoinWalletFilterTemplate(wallets=[...]))` | `BitcoinWalletFilterByListArgs(BitcoinWalletFilterByListTemplate(wallets_list_name=...))` |
+| XRPL wallet filter | `XrplWalletFilterArgs(XrplWalletFilterTemplate(wallets=[...]))` | `XrplWalletFilterByListArgs(XrplWalletFilterByListTemplate(wallets_list_name=...))` |
+| Hyperliquid wallet events | `HyperliquidWalletEventsFilterArgs(HyperliquidWalletEventsFilterTemplate(wallets=[...]))` | `HyperliquidWalletEventsFilterByListArgs(HyperliquidWalletEventsFilterByListTemplate(wallets_list_name=...))` |
+| Stellar wallet transactions | `StellarWalletTransactionsFilterArgs(StellarWalletTransactionsFilterTemplate(wallets=[...]))` | `StellarWalletTransactionsFilterByListArgs(StellarWalletTransactionsFilterByListTemplate(wallets_list_name=...))` |
 
 `WebhookDestinationAttributes`: `url` (required), `compression` (required — `"none"` | `"gzip"`), `security_token` (optional — auto-generated if omitted).
 

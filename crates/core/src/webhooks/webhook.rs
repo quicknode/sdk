@@ -251,11 +251,288 @@ impl StellarWalletTransactionsFilterTemplate {
     }
 }
 
+// ── ByList Template Arg Structs ────────────────────────────────────────────
+//
+// Every template supports two input shapes: inline values (e.g. `wallets:
+// [...]`) or a reference to a pre-created list (`walletsListName: "..."`).
+// The two shapes share the same `templateId` and the same URL path; the
+// server disambiguates by which field is present. The SDK models each shape
+// as its own struct so callers can't accidentally mix them.
+
+/// ByList form of `EvmWalletFilterTemplate` — references a pre-created
+/// wallets list by name instead of inlining the addresses.
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvmWalletFilterByListTemplate {
+    /// Name of the pre-created wallets list.
+    pub wallets_list_name: String,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl EvmWalletFilterByListTemplate {
+    #[new]
+    pub fn new(wallets_list_name: String) -> Self {
+        Self { wallets_list_name }
+    }
+}
+
+/// ByList form of `EvmContractEventsTemplate` — references pre-created
+/// contract and (optionally) event-hash lists by name. Omitting
+/// `event_hashes_list_name` matches all events from the listed contracts.
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvmContractEventsByListTemplate {
+    /// Name of the pre-created contracts list.
+    pub contracts_list_name: String,
+    /// Optional name of a pre-created event-hashes list; when omitted, all
+    /// events from the listed contracts match.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event_hashes_list_name: Option<String>,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl EvmContractEventsByListTemplate {
+    #[new]
+    #[pyo3(signature = (contracts_list_name, event_hashes_list_name=None))]
+    pub fn new(contracts_list_name: String, event_hashes_list_name: Option<String>) -> Self {
+        Self {
+            contracts_list_name,
+            event_hashes_list_name,
+        }
+    }
+}
+
+/// ByList form of `EvmAbiFilterTemplate` — carries the ABI inline (the only
+/// non-list shape this template has) and optionally references a pre-created
+/// contracts list. Note the wire key is `abiJson`, distinct from the inline
+/// variant's `abi`.
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvmAbiFilterByListTemplate {
+    /// JSON-encoded contract ABI used to decode event data.
+    pub abi_json: String,
+    /// Optional name of a pre-created contracts list; when omitted, the ABI
+    /// is applied to all contracts.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contracts_list_name: Option<String>,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl EvmAbiFilterByListTemplate {
+    #[new]
+    #[pyo3(signature = (abi_json, contracts_list_name=None))]
+    pub fn new(abi_json: String, contracts_list_name: Option<String>) -> Self {
+        Self {
+            abi_json,
+            contracts_list_name,
+        }
+    }
+}
+
+/// ByList form of `SolanaWalletFilterTemplate`.
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SolanaWalletFilterByListTemplate {
+    /// Name of the pre-created accounts list.
+    pub accounts_list_name: String,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl SolanaWalletFilterByListTemplate {
+    #[new]
+    pub fn new(accounts_list_name: String) -> Self {
+        Self { accounts_list_name }
+    }
+}
+
+/// ByList form of `BitcoinWalletFilterTemplate`.
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BitcoinWalletFilterByListTemplate {
+    /// Name of the pre-created wallets list.
+    pub wallets_list_name: String,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl BitcoinWalletFilterByListTemplate {
+    #[new]
+    pub fn new(wallets_list_name: String) -> Self {
+        Self { wallets_list_name }
+    }
+}
+
+/// ByList form of `XrplWalletFilterTemplate`.
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct XrplWalletFilterByListTemplate {
+    /// Name of the pre-created wallets list.
+    pub wallets_list_name: String,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl XrplWalletFilterByListTemplate {
+    #[new]
+    pub fn new(wallets_list_name: String) -> Self {
+        Self { wallets_list_name }
+    }
+}
+
+/// ByList form of `HyperliquidWalletEventsFilterTemplate`.
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HyperliquidWalletEventsFilterByListTemplate {
+    /// Name of the pre-created wallets list.
+    pub wallets_list_name: String,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl HyperliquidWalletEventsFilterByListTemplate {
+    #[new]
+    pub fn new(wallets_list_name: String) -> Self {
+        Self { wallets_list_name }
+    }
+}
+
+/// ByList form of `StellarWalletTransactionsFilterTemplate`.
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StellarWalletTransactionsFilterByListTemplate {
+    /// Name of the pre-created wallets list.
+    pub wallets_list_name: String,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl StellarWalletTransactionsFilterByListTemplate {
+    #[new]
+    pub fn new(wallets_list_name: String) -> Self {
+        Self { wallets_list_name }
+    }
+}
+
+// ── Per-template Inline-or-ByList enums ────────────────────────────────────
+//
+// `#[serde(untagged)]` dispatches on field shape — inline and ByList structs
+// have disjoint field names so deserialization is unambiguous.
+
+/// `EvmWalletFilter` template arguments in either inline or by-list form.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EvmWalletFilterInput {
+    Inline(EvmWalletFilterTemplate),
+    ByList(EvmWalletFilterByListTemplate),
+}
+
+/// `EvmContractEvents` template arguments in either inline or by-list form.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EvmContractEventsInput {
+    Inline(EvmContractEventsTemplate),
+    ByList(EvmContractEventsByListTemplate),
+}
+
+/// `EvmAbiFilter` template arguments in either inline or by-list form.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EvmAbiFilterInput {
+    Inline(EvmAbiFilterTemplate),
+    ByList(EvmAbiFilterByListTemplate),
+}
+
+/// `SolanaWalletFilter` template arguments in either inline or by-list form.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum SolanaWalletFilterInput {
+    Inline(SolanaWalletFilterTemplate),
+    ByList(SolanaWalletFilterByListTemplate),
+}
+
+/// `BitcoinWalletFilter` template arguments in either inline or by-list form.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum BitcoinWalletFilterInput {
+    Inline(BitcoinWalletFilterTemplate),
+    ByList(BitcoinWalletFilterByListTemplate),
+}
+
+/// `XrplWalletFilter` template arguments in either inline or by-list form.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum XrplWalletFilterInput {
+    Inline(XrplWalletFilterTemplate),
+    ByList(XrplWalletFilterByListTemplate),
+}
+
+/// `HyperliquidWalletEventsFilter` template arguments in either inline or by-list form.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum HyperliquidWalletEventsFilterInput {
+    Inline(HyperliquidWalletEventsFilterTemplate),
+    ByList(HyperliquidWalletEventsFilterByListTemplate),
+}
+
+/// `StellarWalletTransactionsSourceAccountFilter` template arguments in
+/// either inline or by-list form.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum StellarWalletTransactionsFilterInput {
+    Inline(StellarWalletTransactionsFilterTemplate),
+    ByList(StellarWalletTransactionsFilterByListTemplate),
+}
+
 // ── Template Args ──────────────────────────────────────────────────────────
 
 /// Template identifier paired with its arguments. Exactly one variant selects
-/// which filter is applied. Consumed by `create_webhook_from_template` and
-/// `update_webhook_template`.
+/// which filter is applied; each variant's inner enum picks between inline
+/// values and a list reference. Consumed by `create_webhook_from_template`
+/// and `update_webhook_template`.
 // Pure-Rust discriminated union; no #[pyclass] / #[napi(object)] because PyO3
 // and napi-rs cannot represent enum-with-data. Each language binding crate
 // wraps this type for its own FFI surface.
@@ -264,22 +541,22 @@ impl StellarWalletTransactionsFilterTemplate {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "templateId", content = "templateArgs", rename_all = "camelCase")]
 pub enum TemplateArgs {
-    /// EVM wallet filter: matches activity for a list of wallet addresses.
-    EvmWalletFilter(EvmWalletFilterTemplate),
-    /// EVM contract events filter, optionally scoped to specific event topic hashes.
-    EvmContractEvents(EvmContractEventsTemplate),
-    /// EVM ABI filter: decodes and filters events using a provided ABI.
-    EvmAbiFilter(EvmAbiFilterTemplate),
+    /// EVM wallet filter.
+    EvmWalletFilter(EvmWalletFilterInput),
+    /// EVM contract events filter.
+    EvmContractEvents(EvmContractEventsInput),
+    /// EVM ABI filter.
+    EvmAbiFilter(EvmAbiFilterInput),
     /// Solana wallet filter.
-    SolanaWalletFilter(SolanaWalletFilterTemplate),
+    SolanaWalletFilter(SolanaWalletFilterInput),
     /// Bitcoin wallet filter.
-    BitcoinWalletFilter(BitcoinWalletFilterTemplate),
+    BitcoinWalletFilter(BitcoinWalletFilterInput),
     /// XRPL wallet filter.
-    XrplWalletFilter(XrplWalletFilterTemplate),
+    XrplWalletFilter(XrplWalletFilterInput),
     /// Hyperliquid wallet-events filter.
-    HyperliquidWalletEventsFilter(HyperliquidWalletEventsFilterTemplate),
+    HyperliquidWalletEventsFilter(HyperliquidWalletEventsFilterInput),
     /// Stellar wallet-transactions filter (source-account match).
-    StellarWalletTransactionsSourceAccountFilter(StellarWalletTransactionsFilterTemplate),
+    StellarWalletTransactionsSourceAccountFilter(StellarWalletTransactionsFilterInput),
 }
 
 impl TemplateArgs {
@@ -526,38 +803,84 @@ mod template_args_tests {
 
     #[test]
     fn evm_wallet_filter_roundtrip() {
-        let args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
-            wallets: vec!["0xabc".to_string()],
-        });
+        let args =
+            TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::Inline(EvmWalletFilterTemplate {
+                wallets: vec!["0xabc".to_string()],
+            }));
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"evmWalletFilter""#));
         assert!(json.contains(r#""wallets":["0xabc"]"#));
         let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
-        assert!(matches!(parsed, TemplateArgs::EvmWalletFilter(_)));
+        assert!(matches!(
+            parsed,
+            TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::Inline(_))
+        ));
         assert!(matches!(parsed.tag(), WebhookTemplateId::EvmWalletFilter));
     }
 
     #[test]
+    fn evm_wallet_filter_by_list_roundtrip() {
+        let args = TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::ByList(
+            EvmWalletFilterByListTemplate {
+                wallets_list_name: "my_list".to_string(),
+            },
+        ));
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""templateId":"evmWalletFilter""#));
+        assert!(json.contains(r#""walletsListName":"my_list""#));
+        assert!(!json.contains(r#""wallets":"#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(
+            parsed,
+            TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::ByList(_))
+        ));
+    }
+
+    #[test]
     fn evm_contract_events_roundtrip() {
-        let args = TemplateArgs::EvmContractEvents(EvmContractEventsTemplate {
-            contracts: vec!["0xdef".to_string()],
-            event_hashes: vec!["0x1234".to_string()],
-        });
+        let args = TemplateArgs::EvmContractEvents(EvmContractEventsInput::Inline(
+            EvmContractEventsTemplate {
+                contracts: vec!["0xdef".to_string()],
+                event_hashes: vec!["0x1234".to_string()],
+            },
+        ));
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"evmContractEvents""#));
         // API expects camelCase `eventHashes` — snake_case is silently rejected with a 500.
         assert!(json.contains(r#""eventHashes":["0x1234"]"#));
         assert!(!json.contains("event_hashes"));
         let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
-        assert!(matches!(parsed, TemplateArgs::EvmContractEvents(_)));
+        assert!(matches!(
+            parsed,
+            TemplateArgs::EvmContractEvents(EvmContractEventsInput::Inline(_))
+        ));
+    }
+
+    #[test]
+    fn evm_contract_events_by_list_roundtrip() {
+        // The ByList variant lets event_hashes_list_name be omitted entirely.
+        let args = TemplateArgs::EvmContractEvents(EvmContractEventsInput::ByList(
+            EvmContractEventsByListTemplate {
+                contracts_list_name: "my_contracts".to_string(),
+                event_hashes_list_name: None,
+            },
+        ));
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""contractsListName":"my_contracts""#));
+        assert!(!json.contains("eventHashesListName"));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(
+            parsed,
+            TemplateArgs::EvmContractEvents(EvmContractEventsInput::ByList(_))
+        ));
     }
 
     #[test]
     fn evm_abi_filter_roundtrip() {
-        let args = TemplateArgs::EvmAbiFilter(EvmAbiFilterTemplate {
+        let args = TemplateArgs::EvmAbiFilter(EvmAbiFilterInput::Inline(EvmAbiFilterTemplate {
             abi: "[]".to_string(),
             contracts: vec!["0xdef".to_string()],
-        });
+        }));
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"evmAbiFilter""#));
         let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
@@ -565,10 +888,32 @@ mod template_args_tests {
     }
 
     #[test]
+    fn evm_abi_filter_by_list_roundtrip() {
+        // The ByList variant uses `abiJson` (distinct from inline's `abi`) and
+        // an optional `contractsListName`.
+        let args =
+            TemplateArgs::EvmAbiFilter(EvmAbiFilterInput::ByList(EvmAbiFilterByListTemplate {
+                abi_json: "[]".to_string(),
+                contracts_list_name: Some("my_contracts".to_string()),
+            }));
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""abiJson":"[]""#));
+        assert!(json.contains(r#""contractsListName":"my_contracts""#));
+        assert!(!json.contains(r#""abi":"#));
+        let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
+        assert!(matches!(
+            parsed,
+            TemplateArgs::EvmAbiFilter(EvmAbiFilterInput::ByList(_))
+        ));
+    }
+
+    #[test]
     fn solana_wallet_filter_roundtrip() {
-        let args = TemplateArgs::SolanaWalletFilter(SolanaWalletFilterTemplate {
-            accounts: vec!["acc".to_string()],
-        });
+        let args = TemplateArgs::SolanaWalletFilter(SolanaWalletFilterInput::Inline(
+            SolanaWalletFilterTemplate {
+                accounts: vec!["acc".to_string()],
+            },
+        ));
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"solanaWalletFilter""#));
         let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
@@ -576,10 +921,24 @@ mod template_args_tests {
     }
 
     #[test]
+    fn solana_wallet_filter_by_list_roundtrip() {
+        let args = TemplateArgs::SolanaWalletFilter(SolanaWalletFilterInput::ByList(
+            SolanaWalletFilterByListTemplate {
+                accounts_list_name: "my_accounts".to_string(),
+            },
+        ));
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""accountsListName":"my_accounts""#));
+        assert!(!json.contains(r#""accounts":"#));
+    }
+
+    #[test]
     fn bitcoin_wallet_filter_roundtrip() {
-        let args = TemplateArgs::BitcoinWalletFilter(BitcoinWalletFilterTemplate {
-            wallets: vec!["bc1".to_string()],
-        });
+        let args = TemplateArgs::BitcoinWalletFilter(BitcoinWalletFilterInput::Inline(
+            BitcoinWalletFilterTemplate {
+                wallets: vec!["bc1".to_string()],
+            },
+        ));
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"bitcoinWalletFilter""#));
         let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
@@ -587,10 +946,23 @@ mod template_args_tests {
     }
 
     #[test]
+    fn bitcoin_wallet_filter_by_list_roundtrip() {
+        let args = TemplateArgs::BitcoinWalletFilter(BitcoinWalletFilterInput::ByList(
+            BitcoinWalletFilterByListTemplate {
+                wallets_list_name: "my_btc_list".to_string(),
+            },
+        ));
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""walletsListName":"my_btc_list""#));
+    }
+
+    #[test]
     fn xrpl_wallet_filter_roundtrip() {
-        let args = TemplateArgs::XrplWalletFilter(XrplWalletFilterTemplate {
-            wallets: vec!["r1".to_string()],
-        });
+        let args = TemplateArgs::XrplWalletFilter(XrplWalletFilterInput::Inline(
+            XrplWalletFilterTemplate {
+                wallets: vec!["r1".to_string()],
+            },
+        ));
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"xrplWalletFilter""#));
         let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
@@ -598,11 +970,23 @@ mod template_args_tests {
     }
 
     #[test]
+    fn xrpl_wallet_filter_by_list_roundtrip() {
+        let args = TemplateArgs::XrplWalletFilter(XrplWalletFilterInput::ByList(
+            XrplWalletFilterByListTemplate {
+                wallets_list_name: "my_xrpl_list".to_string(),
+            },
+        ));
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""walletsListName":"my_xrpl_list""#));
+    }
+
+    #[test]
     fn hyperliquid_wallet_events_filter_roundtrip() {
-        let args =
-            TemplateArgs::HyperliquidWalletEventsFilter(HyperliquidWalletEventsFilterTemplate {
+        let args = TemplateArgs::HyperliquidWalletEventsFilter(
+            HyperliquidWalletEventsFilterInput::Inline(HyperliquidWalletEventsFilterTemplate {
                 wallets: vec!["0xhl".to_string()],
-            });
+            }),
+        );
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"hyperliquidWalletEventsFilter""#));
         let parsed: TemplateArgs = serde_json::from_str(&json).unwrap();
@@ -613,11 +997,24 @@ mod template_args_tests {
     }
 
     #[test]
+    fn hyperliquid_wallet_events_filter_by_list_roundtrip() {
+        let args = TemplateArgs::HyperliquidWalletEventsFilter(
+            HyperliquidWalletEventsFilterInput::ByList(
+                HyperliquidWalletEventsFilterByListTemplate {
+                    wallets_list_name: "my_hl_list".to_string(),
+                },
+            ),
+        );
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""walletsListName":"my_hl_list""#));
+    }
+
+    #[test]
     fn stellar_wallet_transactions_filter_roundtrip() {
         let args = TemplateArgs::StellarWalletTransactionsSourceAccountFilter(
-            StellarWalletTransactionsFilterTemplate {
+            StellarWalletTransactionsFilterInput::Inline(StellarWalletTransactionsFilterTemplate {
                 wallets: vec!["G...".to_string()],
-            },
+            }),
         );
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"stellarWalletTransactionsSourceAccountFilter""#));
@@ -626,6 +1023,19 @@ mod template_args_tests {
             parsed,
             TemplateArgs::StellarWalletTransactionsSourceAccountFilter(_)
         ));
+    }
+
+    #[test]
+    fn stellar_wallet_transactions_filter_by_list_roundtrip() {
+        let args = TemplateArgs::StellarWalletTransactionsSourceAccountFilter(
+            StellarWalletTransactionsFilterInput::ByList(
+                StellarWalletTransactionsFilterByListTemplate {
+                    wallets_list_name: "my_stellar_list".to_string(),
+                },
+            ),
+        );
+        let json = serde_json::to_string(&args).unwrap();
+        assert!(json.contains(r#""walletsListName":"my_stellar_list""#));
     }
 
     #[test]
@@ -639,9 +1049,11 @@ mod template_args_tests {
                 security_token: None,
                 compression: "none".to_string(),
             },
-            template_args: TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
-                wallets: vec!["0xabc".to_string()],
-            }),
+            template_args: TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::Inline(
+                EvmWalletFilterTemplate {
+                    wallets: vec!["0xabc".to_string()],
+                },
+            )),
         };
         let json = serde_json::to_value(&params).unwrap();
         let obj = json.as_object().unwrap();
