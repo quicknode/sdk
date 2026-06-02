@@ -1201,8 +1201,8 @@ impl WebhooksApiClient {
 
     /// Creates a new webhook from a predefined filter template. Requires a
     /// descriptive name, a target blockchain network, and destination
-    /// attributes (URL, optional security token — auto-generated when omitted,
-    /// and optional compression — `gzip` or `none`). `template_args` carries
+    /// attributes (URL, compression — `gzip` or `none`, and an optional
+    /// security token — auto-generated when omitted). `template_args` carries
     /// template-specific configuration such as wallet addresses or contract
     /// filters. An optional `notification_email` receives alerts if the
     /// webhook terminates.

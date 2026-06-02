@@ -20,6 +20,7 @@ async function main() {
     network: "ethereum-mainnet",
     destinationAttributes: {
       url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
+      compression: "none",
     },
     templateArgs: TemplateArgs.evmWalletFilter({
       wallets: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],
@@ -56,6 +57,7 @@ async function main() {
     network: "ethereum-mainnet",
     destinationAttributes: {
       url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef",
+      compression: "none",
     },
     templateArgs: TemplateArgs.evmContractEvents({
       contracts: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],

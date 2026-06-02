@@ -44,7 +44,7 @@ async fn main() {
         destination_attributes: WebhookDestinationAttributes {
             url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef".to_string(),
             security_token: None,
-            compression: None,
+            compression: "none".to_string(),
         },
         template_args,
     };
@@ -102,9 +102,9 @@ async fn main() {
     // `event_hashes` field. The API expects `eventHashes` on the wire.
     let contract_events_args = TemplateArgs::EvmContractEvents(EvmContractEventsTemplate {
         contracts: vec!["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".to_string()],
-        event_hashes: Some(vec![
+        event_hashes: vec![
             "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".to_string(),
-        ]),
+        ],
     });
     let contract_events_params = CreateWebhookFromTemplateParams {
         name: "E2E Test Webhook (evmContractEvents)".to_string(),
@@ -113,7 +113,7 @@ async fn main() {
         destination_attributes: WebhookDestinationAttributes {
             url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef".to_string(),
             security_token: None,
-            compression: None,
+            compression: "none".to_string(),
         },
         template_args: contract_events_args,
     };

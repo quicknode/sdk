@@ -2543,8 +2543,8 @@ class EvmContractEventsArgs:
 @typing.final
 class EvmContractEventsTemplate:
     r"""
-    Template arguments for filtering EVM contract events, optionally scoped to
-    a specific set of event topic hashes.
+    Template arguments for filtering EVM contract events, scoped to a specific
+    set of event topic hashes.
     """
     @property
     def contracts(self) -> builtins.list[builtins.str]:
@@ -2557,16 +2557,16 @@ class EvmContractEventsTemplate:
         Contract addresses to watch for events.
         """
     @property
-    def event_hashes(self) -> typing.Optional[builtins.list[builtins.str]]:
+    def event_hashes(self) -> builtins.list[builtins.str]:
         r"""
-        Optional list of event topic hashes to restrict the filter to specific events.
+        Event topic hashes to restrict the filter to specific events.
         """
     @event_hashes.setter
-    def event_hashes(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+    def event_hashes(self, value: builtins.list[builtins.str]) -> None:
         r"""
-        Optional list of event topic hashes to restrict the filter to specific events.
+        Event topic hashes to restrict the filter to specific events.
         """
-    def __new__(cls, contracts: typing.Sequence[builtins.str], event_hashes: typing.Optional[typing.Sequence[builtins.str]] = None) -> EvmContractEventsTemplate: ...
+    def __new__(cls, contracts: typing.Sequence[builtins.str], event_hashes: typing.Sequence[builtins.str]) -> EvmContractEventsTemplate: ...
 
 @typing.final
 class EvmWalletFilterArgs:
@@ -6505,16 +6505,16 @@ class WebhookDestinationAttributes:
         Optional token sent with each payload so the receiver can verify authenticity; generated automatically when omitted.
         """
     @property
-    def compression(self) -> typing.Optional[builtins.str]:
+    def compression(self) -> builtins.str:
         r"""
-        Optional payload compression (`gzip` or `none`).
+        Payload compression (`gzip` or `none`).
         """
     @compression.setter
-    def compression(self, value: typing.Optional[builtins.str]) -> None:
+    def compression(self, value: builtins.str) -> None:
         r"""
-        Optional payload compression (`gzip` or `none`).
+        Payload compression (`gzip` or `none`).
         """
-    def __new__(cls, url: builtins.str, security_token: typing.Optional[builtins.str] = None, compression: typing.Optional[builtins.str] = None) -> WebhookDestinationAttributes: ...
+    def __new__(cls, url: builtins.str, compression: builtins.str, security_token: typing.Optional[builtins.str] = None) -> WebhookDestinationAttributes: ...
 
 @typing.final
 class WebhookEnabledCountResponse:
@@ -6624,8 +6624,8 @@ class WebhooksApiClient:
         r"""
         Creates a new webhook from a predefined filter template. Requires a
         descriptive name, a target blockchain network, and destination
-        attributes (URL, optional security token — auto-generated when omitted,
-        and optional compression — `gzip` or `none`). `template_args` carries
+        attributes (URL, compression — `gzip` or `none`, and an optional
+        security token — auto-generated when omitted). `template_args` carries
         template-specific configuration such as wallet addresses or contract
         filters. An optional `notification_email` receives alerts if the
         webhook terminates.

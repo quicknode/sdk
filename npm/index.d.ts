@@ -611,14 +611,14 @@ export interface EvmAbiFilterTemplate {
 }
 
 /**
- * Template arguments for filtering EVM contract events, optionally scoped to
- * a specific set of event topic hashes.
+ * Template arguments for filtering EVM contract events, scoped to a specific
+ * set of event topic hashes.
  */
 export interface EvmContractEventsTemplate {
   /** Contract addresses to watch for events. */
   contracts: Array<string>
-  /** Optional list of event topic hashes to restrict the filter to specific events. */
-  eventHashes?: Array<string>
+  /** Event topic hashes to restrict the filter to specific events. */
+  eventHashes: Array<string>
 }
 
 /**
@@ -1800,8 +1800,8 @@ export interface WebhookDestinationAttributes {
   url: string
   /** Optional token sent with each payload so the receiver can verify authenticity; generated automatically when omitted. */
   securityToken?: string
-  /** Optional payload compression (`gzip` or `none`). */
-  compression?: string
+  /** Payload compression (`gzip` or `none`). */
+  compression: string
 }
 
 /** Response from `get_enabled_count` for webhooks. */
@@ -2331,8 +2331,8 @@ export declare class WebhooksApiClient {
   /**
    * Creates a new webhook from a predefined filter template. Requires a
    * descriptive name, a target blockchain network, and destination
-   * attributes (URL, optional security token — auto-generated when omitted,
-   * and optional compression — `gzip` or `none`). `template_args` carries
+   * attributes (URL, compression — `gzip` or `none`, and an optional
+   * security token — auto-generated when omitted). `template_args` carries
    * template-specific configuration such as wallet addresses or contract
    * filters. An optional `notification_email` receives alerts if the
    * webhook terminates.

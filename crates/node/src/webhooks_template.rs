@@ -104,14 +104,9 @@ mod tests {
             unreachable!("expected EvmContractEvents variant")
         };
         assert_eq!(
-            t.event_hashes.as_deref(),
-            Some(
-                [
-                    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-                        .to_string()
-                ]
-                .as_slice()
-            ),
+            t.event_hashes.as_slice(),
+            ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".to_string()]
+                .as_slice(),
         );
 
         let params = core::webhooks::CreateWebhookFromTemplateParams {
@@ -121,7 +116,7 @@ mod tests {
             destination_attributes: core::webhooks::WebhookDestinationAttributes {
                 url: "https://x".to_string(),
                 security_token: None,
-                compression: None,
+                compression: "none".to_string(),
             },
             template_args: parsed,
         };

@@ -1314,7 +1314,7 @@ Accessed as `qn.webhooks`. Creates webhooks from filter templates and manages th
 | Factory | Argument struct | Fields |
 |---|---|---|
 | `evm_wallet_filter` | `EvmWalletFilterTemplate` | `wallets: string[]` |
-| `evm_contract_events` | `EvmContractEventsTemplate` | `contracts: string[]`, `event_hashes?: string[]` |
+| `evm_contract_events` | `EvmContractEventsTemplate` | `contracts: string[]`, `event_hashes: string[]` |
 | `evm_abi_filter` | `EvmAbiFilterTemplate` | `abi: string` (JSON), `contracts: string[]` |
 | `solana_wallet_filter` | `SolanaWalletFilterTemplate` | `accounts: string[]` |
 | `bitcoin_wallet_filter` | `BitcoinWalletFilterTemplate` | `wallets: string[]` |
@@ -1322,7 +1322,7 @@ Accessed as `qn.webhooks`. Creates webhooks from filter templates and manages th
 | `hyperliquid_wallet_events_filter` | `HyperliquidWalletEventsFilterTemplate` | `wallets: string[]` |
 | `stellar_wallet_transactions_filter` | `StellarWalletTransactionsFilterTemplate` | `source_accounts: string[]` |
 
-`WebhookDestinationAttributes`: `url` (required), `security_token` (optional — auto-generated if omitted), `compression` (optional — `"none"` | `"gzip"`).
+`WebhookDestinationAttributes`: `url` (required), `compression` (required — `"none"` | `"gzip"`), `security_token` (optional — auto-generated if omitted).
 
 `WebhookStartFrom`: `Last` (resume from last delivered block) or `Latest` (start from newest).
 
@@ -1376,7 +1376,7 @@ let params = CreateWebhookFromTemplateParams {
     destination_attributes: WebhookDestinationAttributes {
         url: "https://webhook.site/...".to_string(),
         security_token: None,
-        compression: None,
+        compression: "none".to_string(),
     },
     template_args,
 };

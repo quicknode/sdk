@@ -255,8 +255,8 @@ impl WebhooksApiClient {
 
     /// Creates a new webhook from a predefined filter template. Requires a
     /// descriptive name, a target blockchain network, and destination
-    /// attributes (URL, optional security token — auto-generated when omitted,
-    /// and optional compression — `gzip` or `none`). `template_args` carries
+    /// attributes (URL, compression — `gzip` or `none`, and an optional
+    /// security token — auto-generated when omitted). `template_args` carries
     /// template-specific configuration such as wallet addresses or contract
     /// filters. An optional `notification_email` receives alerts if the
     /// webhook terminates.
@@ -643,7 +643,7 @@ mod tests {
             destination_attributes: WebhookDestinationAttributes {
                 url: "https://example.com/hook".to_string(),
                 security_token: None,
-                compression: None,
+                compression: "none".to_string(),
             },
             template_args,
         };
@@ -674,7 +674,7 @@ mod tests {
             destination_attributes: WebhookDestinationAttributes {
                 url: "https://example.com/hook".to_string(),
                 security_token: None,
-                compression: None,
+                compression: "none".to_string(),
             },
             template_args,
         };
@@ -760,7 +760,7 @@ mod tests {
         let sdk = make_sdk(format!("{}/", server.uri()));
         let template_args = TemplateArgs::EvmContractEvents(EvmContractEventsTemplate {
             contracts: vec!["0xa0b8".to_string()],
-            event_hashes: Some(vec!["0xabcd".to_string()]),
+            event_hashes: vec!["0xabcd".to_string()],
         });
         let params = CreateWebhookFromTemplateParams {
             name: "test-webhook".to_string(),
@@ -769,7 +769,7 @@ mod tests {
             destination_attributes: WebhookDestinationAttributes {
                 url: "https://example.com/hook".to_string(),
                 security_token: None,
-                compression: None,
+                compression: "none".to_string(),
             },
             template_args,
         };

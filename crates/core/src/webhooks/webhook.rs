@@ -92,8 +92,8 @@ impl EvmWalletFilterTemplate {
     }
 }
 
-/// Template arguments for filtering EVM contract events, optionally scoped to
-/// a specific set of event topic hashes.
+/// Template arguments for filtering EVM contract events, scoped to a specific
+/// set of event topic hashes.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
@@ -103,9 +103,8 @@ impl EvmWalletFilterTemplate {
 pub struct EvmContractEventsTemplate {
     /// Contract addresses to watch for events.
     pub contracts: Vec<String>,
-    /// Optional list of event topic hashes to restrict the filter to specific events.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub event_hashes: Option<Vec<String>>,
+    /// Event topic hashes to restrict the filter to specific events.
+    pub event_hashes: Vec<String>,
 }
 
 #[cfg(feature = "python")]
@@ -113,8 +112,7 @@ pub struct EvmContractEventsTemplate {
 #[pymethods]
 impl EvmContractEventsTemplate {
     #[new]
-    #[pyo3(signature = (contracts, event_hashes=None))]
-    pub fn new(contracts: Vec<String>, event_hashes: Option<Vec<String>>) -> Self {
+    pub fn new(contracts: Vec<String>, event_hashes: Vec<String>) -> Self {
         Self {
             contracts,
             event_hashes,
@@ -316,9 +314,8 @@ pub struct WebhookDestinationAttributes {
     /// Optional token sent with each payload so the receiver can verify authenticity; generated automatically when omitted.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub security_token: Option<String>,
-    /// Optional payload compression (`gzip` or `none`).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub compression: Option<String>,
+    /// Payload compression (`gzip` or `none`).
+    pub compression: String,
 }
 
 #[cfg(feature = "python")]
@@ -326,8 +323,8 @@ pub struct WebhookDestinationAttributes {
 #[pymethods]
 impl WebhookDestinationAttributes {
     #[new]
-    #[pyo3(signature = (url, security_token=None, compression=None))]
-    pub fn new(url: String, security_token: Option<String>, compression: Option<String>) -> Self {
+    #[pyo3(signature = (url, compression, security_token=None))]
+    pub fn new(url: String, compression: String, security_token: Option<String>) -> Self {
         Self {
             url,
             security_token,
@@ -544,7 +541,7 @@ mod template_args_tests {
     fn evm_contract_events_roundtrip() {
         let args = TemplateArgs::EvmContractEvents(EvmContractEventsTemplate {
             contracts: vec!["0xdef".to_string()],
-            event_hashes: Some(vec!["0x1234".to_string()]),
+            event_hashes: vec!["0x1234".to_string()],
         });
         let json = serde_json::to_string(&args).unwrap();
         assert!(json.contains(r#""templateId":"evmContractEvents""#));
@@ -640,7 +637,7 @@ mod template_args_tests {
             destination_attributes: WebhookDestinationAttributes {
                 url: "https://x".to_string(),
                 security_token: None,
-                compression: None,
+                compression: "none".to_string(),
             },
             template_args: TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
                 wallets: vec!["0xabc".to_string()],
