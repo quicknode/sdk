@@ -24,7 +24,7 @@ inefficient_to_string = "warn"
 needless_pass_by_value = "warn"
 
 [workspace.dependencies]
-pyo3 = { version = "0.27", features = ["experimental-async"] }
+pyo3 = { version = "0.27", features = ["experimental-async", "multiple-pymethods"] }
 pyo3-async-runtimes = { version = "0.27", features = ["tokio-runtime"] }
 napi = { version = "3", features = ["async", "tokio_rt", "compat-mode"] }
 napi-derive = { version = "3", features = ["compat-mode"] }

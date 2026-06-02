@@ -229,6 +229,8 @@ class AccountTag:
         r"""
         Number of endpoints the tag is applied to.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class AddressBookConfig:
@@ -267,6 +269,8 @@ class AddressBookConfig:
         JSON paths whose resolved values are matched against the book's addresses.
         """
     def __new__(cls, address_book_id: builtins.str, elements_filter_paths: typing.Sequence[builtins.str], objects_filter_path: typing.Optional[builtins.str] = None) -> AddressBookConfig: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class AdminApiClient:
@@ -615,6 +619,8 @@ class AdminConfig:
     @base_url.setter
     def base_url(self, value: typing.Optional[builtins.str]) -> None: ...
     def __new__(cls, base_url: typing.Optional[builtins.str] = None) -> AdminConfig: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class AzureAttributes:
@@ -702,12 +708,16 @@ class AzureAttributes:
         Optional name prefix prepended to each written blob.
         """
     def __new__(cls, storage_account: builtins.str, sas_token: builtins.str, container: builtins.str, compression: builtins.str, file_type: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, blob_prefix: typing.Optional[builtins.str] = None) -> AzureAttributes: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BitcoinWalletFilterArgs:
     @property
     def attributes(self) -> BitcoinWalletFilterTemplate: ...
     def __new__(cls, attrs: BitcoinWalletFilterTemplate) -> BitcoinWalletFilterArgs: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BitcoinWalletFilterTemplate:
@@ -725,6 +735,8 @@ class BitcoinWalletFilterTemplate:
         Bitcoin wallet addresses to match against.
         """
     def __new__(cls, wallets: typing.Sequence[builtins.str]) -> BitcoinWalletFilterTemplate: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkAddTagData:
@@ -781,6 +793,8 @@ class BulkAddTagData:
         r"""
         The tag that was applied.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkAddTagRequest:
@@ -807,6 +821,8 @@ class BulkAddTagRequest:
         r"""
         Label of the tag to apply (created if it doesn't exist). Maximum 25 characters.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkAddTagResponse:
@@ -833,6 +849,8 @@ class BulkAddTagResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkOperationResult:
@@ -859,6 +877,8 @@ class BulkOperationResult:
         r"""
         Whether the operation succeeded for this endpoint.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkRemoveTagData:
@@ -905,6 +925,8 @@ class BulkRemoveTagData:
         r"""
         Per-endpoint outcomes.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkRemoveTagRequest:
@@ -931,6 +953,8 @@ class BulkRemoveTagRequest:
         r"""
         Tag to remove.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkRemoveTagResponse:
@@ -957,6 +981,8 @@ class BulkRemoveTagResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkTag:
@@ -983,6 +1009,8 @@ class BulkTag:
         r"""
         Tag label.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkUpdateEndpointStatusData:
@@ -1029,6 +1057,8 @@ class BulkUpdateEndpointStatusData:
         r"""
         Per-endpoint outcomes.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkUpdateEndpointStatusRequest:
@@ -1055,6 +1085,8 @@ class BulkUpdateEndpointStatusRequest:
         r"""
         Target status (`active` or `paused`).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class BulkUpdateEndpointStatusResponse:
@@ -1081,6 +1113,8 @@ class BulkUpdateEndpointStatusResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class Chain:
@@ -1117,6 +1151,8 @@ class Chain:
         r"""
         Whether the chain is shown in selection UIs.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ChainNetwork:
@@ -1153,6 +1189,8 @@ class ChainNetwork:
         r"""
         Numeric chain id, when applicable.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ChainUsage:
@@ -1179,6 +1217,8 @@ class ChainUsage:
         r"""
         Credits consumed on the chain.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateDomainMaskRequest:
@@ -1195,6 +1235,8 @@ class CreateDomainMaskRequest:
         r"""
         Custom domain that will mask the endpoint's Quicknode URL.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateEndpointRequest:
@@ -1221,6 +1263,8 @@ class CreateEndpointRequest:
         r"""
         Specific network within the chain (e.g. `mainnet`).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateEndpointResponse:
@@ -1247,6 +1291,8 @@ class CreateEndpointResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateIpRequest:
@@ -1263,6 +1309,8 @@ class CreateIpRequest:
         r"""
         IP address to whitelist.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateJwtRequest:
@@ -1299,6 +1347,8 @@ class CreateJwtRequest:
         r"""
         Human-readable name for the JWT configuration.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateMethodRateLimitRequest:
@@ -1335,6 +1385,8 @@ class CreateMethodRateLimitRequest:
         r"""
         Maximum number of calls allowed per interval.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateMethodRateLimitResponse:
@@ -1361,6 +1413,8 @@ class CreateMethodRateLimitResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateOrUpdateIpCustomHeaderRequest:
@@ -1377,6 +1431,8 @@ class CreateOrUpdateIpCustomHeaderRequest:
         r"""
         Header name used to identify the client IP (e.g. `X-Forwarded-For`).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateOrUpdateIpCustomHeaderResponse:
@@ -1403,6 +1459,8 @@ class CreateOrUpdateIpCustomHeaderResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateReferrerRequest:
@@ -1419,6 +1477,8 @@ class CreateReferrerRequest:
         r"""
         Allowed referrer URL or domain.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateRequestFilterData:
@@ -1435,6 +1495,8 @@ class CreateRequestFilterData:
         r"""
         Identifier of the newly created request filter.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateRequestFilterRequest:
@@ -1451,6 +1513,8 @@ class CreateRequestFilterRequest:
         r"""
         Whitelisted RPC methods; other methods will be blocked.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateRequestFilterResponse:
@@ -1477,6 +1541,8 @@ class CreateRequestFilterResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateTagRequest:
@@ -1493,6 +1559,8 @@ class CreateTagRequest:
         r"""
         Label for the new tag. Maximum 25 characters.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateTeamData:
@@ -1539,6 +1607,8 @@ class CreateTeamData:
         r"""
         Initial member count.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateTeamRequest:
@@ -1555,6 +1625,8 @@ class CreateTeamRequest:
         r"""
         Team name.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class CreateTeamResponse:
@@ -1581,6 +1653,8 @@ class CreateTeamResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class DeleteAccountTagData:
@@ -1597,6 +1671,8 @@ class DeleteAccountTagData:
         r"""
         `true` when the tag was deleted.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class DeleteAccountTagResponse:
@@ -1623,6 +1699,8 @@ class DeleteAccountTagResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class DeleteBoolResponse:
@@ -1649,6 +1727,8 @@ class DeleteBoolResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class DeleteTeamData:
@@ -1665,6 +1745,8 @@ class DeleteTeamData:
         r"""
         Human-readable confirmation message.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class DeleteTeamResponse:
@@ -1691,6 +1773,8 @@ class DeleteTeamResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EnabledCountResponse:
@@ -1707,6 +1791,8 @@ class EnabledCountResponse:
         r"""
         Total count of currently enabled streams.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class Endpoint:
@@ -1833,6 +1919,8 @@ class Endpoint:
         r"""
         Whether the endpoint is configured to serve multiple chains/networks.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointDomainMask:
@@ -1859,6 +1947,8 @@ class EndpointDomainMask:
         r"""
         Masking domain.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointIp:
@@ -1885,6 +1975,8 @@ class EndpointIp:
         r"""
         Whitelisted IP address.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointIpCustomHeaderOption:
@@ -1901,6 +1993,8 @@ class EndpointIpCustomHeaderOption:
         r"""
         Header name (e.g. `X-Forwarded-For`).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointJwt:
@@ -1947,6 +2041,8 @@ class EndpointJwt:
         r"""
         Human-readable name.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointLog:
@@ -2043,6 +2139,8 @@ class EndpointLog:
         r"""
         Full payloads, included when requested.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointMetric:
@@ -2073,6 +2171,8 @@ class EndpointMetric:
         vector (e.g. `["total"]`, `["p95"]`); multi-axis metrics return the
         key/value pair (e.g. `["network", "arbitrum-mainnet"]`).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointRateLimits:
@@ -2129,6 +2229,8 @@ class EndpointRateLimits:
         r"""
         Requests per day.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointReferrer:
@@ -2155,6 +2257,8 @@ class EndpointReferrer:
         r"""
         Allowed referrer URL or domain.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointRequestFilter:
@@ -2181,6 +2285,8 @@ class EndpointRequestFilter:
         r"""
         Whitelisted RPC methods.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointSecurity:
@@ -2259,6 +2365,8 @@ class EndpointSecurity:
         r"""
         Request (method) filters.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointSecurityOptions:
@@ -2335,6 +2443,8 @@ class EndpointSecurityOptions:
         r"""
         Custom header used to identify the client IP.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointTag:
@@ -2361,6 +2471,8 @@ class EndpointTag:
         r"""
         Tag label.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointToken:
@@ -2387,6 +2499,8 @@ class EndpointToken:
         r"""
         Token secret.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointUrl:
@@ -2413,6 +2527,8 @@ class EndpointUrl:
         r"""
         WebSocket RPC URL, when available.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EndpointUsage:
@@ -2499,12 +2615,16 @@ class EndpointUsage:
         r"""
         Request count during the window.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EvmAbiFilterArgs:
     @property
     def attributes(self) -> EvmAbiFilterTemplate: ...
     def __new__(cls, attrs: EvmAbiFilterTemplate) -> EvmAbiFilterArgs: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EvmAbiFilterTemplate:
@@ -2533,12 +2653,16 @@ class EvmAbiFilterTemplate:
         Contract addresses to watch for events.
         """
     def __new__(cls, abi: builtins.str, contracts: typing.Sequence[builtins.str]) -> EvmAbiFilterTemplate: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EvmContractEventsArgs:
     @property
     def attributes(self) -> EvmContractEventsTemplate: ...
     def __new__(cls, attrs: EvmContractEventsTemplate) -> EvmContractEventsArgs: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EvmContractEventsTemplate:
@@ -2567,12 +2691,16 @@ class EvmContractEventsTemplate:
         Optional list of event topic hashes to restrict the filter to specific events.
         """
     def __new__(cls, contracts: typing.Sequence[builtins.str], event_hashes: typing.Optional[typing.Sequence[builtins.str]] = None) -> EvmContractEventsTemplate: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EvmWalletFilterArgs:
     @property
     def attributes(self) -> EvmWalletFilterTemplate: ...
     def __new__(cls, attrs: EvmWalletFilterTemplate) -> EvmWalletFilterArgs: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class EvmWalletFilterTemplate:
@@ -2591,6 +2719,8 @@ class EvmWalletFilterTemplate:
         Wallet addresses to match against.
         """
     def __new__(cls, wallets: typing.Sequence[builtins.str]) -> EvmWalletFilterTemplate: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetAccountMetricsRequest:
@@ -2627,6 +2757,8 @@ class GetAccountMetricsRequest:
         r"""
         Optional percentile for latency metrics (e.g. `p50`, `p95`, `p99`).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetAccountMetricsResponse:
@@ -2653,6 +2785,8 @@ class GetAccountMetricsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetEndpointLogsRequest:
@@ -2709,6 +2843,8 @@ class GetEndpointLogsRequest:
         r"""
         Cursor returned by a previous page; pass to fetch the next page.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetEndpointLogsResponse:
@@ -2735,6 +2871,8 @@ class GetEndpointLogsResponse:
         r"""
         Cursor for the next page; `None` when there are no more entries.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetEndpointMetricsRequest:
@@ -2761,6 +2899,8 @@ class GetEndpointMetricsRequest:
         r"""
         Metric name (e.g. `method_calls_over_time`, `response_status_breakdown`).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetEndpointMetricsResponse:
@@ -2787,6 +2927,8 @@ class GetEndpointMetricsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetEndpointSecurityResponse:
@@ -2813,6 +2955,8 @@ class GetEndpointSecurityResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetEndpointUrlsData:
@@ -2850,6 +2994,8 @@ class GetEndpointUrlsData:
         r"""
         Per-network URLs for multichain endpoints; `None` for single-chain endpoints.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetEndpointUrlsResponse:
@@ -2876,6 +3022,8 @@ class GetEndpointUrlsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetEndpointsRequest:
@@ -3002,6 +3150,8 @@ class GetEndpointsRequest:
         r"""
         Filter results by associated tag labels.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetEndpointsResponse:
@@ -3038,6 +3188,8 @@ class GetEndpointsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetListData:
@@ -3055,6 +3207,8 @@ class GetListData:
         Items in the list on the current page.
         """
     def __new__(cls, items: typing.Sequence[builtins.str]) -> GetListData: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetListResponse:
@@ -3082,6 +3236,8 @@ class GetListResponse:
         Cursor for the next page; empty string when there are no more pages.
         """
     def __new__(cls, data: GetListData, cursor: builtins.str) -> GetListResponse: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetListsData:
@@ -3099,6 +3255,8 @@ class GetListsData:
         List keys on the current page.
         """
     def __new__(cls, keys: typing.Sequence[builtins.str]) -> GetListsData: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetListsResponse:
@@ -3126,6 +3284,8 @@ class GetListsResponse:
         Cursor for the next page; empty string when there are no more pages.
         """
     def __new__(cls, data: GetListsData, cursor: builtins.str) -> GetListsResponse: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetLogDetailsResponse:
@@ -3142,6 +3302,8 @@ class GetLogDetailsResponse:
         r"""
         Raw request and response payloads for the log entry.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetMethodRateLimitsData:
@@ -3158,6 +3320,8 @@ class GetMethodRateLimitsData:
         r"""
         Rate limiters configured on the endpoint.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetMethodRateLimitsResponse:
@@ -3184,6 +3348,8 @@ class GetMethodRateLimitsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetRateLimitsData:
@@ -3200,6 +3366,8 @@ class GetRateLimitsData:
         r"""
         One row per enforced bucket.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetRateLimitsResponse:
@@ -3226,6 +3394,8 @@ class GetRateLimitsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetSecurityOptionsResponse:
@@ -3252,6 +3422,8 @@ class GetSecurityOptionsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetSetResponse:
@@ -3269,6 +3441,8 @@ class GetSetResponse:
         Stored string value.
         """
     def __new__(cls, value: builtins.str) -> GetSetResponse: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetSetsResponse:
@@ -3296,6 +3470,8 @@ class GetSetsResponse:
         Cursor for the next page; empty string when there are no more pages.
         """
     def __new__(cls, data: typing.Sequence[KvSetEntry], cursor: builtins.str) -> GetSetsResponse: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetTeamResponse:
@@ -3322,6 +3498,8 @@ class GetTeamResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetUsageByChainResponse:
@@ -3348,6 +3526,8 @@ class GetUsageByChainResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetUsageByEndpointResponse:
@@ -3374,6 +3554,8 @@ class GetUsageByEndpointResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetUsageByMethodResponse:
@@ -3400,6 +3582,8 @@ class GetUsageByMethodResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetUsageByTagResponse:
@@ -3426,6 +3610,8 @@ class GetUsageByTagResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetUsageRequest:
@@ -3453,6 +3639,8 @@ class GetUsageRequest:
         r"""
         End of the query window (Unix timestamp).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetUsageResponse:
@@ -3479,6 +3667,8 @@ class GetUsageResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class GetWebhooksParams:
@@ -3506,6 +3696,8 @@ class GetWebhooksParams:
         Starting index into the result set.
         """
     def __new__(cls, limit: typing.Optional[builtins.int] = None, offset: typing.Optional[builtins.int] = None) -> GetWebhooksParams: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class HttpConfig:
@@ -3544,6 +3736,8 @@ class HyperliquidWalletEventsFilterArgs:
     @property
     def attributes(self) -> HyperliquidWalletEventsFilterTemplate: ...
     def __new__(cls, attrs: HyperliquidWalletEventsFilterTemplate) -> HyperliquidWalletEventsFilterArgs: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class HyperliquidWalletEventsFilterTemplate:
@@ -3561,6 +3755,8 @@ class HyperliquidWalletEventsFilterTemplate:
         Hyperliquid wallet addresses to match against.
         """
     def __new__(cls, wallets: typing.Sequence[builtins.str]) -> HyperliquidWalletEventsFilterTemplate: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class InviteTeamMemberRequest:
@@ -3597,6 +3793,8 @@ class InviteTeamMemberRequest:
         r"""
         Team role (`admin`, `viewer`, or `billing`); required for new users.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class InviteTeamMemberResponse:
@@ -3623,6 +3821,8 @@ class InviteTeamMemberResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class Invoice:
@@ -3729,6 +3929,8 @@ class Invoice:
         r"""
         Subtotal before taxes and adjustments.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class InvoiceLine:
@@ -3755,6 +3957,8 @@ class InvoiceLine:
         r"""
         Line item amount in the smallest currency unit.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class IpCustomHeaderData:
@@ -3771,6 +3975,8 @@ class IpCustomHeaderData:
         r"""
         Configured header name.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class KafkaAttributes:
@@ -3908,6 +4114,8 @@ class KafkaAttributes:
         Optional SASL mechanism (e.g. `PLAIN`, `SCRAM-SHA-256`).
         """
     def __new__(cls, bootstrap_servers: builtins.str, topic_name: builtins.str, compression_type: builtins.str, batch_size: builtins.int, linger_ms: builtins.int, max_message_bytes: builtins.int, timeout_sec: builtins.int, max_retry: builtins.int, retry_interval_sec: builtins.int, username: typing.Optional[builtins.str] = None, password: typing.Optional[builtins.str] = None, protocol: typing.Optional[builtins.str] = None, mechanisms: typing.Optional[builtins.str] = None) -> KafkaAttributes: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class KvSetEntry:
@@ -3935,6 +4143,8 @@ class KvSetEntry:
         Stored string value.
         """
     def __new__(cls, key: builtins.str, value: builtins.str) -> KvSetEntry: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class KvStoreApiClient:
@@ -4003,6 +4213,8 @@ class KvStoreConfig:
     @base_url.setter
     def base_url(self, value: typing.Optional[builtins.str]) -> None: ...
     def __new__(cls, base_url: typing.Optional[builtins.str] = None) -> KvStoreConfig: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListChainsResponse:
@@ -4029,6 +4241,8 @@ class ListChainsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListContainsItemResponse:
@@ -4046,6 +4260,8 @@ class ListContainsItemResponse:
         `true` when the item is present in the list.
         """
     def __new__(cls, exists: builtins.bool) -> ListContainsItemResponse: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListInvoicesData:
@@ -4062,6 +4278,8 @@ class ListInvoicesData:
         r"""
         Invoices on the account.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListInvoicesResponse:
@@ -4088,6 +4306,8 @@ class ListInvoicesResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListPaymentsData:
@@ -4104,6 +4324,8 @@ class ListPaymentsData:
         r"""
         Payments on the account.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListPaymentsResponse:
@@ -4130,6 +4352,8 @@ class ListPaymentsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListStreamsResponse:
@@ -4137,6 +4361,8 @@ class ListStreamsResponse:
     def data(self) -> builtins.list[Stream]: ...
     @property
     def page_info(self) -> PageInfo: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> dict: ...
 
 @typing.final
 class ListTagsData:
@@ -4153,6 +4379,8 @@ class ListTagsData:
         r"""
         Tags on the account.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListTagsResponse:
@@ -4179,6 +4407,8 @@ class ListTagsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListTeamEndpointsResponse:
@@ -4205,6 +4435,8 @@ class ListTeamEndpointsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListTeamsResponse:
@@ -4231,6 +4463,8 @@ class ListTeamsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ListWebhooksResponse:
@@ -4257,6 +4491,8 @@ class ListWebhooksResponse:
         r"""
         Pagination metadata for the response.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class LogDetails:
@@ -4283,6 +4519,8 @@ class LogDetails:
         r"""
         JSON-encoded response body (truncated at 2KB).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class MethodRateLimiter:
@@ -4349,6 +4587,8 @@ class MethodRateLimiter:
         r"""
         Creation timestamp.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class MethodUsage:
@@ -4405,6 +4645,8 @@ class MethodUsage:
         r"""
         Chain the calls targeted.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class PageInfo:
@@ -4441,6 +4683,8 @@ class PageInfo:
         r"""
         Total number of items matching the query across all pages.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class Pagination:
@@ -4477,6 +4721,8 @@ class Pagination:
         r"""
         Starting index of this page within the full result set.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class Payment:
@@ -4543,6 +4789,8 @@ class Payment:
         r"""
         Portion of the payment attributed to marketplace spending.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class PostgresAttributes:
@@ -4640,6 +4888,8 @@ class PostgresAttributes:
         Seconds to wait between retry attempts.
         """
     def __new__(cls, host: builtins.str, port: builtins.int, database: builtins.str, username: builtins.str, password: builtins.str, table_name: builtins.str, sslmode: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int) -> PostgresAttributes: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class QuicknodeSdk:
@@ -4712,6 +4962,8 @@ class RateLimitEntry:
         `delete_rate_limit_override` to remove the override. May be absent on
         `plan_default` rows and cannot be deleted there.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class RateLimitSettings:
@@ -4748,6 +5000,8 @@ class RateLimitSettings:
         r"""
         Requests per day.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class RemoveTeamMemberRequest:
@@ -4764,6 +5018,8 @@ class RemoveTeamMemberRequest:
         r"""
         When true, also delete the user entirely rather than just removing them from the team.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class RemoveTeamMemberResponse:
@@ -4790,6 +5046,8 @@ class RemoveTeamMemberResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class RenameTagRequest:
@@ -4806,6 +5064,8 @@ class RenameTagRequest:
         r"""
         New label for the tag.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class RenameTagResponse:
@@ -4832,6 +5092,8 @@ class RenameTagResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ResendTeamInviteResponse:
@@ -4858,6 +5120,8 @@ class ResendTeamInviteResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class S3Attributes:
@@ -4965,6 +5229,8 @@ class S3Attributes:
         Whether to use TLS when connecting to the endpoint.
         """
     def __new__(cls, endpoint: builtins.str, access_key: builtins.str, secret_key: builtins.str, bucket: builtins.str, object_prefix: builtins.str, compression: builtins.str, file_type: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, use_ssl: typing.Optional[builtins.bool] = None) -> S3Attributes: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class SdkFullConfig:
@@ -4993,6 +5259,8 @@ class SdkFullConfig:
     @kvstore.setter
     def kvstore(self, value: typing.Optional[KvStoreConfig]) -> None: ...
     def __new__(cls, api_key: builtins.str, http: typing.Optional[HttpConfig] = None, admin: typing.Optional[AdminConfig] = None, streams: typing.Optional[StreamsConfig] = None, webhooks: typing.Optional[WebhooksConfig] = None, kvstore: typing.Optional[KvStoreConfig] = None) -> SdkFullConfig: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class SecurityOption:
@@ -5029,6 +5297,8 @@ class SecurityOption:
         r"""
         Optional configuration value associated with the feature.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class SecurityOptionsUpdate:
@@ -5126,6 +5396,8 @@ class SecurityOptionsUpdate:
         r"""
         Custom IP header toggle.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class ShowEndpointResponse:
@@ -5152,6 +5424,8 @@ class ShowEndpointResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class SingleEndpoint:
@@ -5268,12 +5542,16 @@ class SingleEndpoint:
         r"""
         Whether the endpoint is configured to serve multiple chains/networks.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class SolanaWalletFilterArgs:
     @property
     def attributes(self) -> SolanaWalletFilterTemplate: ...
     def __new__(cls, attrs: SolanaWalletFilterTemplate) -> SolanaWalletFilterArgs: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class SolanaWalletFilterTemplate:
@@ -5292,12 +5570,16 @@ class SolanaWalletFilterTemplate:
         Solana account addresses to match against.
         """
     def __new__(cls, accounts: typing.Sequence[builtins.str]) -> SolanaWalletFilterTemplate: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class StellarWalletTransactionsFilterArgs:
     @property
     def attributes(self) -> StellarWalletTransactionsFilterTemplate: ...
     def __new__(cls, attrs: StellarWalletTransactionsFilterTemplate) -> StellarWalletTransactionsFilterArgs: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class StellarWalletTransactionsFilterTemplate:
@@ -5316,6 +5598,8 @@ class StellarWalletTransactionsFilterTemplate:
         Stellar wallet addresses to match against.
         """
     def __new__(cls, wallets: typing.Sequence[builtins.str]) -> StellarWalletTransactionsFilterTemplate: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class Stream:
@@ -5383,36 +5667,48 @@ class Stream:
     def destination_attributes(self) -> typing.Optional[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamKafkaDestination]]: ...
     @property
     def extra_destinations(self) -> typing.Optional[typing.List[typing.Union[StreamWebhookDestination, StreamS3Destination, StreamAzureDestination, StreamPostgresDestination, StreamKafkaDestination]]]: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> dict: ...
 
 @typing.final
 class StreamAzureDestination:
     @property
     def attributes(self) -> AzureAttributes: ...
     def __new__(cls, attrs: AzureAttributes) -> StreamAzureDestination: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class StreamKafkaDestination:
     @property
     def attributes(self) -> KafkaAttributes: ...
     def __new__(cls, attrs: KafkaAttributes) -> StreamKafkaDestination: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class StreamPostgresDestination:
     @property
     def attributes(self) -> PostgresAttributes: ...
     def __new__(cls, attrs: PostgresAttributes) -> StreamPostgresDestination: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class StreamS3Destination:
     @property
     def attributes(self) -> S3Attributes: ...
     def __new__(cls, attrs: S3Attributes) -> StreamS3Destination: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class StreamWebhookDestination:
     @property
     def attributes(self) -> WebhookAttributes: ...
     def __new__(cls, attrs: WebhookAttributes) -> StreamWebhookDestination: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class StreamsApiClient:
@@ -5483,6 +5779,8 @@ class StreamsConfig:
     @base_url.setter
     def base_url(self, value: typing.Optional[builtins.str]) -> None: ...
     def __new__(cls, base_url: typing.Optional[builtins.str] = None) -> StreamsConfig: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class TagUsage:
@@ -5529,6 +5827,8 @@ class TagUsage:
         r"""
         Request count during the window.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class TeamDetail:
@@ -5595,6 +5895,8 @@ class TeamDetail:
         r"""
         Invites that have not yet been accepted.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class TeamEndpoint:
@@ -5641,6 +5943,8 @@ class TeamEndpoint:
         r"""
         Network within the chain.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class TeamMessageData:
@@ -5657,6 +5961,8 @@ class TeamMessageData:
         r"""
         Human-readable confirmation message.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class TeamSummary:
@@ -5703,6 +6009,8 @@ class TeamSummary:
         r"""
         Active team members.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class TeamUser:
@@ -5789,6 +6097,8 @@ class TeamUser:
         r"""
         Whether this user is the primary user on the account.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class TestFilterResponse:
@@ -5815,6 +6125,8 @@ class TestFilterResponse:
         r"""
         Log lines emitted by the filter function during evaluation.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateEndpointRequest:
@@ -5831,6 +6143,8 @@ class UpdateEndpointRequest:
         r"""
         New human-readable label.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateEndpointStatusRequest:
@@ -5847,6 +6161,8 @@ class UpdateEndpointStatusRequest:
         r"""
         New status (`active` or `paused`).
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateEndpointStatusResponse:
@@ -5873,6 +6189,8 @@ class UpdateEndpointStatusResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateMethodRateLimitRequest:
@@ -5909,6 +6227,8 @@ class UpdateMethodRateLimitRequest:
         r"""
         New rate value.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateMethodRateLimitResponse:
@@ -5935,6 +6255,8 @@ class UpdateMethodRateLimitResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateRateLimitsRequest:
@@ -5951,6 +6273,8 @@ class UpdateRateLimitsRequest:
         r"""
         Rate limit values to apply.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateRequestFilterRequest:
@@ -5967,6 +6291,8 @@ class UpdateRequestFilterRequest:
         r"""
         New set of whitelisted RPC methods.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateSecurityOptionsRequest:
@@ -5983,6 +6309,8 @@ class UpdateSecurityOptionsRequest:
         r"""
         Security toggles to apply.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateSecurityOptionsResponse:
@@ -6009,6 +6337,8 @@ class UpdateSecurityOptionsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateTeamEndpointsData:
@@ -6025,6 +6355,8 @@ class UpdateTeamEndpointsData:
         r"""
         `true` when the association update succeeded.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateTeamEndpointsRequest:
@@ -6041,6 +6373,8 @@ class UpdateTeamEndpointsRequest:
         r"""
         Endpoint ids to associate with the team; pass an empty array to remove all.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateTeamEndpointsResponse:
@@ -6067,6 +6401,8 @@ class UpdateTeamEndpointsResponse:
         r"""
         Error message when the request did not succeed.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UpdateWebhookParams:
@@ -6105,6 +6441,8 @@ class UpdateWebhookParams:
         New destination configuration.
         """
     def __new__(cls, name: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, destination_attributes: typing.Optional[WebhookDestinationAttributes] = None) -> UpdateWebhookParams: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UsageByChainData:
@@ -6141,6 +6479,8 @@ class UsageByChainData:
         r"""
         End of the queried window.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UsageByEndpointData:
@@ -6177,6 +6517,8 @@ class UsageByEndpointData:
         r"""
         End of the queried window.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UsageByMethodData:
@@ -6213,6 +6555,8 @@ class UsageByMethodData:
         r"""
         End of the queried window.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UsageByTagData:
@@ -6249,6 +6593,8 @@ class UsageByTagData:
         r"""
         End of the queried window.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class UsageData:
@@ -6315,6 +6661,8 @@ class UsageData:
         r"""
         End of the queried window.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class Webhook:
@@ -6411,6 +6759,8 @@ class Webhook:
         r"""
         Destination-specific configuration as a JSON string.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class WebhookAttributes:
@@ -6478,6 +6828,8 @@ class WebhookAttributes:
         Compression applied to the payload (e.g. `none`, `gzip`). When omitted the server defaults to no compression.
         """
     def __new__(cls, url: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int, post_timeout_sec: builtins.int, compression: typing.Optional[builtins.str] = None, security_token: typing.Optional[builtins.str] = None) -> WebhookAttributes: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class WebhookDestinationAttributes:
@@ -6515,6 +6867,8 @@ class WebhookDestinationAttributes:
         Optional payload compression (`gzip` or `none`).
         """
     def __new__(cls, url: builtins.str, security_token: typing.Optional[builtins.str] = None, compression: typing.Optional[builtins.str] = None) -> WebhookDestinationAttributes: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class WebhookEnabledCountResponse:
@@ -6531,6 +6885,8 @@ class WebhookEnabledCountResponse:
         r"""
         Total count of enabled webhooks on the account.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class WebhookPageInfo:
@@ -6567,6 +6923,8 @@ class WebhookPageInfo:
         r"""
         Total number of webhooks matching the query across all pages.
         """
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class WebhooksApiClient:
@@ -6647,12 +7005,16 @@ class WebhooksConfig:
     @base_url.setter
     def base_url(self, value: typing.Optional[builtins.str]) -> None: ...
     def __new__(cls, base_url: typing.Optional[builtins.str] = None) -> WebhooksConfig: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class XrplWalletFilterArgs:
     @property
     def attributes(self) -> XrplWalletFilterTemplate: ...
     def __new__(cls, attrs: XrplWalletFilterTemplate) -> XrplWalletFilterArgs: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 
 @typing.final
 class XrplWalletFilterTemplate:
@@ -6670,4 +7032,6 @@ class XrplWalletFilterTemplate:
         XRPL wallet addresses to match against.
         """
     def __new__(cls, wallets: typing.Sequence[builtins.str]) -> XrplWalletFilterTemplate: ...
+    def __repr__(self) -> builtins.str: ...
+    def to_dict(self) -> typing.Any: ...
 

@@ -2,6 +2,7 @@ pub mod admin;
 pub mod config;
 pub mod errors;
 pub mod kvstore;
+mod python_macros;
 pub mod streams;
 pub mod webhooks;
 

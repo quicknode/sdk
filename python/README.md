@@ -147,6 +147,7 @@ Snippets assume `qn` was already constructed via the Quick Start. Optional param
 ### Language conventions
 
 - Methods are `async` — call with `await`. Parameters are kwargs; responses are native `pyclass` objects with attribute access.
+- All request, response, and config types implement `__repr__` (so `print(obj)` shows the field values, not `<builtins.Endpoint object at 0x...>`) and `to_dict()` (returns a native Python `dict` for JSON serialization, comparison, or logging — `json.dumps(obj.to_dict())` round-trips cleanly). Sensitive fields — `SdkFullConfig.api_key`, `EndpointToken.token`, `EndpointJwt.public_key` — appear as `"[redacted]"` in both `repr()` and `to_dict()`. Read the attribute directly (`config.api_key`) when you actually need the raw value.
 
 ---
 

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from quicknode_sdk import (
     QuicknodeSdk,
@@ -27,6 +28,15 @@ async def main():
             f"{ep.id} | {ep.name} | {ep.status} | {ep.network} | "
             f"dedicated={ep.is_dedicated} flat={ep.is_flat_rate} multichain={ep.is_multichain}"
         )
+
+    # Showcase __repr__ and to_dict: every response type gets a readable repr
+    # and a native dict that JSON-serializes cleanly.
+    if response.data:
+        first = response.data[0]
+        print(f"repr(endpoint) -> {first!r}")
+        ep_dict = first.to_dict()
+        print(f"to_dict keys: {sorted(ep_dict.keys())[:5]}...")
+        print(f"json round-trip ok: {len(json.dumps(ep_dict))} bytes")
 
     tags = await qn.admin.list_tags()
     if tags.data is not None:
