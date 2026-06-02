@@ -178,6 +178,7 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 
 ### Error handling
 - Library constructors should return `Result`, not panic — use `.unwrap()` or `.expect()` only in examples and tests, never in library code
+- Do not silence `clippy::panic` (or `clippy::unreachable`) with `#[allow(...)]` unless explicitly directed. If a test needs to fail on an unexpected enum variant, prefer `assert!(matches!(...))` or `let ... else { unreachable!() }` over a `match` arm that calls `panic!`.
 - Validate numeric config values before casting between signed/unsigned types (e.g., check `>= 0` before `i64 as u64`)
 - Map `SdkError` at the binding boundary only — keep core code returning `Result<_, SdkError>`, never a language-specific exception type. See the Error Handling section above for the typed exception hierarchy and how to add a new variant.
 - When a binding needs new error metadata (status, body, retry info, etc.), add it to the `SdkError` variant first, then surface it on the exception class in each binding (PyO3 `setattr`, Ruby `ivar_set`, Node tagged-message prefix).

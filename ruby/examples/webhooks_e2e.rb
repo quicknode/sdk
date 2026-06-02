@@ -52,5 +52,25 @@ qn.webhooks.delete_webhook(id: id)
 puts "deleted: #{id}"
 sleep 1
 
+# Exercise the evm-contract-events template, which carries the multi-word
+# eventHashes field. The API expects eventHashes on the wire.
+contract_events_template_args = JSON.generate({
+  templateId: "evmContractEvents",
+  templateArgs: {
+    contracts: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],
+    eventHashes: ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"]
+  }
+})
+ce_webhook = qn.webhooks.create_webhook_from_template(
+  name: "E2E Test Webhook (evmContractEvents)",
+  network: "ethereum-mainnet",
+  destination_attributes_json: destination_attributes,
+  template_args_json: contract_events_template_args
+)
+puts "created (evmContractEvents): #{ce_webhook[:id]} | #{ce_webhook[:status]}"
+qn.webhooks.delete_webhook(id: ce_webhook[:id])
+puts "deleted (evmContractEvents): #{ce_webhook[:id]}"
+sleep 1
+
 after = qn.webhooks.list_webhooks({})
 puts "webhooks after: #{after[:data].length} (total=#{after.dig(:pageInfo, :total)})"

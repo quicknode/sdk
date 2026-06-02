@@ -2,9 +2,9 @@ use std::{thread, time::Duration};
 
 use quicknode_sdk::{
     webhooks::{
-        ActivateWebhookParams, CreateWebhookFromTemplateParams, EvmWalletFilterTemplate,
-        GetWebhooksParams, TemplateArgs, UpdateWebhookParams, WebhookDestinationAttributes,
-        WebhookStartFrom,
+        ActivateWebhookParams, CreateWebhookFromTemplateParams, EvmContractEventsTemplate,
+        EvmWalletFilterTemplate, GetWebhooksParams, TemplateArgs, UpdateWebhookParams,
+        WebhookDestinationAttributes, WebhookStartFrom,
     },
     QuicknodeSdk, SdkFullConfig,
 };
@@ -96,6 +96,42 @@ async fn main() {
         .await
         .expect("delete_webhook failed");
     println!("deleted: {id}");
+    thread::sleep(Duration::from_secs(1));
+
+    // Exercise the evm-contract-events template, which carries the multi-word
+    // `event_hashes` field. The API expects `eventHashes` on the wire.
+    let contract_events_args = TemplateArgs::EvmContractEvents(EvmContractEventsTemplate {
+        contracts: vec!["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".to_string()],
+        event_hashes: Some(vec![
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".to_string(),
+        ]),
+    });
+    let contract_events_params = CreateWebhookFromTemplateParams {
+        name: "E2E Test Webhook (evmContractEvents)".to_string(),
+        network: "ethereum-mainnet".to_string(),
+        notification_email: None,
+        destination_attributes: WebhookDestinationAttributes {
+            url: "https://webhook.site/ae19071a-2dcc-4035-9cdf-406dcb4719ef".to_string(),
+            security_token: None,
+            compression: None,
+        },
+        template_args: contract_events_args,
+    };
+    let ce_webhook = qn
+        .webhooks
+        .create_webhook_from_template(&contract_events_params)
+        .await
+        .expect("create_webhook_from_template (evmContractEvents) failed");
+    println!(
+        "created (evmContractEvents): {} | {}",
+        ce_webhook.id, ce_webhook.status
+    );
+    thread::sleep(Duration::from_secs(1));
+    qn.webhooks
+        .delete_webhook(&ce_webhook.id)
+        .await
+        .expect("delete_webhook (evmContractEvents) failed");
+    println!("deleted (evmContractEvents): {}", ce_webhook.id);
     thread::sleep(Duration::from_secs(1));
 
     let after = qn
