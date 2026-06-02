@@ -31,6 +31,20 @@ macro_rules! destination_wrapper {
             pub fn attributes(&self) -> $attrs {
                 self.attrs.clone()
             }
+
+            // Forward to the inner attributes so Python users see the actual
+            // destination fields rather than `<Wrapper object at 0x...>`.
+            fn __repr__(&self) -> String {
+                format!("{}({:?})", stringify!($name), self.attrs)
+            }
+
+            fn to_dict<'py>(
+                &self,
+                py: pyo3::Python<'py>,
+            ) -> pyo3::PyResult<pyo3::Bound<'py, pyo3::PyAny>> {
+                pythonize::pythonize(py, &self.attrs)
+                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
+            }
         }
 
         impl $name {
@@ -277,6 +291,79 @@ impl PyStream {
             .as_ref()
             .map(|v| v.iter().map(|item| item.clone_ref(py)).collect())
     }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Stream(id={:?}, name={:?}, status={:?}, network={:?}, dataset={:?})",
+            self.id, self.name, self.status, self.network, self.dataset
+        )
+    }
+
+    // Hand-rolled because PyStream holds Py<PyAny> for destination_attributes
+    // and extra_destinations, so pythonize can't serialize the struct directly.
+    // The nested destination wrappers expose their own to_dict() which we call
+    // recursively so the output is a fully native dict tree.
+    fn to_dict<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        use pyo3::types::{PyDict, PyList};
+        let d = PyDict::new(py);
+        d.set_item("id", &self.id)?;
+        d.set_item("name", &self.name)?;
+        d.set_item("status", &self.status)?;
+        d.set_item("created_at", &self.created_at)?;
+        d.set_item("updated_at", &self.updated_at)?;
+        d.set_item("sequence", self.sequence)?;
+        d.set_item("network", &self.network)?;
+        d.set_item("dataset", &self.dataset)?;
+        d.set_item("region", &self.region)?;
+        d.set_item("start_range", self.start_range)?;
+        d.set_item("end_range", self.end_range)?;
+        d.set_item("plan", &self.plan)?;
+        d.set_item("threshold_fetch_buffer", self.threshold_fetch_buffer)?;
+        d.set_item("dataset_batch_size", self.dataset_batch_size)?;
+        d.set_item("max_batch_size", self.max_batch_size)?;
+        d.set_item("max_buffer_range_size", self.max_buffer_range_size)?;
+        d.set_item(
+            "max_buffer_processing_workers",
+            self.max_buffer_processing_workers,
+        )?;
+        d.set_item("keep_distance_from_tip", self.keep_distance_from_tip)?;
+        d.set_item("filter_function", &self.filter_function)?;
+        d.set_item("filter_language", &self.filter_language)?;
+        d.set_item("include_stream_metadata", &self.include_stream_metadata)?;
+        d.set_item("product_type", &self.product_type)?;
+        d.set_item("notification_email", &self.notification_email)?;
+        d.set_item("fix_block_reorgs", self.fix_block_reorgs)?;
+        d.set_item("current_hash", &self.current_hash)?;
+        d.set_item("elastic_batch_enabled", self.elastic_batch_enabled)?;
+        d.set_item("qn_account_id", &self.qn_account_id)?;
+        d.set_item("charge_min_cap", self.charge_min_cap)?;
+        d.set_item("memo", &self.memo)?;
+        // Recurse into destination wrappers via their own to_dict().
+        let dest = match &self.destination_attributes {
+            Some(v) => v.bind(py).call_method0("to_dict")?.into_any().unbind(),
+            None => py.None(),
+        };
+        d.set_item("destination_attributes", dest)?;
+        // address_book_config is a Serialize struct; let pythonize handle it.
+        let abc = match &self.address_book_config {
+            Some(c) => pythonize::pythonize(py, c)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?,
+            None => py.None().into_bound(py),
+        };
+        d.set_item("address_book_config", abc)?;
+        let extras = match &self.extra_destinations {
+            Some(vec) => {
+                let list = PyList::empty(py);
+                for item in vec {
+                    list.append(item.bind(py).call_method0("to_dict")?)?;
+                }
+                list.into_any().unbind()
+            }
+            None => py.None(),
+        };
+        d.set_item("extra_destinations", extras)?;
+        Ok(d)
+    }
 }
 
 #[gen_stub_pyclass]
@@ -298,5 +385,31 @@ impl PyListStreamsResponse {
             data,
             page_info: resp.page_info,
         })
+    }
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl PyListStreamsResponse {
+    fn __repr__(&self) -> String {
+        format!(
+            "ListStreamsResponse(data=[{} streams], page_info={:?})",
+            self.data.len(),
+            self.page_info
+        )
+    }
+
+    fn to_dict<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        use pyo3::types::{PyDict, PyList};
+        let d = PyDict::new(py);
+        let list = PyList::empty(py);
+        for s in &self.data {
+            list.append(s.bind(py).call_method0("to_dict")?)?;
+        }
+        d.set_item("data", list)?;
+        let pi = pythonize::pythonize(py, &self.page_info)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        d.set_item("page_info", pi)?;
+        Ok(d)
     }
 }

@@ -21,4 +21,5 @@ quicknode-sdk = { path = "../core", features = ["python"] }
 pyo3 = { workspace = true }
 pyo3-async-runtimes = { workspace = true, features = ["tokio-runtime"] }
 pyo3-stub-gen = { workspace = true }
+pythonize = "0.27"
 serde_json = "1.0"

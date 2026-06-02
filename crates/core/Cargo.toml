@@ -13,7 +13,7 @@ categories = ["api-bindings", "web-programming"]
 workspace = true
 
 [features]
-python = ["pyo3", "pyo3-async-runtimes", "pyo3-stub-gen"]
+python = ["pyo3", "pyo3-async-runtimes", "pyo3-stub-gen", "pythonize"]
 node = ["napi", "napi-derive"]
 ruby = ["magnus"]
 rust = ["bon"]
@@ -29,6 +29,7 @@ pyo3-async-runtimes = { workspace = true, optional = true, features = ["tokio-ru
 napi = { workspace = true, optional = true, features = ["async", "tokio_rt"] }
 napi-derive = { workspace = true, optional = true }
 pyo3-stub-gen = { workspace = true, optional = true }
+pythonize = { version = "0.27", optional = true }
 magnus = { workspace = true, optional = true }
 bon = { version = "3.9", optional = true }
 config = "0.15"

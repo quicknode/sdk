@@ -106,6 +106,19 @@ pub struct SomeRequest { ... }
 - `ruby` feature — enables `magnus` dependency (optional); wrapping is done in the Ruby crate rather than via macros on core types
 - `rust` feature — `bon` builder pattern for ergonomic Rust usage
 
+### Python `__repr__` and `to_dict`
+
+Every `#[pyclass]` type exposed to Python must expose:
+- `__repr__()` — delegates to Rust `Debug` so output is readable in the REPL, logs, and Jupyter (replaces `<builtins.Endpoint object at 0x...>`).
+- `to_dict()` — returns a native Python `dict` produced via `pythonize` from the type's `serde::Serialize` impl, suitable for `json.dumps(obj.to_dict())`.
+
+The `python_repr_dict!(TypeName)` macro (defined in `crates/core/src/python_macros.rs`) emits both methods. Each module that defines pyclass types has a `#[cfg(feature = "python")] mod python_repr_impls { ... }` block at the bottom that lists one macro call per type. When adding a new pyclass type, add a `crate::python_repr_dict!(NewType);` line to that block. The workspace `pyo3` dependency enables the `multiple-pymethods` feature so the macro can attach its own `#[pymethods]` impl alongside any existing one without a "conflicting implementations" error.
+
+Sensitive types — those whose `Debug` impl is manually written to redact credentials (currently `SdkFullConfig.api_key`, `EndpointToken.token`, `EndpointJwt.public_key`) — skip the macro and define a hand-rolled `#[pymethods]` block that mirrors the redaction in `to_dict` by overwriting the sensitive key with `"[redacted]"` after pythonize. When adding a new field that holds credential material:
+1. Replace the derived `Debug` with a manual impl that prints `[redacted]` for the sensitive field (see `crates/core/src/lib.rs::SdkConfig` for the pattern).
+2. Do not add the type to the `python_repr_impls` block. Instead write a hand-rolled `#[pymethods]` impl with `__repr__` (`format!("{self:?}")`) and `to_dict` (pythonize + `dict.set_item("field", "[redacted]")`).
+3. Add a unit test confirming `format!("{:?}", instance)` does not contain the raw credential value.
+
 ### Error Handling
 `SdkError` (`crates/core/src/errors.rs`) uses `thiserror` with five variants:
 - `Http` — wraps `reqwest::Error` (further classified via `SdkError::http_kind()` → `HttpKind::{Timeout, Connect, Other}`)

@@ -31,6 +31,20 @@ macro_rules! template_wrapper {
             pub fn attributes(&self) -> $attrs {
                 self.attrs.clone()
             }
+
+            // Forward to the inner template attributes so Python users see
+            // the actual filter fields rather than `<Wrapper object at 0x...>`.
+            fn __repr__(&self) -> String {
+                format!("{}({:?})", stringify!($name), self.attrs)
+            }
+
+            fn to_dict<'py>(
+                &self,
+                py: pyo3::Python<'py>,
+            ) -> pyo3::PyResult<pyo3::Bound<'py, pyo3::PyAny>> {
+                pythonize::pythonize(py, &self.attrs)
+                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
+            }
         }
 
         impl $name {
