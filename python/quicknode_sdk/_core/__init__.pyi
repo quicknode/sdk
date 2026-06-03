@@ -10,6 +10,8 @@ __all__ = [
     "AdminConfig",
     "AzureAttributes",
     "BitcoinWalletFilterArgs",
+    "BitcoinWalletFilterByListArgs",
+    "BitcoinWalletFilterByListTemplate",
     "BitcoinWalletFilterTemplate",
     "BulkAddTagData",
     "BulkAddTagRequest",
@@ -65,10 +67,16 @@ __all__ = [
     "EndpointUrl",
     "EndpointUsage",
     "EvmAbiFilterArgs",
+    "EvmAbiFilterByListArgs",
+    "EvmAbiFilterByListTemplate",
     "EvmAbiFilterTemplate",
     "EvmContractEventsArgs",
+    "EvmContractEventsByListArgs",
+    "EvmContractEventsByListTemplate",
     "EvmContractEventsTemplate",
     "EvmWalletFilterArgs",
+    "EvmWalletFilterByListArgs",
+    "EvmWalletFilterByListTemplate",
     "EvmWalletFilterTemplate",
     "GetAccountMetricsRequest",
     "GetAccountMetricsResponse",
@@ -103,6 +111,8 @@ __all__ = [
     "GetWebhooksParams",
     "HttpConfig",
     "HyperliquidWalletEventsFilterArgs",
+    "HyperliquidWalletEventsFilterByListArgs",
+    "HyperliquidWalletEventsFilterByListTemplate",
     "HyperliquidWalletEventsFilterTemplate",
     "InviteTeamMemberRequest",
     "InviteTeamMemberResponse",
@@ -147,8 +157,12 @@ __all__ = [
     "ShowEndpointResponse",
     "SingleEndpoint",
     "SolanaWalletFilterArgs",
+    "SolanaWalletFilterByListArgs",
+    "SolanaWalletFilterByListTemplate",
     "SolanaWalletFilterTemplate",
     "StellarWalletTransactionsFilterArgs",
+    "StellarWalletTransactionsFilterByListArgs",
+    "StellarWalletTransactionsFilterByListTemplate",
     "StellarWalletTransactionsFilterTemplate",
     "Stream",
     "StreamAzureDestination",
@@ -191,6 +205,8 @@ __all__ = [
     "WebhooksApiClient",
     "WebhooksConfig",
     "XrplWalletFilterArgs",
+    "XrplWalletFilterByListArgs",
+    "XrplWalletFilterByListTemplate",
     "XrplWalletFilterTemplate",
 ]
 
@@ -708,6 +724,29 @@ class BitcoinWalletFilterArgs:
     @property
     def attributes(self) -> BitcoinWalletFilterTemplate: ...
     def __new__(cls, attrs: BitcoinWalletFilterTemplate) -> BitcoinWalletFilterArgs: ...
+
+@typing.final
+class BitcoinWalletFilterByListArgs:
+    @property
+    def attributes(self) -> BitcoinWalletFilterByListTemplate: ...
+    def __new__(cls, attrs: BitcoinWalletFilterByListTemplate) -> BitcoinWalletFilterByListArgs: ...
+
+@typing.final
+class BitcoinWalletFilterByListTemplate:
+    r"""
+    ByList form of `BitcoinWalletFilterTemplate`.
+    """
+    @property
+    def wallets_list_name(self) -> builtins.str:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    @wallets_list_name.setter
+    def wallets_list_name(self, value: builtins.str) -> None:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    def __new__(cls, wallets_list_name: builtins.str) -> BitcoinWalletFilterByListTemplate: ...
 
 @typing.final
 class BitcoinWalletFilterTemplate:
@@ -2507,6 +2546,44 @@ class EvmAbiFilterArgs:
     def __new__(cls, attrs: EvmAbiFilterTemplate) -> EvmAbiFilterArgs: ...
 
 @typing.final
+class EvmAbiFilterByListArgs:
+    @property
+    def attributes(self) -> EvmAbiFilterByListTemplate: ...
+    def __new__(cls, attrs: EvmAbiFilterByListTemplate) -> EvmAbiFilterByListArgs: ...
+
+@typing.final
+class EvmAbiFilterByListTemplate:
+    r"""
+    ByList form of `EvmAbiFilterTemplate` — carries the ABI inline (the only
+    non-list shape this template has) and optionally references a pre-created
+    contracts list. Note the wire key is `abiJson`, distinct from the inline
+    variant's `abi`.
+    """
+    @property
+    def abi_json(self) -> builtins.str:
+        r"""
+        JSON-encoded contract ABI used to decode event data.
+        """
+    @abi_json.setter
+    def abi_json(self, value: builtins.str) -> None:
+        r"""
+        JSON-encoded contract ABI used to decode event data.
+        """
+    @property
+    def contracts_list_name(self) -> typing.Optional[builtins.str]:
+        r"""
+        Optional name of a pre-created contracts list; when omitted, the ABI
+        is applied to all contracts.
+        """
+    @contracts_list_name.setter
+    def contracts_list_name(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Optional name of a pre-created contracts list; when omitted, the ABI
+        is applied to all contracts.
+        """
+    def __new__(cls, abi_json: builtins.str, contracts_list_name: typing.Optional[builtins.str] = None) -> EvmAbiFilterByListTemplate: ...
+
+@typing.final
 class EvmAbiFilterTemplate:
     r"""
     Template arguments for an EVM ABI filter: decodes and filters events for a
@@ -2541,10 +2618,47 @@ class EvmContractEventsArgs:
     def __new__(cls, attrs: EvmContractEventsTemplate) -> EvmContractEventsArgs: ...
 
 @typing.final
+class EvmContractEventsByListArgs:
+    @property
+    def attributes(self) -> EvmContractEventsByListTemplate: ...
+    def __new__(cls, attrs: EvmContractEventsByListTemplate) -> EvmContractEventsByListArgs: ...
+
+@typing.final
+class EvmContractEventsByListTemplate:
+    r"""
+    ByList form of `EvmContractEventsTemplate` — references pre-created
+    contract and (optionally) event-hash lists by name. Omitting
+    `event_hashes_list_name` matches all events from the listed contracts.
+    """
+    @property
+    def contracts_list_name(self) -> builtins.str:
+        r"""
+        Name of the pre-created contracts list.
+        """
+    @contracts_list_name.setter
+    def contracts_list_name(self, value: builtins.str) -> None:
+        r"""
+        Name of the pre-created contracts list.
+        """
+    @property
+    def event_hashes_list_name(self) -> typing.Optional[builtins.str]:
+        r"""
+        Optional name of a pre-created event-hashes list; when omitted, all
+        events from the listed contracts match.
+        """
+    @event_hashes_list_name.setter
+    def event_hashes_list_name(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Optional name of a pre-created event-hashes list; when omitted, all
+        events from the listed contracts match.
+        """
+    def __new__(cls, contracts_list_name: builtins.str, event_hashes_list_name: typing.Optional[builtins.str] = None) -> EvmContractEventsByListTemplate: ...
+
+@typing.final
 class EvmContractEventsTemplate:
     r"""
-    Template arguments for filtering EVM contract events, optionally scoped to
-    a specific set of event topic hashes.
+    Template arguments for filtering EVM contract events, scoped to a specific
+    set of event topic hashes.
     """
     @property
     def contracts(self) -> builtins.list[builtins.str]:
@@ -2557,22 +2671,46 @@ class EvmContractEventsTemplate:
         Contract addresses to watch for events.
         """
     @property
-    def event_hashes(self) -> typing.Optional[builtins.list[builtins.str]]:
+    def event_hashes(self) -> builtins.list[builtins.str]:
         r"""
-        Optional list of event topic hashes to restrict the filter to specific events.
+        Event topic hashes to restrict the filter to specific events.
         """
     @event_hashes.setter
-    def event_hashes(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+    def event_hashes(self, value: builtins.list[builtins.str]) -> None:
         r"""
-        Optional list of event topic hashes to restrict the filter to specific events.
+        Event topic hashes to restrict the filter to specific events.
         """
-    def __new__(cls, contracts: typing.Sequence[builtins.str], event_hashes: typing.Optional[typing.Sequence[builtins.str]] = None) -> EvmContractEventsTemplate: ...
+    def __new__(cls, contracts: typing.Sequence[builtins.str], event_hashes: typing.Sequence[builtins.str]) -> EvmContractEventsTemplate: ...
 
 @typing.final
 class EvmWalletFilterArgs:
     @property
     def attributes(self) -> EvmWalletFilterTemplate: ...
     def __new__(cls, attrs: EvmWalletFilterTemplate) -> EvmWalletFilterArgs: ...
+
+@typing.final
+class EvmWalletFilterByListArgs:
+    @property
+    def attributes(self) -> EvmWalletFilterByListTemplate: ...
+    def __new__(cls, attrs: EvmWalletFilterByListTemplate) -> EvmWalletFilterByListArgs: ...
+
+@typing.final
+class EvmWalletFilterByListTemplate:
+    r"""
+    ByList form of `EvmWalletFilterTemplate` — references a pre-created
+    wallets list by name instead of inlining the addresses.
+    """
+    @property
+    def wallets_list_name(self) -> builtins.str:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    @wallets_list_name.setter
+    def wallets_list_name(self, value: builtins.str) -> None:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    def __new__(cls, wallets_list_name: builtins.str) -> EvmWalletFilterByListTemplate: ...
 
 @typing.final
 class EvmWalletFilterTemplate:
@@ -3544,6 +3682,29 @@ class HyperliquidWalletEventsFilterArgs:
     @property
     def attributes(self) -> HyperliquidWalletEventsFilterTemplate: ...
     def __new__(cls, attrs: HyperliquidWalletEventsFilterTemplate) -> HyperliquidWalletEventsFilterArgs: ...
+
+@typing.final
+class HyperliquidWalletEventsFilterByListArgs:
+    @property
+    def attributes(self) -> HyperliquidWalletEventsFilterByListTemplate: ...
+    def __new__(cls, attrs: HyperliquidWalletEventsFilterByListTemplate) -> HyperliquidWalletEventsFilterByListArgs: ...
+
+@typing.final
+class HyperliquidWalletEventsFilterByListTemplate:
+    r"""
+    ByList form of `HyperliquidWalletEventsFilterTemplate`.
+    """
+    @property
+    def wallets_list_name(self) -> builtins.str:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    @wallets_list_name.setter
+    def wallets_list_name(self, value: builtins.str) -> None:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    def __new__(cls, wallets_list_name: builtins.str) -> HyperliquidWalletEventsFilterByListTemplate: ...
 
 @typing.final
 class HyperliquidWalletEventsFilterTemplate:
@@ -5276,6 +5437,29 @@ class SolanaWalletFilterArgs:
     def __new__(cls, attrs: SolanaWalletFilterTemplate) -> SolanaWalletFilterArgs: ...
 
 @typing.final
+class SolanaWalletFilterByListArgs:
+    @property
+    def attributes(self) -> SolanaWalletFilterByListTemplate: ...
+    def __new__(cls, attrs: SolanaWalletFilterByListTemplate) -> SolanaWalletFilterByListArgs: ...
+
+@typing.final
+class SolanaWalletFilterByListTemplate:
+    r"""
+    ByList form of `SolanaWalletFilterTemplate`.
+    """
+    @property
+    def accounts_list_name(self) -> builtins.str:
+        r"""
+        Name of the pre-created accounts list.
+        """
+    @accounts_list_name.setter
+    def accounts_list_name(self, value: builtins.str) -> None:
+        r"""
+        Name of the pre-created accounts list.
+        """
+    def __new__(cls, accounts_list_name: builtins.str) -> SolanaWalletFilterByListTemplate: ...
+
+@typing.final
 class SolanaWalletFilterTemplate:
     r"""
     Template arguments for a Solana wallet filter: matches activity for a list
@@ -5298,6 +5482,29 @@ class StellarWalletTransactionsFilterArgs:
     @property
     def attributes(self) -> StellarWalletTransactionsFilterTemplate: ...
     def __new__(cls, attrs: StellarWalletTransactionsFilterTemplate) -> StellarWalletTransactionsFilterArgs: ...
+
+@typing.final
+class StellarWalletTransactionsFilterByListArgs:
+    @property
+    def attributes(self) -> StellarWalletTransactionsFilterByListTemplate: ...
+    def __new__(cls, attrs: StellarWalletTransactionsFilterByListTemplate) -> StellarWalletTransactionsFilterByListArgs: ...
+
+@typing.final
+class StellarWalletTransactionsFilterByListTemplate:
+    r"""
+    ByList form of `StellarWalletTransactionsFilterTemplate`.
+    """
+    @property
+    def wallets_list_name(self) -> builtins.str:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    @wallets_list_name.setter
+    def wallets_list_name(self, value: builtins.str) -> None:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    def __new__(cls, wallets_list_name: builtins.str) -> StellarWalletTransactionsFilterByListTemplate: ...
 
 @typing.final
 class StellarWalletTransactionsFilterTemplate:
@@ -6505,16 +6712,16 @@ class WebhookDestinationAttributes:
         Optional token sent with each payload so the receiver can verify authenticity; generated automatically when omitted.
         """
     @property
-    def compression(self) -> typing.Optional[builtins.str]:
+    def compression(self) -> builtins.str:
         r"""
-        Optional payload compression (`gzip` or `none`).
+        Payload compression (`gzip` or `none`).
         """
     @compression.setter
-    def compression(self, value: typing.Optional[builtins.str]) -> None:
+    def compression(self, value: builtins.str) -> None:
         r"""
-        Optional payload compression (`gzip` or `none`).
+        Payload compression (`gzip` or `none`).
         """
-    def __new__(cls, url: builtins.str, security_token: typing.Optional[builtins.str] = None, compression: typing.Optional[builtins.str] = None) -> WebhookDestinationAttributes: ...
+    def __new__(cls, url: builtins.str, compression: builtins.str, security_token: typing.Optional[builtins.str] = None) -> WebhookDestinationAttributes: ...
 
 @typing.final
 class WebhookEnabledCountResponse:
@@ -6620,17 +6827,17 @@ class WebhooksApiClient:
         Returns the total number of enabled webhooks currently configured on
         the account.
         """
-    def create_webhook_from_template(self, name: builtins.str, network: builtins.str, destination_attributes: WebhookDestinationAttributes, template_args: typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs], notification_email: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, Webhook]:
+    def create_webhook_from_template(self, name: builtins.str, network: builtins.str, destination_attributes: WebhookDestinationAttributes, template_args: typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs, EvmWalletFilterByListArgs, EvmContractEventsByListArgs, EvmAbiFilterByListArgs, SolanaWalletFilterByListArgs, BitcoinWalletFilterByListArgs, XrplWalletFilterByListArgs, HyperliquidWalletEventsFilterByListArgs, StellarWalletTransactionsFilterByListArgs], notification_email: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, Webhook]:
         r"""
         Creates a new webhook from a predefined filter template. Requires a
         descriptive name, a target blockchain network, and destination
-        attributes (URL, optional security token — auto-generated when omitted,
-        and optional compression — `gzip` or `none`). `template_args` carries
+        attributes (URL, compression — `gzip` or `none`, and an optional
+        security token — auto-generated when omitted). `template_args` carries
         template-specific configuration such as wallet addresses or contract
         filters. An optional `notification_email` receives alerts if the
         webhook terminates.
         """
-    def update_webhook_template(self, webhook_id: builtins.str, template_args: typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs], name: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, destination_attributes: typing.Optional[WebhookDestinationAttributes] = None) -> typing.Coroutine[typing.Any, typing.Any, Webhook]:
+    def update_webhook_template(self, webhook_id: builtins.str, template_args: typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs, EvmWalletFilterByListArgs, EvmContractEventsByListArgs, EvmAbiFilterByListArgs, SolanaWalletFilterByListArgs, BitcoinWalletFilterByListArgs, XrplWalletFilterByListArgs, HyperliquidWalletEventsFilterByListArgs, StellarWalletTransactionsFilterByListArgs], name: typing.Optional[builtins.str] = None, notification_email: typing.Optional[builtins.str] = None, destination_attributes: typing.Optional[WebhookDestinationAttributes] = None) -> typing.Coroutine[typing.Any, typing.Any, Webhook]:
         r"""
         Updates an existing template-backed webhook, modifying its template
         arguments and optionally its name, notification email, and destination
@@ -6653,6 +6860,29 @@ class XrplWalletFilterArgs:
     @property
     def attributes(self) -> XrplWalletFilterTemplate: ...
     def __new__(cls, attrs: XrplWalletFilterTemplate) -> XrplWalletFilterArgs: ...
+
+@typing.final
+class XrplWalletFilterByListArgs:
+    @property
+    def attributes(self) -> XrplWalletFilterByListTemplate: ...
+    def __new__(cls, attrs: XrplWalletFilterByListTemplate) -> XrplWalletFilterByListArgs: ...
+
+@typing.final
+class XrplWalletFilterByListTemplate:
+    r"""
+    ByList form of `XrplWalletFilterTemplate`.
+    """
+    @property
+    def wallets_list_name(self) -> builtins.str:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    @wallets_list_name.setter
+    def wallets_list_name(self, value: builtins.str) -> None:
+        r"""
+        Name of the pre-created wallets list.
+        """
+    def __new__(cls, wallets_list_name: builtins.str) -> XrplWalletFilterByListTemplate: ...
 
 @typing.final
 class XrplWalletFilterTemplate:

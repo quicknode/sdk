@@ -59,6 +59,12 @@ export interface AzureAttributes {
   blobPrefix?: string
 }
 
+/** ByList form of `BitcoinWalletFilterTemplate`. */
+export interface BitcoinWalletFilterByListTemplate {
+  /** Name of the pre-created wallets list. */
+  walletsListName: string
+}
+
 /** Template arguments for a Bitcoin wallet filter. */
 export interface BitcoinWalletFilterTemplate {
   /** Bitcoin wallet addresses to match against. */
@@ -600,6 +606,22 @@ export interface EndpointUsage {
 }
 
 /**
+ * ByList form of `EvmAbiFilterTemplate` — carries the ABI inline (the only
+ * non-list shape this template has) and optionally references a pre-created
+ * contracts list. Note the wire key is `abiJson`, distinct from the inline
+ * variant's `abi`.
+ */
+export interface EvmAbiFilterByListTemplate {
+  /** JSON-encoded contract ABI used to decode event data. */
+  abiJson: string
+  /**
+   * Optional name of a pre-created contracts list; when omitted, the ABI
+   * is applied to all contracts.
+   */
+  contractsListName?: string
+}
+
+/**
  * Template arguments for an EVM ABI filter: decodes and filters events for a
  * set of contracts using a provided ABI.
  */
@@ -611,14 +633,38 @@ export interface EvmAbiFilterTemplate {
 }
 
 /**
- * Template arguments for filtering EVM contract events, optionally scoped to
- * a specific set of event topic hashes.
+ * ByList form of `EvmContractEventsTemplate` — references pre-created
+ * contract and (optionally) event-hash lists by name. Omitting
+ * `event_hashes_list_name` matches all events from the listed contracts.
+ */
+export interface EvmContractEventsByListTemplate {
+  /** Name of the pre-created contracts list. */
+  contractsListName: string
+  /**
+   * Optional name of a pre-created event-hashes list; when omitted, all
+   * events from the listed contracts match.
+   */
+  eventHashesListName?: string
+}
+
+/**
+ * Template arguments for filtering EVM contract events, scoped to a specific
+ * set of event topic hashes.
  */
 export interface EvmContractEventsTemplate {
   /** Contract addresses to watch for events. */
   contracts: Array<string>
-  /** Optional list of event topic hashes to restrict the filter to specific events. */
-  eventHashes?: Array<string>
+  /** Event topic hashes to restrict the filter to specific events. */
+  eventHashes: Array<string>
+}
+
+/**
+ * ByList form of `EvmWalletFilterTemplate` — references a pre-created
+ * wallets list by name instead of inlining the addresses.
+ */
+export interface EvmWalletFilterByListTemplate {
+  /** Name of the pre-created wallets list. */
+  walletsListName: string
 }
 
 /**
@@ -947,6 +993,12 @@ export interface HttpConfig {
    * auto-generated User-Agent or inject correlation IDs, proxy auth, etc.
    */
   headers?: Record<string, string>
+}
+
+/** ByList form of `HyperliquidWalletEventsFilterTemplate`. */
+export interface HyperliquidWalletEventsFilterByListTemplate {
+  /** Name of the pre-created wallets list. */
+  walletsListName: string
 }
 
 /** Template arguments for a Hyperliquid wallet-events filter. */
@@ -1417,6 +1469,12 @@ export interface SingleEndpoint {
   isMultichain: boolean
 }
 
+/** ByList form of `SolanaWalletFilterTemplate`. */
+export interface SolanaWalletFilterByListTemplate {
+  /** Name of the pre-created accounts list. */
+  accountsListName: string
+}
+
 /**
  * Template arguments for a Solana wallet filter: matches activity for a list
  * of Solana account addresses.
@@ -1424,6 +1482,12 @@ export interface SingleEndpoint {
 export interface SolanaWalletFilterTemplate {
   /** Solana account addresses to match against. */
   accounts: Array<string>
+}
+
+/** ByList form of `StellarWalletTransactionsFilterTemplate`. */
+export interface StellarWalletTransactionsFilterByListTemplate {
+  /** Name of the pre-created wallets list. */
+  walletsListName: string
 }
 
 /**
@@ -1800,8 +1864,8 @@ export interface WebhookDestinationAttributes {
   url: string
   /** Optional token sent with each payload so the receiver can verify authenticity; generated automatically when omitted. */
   securityToken?: string
-  /** Optional payload compression (`gzip` or `none`). */
-  compression?: string
+  /** Payload compression (`gzip` or `none`). */
+  compression: string
 }
 
 /** Response from `get_enabled_count` for webhooks. */
@@ -1842,6 +1906,12 @@ export declare const enum WebhookTemplateId {
   XrplWalletFilter = 'XrplWalletFilter',
   HyperliquidWalletEventsFilter = 'HyperliquidWalletEventsFilter',
   StellarWalletTransactionsSourceAccountFilter = 'StellarWalletTransactionsSourceAccountFilter'
+}
+
+/** ByList form of `XrplWalletFilterTemplate`. */
+export interface XrplWalletFilterByListTemplate {
+  /** Name of the pre-created wallets list. */
+  walletsListName: string
 }
 
 /** Template arguments for an XRPL wallet filter. */
@@ -2331,8 +2401,8 @@ export declare class WebhooksApiClient {
   /**
    * Creates a new webhook from a predefined filter template. Requires a
    * descriptive name, a target blockchain network, and destination
-   * attributes (URL, optional security token — auto-generated when omitted,
-   * and optional compression — `gzip` or `none`). `template_args` carries
+   * attributes (URL, compression — `gzip` or `none`, and an optional
+   * security token — auto-generated when omitted). `template_args` carries
    * template-specific configuration such as wallet addresses or contract
    * filters. An optional `notification_email` receives alerts if the
    * webhook terminates.

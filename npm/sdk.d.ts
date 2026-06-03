@@ -66,16 +66,28 @@ export type ListStreamsResponse = Omit<_ListStreamsResponseNode, "data"> & {
 // wire's `templateArgs` to avoid `templateArgs.templateArgs.wallets`; the
 // Node binding renames it back before the request.
 export type TemplateArgsInput =
-  | { templateId: "evmWalletFilter"; args: EvmWalletFilterTemplate }
-  | { templateId: "evmContractEvents"; args: EvmContractEventsTemplate }
-  | { templateId: "evmAbiFilter"; args: EvmAbiFilterTemplate }
-  | { templateId: "solanaWalletFilter"; args: SolanaWalletFilterTemplate }
-  | { templateId: "bitcoinWalletFilter"; args: BitcoinWalletFilterTemplate }
-  | { templateId: "xrplWalletFilter"; args: XrplWalletFilterTemplate }
-  | { templateId: "hyperliquidWalletEventsFilter"; args: HyperliquidWalletEventsFilterTemplate }
+  | { templateId: "evmWalletFilter"; args: EvmWalletFilterTemplate | EvmWalletFilterByListTemplate }
+  | {
+      templateId: "evmContractEvents";
+      args: EvmContractEventsTemplate | EvmContractEventsByListTemplate;
+    }
+  | { templateId: "evmAbiFilter"; args: EvmAbiFilterTemplate | EvmAbiFilterByListTemplate }
+  | {
+      templateId: "solanaWalletFilter";
+      args: SolanaWalletFilterTemplate | SolanaWalletFilterByListTemplate;
+    }
+  | {
+      templateId: "bitcoinWalletFilter";
+      args: BitcoinWalletFilterTemplate | BitcoinWalletFilterByListTemplate;
+    }
+  | { templateId: "xrplWalletFilter"; args: XrplWalletFilterTemplate | XrplWalletFilterByListTemplate }
+  | {
+      templateId: "hyperliquidWalletEventsFilter";
+      args: HyperliquidWalletEventsFilterTemplate | HyperliquidWalletEventsFilterByListTemplate;
+    }
   | {
       templateId: "stellarWalletTransactionsSourceAccountFilter";
-      args: StellarWalletTransactionsFilterTemplate;
+      args: StellarWalletTransactionsFilterTemplate | StellarWalletTransactionsFilterByListTemplate;
     };
 
 // Replace the napi-generated JSON-blob templateArgs with typed unions.
@@ -270,6 +282,14 @@ export type {
   XrplWalletFilterTemplate,
   HyperliquidWalletEventsFilterTemplate,
   StellarWalletTransactionsFilterTemplate,
+  EvmWalletFilterByListTemplate,
+  EvmContractEventsByListTemplate,
+  EvmAbiFilterByListTemplate,
+  SolanaWalletFilterByListTemplate,
+  BitcoinWalletFilterByListTemplate,
+  XrplWalletFilterByListTemplate,
+  HyperliquidWalletEventsFilterByListTemplate,
+  StellarWalletTransactionsFilterByListTemplate,
   WebhooksApiClient,
   // kvstore
   KvStoreConfig,
@@ -353,16 +373,37 @@ export class QuicknodeSdk {
 }
 
 // Typed static factory methods producing each discriminated variant of
-// TemplateArgsInput. Consumers can also construct the object literal directly.
+// TemplateArgsInput. Each template exposes both an inline form (passing the
+// value template) and a by-list form (passing a *ByList template referencing
+// a pre-created list by name). Consumers can also construct the object
+// literal directly.
 export const TemplateArgs: {
-  evmWalletFilter(attrs: EvmWalletFilterTemplate): Extract<TemplateArgsInput, { templateId: "evmWalletFilter" }>;
-  evmContractEvents(attrs: EvmContractEventsTemplate): Extract<TemplateArgsInput, { templateId: "evmContractEvents" }>;
-  evmAbiFilter(attrs: EvmAbiFilterTemplate): Extract<TemplateArgsInput, { templateId: "evmAbiFilter" }>;
-  solanaWalletFilter(attrs: SolanaWalletFilterTemplate): Extract<TemplateArgsInput, { templateId: "solanaWalletFilter" }>;
-  bitcoinWalletFilter(attrs: BitcoinWalletFilterTemplate): Extract<TemplateArgsInput, { templateId: "bitcoinWalletFilter" }>;
-  xrplWalletFilter(attrs: XrplWalletFilterTemplate): Extract<TemplateArgsInput, { templateId: "xrplWalletFilter" }>;
-  hyperliquidWalletEventsFilter(attrs: HyperliquidWalletEventsFilterTemplate): Extract<TemplateArgsInput, { templateId: "hyperliquidWalletEventsFilter" }>;
-  stellarWalletTransactionsFilter(attrs: StellarWalletTransactionsFilterTemplate): Extract<TemplateArgsInput, { templateId: "stellarWalletTransactionsSourceAccountFilter" }>;
+  evmWalletFilter(
+    attrs: EvmWalletFilterTemplate | EvmWalletFilterByListTemplate
+  ): Extract<TemplateArgsInput, { templateId: "evmWalletFilter" }>;
+  evmContractEvents(
+    attrs: EvmContractEventsTemplate | EvmContractEventsByListTemplate
+  ): Extract<TemplateArgsInput, { templateId: "evmContractEvents" }>;
+  evmAbiFilter(
+    attrs: EvmAbiFilterTemplate | EvmAbiFilterByListTemplate
+  ): Extract<TemplateArgsInput, { templateId: "evmAbiFilter" }>;
+  solanaWalletFilter(
+    attrs: SolanaWalletFilterTemplate | SolanaWalletFilterByListTemplate
+  ): Extract<TemplateArgsInput, { templateId: "solanaWalletFilter" }>;
+  bitcoinWalletFilter(
+    attrs: BitcoinWalletFilterTemplate | BitcoinWalletFilterByListTemplate
+  ): Extract<TemplateArgsInput, { templateId: "bitcoinWalletFilter" }>;
+  xrplWalletFilter(
+    attrs: XrplWalletFilterTemplate | XrplWalletFilterByListTemplate
+  ): Extract<TemplateArgsInput, { templateId: "xrplWalletFilter" }>;
+  hyperliquidWalletEventsFilter(
+    attrs: HyperliquidWalletEventsFilterTemplate | HyperliquidWalletEventsFilterByListTemplate
+  ): Extract<TemplateArgsInput, { templateId: "hyperliquidWalletEventsFilter" }>;
+  stellarWalletTransactionsFilter(
+    attrs:
+      | StellarWalletTransactionsFilterTemplate
+      | StellarWalletTransactionsFilterByListTemplate
+  ): Extract<TemplateArgsInput, { templateId: "stellarWalletTransactionsSourceAccountFilter" }>;
 };
 
 // Typed error hierarchy. Any SDK call can throw one of these; catch

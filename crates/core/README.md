@@ -1309,20 +1309,20 @@ Accessed as `qn.webhooks`. Creates webhooks from filter templates and manages th
 | `HyperliquidWalletEventsFilter` | `hyperliquidWalletEventsFilter` |
 | `StellarWalletTransactionsSourceAccountFilter` | `stellarWalletTransactionsSourceAccountFilter` |
 
-`TemplateArgs` carries the arguments; construct one per template via the factory methods:
+`TemplateArgs` carries the arguments. Each template supports two input forms — inline values or a reference to a pre-created list by name. Construct one per template via the variant + the appropriate input enum (`<Template>Input::Inline | ByList`):
 
-| Factory | Argument struct | Fields |
+| Variant | Inline struct (fields) | ByList struct (fields) |
 |---|---|---|
-| `evm_wallet_filter` | `EvmWalletFilterTemplate` | `wallets: string[]` |
-| `evm_contract_events` | `EvmContractEventsTemplate` | `contracts: string[]`, `event_hashes?: string[]` |
-| `evm_abi_filter` | `EvmAbiFilterTemplate` | `abi: string` (JSON), `contracts: string[]` |
-| `solana_wallet_filter` | `SolanaWalletFilterTemplate` | `accounts: string[]` |
-| `bitcoin_wallet_filter` | `BitcoinWalletFilterTemplate` | `wallets: string[]` |
-| `xrpl_wallet_filter` | `XrplWalletFilterTemplate` | `wallets: string[]` |
-| `hyperliquid_wallet_events_filter` | `HyperliquidWalletEventsFilterTemplate` | `wallets: string[]` |
-| `stellar_wallet_transactions_filter` | `StellarWalletTransactionsFilterTemplate` | `source_accounts: string[]` |
+| `EvmWalletFilter` | `EvmWalletFilterTemplate { wallets: string[] }` | `EvmWalletFilterByListTemplate { wallets_list_name: string }` |
+| `EvmContractEvents` | `EvmContractEventsTemplate { contracts: string[], event_hashes: string[] }` | `EvmContractEventsByListTemplate { contracts_list_name: string, event_hashes_list_name?: string }` |
+| `EvmAbiFilter` | `EvmAbiFilterTemplate { abi: string, contracts: string[] }` | `EvmAbiFilterByListTemplate { abi_json: string, contracts_list_name?: string }` |
+| `SolanaWalletFilter` | `SolanaWalletFilterTemplate { accounts: string[] }` | `SolanaWalletFilterByListTemplate { accounts_list_name: string }` |
+| `BitcoinWalletFilter` | `BitcoinWalletFilterTemplate { wallets: string[] }` | `BitcoinWalletFilterByListTemplate { wallets_list_name: string }` |
+| `XrplWalletFilter` | `XrplWalletFilterTemplate { wallets: string[] }` | `XrplWalletFilterByListTemplate { wallets_list_name: string }` |
+| `HyperliquidWalletEventsFilter` | `HyperliquidWalletEventsFilterTemplate { wallets: string[] }` | `HyperliquidWalletEventsFilterByListTemplate { wallets_list_name: string }` |
+| `StellarWalletTransactionsSourceAccountFilter` | `StellarWalletTransactionsFilterTemplate { wallets: string[] }` | `StellarWalletTransactionsFilterByListTemplate { wallets_list_name: string }` |
 
-`WebhookDestinationAttributes`: `url` (required), `security_token` (optional — auto-generated if omitted), `compression` (optional — `"none"` | `"gzip"`).
+`WebhookDestinationAttributes`: `url` (required), `compression` (required — `"none"` | `"gzip"`), `security_token` (optional — auto-generated if omitted).
 
 `WebhookStartFrom`: `Last` (resume from last delivered block) or `Latest` (start from newest).
 
@@ -1376,7 +1376,7 @@ let params = CreateWebhookFromTemplateParams {
     destination_attributes: WebhookDestinationAttributes {
         url: "https://webhook.site/...".to_string(),
         security_token: None,
-        compression: None,
+        compression: "none".to_string(),
     },
     template_args,
 };

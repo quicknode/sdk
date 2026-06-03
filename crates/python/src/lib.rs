@@ -2035,8 +2035,8 @@ impl WebhooksApiClient {
 
     /// Creates a new webhook from a predefined filter template. Requires a
     /// descriptive name, a target blockchain network, and destination
-    /// attributes (URL, optional security token — auto-generated when omitted,
-    /// and optional compression — `gzip` or `none`). `template_args` carries
+    /// attributes (URL, compression — `gzip` or `none`, and an optional
+    /// security token — auto-generated when omitted). `template_args` carries
     /// template-specific configuration such as wallet addresses or contract
     /// filters. An optional `notification_email` receives alerts if the
     /// webhook terminates.
@@ -2051,7 +2051,7 @@ impl WebhooksApiClient {
         network: String,
         destination_attributes: core::webhooks::WebhookDestinationAttributes,
         #[gen_stub(override_type(
-            type_repr = "typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs]"
+            type_repr = "typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs, EvmWalletFilterByListArgs, EvmContractEventsByListArgs, EvmAbiFilterByListArgs, SolanaWalletFilterByListArgs, BitcoinWalletFilterByListArgs, XrplWalletFilterByListArgs, HyperliquidWalletEventsFilterByListArgs, StellarWalletTransactionsFilterByListArgs]"
         ))]
         template_args: &Bound<'py, PyAny>,
         notification_email: Option<String>,
@@ -2088,7 +2088,7 @@ impl WebhooksApiClient {
         py: Python<'py>,
         webhook_id: String,
         #[gen_stub(override_type(
-            type_repr = "typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs]"
+            type_repr = "typing.Union[EvmWalletFilterArgs, EvmContractEventsArgs, EvmAbiFilterArgs, SolanaWalletFilterArgs, BitcoinWalletFilterArgs, XrplWalletFilterArgs, HyperliquidWalletEventsFilterArgs, StellarWalletTransactionsFilterArgs, EvmWalletFilterByListArgs, EvmContractEventsByListArgs, EvmAbiFilterByListArgs, SolanaWalletFilterByListArgs, BitcoinWalletFilterByListArgs, XrplWalletFilterByListArgs, HyperliquidWalletEventsFilterByListArgs, StellarWalletTransactionsFilterByListArgs]"
         ))]
         template_args: &Bound<'py, PyAny>,
         name: Option<String>,
@@ -2530,6 +2530,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<webhooks_template::XrplWalletFilterArgs>()?;
     m.add_class::<webhooks_template::HyperliquidWalletEventsFilterArgs>()?;
     m.add_class::<webhooks_template::StellarWalletTransactionsFilterArgs>()?;
+    m.add_class::<webhooks_template::EvmWalletFilterByListArgs>()?;
+    m.add_class::<webhooks_template::EvmContractEventsByListArgs>()?;
+    m.add_class::<webhooks_template::EvmAbiFilterByListArgs>()?;
+    m.add_class::<webhooks_template::SolanaWalletFilterByListArgs>()?;
+    m.add_class::<webhooks_template::BitcoinWalletFilterByListArgs>()?;
+    m.add_class::<webhooks_template::XrplWalletFilterByListArgs>()?;
+    m.add_class::<webhooks_template::HyperliquidWalletEventsFilterByListArgs>()?;
+    m.add_class::<webhooks_template::StellarWalletTransactionsFilterByListArgs>()?;
     m.add_class::<core::webhooks::WebhookDestinationAttributes>()?;
     m.add_class::<core::webhooks::Webhook>()?;
     m.add_class::<core::webhooks::ListWebhooksResponse>()?;
@@ -2545,6 +2553,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::webhooks::XrplWalletFilterTemplate>()?;
     m.add_class::<core::webhooks::HyperliquidWalletEventsFilterTemplate>()?;
     m.add_class::<core::webhooks::StellarWalletTransactionsFilterTemplate>()?;
+    m.add_class::<core::webhooks::EvmWalletFilterByListTemplate>()?;
+    m.add_class::<core::webhooks::EvmContractEventsByListTemplate>()?;
+    m.add_class::<core::webhooks::EvmAbiFilterByListTemplate>()?;
+    m.add_class::<core::webhooks::SolanaWalletFilterByListTemplate>()?;
+    m.add_class::<core::webhooks::BitcoinWalletFilterByListTemplate>()?;
+    m.add_class::<core::webhooks::XrplWalletFilterByListTemplate>()?;
+    m.add_class::<core::webhooks::HyperliquidWalletEventsFilterByListTemplate>()?;
+    m.add_class::<core::webhooks::StellarWalletTransactionsFilterByListTemplate>()?;
     m.add_class::<KvStoreApiClient>()?;
     m.add_class::<core::kvstore::KvSetEntry>()?;
     m.add_class::<core::kvstore::GetSetsResponse>()?;

@@ -1257,20 +1257,20 @@ Accessed as `qn.webhooks`. Creates webhooks from filter templates and manages th
 | `HyperliquidWalletEventsFilter` | `hyperliquidWalletEventsFilter` |
 | `StellarWalletTransactionsSourceAccountFilter` | `stellarWalletTransactionsSourceAccountFilter` |
 
-`TemplateArgs` carries the arguments; construct one per template via the factory methods:
+`TemplateArgs` carries the arguments. Each factory method accepts either the inline template (with values) or the `*ByListTemplate` (with a pre-created list name):
 
-| Factory | Argument struct | Fields |
+| Factory | Inline template (fields) | ByList template (fields) |
 |---|---|---|
-| `evm_wallet_filter` | `EvmWalletFilterTemplate` | `wallets: string[]` |
-| `evm_contract_events` | `EvmContractEventsTemplate` | `contracts: string[]`, `event_hashes?: string[]` |
-| `evm_abi_filter` | `EvmAbiFilterTemplate` | `abi: string` (JSON), `contracts: string[]` |
-| `solana_wallet_filter` | `SolanaWalletFilterTemplate` | `accounts: string[]` |
-| `bitcoin_wallet_filter` | `BitcoinWalletFilterTemplate` | `wallets: string[]` |
-| `xrpl_wallet_filter` | `XrplWalletFilterTemplate` | `wallets: string[]` |
-| `hyperliquid_wallet_events_filter` | `HyperliquidWalletEventsFilterTemplate` | `wallets: string[]` |
-| `stellar_wallet_transactions_filter` | `StellarWalletTransactionsFilterTemplate` | `source_accounts: string[]` |
+| `evmWalletFilter` | `EvmWalletFilterTemplate { wallets: string[] }` | `EvmWalletFilterByListTemplate { walletsListName: string }` |
+| `evmContractEvents` | `EvmContractEventsTemplate { contracts: string[], eventHashes: string[] }` | `EvmContractEventsByListTemplate { contractsListName: string, eventHashesListName?: string }` |
+| `evmAbiFilter` | `EvmAbiFilterTemplate { abi: string, contracts: string[] }` | `EvmAbiFilterByListTemplate { abiJson: string, contractsListName?: string }` |
+| `solanaWalletFilter` | `SolanaWalletFilterTemplate { accounts: string[] }` | `SolanaWalletFilterByListTemplate { accountsListName: string }` |
+| `bitcoinWalletFilter` | `BitcoinWalletFilterTemplate { wallets: string[] }` | `BitcoinWalletFilterByListTemplate { walletsListName: string }` |
+| `xrplWalletFilter` | `XrplWalletFilterTemplate { wallets: string[] }` | `XrplWalletFilterByListTemplate { walletsListName: string }` |
+| `hyperliquidWalletEventsFilter` | `HyperliquidWalletEventsFilterTemplate { wallets: string[] }` | `HyperliquidWalletEventsFilterByListTemplate { walletsListName: string }` |
+| `stellarWalletTransactionsFilter` | `StellarWalletTransactionsFilterTemplate { wallets: string[] }` | `StellarWalletTransactionsFilterByListTemplate { walletsListName: string }` |
 
-`WebhookDestinationAttributes`: `url` (required), `security_token` (optional — auto-generated if omitted), `compression` (optional — `"none"` | `"gzip"`).
+`WebhookDestinationAttributes`: `url` (required), `compression` (required — `"none"` | `"gzip"`), `security_token` (optional — auto-generated if omitted).
 
 `WebhookStartFrom`: `Last` (resume from last delivered block) or `Latest` (start from newest).
 
@@ -1319,7 +1319,7 @@ import { TemplateArgs } from "quicknode-sdk";
 const webhook = await qn.webhooks.createWebhookFromTemplate({
   name: "Wallet Webhook",
   network: "ethereum-mainnet",
-  destinationAttributes: { url: "https://webhook.site/..." },
+  destinationAttributes: { url: "https://webhook.site/...", compression: "none" },
   templateArgs: TemplateArgs.evmWalletFilter({
     wallets: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],
   }),

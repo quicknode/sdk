@@ -1263,20 +1263,20 @@ Accessed as `qn.webhooks`. Creates webhooks from filter templates and manages th
 | `HyperliquidWalletEventsFilter` | `hyperliquidWalletEventsFilter` |
 | `StellarWalletTransactionsSourceAccountFilter` | `stellarWalletTransactionsSourceAccountFilter` |
 
-`TemplateArgs` carries the arguments; construct one per template via the factory methods:
+In Ruby `template_args` is a JSON string; each template supports two input forms — inline values or a reference to a pre-created list by name (the server disambiguates by which keys are present in `templateArgs`):
 
-| Factory | Argument struct | Fields |
+| Template ID | Inline keys | ByList keys |
 |---|---|---|
-| `evm_wallet_filter` | `EvmWalletFilterTemplate` | `wallets: string[]` |
-| `evm_contract_events` | `EvmContractEventsTemplate` | `contracts: string[]`, `eventHashes?: string[]` (camelCase — `event_hashes` is rejected by the API) |
-| `evm_abi_filter` | `EvmAbiFilterTemplate` | `abi: string` (JSON), `contracts: string[]` |
-| `solana_wallet_filter` | `SolanaWalletFilterTemplate` | `accounts: string[]` |
-| `bitcoin_wallet_filter` | `BitcoinWalletFilterTemplate` | `wallets: string[]` |
-| `xrpl_wallet_filter` | `XrplWalletFilterTemplate` | `wallets: string[]` |
-| `hyperliquid_wallet_events_filter` | `HyperliquidWalletEventsFilterTemplate` | `wallets: string[]` |
-| `stellar_wallet_transactions_filter` | `StellarWalletTransactionsFilterTemplate` | `source_accounts: string[]` |
+| `evmWalletFilter` | `wallets: string[]` | `walletsListName: string` |
+| `evmContractEvents` | `contracts: string[]`, `eventHashes: string[]` (camelCase — `event_hashes` is rejected by the API) | `contractsListName: string`, `eventHashesListName?: string` |
+| `evmAbiFilter` | `abi: string` (JSON), `contracts: string[]` | `abiJson: string`, `contractsListName?: string` |
+| `solanaWalletFilter` | `accounts: string[]` | `accountsListName: string` |
+| `bitcoinWalletFilter` | `wallets: string[]` | `walletsListName: string` |
+| `xrplWalletFilter` | `wallets: string[]` | `walletsListName: string` |
+| `hyperliquidWalletEventsFilter` | `wallets: string[]` | `walletsListName: string` |
+| `stellarWalletTransactionsSourceAccountFilter` | `wallets: string[]` | `walletsListName: string` |
 
-`WebhookDestinationAttributes`: `url` (required), `security_token` (optional — auto-generated if omitted), `compression` (optional — `"none"` | `"gzip"`).
+`WebhookDestinationAttributes`: `url` (required), `compression` (required — `"none"` | `"gzip"`), `security_token` (optional — auto-generated if omitted).
 
 `WebhookStartFrom`: `Last` (resume from last delivered block) or `Latest` (start from newest).
 

@@ -1,13 +1,19 @@
 pub mod webhook;
 
 pub use webhook::{
-    ActivateWebhookParams, BitcoinWalletFilterTemplate, CreateWebhookFromTemplateParams,
-    EvmAbiFilterTemplate, EvmContractEventsTemplate, EvmWalletFilterTemplate, GetWebhooksParams,
-    HyperliquidWalletEventsFilterTemplate, ListWebhooksResponse, SolanaWalletFilterTemplate,
+    ActivateWebhookParams, BitcoinWalletFilterByListTemplate, BitcoinWalletFilterInput,
+    BitcoinWalletFilterTemplate, CreateWebhookFromTemplateParams, EvmAbiFilterByListTemplate,
+    EvmAbiFilterInput, EvmAbiFilterTemplate, EvmContractEventsByListTemplate,
+    EvmContractEventsInput, EvmContractEventsTemplate, EvmWalletFilterByListTemplate,
+    EvmWalletFilterInput, EvmWalletFilterTemplate, GetWebhooksParams,
+    HyperliquidWalletEventsFilterByListTemplate, HyperliquidWalletEventsFilterInput,
+    HyperliquidWalletEventsFilterTemplate, ListWebhooksResponse, SolanaWalletFilterByListTemplate,
+    SolanaWalletFilterInput, SolanaWalletFilterTemplate,
+    StellarWalletTransactionsFilterByListTemplate, StellarWalletTransactionsFilterInput,
     StellarWalletTransactionsFilterTemplate, TemplateArgs, UpdateWebhookParams,
     UpdateWebhookTemplateParams, Webhook, WebhookDestinationAttributes,
     WebhookEnabledCountResponse, WebhookPageInfo, WebhookStartFrom, WebhookTemplateId,
-    XrplWalletFilterTemplate,
+    XrplWalletFilterByListTemplate, XrplWalletFilterInput, XrplWalletFilterTemplate,
 };
 
 use crate::{config::WebhooksConfig, errors::SdkError, SdkConfig};
@@ -255,8 +261,8 @@ impl WebhooksApiClient {
 
     /// Creates a new webhook from a predefined filter template. Requires a
     /// descriptive name, a target blockchain network, and destination
-    /// attributes (URL, optional security token — auto-generated when omitted,
-    /// and optional compression — `gzip` or `none`). `template_args` carries
+    /// attributes (URL, compression — `gzip` or `none`, and an optional
+    /// security token — auto-generated when omitted). `template_args` carries
     /// template-specific configuration such as wallet addresses or contract
     /// filters. An optional `notification_email` receives alerts if the
     /// webhook terminates.
@@ -633,9 +639,10 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
-            wallets: vec!["0xabc".to_string()],
-        });
+        let template_args =
+            TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::Inline(EvmWalletFilterTemplate {
+                wallets: vec!["0xabc".to_string()],
+            }));
         let params = CreateWebhookFromTemplateParams {
             name: "test-webhook".to_string(),
             network: "ethereum-mainnet".to_string(),
@@ -643,7 +650,7 @@ mod tests {
             destination_attributes: WebhookDestinationAttributes {
                 url: "https://example.com/hook".to_string(),
                 security_token: None,
-                compression: None,
+                compression: "none".to_string(),
             },
             template_args,
         };
@@ -664,9 +671,10 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
-            wallets: vec!["0xabc".to_string()],
-        });
+        let template_args =
+            TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::Inline(EvmWalletFilterTemplate {
+                wallets: vec!["0xabc".to_string()],
+            }));
         let params = CreateWebhookFromTemplateParams {
             name: "test-webhook".to_string(),
             network: "ethereum-mainnet".to_string(),
@@ -674,7 +682,7 @@ mod tests {
             destination_attributes: WebhookDestinationAttributes {
                 url: "https://example.com/hook".to_string(),
                 security_token: None,
-                compression: None,
+                compression: "none".to_string(),
             },
             template_args,
         };
@@ -695,9 +703,10 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
-            wallets: vec!["0xabc".to_string()],
-        });
+        let template_args =
+            TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::Inline(EvmWalletFilterTemplate {
+                wallets: vec!["0xabc".to_string()],
+            }));
         let params = UpdateWebhookTemplateParams {
             name: None,
             notification_email: None,
@@ -725,9 +734,10 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
-            wallets: vec!["0xabc".to_string()],
-        });
+        let template_args =
+            TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::Inline(EvmWalletFilterTemplate {
+                wallets: vec!["0xabc".to_string()],
+            }));
         let params = UpdateWebhookTemplateParams {
             name: Some("new-name".to_string()),
             notification_email: None,
@@ -758,10 +768,12 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::EvmContractEvents(EvmContractEventsTemplate {
-            contracts: vec!["0xa0b8".to_string()],
-            event_hashes: Some(vec!["0xabcd".to_string()]),
-        });
+        let template_args = TemplateArgs::EvmContractEvents(EvmContractEventsInput::Inline(
+            EvmContractEventsTemplate {
+                contracts: vec!["0xa0b8".to_string()],
+                event_hashes: vec!["0xabcd".to_string()],
+            },
+        ));
         let params = CreateWebhookFromTemplateParams {
             name: "test-webhook".to_string(),
             network: "ethereum-mainnet".to_string(),
@@ -769,7 +781,7 @@ mod tests {
             destination_attributes: WebhookDestinationAttributes {
                 url: "https://example.com/hook".to_string(),
                 security_token: None,
-                compression: None,
+                compression: "none".to_string(),
             },
             template_args,
         };
@@ -788,9 +800,10 @@ mod tests {
             .mount(&server)
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
-        let template_args = TemplateArgs::EvmWalletFilter(EvmWalletFilterTemplate {
-            wallets: vec!["0xabc".to_string()],
-        });
+        let template_args =
+            TemplateArgs::EvmWalletFilter(EvmWalletFilterInput::Inline(EvmWalletFilterTemplate {
+                wallets: vec!["0xabc".to_string()],
+            }));
         let params = UpdateWebhookTemplateParams {
             name: None,
             notification_email: None,
