@@ -455,7 +455,7 @@ async fn main() {
                 public_key: Some(
                     "-----BEGIN PUBLIC KEY-----\nPLACEHOLDER\n-----END PUBLIC KEY-----".to_string(),
                 ),
-                kid: Some("kid1".to_string()),
+                kid: "kid1".to_string(),
                 name: Some("example-jwt".to_string()),
             },
         )

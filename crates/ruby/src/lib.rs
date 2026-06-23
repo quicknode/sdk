@@ -671,7 +671,7 @@ impl AdminApiClient {
         let id = hash_require_string(&opts, "id")?;
         let params = core::admin::CreateJwtRequest {
             public_key: hash_get_string(&opts, "public_key")?,
-            kid: hash_get_string(&opts, "kid")?,
+            kid: hash_require_string(&opts, "kid")?,
             name: hash_get_string(&opts, "name")?,
         };
         runtime()

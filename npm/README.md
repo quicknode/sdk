@@ -637,7 +637,7 @@ await qn.admin.deleteDomainMask("ep-123", "dm-1");
 
 Configures JWT validation on an endpoint.
 
-**Parameters**: `id` (endpoint id, required); body: `public_key` (string, optional), `kid` (string, optional), `name` (string, optional).
+**Parameters**: `id` (endpoint id, required); body: `public_key` (string, optional), `kid` (string, required), `name` (string, optional).
 
 **Returns**: nothing.
 
