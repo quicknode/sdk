@@ -412,7 +412,7 @@ class AdminApiClient:
         r"""
         Removes a domain mask from an endpoint by domain mask id.
         """
-    def create_jwt(self, id: builtins.str, public_key: typing.Optional[builtins.str] = None, kid: typing.Optional[builtins.str] = None, name: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
+    def create_jwt(self, id: builtins.str, kid: builtins.str, public_key: typing.Optional[builtins.str] = None, name: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
         Creates a new JWT for endpoint authentication. Accepts a public key,
         key id (`kid`), and token name.
@@ -1319,12 +1319,12 @@ class CreateJwtRequest:
         Public key used to verify signed JWTs.
         """
     @property
-    def kid(self) -> typing.Optional[builtins.str]:
+    def kid(self) -> builtins.str:
         r"""
         Key identifier (`kid`) embedded in JWT headers.
         """
     @kid.setter
-    def kid(self, value: typing.Optional[builtins.str]) -> None:
+    def kid(self, value: builtins.str) -> None:
         r"""
         Key identifier (`kid`) embedded in JWT headers.
         """

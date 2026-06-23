@@ -242,7 +242,7 @@ export interface CreateJwtRequest {
   /** Public key used to verify signed JWTs. */
   publicKey?: string
   /** Key identifier (`kid`) embedded in JWT headers. */
-  kid?: string
+  kid: string
   /** Human-readable name for the JWT configuration. */
   name?: string
 }

@@ -143,8 +143,7 @@ pub struct CreateJwtRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub public_key: Option<String>,
     /// Key identifier (`kid`) embedded in JWT headers.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub kid: Option<String>,
+    pub kid: String,
     /// Human-readable name for the JWT configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,

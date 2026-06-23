@@ -70,7 +70,7 @@ module QuicknodeSdk
     def delete_ip: (id: String, ip_id: String) -> untyped
     def create_domain_mask: (id: String, ?domain_mask: String) -> void
     def delete_domain_mask: (id: String, domain_mask_id: String) -> untyped
-    def create_jwt: (id: String, ?public_key: String, ?kid: String, ?name: String) -> void
+    def create_jwt: (id: String, kid: String, ?public_key: String, ?name: String) -> void
     def delete_jwt: (id: String, jwt_id: String) -> void
     def create_request_filter: (id: String, ?methods: Array[String]) -> untyped
     def update_request_filter: (id: String, request_filter_id: String, ?methods: Array[String]) -> void

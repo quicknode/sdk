@@ -667,14 +667,14 @@ impl AdminApiClient {
 
     /// Creates a new JWT for endpoint authentication. Accepts a public key,
     /// key id (`kid`), and token name.
-    #[pyo3(signature = (id, public_key=None, kid=None, name=None))]
+    #[pyo3(signature = (id, kid, public_key=None, name=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_jwt<'py>(
         &self,
         py: Python<'py>,
         id: String,
+        kid: String,
         public_key: Option<String>,
-        kid: Option<String>,
         name: Option<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
