@@ -104,8 +104,7 @@ pub struct UpdateSecurityOptionsResponse {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CreateReferrerRequest {
     /// Allowed referrer URL or domain.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub referrer: Option<String>,
+    pub referrer: String,
 }
 
 /// Parameters for `create_ip`.
@@ -116,8 +115,7 @@ pub struct CreateReferrerRequest {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CreateIpRequest {
     /// IP address to whitelist.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ip: Option<String>,
+    pub ip: String,
 }
 
 /// Parameters for `create_domain_mask`.
@@ -140,13 +138,11 @@ pub struct CreateDomainMaskRequest {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CreateJwtRequest {
     /// Public key used to verify signed JWTs.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub public_key: Option<String>,
+    pub public_key: String,
     /// Key identifier (`kid`) embedded in JWT headers.
     pub kid: String,
     /// Human-readable name for the JWT configuration.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
 }
 
 /// Parameters for `create_request_filter`.
@@ -157,8 +153,7 @@ pub struct CreateJwtRequest {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CreateRequestFilterRequest {
     /// Whitelisted RPC methods; other methods will be blocked.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub method: Option<Vec<String>>,
+    pub method: Vec<String>,
 }
 
 /// Response from `create_request_filter`.

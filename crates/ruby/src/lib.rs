@@ -601,7 +601,7 @@ impl AdminApiClient {
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         let params = core::admin::CreateReferrerRequest {
-            referrer: hash_get_string(&opts, "referrer")?,
+            referrer: hash_require_string(&opts, "referrer")?,
         };
         runtime()
             .block_on(client.create_referrer(&id, &params))
@@ -624,7 +624,7 @@ impl AdminApiClient {
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         let params = core::admin::CreateIpRequest {
-            ip: hash_get_string(&opts, "ip")?,
+            ip: hash_require_string(&opts, "ip")?,
         };
         runtime()
             .block_on(client.create_ip(&id, &params))
@@ -670,9 +670,9 @@ impl AdminApiClient {
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         let params = core::admin::CreateJwtRequest {
-            public_key: hash_get_string(&opts, "public_key")?,
+            public_key: hash_require_string(&opts, "public_key")?,
             kid: hash_require_string(&opts, "kid")?,
-            name: hash_get_string(&opts, "name")?,
+            name: hash_require_string(&opts, "name")?,
         };
         runtime()
             .block_on(client.create_jwt(&id, &params))
@@ -694,7 +694,7 @@ impl AdminApiClient {
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         let params = core::admin::CreateRequestFilterRequest {
-            method: hash_get_vec_string(&opts, "methods")?,
+            method: hash_require_vec_string(&opts, "methods")?,
         };
         runtime()
             .block_on(client.create_request_filter(&id, &params))

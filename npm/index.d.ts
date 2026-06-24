@@ -234,17 +234,17 @@ export interface CreateEndpointResponse {
 /** Parameters for `create_ip`. */
 export interface CreateIpRequest {
   /** IP address to whitelist. */
-  ip?: string
+  ip: string
 }
 
 /** Parameters for `create_jwt`. */
 export interface CreateJwtRequest {
   /** Public key used to verify signed JWTs. */
-  publicKey?: string
+  publicKey: string
   /** Key identifier (`kid`) embedded in JWT headers. */
   kid: string
   /** Human-readable name for the JWT configuration. */
-  name?: string
+  name: string
 }
 
 /** Parameters for `create_list`. */
@@ -290,7 +290,7 @@ export interface CreateOrUpdateIpCustomHeaderResponse {
 /** Parameters for `create_referrer`. */
 export interface CreateReferrerRequest {
   /** Allowed referrer URL or domain. */
-  referrer?: string
+  referrer: string
 }
 
 /** Data wrapper for a created request filter. */
@@ -302,7 +302,7 @@ export interface CreateRequestFilterData {
 /** Parameters for `create_request_filter`. */
 export interface CreateRequestFilterRequest {
   /** Whitelisted RPC methods; other methods will be blocked. */
-  method?: Array<string>
+  method: Array<string>
 }
 
 /** Response from `create_request_filter`. */
