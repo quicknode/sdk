@@ -18,6 +18,7 @@ struct ErrorClasses {
     connection: Opaque<ExceptionClass>,
     api: Opaque<ExceptionClass>,
     decode: Opaque<ExceptionClass>,
+    rpc: Opaque<ExceptionClass>,
 }
 
 static CLASSES: OnceLock<ErrorClasses> = OnceLock::new();
@@ -31,11 +32,15 @@ pub fn init(ruby: &Ruby, module: &RModule) -> Result<(), magnus::Error> {
     let connection = module.define_error("ConnectionError", http)?;
     let api = module.define_error("ApiError", base)?;
     let decode = module.define_error("DecodeError", base)?;
+    let rpc = module.define_error("RpcError", base)?;
 
-    // attr_reader :status, :body on ApiError; :body on DecodeError
+    // attr_reader :status, :body on ApiError; :body on DecodeError;
+    // :code, :message on RpcError
     api.define_method("status", magnus::method!(read_status, 0))?;
     api.define_method("body", magnus::method!(read_body, 0))?;
     decode.define_method("body", magnus::method!(read_body, 0))?;
+    rpc.define_method("code", magnus::method!(read_code, 0))?;
+    rpc.define_method("message", magnus::method!(read_message, 0))?;
 
     CLASSES
         .set(ErrorClasses {
@@ -46,6 +51,7 @@ pub fn init(ruby: &Ruby, module: &RModule) -> Result<(), magnus::Error> {
             connection: connection.into(),
             api: api.into(),
             decode: decode.into(),
+            rpc: rpc.into(),
         })
         .map_err(|_| {
             magnus::Error::new(
@@ -62,6 +68,14 @@ fn read_status(rb_self: magnus::Exception) -> Result<Value, magnus::Error> {
 
 fn read_body(rb_self: magnus::Exception) -> Result<Value, magnus::Error> {
     as_object(rb_self)?.ivar_get("@body")
+}
+
+fn read_code(rb_self: magnus::Exception) -> Result<Value, magnus::Error> {
+    as_object(rb_self)?.ivar_get("@code")
+}
+
+fn read_message(rb_self: magnus::Exception) -> Result<Value, magnus::Error> {
+    as_object(rb_self)?.ivar_get("@message")
 }
 
 fn as_object(exc: magnus::Exception) -> Result<RObject, magnus::Error> {
@@ -106,6 +120,9 @@ pub fn map_err(e: SdkError) -> magnus::Error {
             None,
             Some(body.clone()),
         ),
+        SdkError::Rpc { code, message } => {
+            build_rpc(&ruby, ruby.get_inner(c.rpc), &msg, *code, message.clone())
+        }
         SdkError::Http(_) => {
             let cls = match e.http_kind() {
                 Some(HttpKind::Timeout) => ruby.get_inner(c.timeout),
@@ -114,6 +131,25 @@ pub fn map_err(e: SdkError) -> magnus::Error {
             };
             magnus::Error::new(cls, msg)
         }
+    }
+}
+
+fn build_rpc(
+    ruby: &Ruby,
+    class: ExceptionClass,
+    msg: &str,
+    code: i64,
+    message: String,
+) -> magnus::Error {
+    match class.new_instance((msg,)) {
+        Ok(exc) => {
+            if let Some(obj) = RObject::from_value(exc.as_value()) {
+                let _ = obj.ivar_set("@code", code);
+                let _ = obj.ivar_set("@message", message);
+            }
+            magnus::Error::from(exc)
+        }
+        Err(_) => magnus::Error::new(ruby.exception_runtime_error(), msg.to_string()),
     }
 }
 

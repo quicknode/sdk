@@ -588,5 +588,6 @@ module.exports.WebhookTemplateId = nativeBinding.WebhookTemplateId
 module.exports.AdminApiClient = nativeBinding.AdminApiClient
 module.exports.KvStoreApiClient = nativeBinding.KvStoreApiClient
 module.exports.QuicknodeSdk = nativeBinding.QuicknodeSdk
+module.exports.RpcApiClient = nativeBinding.RpcApiClient
 module.exports.StreamsApiClient = nativeBinding.StreamsApiClient
 module.exports.WebhooksApiClient = nativeBinding.WebhooksApiClient

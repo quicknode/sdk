@@ -24,6 +24,7 @@ __all__ = [
     "BulkUpdateEndpointStatusData",
     "BulkUpdateEndpointStatusRequest",
     "BulkUpdateEndpointStatusResponse",
+    "CachedToken",
     "Chain",
     "ChainNetwork",
     "ChainUsage",
@@ -150,6 +151,8 @@ __all__ = [
     "RenameTagRequest",
     "RenameTagResponse",
     "ResendTeamInviteResponse",
+    "RpcApiClient",
+    "RpcConfig",
     "S3Attributes",
     "SdkFullConfig",
     "SecurityOption",
@@ -179,6 +182,7 @@ __all__ = [
     "TeamSummary",
     "TeamUser",
     "TestFilterResponse",
+    "ToolingAccessStatus",
     "UpdateEndpointRequest",
     "UpdateEndpointStatusRequest",
     "UpdateEndpointStatusResponse",
@@ -520,6 +524,26 @@ class AdminApiClient:
         r"""
         Returns all chains supported by Quicknode along with their networks.
         Each entry includes the chain slug and its network slugs and names.
+        """
+    def tooling_access_status(self) -> typing.Coroutine[typing.Any, typing.Any, ToolingAccessStatus]:
+        r"""
+        Returns the current Tooling Access status for the account. Inspect
+        `enabled` to decide whether to enable provisioning.
+        """
+    def enable_tooling_access(self) -> typing.Coroutine[typing.Any, typing.Any, ToolingAccessStatus]:
+        r"""
+        Enables (provisions) Tooling Access. Idempotent. Requires an admin role
+        and an eligible plan.
+        """
+    def disable_tooling_access(self) -> typing.Coroutine[typing.Any, typing.Any, ToolingAccessStatus]:
+        r"""
+        Disables Tooling Access, pausing the endpoint. Idempotent.
+        """
+    def mint_tooling_token(self) -> typing.Coroutine[typing.Any, typing.Any, CachedToken]:
+        r"""
+        Mints a short-lived session JWT for the provisioned Tooling Access
+        endpoint. Returns the endpoint URL, the JWT, and its expiry. Requires
+        Tooling Access to be enabled first.
         """
     def list_invoices(self) -> typing.Coroutine[typing.Any, typing.Any, ListInvoicesResponse]:
         r"""
@@ -1120,6 +1144,48 @@ class BulkUpdateEndpointStatusResponse:
         r"""
         Error message when the request did not succeed.
         """
+
+@typing.final
+class CachedToken:
+    r"""
+    A minted session JWT plus the endpoint it authenticates against and its
+    wall-clock expiry. This is the unit cached by the RPC client and the unit a
+    host persists between processes (e.g. the CLI's on-disk token cache).
+    
+    `exp_unix` is the JWT `exp` claim (unix seconds), used directly so it
+    survives a process restart (unlike a monotonic `Instant`).
+    """
+    @property
+    def endpoint_url(self) -> builtins.str:
+        r"""
+        The provisioned tooling-access endpoint URL the JWT authenticates against.
+        """
+    @endpoint_url.setter
+    def endpoint_url(self, value: builtins.str) -> None:
+        r"""
+        The provisioned tooling-access endpoint URL the JWT authenticates against.
+        """
+    @property
+    def token(self) -> builtins.str:
+        r"""
+        The minted ES256 session JWT, presented as a Bearer token.
+        """
+    @token.setter
+    def token(self, value: builtins.str) -> None:
+        r"""
+        The minted ES256 session JWT, presented as a Bearer token.
+        """
+    @property
+    def exp_unix(self) -> builtins.int:
+        r"""
+        JWT `exp` claim in unix seconds.
+        """
+    @exp_unix.setter
+    def exp_unix(self, value: builtins.int) -> None:
+        r"""
+        JWT `exp` claim in unix seconds.
+        """
+    def __new__(cls, endpoint_url: builtins.str, token: builtins.str, exp_unix: builtins.int) -> CachedToken: ...
 
 @typing.final
 class Chain:
@@ -4812,6 +4878,8 @@ class QuicknodeSdk:
     def webhooks(self) -> WebhooksApiClient: ...
     @property
     def kvstore(self) -> KvStoreApiClient: ...
+    @property
+    def rpc(self) -> RpcApiClient: ...
     def __new__(cls, config: SdkFullConfig) -> QuicknodeSdk:
         r"""
         Creates a new SDK instance from an explicit configuration.
@@ -5021,6 +5089,93 @@ class ResendTeamInviteResponse:
         """
 
 @typing.final
+class RpcApiClient:
+    def call(self, method: builtins.str, params: typing.Optional[typing.Any] = None, network: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Makes a JSON-RPC call against the account's Tooling Access endpoint,
+        authenticated with a short-lived session JWT (minted and refreshed
+        automatically). `params` accepts a list (positional) or dict (by-name)
+        and defaults to `[]`. `network` selects a chain on the multichain
+        endpoint (a key in the seeded network map, e.g. `"solana-mainnet"`);
+        omit for the endpoint's default network. Returns the JSON-RPC `result`.
+        A JSON-RPC error is raised as `RpcError`.
+        """
+    def set_networks(self, networks: typing.Mapping[builtins.str, builtins.str]) -> None:
+        r"""
+        Seeds the per-network URL map for multichain routing (network key ->
+        full http_url), typically built from
+        `admin.get_endpoint_urls(...).multichain_urls`.
+        """
+    def current_token(self) -> typing.Optional[CachedToken]:
+        r"""
+        Returns a snapshot of the currently cached session token, or `None` if
+        no token has been minted or seeded yet. Hosts use this to persist the
+        token between processes.
+        """
+
+@typing.final
+class RpcConfig:
+    @property
+    def base_url(self) -> typing.Optional[builtins.str]:
+        r"""
+        Override for the tooling-access control-plane base URL used to mint
+        session tokens. When unset, falls back to the tooling-access default.
+        """
+    @base_url.setter
+    def base_url(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Override for the tooling-access control-plane base URL used to mint
+        session tokens. When unset, falls back to the tooling-access default.
+        """
+    @property
+    def seed(self) -> typing.Optional[CachedToken]:
+        r"""
+        Optional pre-existing token to seed the in-memory cache (e.g. loaded
+        from a host's on-disk cache). Advisory: a malformed or expired seed is
+        treated as a cache miss and a fresh token is minted.
+        """
+    @seed.setter
+    def seed(self, value: typing.Optional[CachedToken]) -> None:
+        r"""
+        Optional pre-existing token to seed the in-memory cache (e.g. loaded
+        from a host's on-disk cache). Advisory: a malformed or expired seed is
+        treated as a cache miss and a fresh token is minted.
+        """
+    @property
+    def refresh_margin_secs(self) -> typing.Optional[builtins.int]:
+        r"""
+        Seconds before `exp` at which the client proactively refreshes. The
+        margin also absorbs clock skew between client and endpoint. Defaults to
+        60 when unset.
+        """
+    @refresh_margin_secs.setter
+    def refresh_margin_secs(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Seconds before `exp` at which the client proactively refreshes. The
+        margin also absorbs clock skew between client and endpoint. Defaults to
+        60 when unset.
+        """
+    @property
+    def networks(self) -> typing.Optional[builtins.dict[builtins.str, builtins.str]]:
+        r"""
+        Per-network URL map for multichain routing: network key (e.g.
+        `"solana-mainnet"`, `"polygon"`) -> full http_url. Built from
+        `admin.get_endpoint_urls(...).multichain_urls`. When set, `rpc.call` with
+        a `network` resolves the target URL here. Optional; the default-network
+        call path needs no map.
+        """
+    @networks.setter
+    def networks(self, value: typing.Optional[builtins.dict[builtins.str, builtins.str]]) -> None:
+        r"""
+        Per-network URL map for multichain routing: network key (e.g.
+        `"solana-mainnet"`, `"polygon"`) -> full http_url. Built from
+        `admin.get_endpoint_urls(...).multichain_urls`. When set, `rpc.call` with
+        a `network` resolves the target URL here. Optional; the default-network
+        call path needs no map.
+        """
+    def __new__(cls, base_url: typing.Optional[builtins.str] = None, seed: typing.Optional[CachedToken] = None, refresh_margin_secs: typing.Optional[builtins.int] = None, networks: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> RpcConfig: ...
+
+@typing.final
 class S3Attributes:
     r"""
     Configuration for delivering stream batches to an S3-compatible object store.
@@ -5153,7 +5308,11 @@ class SdkFullConfig:
     def kvstore(self) -> typing.Optional[KvStoreConfig]: ...
     @kvstore.setter
     def kvstore(self, value: typing.Optional[KvStoreConfig]) -> None: ...
-    def __new__(cls, api_key: builtins.str, http: typing.Optional[HttpConfig] = None, admin: typing.Optional[AdminConfig] = None, streams: typing.Optional[StreamsConfig] = None, webhooks: typing.Optional[WebhooksConfig] = None, kvstore: typing.Optional[KvStoreConfig] = None) -> SdkFullConfig: ...
+    @property
+    def rpc(self) -> typing.Optional[RpcConfig]: ...
+    @rpc.setter
+    def rpc(self, value: typing.Optional[RpcConfig]) -> None: ...
+    def __new__(cls, api_key: builtins.str, http: typing.Optional[HttpConfig] = None, admin: typing.Optional[AdminConfig] = None, streams: typing.Optional[StreamsConfig] = None, webhooks: typing.Optional[WebhooksConfig] = None, kvstore: typing.Optional[KvStoreConfig] = None, rpc: typing.Optional[RpcConfig] = None) -> SdkFullConfig: ...
 
 @typing.final
 class SecurityOption:
@@ -6021,6 +6180,27 @@ class TestFilterResponse:
     def logs(self, value: builtins.list[builtins.str]) -> None:
         r"""
         Log lines emitted by the filter function during evaluation.
+        """
+
+@typing.final
+class ToolingAccessStatus:
+    r"""
+    Current Tooling Access status for the account. `enabled` is the source of
+    truth — a previously-provisioned-but-disabled account may still report a
+    non-null `endpoint_url`.
+    """
+    @property
+    def enabled(self) -> builtins.bool: ...
+    @property
+    def endpoint_url(self) -> typing.Optional[builtins.str]: ...
+    @property
+    def enabled_at(self) -> typing.Optional[builtins.str]: ...
+    @property
+    def id(self) -> typing.Optional[builtins.str]:
+        r"""
+        The provisioned endpoint's id. Used to fetch the per-network URL map
+        (`get_endpoint_urls`) for multichain routing. `None` on control planes
+        that don't yet return it.
         """
 
 @typing.final

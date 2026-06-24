@@ -1689,6 +1689,53 @@ Deletes a list and all of its items.
 qn.kvstore.delete_list("my-list").await?;
 ```
 
+### RPC & Tooling Access
+
+Tooling Access provisions a single multichain, read-only endpoint per account and
+mints short-lived session JWTs. `qn.rpc` makes JSON-RPC calls directly against that
+endpoint, minting and refreshing the JWT automatically — no endpoint URL or token to
+manage.
+
+Tooling Access must be enabled once (admin role + eligible plan). The control-plane
+methods live on `qn.admin`:
+
+```rust
+// Rust
+let status = qn.admin.tooling_access_status().await?;
+if !status.enabled {
+    qn.admin.enable_tooling_access().await?; // idempotent; admin role required
+}
+
+// Make on-chain calls. params is Option<serde_json::Value>; None defaults to [].
+// The third arg selects a network on the multichain endpoint; None = default.
+let block_number = qn.rpc.call("eth_blockNumber", None, None).await?;
+let balance = qn
+    .rpc
+    .call(
+        "eth_getBalance",
+        Some(serde_json::json!(["0xabc...", "latest"])),
+        None,
+    )
+    .await?;
+
+// Multichain: seed the per-network URL map (from get_endpoint_urls), then pass
+// the network key as the third arg.
+let urls = qn.admin.get_endpoint_urls(endpoint_id).await?;
+if let Some(data) = urls.data {
+    if let Some(mc) = data.multichain_urls {
+        qn.rpc
+            .set_networks(mc.into_iter().map(|(k, v)| (k, v.http_url)).collect());
+    }
+}
+let slot = qn.rpc.call("getSlot", None, Some("solana-mainnet".into())).await?;
+
+// A JSON-RPC error member is returned as SdkError::Rpc { code, message }.
+```
+
+A host that persists across processes can snapshot the cached token with
+`qn.rpc.current_token()` and re-seed it via `RpcConfig { seed, .. }`;
+`refresh_margin_secs` (default 60) tunes how early the token is refreshed.
+
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
@@ -1704,8 +1751,9 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`               |
 
-Variants: pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`.
+Variants: pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config, Rpc }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`.
 
 ```rust
 // Rust

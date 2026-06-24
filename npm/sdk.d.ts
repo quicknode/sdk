@@ -310,6 +310,11 @@ export type {
   UpdateListParams,
   AddListItemParams,
   ListContainsItemResponse,
+  // rpc / tooling access
+  RpcConfig,
+  CachedToken,
+  ToolingAccessStatus,
+  RpcApiClient,
 } from "./index";
 
 // const enums must use `export` (not `export type`) so they are usable as values
@@ -370,6 +375,7 @@ export class QuicknodeSdk {
   streams: StreamsApiClientTyped;
   webhooks: WebhooksApiClientTyped;
   kvstore: _QuicknodeSdk["kvstore"];
+  rpc: _QuicknodeSdk["rpc"];
 }
 
 // Typed static factory methods producing each discriminated variant of
@@ -419,4 +425,7 @@ export class ApiError extends QuicknodeError {
 }
 export class DecodeError extends QuicknodeError {
   body: string;
+}
+export class RpcError extends QuicknodeError {
+  code: number;
 }

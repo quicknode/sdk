@@ -34,5 +34,9 @@ module QuicknodeSdk
     def kvstore
       KvStore.new(@native.kvstore)
     end
+
+    def rpc
+      Rpc.new(@native.rpc)
+    end
   end
 end

@@ -1613,6 +1613,45 @@ Deletes a list and all of its items.
 qn.kvstore.delete_list(key: "my-list")
 ```
 
+### RPC & Tooling Access
+
+Tooling Access provisions a single multichain, read-only endpoint per account and
+mints short-lived session JWTs. `qn.rpc` makes JSON-RPC calls directly against that
+endpoint, minting and refreshing the JWT automatically — no endpoint URL or token to
+manage.
+
+Tooling Access must be enabled once (admin role + eligible plan). The control-plane
+methods live on `qn.admin`:
+
+```ruby
+# Ruby
+status = qn.admin.tooling_access_status
+qn.admin.enable_tooling_access unless status["enabled"] # idempotent; admin role required
+
+# Make on-chain calls. params defaults to []; pass an Array (positional) or Hash.
+block_number = qn.rpc.call(method: "eth_blockNumber")
+balance = qn.rpc.call(method: "eth_getBalance", params: ["0xabc...", "latest"])
+
+# Multichain: select a network by its multichain_urls key. Seed the map first
+# (from admin.get_endpoint_urls), then pass network:.
+urls = qn.admin.get_endpoint_urls(id: endpoint_id)
+map = (urls.dig("data", "multichain_urls") || {}).transform_values { |v| v["http_url"] }
+qn.rpc.set_networks(networks: map)
+slot = qn.rpc.call(method: "getSlot", network: "solana-mainnet")
+
+# A JSON-RPC error member is raised as QuicknodeSdk::RpcError (with #code, #message).
+begin
+  qn.rpc.call(method: "eth_getBalance", params: ["bad"])
+rescue QuicknodeSdk::RpcError => e
+  warn "#{e.code}: #{e.message}"
+end
+```
+
+Responses are wrapped in `QuicknodeSdk::IndifferentHash` — access with `[]`. A host that
+persists across processes can snapshot the cached token with `qn.rpc.current_token` and
+re-seed it via the `rpc: { seed: ... }` config key; `refresh_margin_secs` (default 60)
+tunes how early the token is refreshed.
+
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
@@ -1628,8 +1667,9 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`               |
 
-Class names: `QuicknodeSdk::Error`, `QuicknodeSdk::ConfigError`, `QuicknodeSdk::HttpError`, `QuicknodeSdk::TimeoutError`, `QuicknodeSdk::ConnectionError`, `QuicknodeSdk::ApiError`, `QuicknodeSdk::DecodeError`. All extend `StandardError`. Hash-key validation still raises `ArgumentError`.
+Class names: `QuicknodeSdk::Error`, `QuicknodeSdk::ConfigError`, `QuicknodeSdk::HttpError`, `QuicknodeSdk::TimeoutError`, `QuicknodeSdk::ConnectionError`, `QuicknodeSdk::ApiError`, `QuicknodeSdk::DecodeError`, `QuicknodeSdk::RpcError`. All extend `StandardError`. Hash-key validation still raises `ArgumentError`.
 
 ```ruby
 # Ruby

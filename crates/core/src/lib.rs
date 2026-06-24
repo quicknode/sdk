@@ -2,12 +2,14 @@ pub mod admin;
 pub mod config;
 pub mod errors;
 pub mod kvstore;
+pub mod rpc;
 pub mod streams;
 pub mod webhooks;
 
+pub use admin::ToolingAccessStatus;
 pub use config::{
-    AdminConfig, ClientInfo, HttpConfig, KvStoreConfig, SdkFullConfig, StreamsConfig,
-    WebhooksConfig,
+    AdminConfig, CachedToken, ClientInfo, HttpConfig, KvStoreConfig, RpcConfig, SdkFullConfig,
+    StreamsConfig, WebhooksConfig,
 };
 pub use kvstore::{
     AddListItemParams, BulkSetsParams, CreateListParams, CreateSetParams, GetListData,
@@ -15,6 +17,7 @@ pub use kvstore::{
     GetSetsParams, GetSetsResponse, KvSetEntry, KvStoreApiClient, ListContainsItemResponse,
     UpdateListParams,
 };
+pub use rpc::RpcApiClient;
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::Client as ReqwestClient;
@@ -196,6 +199,9 @@ pub struct QuicknodeSdk {
     /// Key-Value Store client: manages sets (single values) and lists
     /// (ordered collections) under string keys.
     pub kvstore: kvstore::KvStoreApiClient,
+    /// JSON-RPC client: makes on-chain calls against the account's Tooling
+    /// Access endpoint using short-lived session JWTs.
+    pub rpc: rpc::RpcApiClient,
 }
 
 impl QuicknodeSdk {
@@ -216,7 +222,8 @@ impl QuicknodeSdk {
             admin: admin::AdminApiClient::new(sdk_config.clone()),
             streams: streams::StreamsApiClient::new(sdk_config.clone()),
             webhooks: webhooks::WebhooksApiClient::new(sdk_config.clone()),
-            kvstore: kvstore::KvStoreApiClient::new(sdk_config),
+            kvstore: kvstore::KvStoreApiClient::new(sdk_config.clone()),
+            rpc: rpc::RpcApiClient::new(sdk_config, config.rpc.as_ref()),
         })
     }
 
@@ -247,6 +254,7 @@ mod headers_tests {
             streams: None,
             webhooks: None,
             kvstore: None,
+            rpc: None,
         }
     }
 
@@ -335,6 +343,7 @@ mod headers_tests {
             streams: None,
             webhooks: None,
             kvstore: None,
+            rpc: None,
         };
 
         let sdk = QuicknodeSdk::new(&cfg).unwrap();

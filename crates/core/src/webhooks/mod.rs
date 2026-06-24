@@ -346,6 +346,7 @@ mod tests {
                 base_url: Some(base_url),
             }),
             kvstore: None,
+            rpc: None,
         })
         .unwrap()
     }

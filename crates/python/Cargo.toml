@@ -22,3 +22,6 @@ pyo3 = { workspace = true }
 pyo3-async-runtimes = { workspace = true, features = ["tokio-runtime"] }
 pyo3-stub-gen = { workspace = true }
 serde_json = "1.0"
+# serde <-> Python bridge for arbitrary JSON-RPC params/results. Version-locked
+# to our pyo3 (0.27); avoids a hand-rolled recursive Value<->PyAny converter.
+pythonize = "0.27"

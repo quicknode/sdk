@@ -22,6 +22,8 @@ pub struct QuicknodeSdk {
     webhooks: WebhooksApiClient,
     #[pyo3(get)]
     kvstore: KvStoreApiClient,
+    #[pyo3(get)]
+    rpc: RpcApiClient,
 }
 
 /// Build a [`core::ClientInfo`] from the live Python runtime so the SDK's
@@ -73,7 +75,10 @@ impl QuicknodeSdk {
                 inner: core::streams::StreamsApiClient::new(sdk_config.clone()),
             },
             kvstore: KvStoreApiClient {
-                inner: core::kvstore::KvStoreApiClient::new(sdk_config),
+                inner: core::kvstore::KvStoreApiClient::new(sdk_config.clone()),
+            },
+            rpc: RpcApiClient {
+                inner: core::rpc::RpcApiClient::new(sdk_config, config.rpc.as_ref()),
             },
         })
     }
@@ -89,6 +94,7 @@ impl QuicknodeSdk {
                     inner: sdk.webhooks,
                 },
                 kvstore: KvStoreApiClient { inner: sdk.kvstore },
+                rpc: RpcApiClient { inner: sdk.rpc },
             })
             .map_err(errors::map_sdk_err)
     }
@@ -1068,6 +1074,66 @@ impl AdminApiClient {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client.list_chains().await.map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Returns the current Tooling Access status for the account. Inspect
+    /// `enabled` to decide whether to enable provisioning.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ToolingAccessStatus]"
+    ))]
+    fn tooling_access_status<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .tooling_access_status()
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Enables (provisions) Tooling Access. Idempotent. Requires an admin role
+    /// and an eligible plan.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ToolingAccessStatus]"
+    ))]
+    fn enable_tooling_access<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .enable_tooling_access()
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Disables Tooling Access, pausing the endpoint. Idempotent.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ToolingAccessStatus]"
+    ))]
+    fn disable_tooling_access<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .disable_tooling_access()
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Mints a short-lived session JWT for the provisioned Tooling Access
+    /// endpoint. Returns the endpoint URL, the JWT, and its expiry. Requires
+    /// Tooling Access to be enabled first.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CachedToken]"
+    ))]
+    fn mint_tooling_token<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .mint_tooling_token()
+                .await
+                .map_err(errors::map_sdk_err)
         })
     }
 
@@ -2361,6 +2427,77 @@ impl KvStoreApiClient {
     }
 }
 
+#[gen_stub_pyclass]
+#[pyclass]
+#[derive(Clone)]
+pub struct RpcApiClient {
+    inner: core::rpc::RpcApiClient,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl RpcApiClient {
+    /// Makes a JSON-RPC call against the account's Tooling Access endpoint,
+    /// authenticated with a short-lived session JWT (minted and refreshed
+    /// automatically). `params` accepts a list (positional) or dict (by-name)
+    /// and defaults to `[]`. `network` selects a chain on the multichain
+    /// endpoint (a key in the seeded network map, e.g. `"solana-mainnet"`);
+    /// omit for the endpoint's default network. Returns the JSON-RPC `result`.
+    /// A JSON-RPC error is raised as `RpcError`.
+    #[pyo3(signature = (method, params=None, network=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn call<'py>(
+        &self,
+        py: Python<'py>,
+        method: String,
+        params: Option<Bound<'py, PyAny>>,
+        network: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        // Convert the Python params to serde_json::Value up front (needs the
+        // GIL); the network call itself runs without it.
+        let params_value = match params {
+            Some(obj) => Some(pythonize::depythonize(&obj).map_err(errors::map_pythonize_err)?),
+            None => None,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let result = client
+                .call(&method, params_value, network)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            // Convert the JSON result back to a Python object under the GIL.
+            Python::attach(|py| {
+                pythonize::pythonize(py, &result)
+                    .map(pyo3::Bound::unbind)
+                    .map_err(errors::map_pythonize_err)
+            })
+        })
+    }
+
+    /// Seeds the per-network URL map for multichain routing (network key ->
+    /// full http_url), typically built from
+    /// `admin.get_endpoint_urls(...).multichain_urls`.
+    fn set_networks(&self, networks: std::collections::HashMap<String, String>) {
+        self.inner.set_networks(networks);
+    }
+
+    /// Discards the in-memory cached token, forcing the next call to mint a
+    /// fresh one. Use when the cached token is known stale beyond expiry.
+    fn clear_cached_token(&self) {
+        self.inner.clear_cached_token();
+    }
+
+    /// Returns a snapshot of the currently cached session token, or `None` if
+    /// no token has been minted or seeded yet. Hosts use this to persist the
+    /// token between processes.
+    #[gen_stub(override_return_type(type_repr = "typing.Optional[CachedToken]"))]
+    fn current_token(&self) -> Option<core::CachedToken> {
+        self.inner.current_token()
+    }
+}
+
 // ── Module ─────────────────────────────────────────────────────
 
 #[pymodule]
@@ -2503,7 +2640,11 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::StreamsConfig>()?;
     m.add_class::<core::WebhooksConfig>()?;
     m.add_class::<core::KvStoreConfig>()?;
+    m.add_class::<core::RpcConfig>()?;
+    m.add_class::<core::CachedToken>()?;
     m.add_class::<core::SdkFullConfig>()?;
+    m.add_class::<RpcApiClient>()?;
+    m.add_class::<core::admin::ToolingAccessStatus>()?;
     m.add_class::<StreamsApiClient>()?;
     m.add_class::<streams_destination::PyStream>()?;
     m.add_class::<streams_destination::PyListStreamsResponse>()?;

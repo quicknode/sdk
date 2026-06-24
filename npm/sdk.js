@@ -15,6 +15,7 @@ class QuicknodeSdk {
     this.streams = errors.wrapClient(this._inner.streams);
     this.webhooks = errors.wrapClient(this._inner.webhooks);
     this.kvstore = errors.wrapClient(this._inner.kvstore);
+    this.rpc = errors.wrapClient(this._inner.rpc);
   }
 
   static fromEnv() {
@@ -28,6 +29,7 @@ class QuicknodeSdk {
     instance.streams = errors.wrapClient(instance._inner.streams);
     instance.webhooks = errors.wrapClient(instance._inner.webhooks);
     instance.kvstore = errors.wrapClient(instance._inner.kvstore);
+    instance.rpc = errors.wrapClient(instance._inner.rpc);
     return instance;
   }
 }
@@ -85,4 +87,5 @@ module.exports = {
   ConnectionError: errors.ConnectionError,
   ApiError: errors.ApiError,
   DecodeError: errors.DecodeError,
+  RpcError: errors.RpcError,
 };

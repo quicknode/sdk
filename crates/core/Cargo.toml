@@ -34,6 +34,10 @@ bon = { version = "3.9", optional = true }
 config = "0.15"
 url = "2.5.8"
 secrecy = "0.8"
+# sync-only: provides tokio::sync::Mutex for single-flight JWT refresh in the
+# rpc client without pulling in the tokio runtime. The async runtime itself is
+# supplied by the caller (bindings or the user's own runtime).
+tokio = { version = "1", default-features = false, features = ["sync"] }
 
 [[example]]
 name = "admin"
@@ -53,6 +57,10 @@ required-features = ["rust"]
 
 [[example]]
 name = "webhooks_e2e"
+required-features = ["rust"]
+
+[[example]]
+name = "rpc"
 required-features = ["rust"]
 
 [dev-dependencies]
