@@ -328,6 +328,7 @@ mod tests {
             webhooks: None,
             kvstore: None,
             sql: None,
+            rpc: None,
         })
         .unwrap()
     }

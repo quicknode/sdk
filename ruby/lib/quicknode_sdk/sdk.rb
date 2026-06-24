@@ -38,5 +38,9 @@ module QuicknodeSdk
     def sql
       Sql.new(@native.sql)
     end
+
+    def rpc
+      Rpc.new(@native.rpc)
+    end
   end
 end

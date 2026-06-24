@@ -2,13 +2,15 @@ pub mod admin;
 pub mod config;
 pub mod errors;
 pub mod kvstore;
+pub mod rpc;
 pub mod sql;
 pub mod streams;
 pub mod webhooks;
 
+pub use admin::ToolingAccessStatus;
 pub use config::{
-    AdminConfig, ClientInfo, HttpConfig, KvStoreConfig, SdkFullConfig, SqlConfig, StreamsConfig,
-    WebhooksConfig,
+    AdminConfig, CachedToken, ClientInfo, HttpConfig, KvStoreConfig, RpcConfig, SdkFullConfig,
+    SqlConfig, StreamsConfig, WebhooksConfig,
 };
 pub use kvstore::{
     AddListItemParams, BulkSetsParams, CreateListParams, CreateSetParams, GetListData,
@@ -16,6 +18,7 @@ pub use kvstore::{
     GetSetsParams, GetSetsResponse, KvSetEntry, KvStoreApiClient, ListContainsItemResponse,
     UpdateListParams,
 };
+pub use rpc::RpcApiClient;
 pub use sql::{
     ChainSchema, ColumnMeta, ColumnSchema, QueryParams, QueryResponse, QueryStatistics,
     SqlApiClient, TableSchema,
@@ -211,6 +214,9 @@ pub struct QuicknodeSdk {
     /// SQL Explorer client: executes SQL queries against indexed blockchain
     /// data and fetches the database schema.
     pub sql: sql::SqlApiClient,
+    /// JSON-RPC client: makes on-chain calls against the account's Tooling
+    /// Access endpoint using short-lived session JWTs.
+    pub rpc: rpc::RpcApiClient,
 }
 
 impl QuicknodeSdk {
@@ -232,7 +238,8 @@ impl QuicknodeSdk {
             streams: streams::StreamsApiClient::new(sdk_config.clone()),
             webhooks: webhooks::WebhooksApiClient::new(sdk_config.clone()),
             kvstore: kvstore::KvStoreApiClient::new(sdk_config.clone()),
-            sql: sql::SqlApiClient::new(sdk_config),
+            sql: sql::SqlApiClient::new(sdk_config.clone()),
+            rpc: rpc::RpcApiClient::new(sdk_config, config.rpc.as_ref()),
         })
     }
 
@@ -264,6 +271,7 @@ mod headers_tests {
             webhooks: None,
             kvstore: None,
             sql: None,
+            rpc: None,
         }
     }
 
@@ -353,6 +361,7 @@ mod headers_tests {
             webhooks: None,
             kvstore: None,
             sql: None,
+            rpc: None,
         };
 
         let sdk = QuicknodeSdk::new(&cfg).unwrap();

@@ -697,6 +697,7 @@ mod tests {
                 base_url: Some(base_url),
             }),
             sql: None,
+            rpc: None,
         })
         .unwrap()
     }

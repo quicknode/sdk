@@ -54,7 +54,15 @@ class DecodeError extends QuicknodeError {
   }
 }
 
-const TAG_RE = /^\[(Config|Http|Timeout|Connect|Api|Decode)\|([^|]+)\|([^\]]+)\](.*)$/s;
+class RpcError extends QuicknodeError {
+  constructor(message, code) {
+    super(message);
+    this.name = "RpcError";
+    this.code = code;
+  }
+}
+
+const TAG_RE = /^\[(Config|Http|Timeout|Connect|Api|Decode|Rpc)\|([^|]+)\|([^\]]+)\](.*)$/s;
 
 function fromNapiError(err) {
   if (!(err instanceof Error)) return err;
@@ -82,6 +90,8 @@ function fromNapiError(err) {
     case "Http": return new HttpError(msg);
     case "Api": return new ApiError(msg, Number(statusStr), body);
     case "Decode": return new DecodeError(msg, body);
+    // For Rpc, statusStr is the JSON-RPC code and body is its message.
+    case "Rpc": return new RpcError(body || msg, Number(statusStr));
     default: return err;
   }
 }
@@ -116,6 +126,7 @@ module.exports = {
   ConnectionError,
   ApiError,
   DecodeError,
+  RpcError,
   fromNapiError,
   wrapClient,
 };

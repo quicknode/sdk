@@ -140,6 +140,86 @@ impl KvStoreConfig {
     }
 }
 
+/// A minted session JWT plus the endpoint it authenticates against and its
+/// wall-clock expiry. This is the unit cached by the RPC client and the unit a
+/// host persists between processes (e.g. the CLI's on-disk token cache).
+///
+/// `exp_unix` is the JWT `exp` claim (unix seconds), used directly so it
+/// survives a process restart (unlike a monotonic `Instant`).
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CachedToken {
+    /// The provisioned tooling-access endpoint URL the JWT authenticates against.
+    pub endpoint_url: String,
+    /// The minted ES256 session JWT, presented as a Bearer token.
+    pub token: String,
+    /// JWT `exp` claim in unix seconds.
+    pub exp_unix: i64,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl CachedToken {
+    #[new]
+    pub fn new(endpoint_url: String, token: String, exp_unix: i64) -> Self {
+        CachedToken {
+            endpoint_url,
+            token,
+            exp_unix,
+        }
+    }
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct RpcConfig {
+    /// Override for the tooling-access control-plane base URL used to mint
+    /// session tokens. When unset, falls back to the tooling-access default.
+    pub base_url: Option<String>,
+    /// Optional pre-existing token to seed the in-memory cache (e.g. loaded
+    /// from a host's on-disk cache). Advisory: a malformed or expired seed is
+    /// treated as a cache miss and a fresh token is minted.
+    pub seed: Option<CachedToken>,
+    /// Seconds before `exp` at which the client proactively refreshes. The
+    /// margin also absorbs clock skew between client and endpoint. Defaults to
+    /// 60 when unset.
+    pub refresh_margin_secs: Option<i64>,
+    /// Per-network URL map for multichain routing: network key (e.g.
+    /// `"solana-mainnet"`, `"polygon"`) -> full http_url. Built from
+    /// `admin.get_endpoint_urls(...).multichain_urls`. When set, `rpc.call` with
+    /// a `network` resolves the target URL here. Optional; the default-network
+    /// call path needs no map.
+    pub networks: Option<std::collections::HashMap<String, String>>,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl RpcConfig {
+    #[new]
+    #[pyo3(signature = (base_url=None, seed=None, refresh_margin_secs=None, networks=None))]
+    pub fn new(
+        base_url: Option<String>,
+        seed: Option<CachedToken>,
+        refresh_margin_secs: Option<i64>,
+        networks: Option<std::collections::HashMap<String, String>>,
+    ) -> Self {
+        RpcConfig {
+            base_url,
+            seed,
+            refresh_margin_secs,
+            networks,
+        }
+    }
+}
+
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
@@ -173,6 +253,7 @@ pub struct SdkFullConfig {
     pub webhooks: Option<WebhooksConfig>,
     pub kvstore: Option<KvStoreConfig>,
     pub sql: Option<SqlConfig>,
+    pub rpc: Option<RpcConfig>,
 }
 
 impl SdkFullConfig {
@@ -185,6 +266,7 @@ impl SdkFullConfig {
             webhooks: None,
             kvstore: None,
             sql: None,
+            rpc: None,
         }
     }
 
@@ -211,7 +293,8 @@ impl SdkFullConfig {
 #[pymethods]
 impl SdkFullConfig {
     #[new]
-    #[pyo3(signature = (api_key, http=None, admin=None, streams=None, webhooks=None, kvstore=None, sql=None))]
+    #[pyo3(signature = (api_key, http=None, admin=None, streams=None, webhooks=None, kvstore=None, sql=None, rpc=None))]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         api_key: String,
         http: Option<HttpConfig>,
@@ -220,6 +303,7 @@ impl SdkFullConfig {
         webhooks: Option<WebhooksConfig>,
         kvstore: Option<KvStoreConfig>,
         sql: Option<SqlConfig>,
+        rpc: Option<RpcConfig>,
     ) -> Self {
         SdkFullConfig {
             api_key,
@@ -229,6 +313,7 @@ impl SdkFullConfig {
             webhooks,
             kvstore,
             sql,
+            rpc,
         }
     }
 }

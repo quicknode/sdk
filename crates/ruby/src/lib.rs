@@ -272,7 +272,7 @@ impl QuicknodeSdk {
         validate_keys(
             &opts,
             &[
-                "api_key", "http", "admin", "streams", "webhooks", "kvstore", "sql",
+                "api_key", "http", "admin", "streams", "webhooks", "kvstore", "sql", "rpc",
             ],
         )?;
         let config: core::SdkFullConfig =
@@ -311,6 +311,12 @@ impl QuicknodeSdk {
     fn sql(&self) -> SqlApiClient {
         SqlApiClient {
             inner: self.inner.sql.clone(),
+        }
+    }
+
+    fn rpc(&self) -> RpcApiClient {
+        RpcApiClient {
+            inner: self.inner.rpc.clone(),
         }
     }
 }
@@ -924,6 +930,38 @@ impl AdminApiClient {
         let chain = hash_require_string(&opts, "chain")?;
         runtime()
             .block_on(client.get_api_credits(&chain))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn tooling_access_status(&self) -> Result<magnus::Value, Error> {
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.tooling_access_status())
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn enable_tooling_access(&self) -> Result<magnus::Value, Error> {
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.enable_tooling_access())
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn disable_tooling_access(&self) -> Result<magnus::Value, Error> {
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.disable_tooling_access())
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn mint_tooling_token(&self) -> Result<magnus::Value, Error> {
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.mint_tooling_token())
             .map_err(map_err)
             .and_then(to_ruby)
     }
@@ -1841,6 +1879,58 @@ impl SqlApiClient {
     }
 }
 
+// ── RpcApiClient ──────────────────────────────────────────────────────────────
+
+#[magnus::wrap(class = "QuicknodeSdk::Native::Rpc", free_immediately, size)]
+#[derive(Clone)]
+pub struct RpcApiClient {
+    inner: core::rpc::RpcApiClient,
+}
+
+#[allow(clippy::needless_pass_by_value)]
+impl RpcApiClient {
+    // call(method:, params: nil, network: nil) — params accepts an Array
+    // (positional) or Hash (by-name) and defaults to []. network selects a chain
+    // on the multichain endpoint (a key in the seeded network map, e.g.
+    // "solana-mainnet"); omit for the default network. Returns the JSON-RPC
+    // result; a JSON-RPC error is raised as QuicknodeSdk::RpcError.
+    fn call(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["method", "params", "network"])?;
+        let method = hash_require_string(&opts, "method")?;
+        let network = hash_get_string(&opts, "network")?;
+        let r = ruby();
+        let params: Option<serde_json::Value> = match opts.get(r.to_symbol("params")) {
+            // serde_magnus::deserialize already returns a magnus::Error.
+            Some(v) if !v.is_nil() => Some(serde_magnus::deserialize(&r, v)?),
+            _ => None,
+        };
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.call(&method, params, network))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    // set_networks(networks:) — seed the per-network URL map (key -> http_url)
+    // for multichain routing, from get_endpoint_urls(...)["multichain_urls"].
+    fn set_networks(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["networks"])?;
+        let networks = hash_get_map_string_string(&opts, "networks")?.unwrap_or_default();
+        self.inner.set_networks(networks);
+        Ok(())
+    }
+
+    // clear_cached_token — discard the in-memory cached token so the next call
+    // mints fresh. Use when the token is known stale beyond expiry.
+    fn clear_cached_token(&self) {
+        self.inner.clear_cached_token();
+    }
+
+    fn current_token(&self) -> Result<magnus::Value, Error> {
+        to_ruby(self.inner.current_token())
+    }
+}
+
 // ── Extension init ──────────────────────────────────────────────────────────
 
 #[magnus::init(name = "quicknode_sdk")]
@@ -1862,6 +1952,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     sdk.define_method("webhooks", method!(QuicknodeSdk::webhooks, 0))?;
     sdk.define_method("kvstore", method!(QuicknodeSdk::kvstore, 0))?;
     sdk.define_method("sql", method!(QuicknodeSdk::sql, 0))?;
+    sdk.define_method("rpc", method!(QuicknodeSdk::rpc, 0))?;
 
     // ── Admin ─────────────────────────────────────────────────
     let admin = native.define_class("Admin", ruby.class_object())?;
@@ -2010,6 +2101,22 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
         "get_api_credits",
         method!(AdminApiClient::get_api_credits, 1),
     )?;
+    admin.define_method(
+        "tooling_access_status",
+        method!(AdminApiClient::tooling_access_status, 0),
+    )?;
+    admin.define_method(
+        "enable_tooling_access",
+        method!(AdminApiClient::enable_tooling_access, 0),
+    )?;
+    admin.define_method(
+        "disable_tooling_access",
+        method!(AdminApiClient::disable_tooling_access, 0),
+    )?;
+    admin.define_method(
+        "mint_tooling_token",
+        method!(AdminApiClient::mint_tooling_token, 0),
+    )?;
     admin.define_method("list_invoices", method!(AdminApiClient::list_invoices, 0))?;
     admin.define_method("list_payments", method!(AdminApiClient::list_payments, 0))?;
     admin.define_method("list_teams", method!(AdminApiClient::list_teams, 0))?;
@@ -2157,6 +2264,16 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     let sql = native.define_class("Sql", ruby.class_object())?;
     sql.define_method("query", method!(SqlApiClient::query, 1))?;
     sql.define_method("get_schema", method!(SqlApiClient::get_schema, 1))?;
+
+    // ── Rpc ───────────────────────────────────────────────────
+    let rpc = native.define_class("Rpc", ruby.class_object())?;
+    rpc.define_method("call", method!(RpcApiClient::call, 1))?;
+    rpc.define_method("set_networks", method!(RpcApiClient::set_networks, 1))?;
+    rpc.define_method(
+        "clear_cached_token",
+        method!(RpcApiClient::clear_cached_token, 0),
+    )?;
+    rpc.define_method("current_token", method!(RpcApiClient::current_token, 0))?;
 
     Ok(())
 }

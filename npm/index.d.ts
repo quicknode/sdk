@@ -221,6 +221,23 @@ export interface BulkUpdateEndpointStatusResponse {
   error?: string
 }
 
+/**
+ * A minted session JWT plus the endpoint it authenticates against and its
+ * wall-clock expiry. This is the unit cached by the RPC client and the unit a
+ * host persists between processes (e.g. the CLI's on-disk token cache).
+ *
+ * `exp_unix` is the JWT `exp` claim (unix seconds), used directly so it
+ * survives a process restart (unlike a monotonic `Instant`).
+ */
+export interface CachedToken {
+  /** The provisioned tooling-access endpoint URL the JWT authenticates against. */
+  endpointUrl: string
+  /** The minted ES256 session JWT, presented as a Bearer token. */
+  token: string
+  /** JWT `exp` claim in unix seconds. */
+  expUnix: number
+}
+
 /** A blockchain supported by Quicknode along with its networks. */
 export interface Chain {
   /** Chain slug (e.g. `ethereum`). */
@@ -1465,6 +1482,34 @@ export interface ResendTeamInviteResponse {
   error?: string
 }
 
+export interface RpcConfig {
+  /**
+   * Override for the tooling-access control-plane base URL used to mint
+   * session tokens. When unset, falls back to the tooling-access default.
+   */
+  baseUrl?: string
+  /**
+   * Optional pre-existing token to seed the in-memory cache (e.g. loaded
+   * from a host's on-disk cache). Advisory: a malformed or expired seed is
+   * treated as a cache miss and a fresh token is minted.
+   */
+  seed?: CachedToken
+  /**
+   * Seconds before `exp` at which the client proactively refreshes. The
+   * margin also absorbs clock skew between client and endpoint. Defaults to
+   * 60 when unset.
+   */
+  refreshMarginSecs?: number
+  /**
+   * Per-network URL map for multichain routing: network key (e.g.
+   * `"solana-mainnet"`, `"polygon"`) -> full http_url. Built from
+   * `admin.get_endpoint_urls(...).multichain_urls`. When set, `rpc.call` with
+   * a `network` resolves the target URL here. Optional; the default-network
+   * call path needs no map.
+   */
+  networks?: Record<string, string>
+}
+
 /** Configuration for delivering stream batches to an S3-compatible object store. */
 export interface S3Attributes {
   /** S3 service endpoint (e.g. `s3.amazonaws.com`). */
@@ -1497,6 +1542,7 @@ export interface SdkFullConfig {
   webhooks?: WebhooksConfig
   kvstore?: KvStoreConfig
   sql?: SqlConfig
+  rpc?: RpcConfig
 }
 
 /** A single security feature's name, status, and optional value. */
@@ -1776,6 +1822,23 @@ export interface TestFilterResponse {
   result: string
   /** Log lines emitted by the filter function during evaluation. */
   logs: Array<string>
+}
+
+/**
+ * Current Tooling Access status for the account. `enabled` is the source of
+ * truth — a previously-provisioned-but-disabled account may still report a
+ * non-null `endpoint_url`.
+ */
+export interface ToolingAccessStatus {
+  enabled: boolean
+  endpointUrl?: string
+  enabledAt?: string
+  /**
+   * The provisioned endpoint's id. Used to fetch the per-network URL map
+   * (`get_endpoint_urls`) for multichain routing. `None` on control planes
+   * that don't yet return it.
+   */
+  endpointId?: string
 }
 
 /** Parameters for `update_endpoint`. */
@@ -2266,6 +2329,24 @@ export declare class AdminApiClient {
    */
   getApiCredits(chain: string): Promise<GetApiCreditsResponse>
   /**
+   * Returns the current Tooling Access status for the account. Inspect
+   * `enabled` to decide whether to enable provisioning.
+   */
+  toolingAccessStatus(): Promise<ToolingAccessStatus>
+  /**
+   * Enables (provisions) Tooling Access. Idempotent. Requires an admin role
+   * and an eligible plan.
+   */
+  enableToolingAccess(): Promise<ToolingAccessStatus>
+  /** Disables Tooling Access, pausing the endpoint. Idempotent. */
+  disableToolingAccess(): Promise<ToolingAccessStatus>
+  /**
+   * Mints a short-lived session JWT for the provisioned Tooling Access
+   * endpoint. Returns the endpoint URL, the JWT, and its expiry. Requires
+   * Tooling Access to be enabled first.
+   */
+  mintToolingToken(): Promise<CachedToken>
+  /**
    * Returns the account's invoices, including id, status, billing reason,
    * amounts due and paid, line items with descriptions and billing periods,
    * and creation timestamps.
@@ -2424,8 +2505,40 @@ export declare class QuicknodeSdk {
   get kvstore(): KvStoreApiClient
   /** Returns the sql sub-client. */
   get sql(): SqlApiClient
+  /** Returns the JSON-RPC sub-client. */
+  get rpc(): RpcApiClient
   /** Creates a new SDK instance using configuration from environment variables. */
   static fromEnv(): QuicknodeSdk
+}
+
+export declare class RpcApiClient {
+  /**
+   * Makes a JSON-RPC call against the account's Tooling Access endpoint,
+   * authenticated with a short-lived session JWT (minted and refreshed
+   * automatically). `params` accepts an array (positional) or object
+   * (by-name) and defaults to `[]`. `network` selects a chain on the
+   * multichain endpoint (a key in the seeded network map, e.g.
+   * `"solana-mainnet"`); omit for the endpoint's default network. Returns
+   * the JSON-RPC `result`. A JSON-RPC error is thrown as `RpcError`.
+   */
+  call(method: string, params?: any | undefined | null, network?: string | undefined | null): Promise<any>
+  /**
+   * Seeds the per-network URL map for multichain routing (network key ->
+   * full http_url), typically built from
+   * `admin.getEndpointUrls(...).multichainUrls`.
+   */
+  setNetworks(networks: Record<string, string>): void
+  /**
+   * Discards the in-memory cached token, forcing the next call to mint a
+   * fresh one. Use when the cached token is known stale beyond expiry.
+   */
+  clearCachedToken(): void
+  /**
+   * Returns a snapshot of the currently cached session token, or `null` if
+   * no token has been minted or seeded yet. Hosts use this to persist the
+   * token between processes.
+   */
+  currentToken(): CachedToken | null
 }
 
 export declare class SqlApiClient {
