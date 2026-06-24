@@ -550,13 +550,12 @@ impl AdminApiClient {
 
     /// Adds a referrer to an endpoint's security settings, specifying which
     /// external URL or domain is permitted to call the endpoint.
-    #[pyo3(signature = (id, referrer=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_referrer<'py>(
         &self,
         py: Python<'py>,
         id: String,
-        referrer: Option<String>,
+        referrer: String,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::CreateReferrerRequest { referrer };
@@ -588,13 +587,12 @@ impl AdminApiClient {
     }
 
     /// Adds an IP address to an endpoint's security whitelist.
-    #[pyo3(signature = (id, ip=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_ip<'py>(
         &self,
         py: Python<'py>,
         id: String,
-        ip: Option<String>,
+        ip: String,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::CreateIpRequest { ip };
@@ -667,15 +665,14 @@ impl AdminApiClient {
 
     /// Creates a new JWT for endpoint authentication. Accepts a public key,
     /// key id (`kid`), and token name.
-    #[pyo3(signature = (id, kid, public_key=None, name=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn create_jwt<'py>(
         &self,
         py: Python<'py>,
         id: String,
         kid: String,
-        public_key: Option<String>,
-        name: Option<String>,
+        public_key: String,
+        name: String,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::CreateJwtRequest {
@@ -712,7 +709,6 @@ impl AdminApiClient {
     /// Creates a request filter on an endpoint — a method whitelist that
     /// restricts which RPC methods may be called. Accepts an array of method
     /// names; other methods are blocked.
-    #[pyo3(signature = (id, method=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateRequestFilterResponse]"
     ))]
@@ -720,7 +716,7 @@ impl AdminApiClient {
         &self,
         py: Python<'py>,
         id: String,
-        method: Option<Vec<String>>,
+        method: Vec<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::CreateRequestFilterRequest { method };

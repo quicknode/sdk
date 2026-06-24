@@ -385,7 +385,7 @@ class AdminApiClient:
         r"""
         Revokes a token on an endpoint by token id.
         """
-    def create_referrer(self, id: builtins.str, referrer: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
+    def create_referrer(self, id: builtins.str, referrer: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
         Adds a referrer to an endpoint's security settings, specifying which
         external URL or domain is permitted to call the endpoint.
@@ -394,7 +394,7 @@ class AdminApiClient:
         r"""
         Removes a referrer from an endpoint's security settings by referrer id.
         """
-    def create_ip(self, id: builtins.str, ip: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
+    def create_ip(self, id: builtins.str, ip: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
         Adds an IP address to an endpoint's security whitelist.
         """
@@ -412,7 +412,7 @@ class AdminApiClient:
         r"""
         Removes a domain mask from an endpoint by domain mask id.
         """
-    def create_jwt(self, id: builtins.str, kid: builtins.str, public_key: typing.Optional[builtins.str] = None, name: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
+    def create_jwt(self, id: builtins.str, kid: builtins.str, public_key: builtins.str, name: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
         Creates a new JWT for endpoint authentication. Accepts a public key,
         key id (`kid`), and token name.
@@ -422,7 +422,7 @@ class AdminApiClient:
         Removes a JWT from an endpoint's security configuration by jwt id,
         revoking its access.
         """
-    def create_request_filter(self, id: builtins.str, method: typing.Optional[typing.Sequence[builtins.str]] = None) -> typing.Coroutine[typing.Any, typing.Any, CreateRequestFilterResponse]:
+    def create_request_filter(self, id: builtins.str, method: typing.Sequence[builtins.str]) -> typing.Coroutine[typing.Any, typing.Any, CreateRequestFilterResponse]:
         r"""
         Creates a request filter on an endpoint — a method whitelist that
         restricts which RPC methods may be called. Accepts an array of method
@@ -1293,12 +1293,12 @@ class CreateIpRequest:
     Parameters for `create_ip`.
     """
     @property
-    def ip(self) -> typing.Optional[builtins.str]:
+    def ip(self) -> builtins.str:
         r"""
         IP address to whitelist.
         """
     @ip.setter
-    def ip(self, value: typing.Optional[builtins.str]) -> None:
+    def ip(self, value: builtins.str) -> None:
         r"""
         IP address to whitelist.
         """
@@ -1309,12 +1309,12 @@ class CreateJwtRequest:
     Parameters for `create_jwt`.
     """
     @property
-    def public_key(self) -> typing.Optional[builtins.str]:
+    def public_key(self) -> builtins.str:
         r"""
         Public key used to verify signed JWTs.
         """
     @public_key.setter
-    def public_key(self, value: typing.Optional[builtins.str]) -> None:
+    def public_key(self, value: builtins.str) -> None:
         r"""
         Public key used to verify signed JWTs.
         """
@@ -1329,12 +1329,12 @@ class CreateJwtRequest:
         Key identifier (`kid`) embedded in JWT headers.
         """
     @property
-    def name(self) -> typing.Optional[builtins.str]:
+    def name(self) -> builtins.str:
         r"""
         Human-readable name for the JWT configuration.
         """
     @name.setter
-    def name(self, value: typing.Optional[builtins.str]) -> None:
+    def name(self, value: builtins.str) -> None:
         r"""
         Human-readable name for the JWT configuration.
         """
@@ -1449,12 +1449,12 @@ class CreateReferrerRequest:
     Parameters for `create_referrer`.
     """
     @property
-    def referrer(self) -> typing.Optional[builtins.str]:
+    def referrer(self) -> builtins.str:
         r"""
         Allowed referrer URL or domain.
         """
     @referrer.setter
-    def referrer(self, value: typing.Optional[builtins.str]) -> None:
+    def referrer(self, value: builtins.str) -> None:
         r"""
         Allowed referrer URL or domain.
         """
@@ -1481,12 +1481,12 @@ class CreateRequestFilterRequest:
     Parameters for `create_request_filter`.
     """
     @property
-    def method(self) -> typing.Optional[builtins.list[builtins.str]]:
+    def method(self) -> builtins.list[builtins.str]:
         r"""
         Whitelisted RPC methods; other methods will be blocked.
         """
     @method.setter
-    def method(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+    def method(self, value: builtins.list[builtins.str]) -> None:
         r"""
         Whitelisted RPC methods; other methods will be blocked.
         """

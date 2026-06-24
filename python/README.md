@@ -556,7 +556,7 @@ await qn.admin.delete_token("ep-123", "tok-1")
 
 Whitelists a referrer URL or domain on an endpoint.
 
-**Parameters**: `id` (endpoint id, required); body: `referrer` (string, optional).
+**Parameters**: `id` (endpoint id, required); body: `referrer` (string, required).
 
 **Returns**: nothing.
 
@@ -584,7 +584,7 @@ await qn.admin.delete_referrer("ep-123", "ref-1")
 
 Whitelists an IP address on an endpoint.
 
-**Parameters**: `id` (endpoint id, required); body: `ip` (string, optional).
+**Parameters**: `id` (endpoint id, required); body: `ip` (string, required).
 
 **Returns**: nothing.
 
@@ -640,7 +640,7 @@ await qn.admin.delete_domain_mask("ep-123", "dm-1")
 
 Configures JWT validation on an endpoint.
 
-**Parameters**: `id` (endpoint id, required); body: `public_key` (string, optional), `kid` (string, required), `name` (string, optional).
+**Parameters**: `id` (endpoint id, required); body: `public_key` (string, required), `kid` (string, required), `name` (string, required).
 
 **Returns**: nothing.
 
@@ -673,7 +673,7 @@ Whitelist specific RPC methods on an endpoint. Requests for methods not on the l
 
 ##### `create_request_filter` / `createRequestFilter`
 
-**Parameters**: `id` (endpoint id, required); body: `method` (string[], optional). Ruby's Hash key is `methods` (plural).
+**Parameters**: `id` (endpoint id, required); body: `method` (string[], required). Ruby's Hash key is `methods` (plural).
 
 **Returns**: `CreateRequestFilterResponse` with `data.id`.
 

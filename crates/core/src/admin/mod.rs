@@ -2548,7 +2548,7 @@ mod tests {
             .create_referrer(
                 "ep123",
                 &CreateReferrerRequest {
-                    referrer: Some("example.com".to_string()),
+                    referrer: "example.com".to_string(),
                 },
             )
             .await

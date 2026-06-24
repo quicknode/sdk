@@ -341,7 +341,7 @@ async fn main() {
         .create_referrer(
             &endpoint_id,
             &CreateReferrerRequest {
-                referrer: Some("https://example.com".to_string()),
+                referrer: "https://example.com".to_string(),
             },
         )
         .await
@@ -378,7 +378,7 @@ async fn main() {
         .create_ip(
             &endpoint_id,
             &CreateIpRequest {
-                ip: Some("192.0.2.1".to_string()),
+                ip: "192.0.2.1".to_string(),
             },
         )
         .await
@@ -452,11 +452,10 @@ async fn main() {
         .create_jwt(
             &endpoint_id,
             &CreateJwtRequest {
-                public_key: Some(
-                    "-----BEGIN PUBLIC KEY-----\nPLACEHOLDER\n-----END PUBLIC KEY-----".to_string(),
-                ),
+                public_key: "-----BEGIN PUBLIC KEY-----\nPLACEHOLDER\n-----END PUBLIC KEY-----"
+                    .to_string(),
                 kid: "kid1".to_string(),
-                name: Some("example-jwt".to_string()),
+                name: "example-jwt".to_string(),
             },
         )
         .await
@@ -492,7 +491,7 @@ async fn main() {
         .create_request_filter(
             &endpoint_id,
             &CreateRequestFilterRequest {
-                method: Some(vec!["eth_getBalance".to_string()]),
+                method: vec!["eth_getBalance".to_string()],
             },
         )
         .await
