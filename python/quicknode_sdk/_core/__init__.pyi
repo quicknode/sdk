@@ -26,7 +26,10 @@ __all__ = [
     "BulkUpdateEndpointStatusResponse",
     "Chain",
     "ChainNetwork",
+    "ChainSchema",
     "ChainUsage",
+    "ColumnMeta",
+    "ColumnSchema",
     "CreateDomainMaskRequest",
     "CreateEndpointRequest",
     "CreateEndpointResponse",
@@ -142,6 +145,8 @@ __all__ = [
     "Pagination",
     "Payment",
     "PostgresAttributes",
+    "QueryResponse",
+    "QueryStatistics",
     "QuicknodeSdk",
     "RateLimitEntry",
     "RateLimitSettings",
@@ -160,6 +165,8 @@ __all__ = [
     "SolanaWalletFilterByListArgs",
     "SolanaWalletFilterByListTemplate",
     "SolanaWalletFilterTemplate",
+    "SqlApiClient",
+    "SqlConfig",
     "StellarWalletTransactionsFilterArgs",
     "StellarWalletTransactionsFilterByListArgs",
     "StellarWalletTransactionsFilterByListTemplate",
@@ -172,6 +179,7 @@ __all__ = [
     "StreamWebhookDestination",
     "StreamsApiClient",
     "StreamsConfig",
+    "TableSchema",
     "TagUsage",
     "TeamDetail",
     "TeamEndpoint",
@@ -1194,6 +1202,43 @@ class ChainNetwork:
         """
 
 @typing.final
+class ChainSchema:
+    r"""
+    Response from `get_schema`: the schema for a single chain/cluster.
+    """
+    @property
+    def chain(self) -> builtins.str:
+        r"""
+        Human-readable chain name (e.g. `"Hyperliquid (HyperCore)"`).
+        """
+    @chain.setter
+    def chain(self, value: builtins.str) -> None:
+        r"""
+        Human-readable chain name (e.g. `"Hyperliquid (HyperCore)"`).
+        """
+    @property
+    def cluster_id(self) -> builtins.str:
+        r"""
+        Cluster identifier the schema belongs to.
+        """
+    @cluster_id.setter
+    def cluster_id(self, value: builtins.str) -> None:
+        r"""
+        Cluster identifier the schema belongs to.
+        """
+    @property
+    def tables(self) -> builtins.list[TableSchema]:
+        r"""
+        Tables available in this cluster.
+        """
+    @tables.setter
+    def tables(self, value: builtins.list[TableSchema]) -> None:
+        r"""
+        Tables available in this cluster.
+        """
+    def __new__(cls, chain: builtins.str, cluster_id: builtins.str, tables: typing.Sequence[TableSchema]) -> ChainSchema: ...
+
+@typing.final
 class ChainUsage:
     r"""
     Per-chain usage row.
@@ -1218,6 +1263,60 @@ class ChainUsage:
         r"""
         Credits consumed on the chain.
         """
+
+@typing.final
+class ColumnMeta:
+    r"""
+    Metadata describing a single column in a query result set.
+    """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        Column name as it appears in the result set.
+        """
+    @name.setter
+    def name(self, value: builtins.str) -> None:
+        r"""
+        Column name as it appears in the result set.
+        """
+    @property
+    def column_type(self) -> builtins.str:
+        r"""
+        Column data type (e.g. `"DateTime('UTC')"`, `"LowCardinality(String)"`).
+        """
+    @column_type.setter
+    def column_type(self, value: builtins.str) -> None:
+        r"""
+        Column data type (e.g. `"DateTime('UTC')"`, `"LowCardinality(String)"`).
+        """
+    def __new__(cls, name: builtins.str, column_type: builtins.str) -> ColumnMeta: ...
+
+@typing.final
+class ColumnSchema:
+    r"""
+    A single column in a table schema.
+    """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        Column name.
+        """
+    @name.setter
+    def name(self, value: builtins.str) -> None:
+        r"""
+        Column name.
+        """
+    @property
+    def column_type(self) -> builtins.str:
+        r"""
+        Column data type (e.g. `"UInt64"`, `"FixedString(42)"`).
+        """
+    @column_type.setter
+    def column_type(self, value: builtins.str) -> None:
+        r"""
+        Column data type (e.g. `"UInt64"`, `"FixedString(42)"`).
+        """
+    def __new__(cls, name: builtins.str, column_type: builtins.str) -> ColumnSchema: ...
 
 @typing.final
 class CreateDomainMaskRequest:
@@ -4803,6 +4902,58 @@ class PostgresAttributes:
     def __new__(cls, host: builtins.str, port: builtins.int, database: builtins.str, username: builtins.str, password: builtins.str, table_name: builtins.str, sslmode: builtins.str, max_retry: builtins.int, retry_interval_sec: builtins.int) -> PostgresAttributes: ...
 
 @typing.final
+class QueryResponse:
+    @property
+    def meta(self) -> builtins.list[ColumnMeta]: ...
+    @property
+    def rows(self) -> builtins.int: ...
+    @property
+    def rows_before_limit_at_least(self) -> builtins.int: ...
+    @property
+    def statistics(self) -> QueryStatistics: ...
+    @property
+    def credits(self) -> builtins.int: ...
+    @property
+    def data(self) -> list[dict[str, typing.Any]]: ...
+
+@typing.final
+class QueryStatistics:
+    r"""
+    Execution statistics returned alongside query results.
+    """
+    @property
+    def elapsed(self) -> builtins.float:
+        r"""
+        Total query execution time in seconds.
+        """
+    @elapsed.setter
+    def elapsed(self, value: builtins.float) -> None:
+        r"""
+        Total query execution time in seconds.
+        """
+    @property
+    def rows_read(self) -> builtins.int:
+        r"""
+        Total number of rows scanned during execution.
+        """
+    @rows_read.setter
+    def rows_read(self, value: builtins.int) -> None:
+        r"""
+        Total number of rows scanned during execution.
+        """
+    @property
+    def bytes_read(self) -> builtins.int:
+        r"""
+        Total data scanned in bytes.
+        """
+    @bytes_read.setter
+    def bytes_read(self, value: builtins.int) -> None:
+        r"""
+        Total data scanned in bytes.
+        """
+    def __new__(cls, elapsed: builtins.float, rows_read: builtins.int, bytes_read: builtins.int) -> QueryStatistics: ...
+
+@typing.final
 class QuicknodeSdk:
     @property
     def admin(self) -> AdminApiClient: ...
@@ -4812,6 +4963,8 @@ class QuicknodeSdk:
     def webhooks(self) -> WebhooksApiClient: ...
     @property
     def kvstore(self) -> KvStoreApiClient: ...
+    @property
+    def sql(self) -> SqlApiClient: ...
     def __new__(cls, config: SdkFullConfig) -> QuicknodeSdk:
         r"""
         Creates a new SDK instance from an explicit configuration.
@@ -5153,7 +5306,11 @@ class SdkFullConfig:
     def kvstore(self) -> typing.Optional[KvStoreConfig]: ...
     @kvstore.setter
     def kvstore(self, value: typing.Optional[KvStoreConfig]) -> None: ...
-    def __new__(cls, api_key: builtins.str, http: typing.Optional[HttpConfig] = None, admin: typing.Optional[AdminConfig] = None, streams: typing.Optional[StreamsConfig] = None, webhooks: typing.Optional[WebhooksConfig] = None, kvstore: typing.Optional[KvStoreConfig] = None) -> SdkFullConfig: ...
+    @property
+    def sql(self) -> typing.Optional[SqlConfig]: ...
+    @sql.setter
+    def sql(self, value: typing.Optional[SqlConfig]) -> None: ...
+    def __new__(cls, api_key: builtins.str, http: typing.Optional[HttpConfig] = None, admin: typing.Optional[AdminConfig] = None, streams: typing.Optional[StreamsConfig] = None, webhooks: typing.Optional[WebhooksConfig] = None, kvstore: typing.Optional[KvStoreConfig] = None, sql: typing.Optional[SqlConfig] = None) -> SdkFullConfig: ...
 
 @typing.final
 class SecurityOption:
@@ -5478,6 +5635,27 @@ class SolanaWalletFilterTemplate:
     def __new__(cls, accounts: typing.Sequence[builtins.str]) -> SolanaWalletFilterTemplate: ...
 
 @typing.final
+class SqlApiClient:
+    def query(self, query: builtins.str, cluster_id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, QueryResponse]:
+        r"""
+        Executes a SQL query against the given cluster and returns the result
+        set. Only `SELECT` queries are permitted (enforced server-side).
+        """
+    def get_schema(self, cluster_id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, ChainSchema]:
+        r"""
+        Fetches the database schema for a cluster, including table names,
+        columns, types, sort keys, and partition strategies.
+        """
+
+@typing.final
+class SqlConfig:
+    @property
+    def base_url(self) -> typing.Optional[builtins.str]: ...
+    @base_url.setter
+    def base_url(self, value: typing.Optional[builtins.str]) -> None: ...
+    def __new__(cls, base_url: typing.Optional[builtins.str] = None) -> SqlConfig: ...
+
+@typing.final
 class StellarWalletTransactionsFilterArgs:
     @property
     def attributes(self) -> StellarWalletTransactionsFilterTemplate: ...
@@ -5690,6 +5868,73 @@ class StreamsConfig:
     @base_url.setter
     def base_url(self, value: typing.Optional[builtins.str]) -> None: ...
     def __new__(cls, base_url: typing.Optional[builtins.str] = None) -> StreamsConfig: ...
+
+@typing.final
+class TableSchema:
+    r"""
+    Schema for a single table.
+    """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        Table name.
+        """
+    @name.setter
+    def name(self, value: builtins.str) -> None:
+        r"""
+        Table name.
+        """
+    @property
+    def engine(self) -> builtins.str:
+        r"""
+        Storage engine backing the table.
+        """
+    @engine.setter
+    def engine(self, value: builtins.str) -> None:
+        r"""
+        Storage engine backing the table.
+        """
+    @property
+    def total_rows(self) -> builtins.int:
+        r"""
+        Approximate total number of rows in the table.
+        """
+    @total_rows.setter
+    def total_rows(self, value: builtins.int) -> None:
+        r"""
+        Approximate total number of rows in the table.
+        """
+    @property
+    def partition_key(self) -> builtins.str:
+        r"""
+        Partition key expression; empty string for views.
+        """
+    @partition_key.setter
+    def partition_key(self, value: builtins.str) -> None:
+        r"""
+        Partition key expression; empty string for views.
+        """
+    @property
+    def sorting_key(self) -> builtins.list[builtins.str]:
+        r"""
+        Sorting key columns; empty for views.
+        """
+    @sorting_key.setter
+    def sorting_key(self, value: builtins.list[builtins.str]) -> None:
+        r"""
+        Sorting key columns; empty for views.
+        """
+    @property
+    def columns(self) -> builtins.list[ColumnSchema]:
+        r"""
+        Columns in the table.
+        """
+    @columns.setter
+    def columns(self, value: builtins.list[ColumnSchema]) -> None:
+        r"""
+        Columns in the table.
+        """
+    def __new__(cls, name: builtins.str, engine: builtins.str, total_rows: builtins.int, partition_key: builtins.str, sorting_key: typing.Sequence[builtins.str], columns: typing.Sequence[ColumnSchema]) -> TableSchema: ...
 
 @typing.final
 class TagUsage:

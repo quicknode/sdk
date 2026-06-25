@@ -24,6 +24,7 @@ export const {
   StreamsApiClient,
   WebhooksApiClient,
   KvStoreApiClient,
+  SqlApiClient,
   QuicknodeError,
   ConfigError,
   HttpError,

@@ -327,6 +327,7 @@ mod tests {
             }),
             webhooks: None,
             kvstore: None,
+            sql: None,
         })
         .unwrap()
     }

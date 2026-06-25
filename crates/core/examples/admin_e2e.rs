@@ -873,6 +873,7 @@ async fn main() {
         streams: None,
         webhooks: None,
         kvstore: None,
+        sql: None,
     };
     let headered = QuicknodeSdk::new(&with_headers).expect("build sdk with custom headers");
     match headered

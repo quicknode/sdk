@@ -4,6 +4,7 @@ use quicknode_sdk as core;
 
 mod errors;
 mod key_case;
+mod sql;
 mod streams_destination;
 mod webhooks_template;
 
@@ -15,6 +16,7 @@ pub struct QuicknodeSdk {
     streams: StreamsApiClient,
     webhooks: WebhooksApiClient,
     kvstore: KvStoreApiClient,
+    sql: SqlApiClient,
 }
 
 /// Build a [`core::ClientInfo`] from the live Node.js runtime so the SDK's
@@ -57,7 +59,10 @@ impl QuicknodeSdk {
                 inner: core::streams::StreamsApiClient::new(sdk_config.clone()),
             },
             kvstore: KvStoreApiClient {
-                inner: core::kvstore::KvStoreApiClient::new(sdk_config),
+                inner: core::kvstore::KvStoreApiClient::new(sdk_config.clone()),
+            },
+            sql: SqlApiClient {
+                inner: core::sql::SqlApiClient::new(sdk_config),
             },
         })
     }
@@ -86,6 +91,12 @@ impl QuicknodeSdk {
         self.kvstore.clone()
     }
 
+    /// Returns the sql sub-client.
+    #[napi(getter)]
+    pub fn sql(&self) -> SqlApiClient {
+        self.sql.clone()
+    }
+
     /// Creates a new SDK instance using configuration from environment variables.
     #[napi(factory)]
     pub fn from_env() -> Result<Self> {
@@ -97,6 +108,7 @@ impl QuicknodeSdk {
                     inner: sdk.webhooks,
                 },
                 kvstore: KvStoreApiClient { inner: sdk.kvstore },
+                sql: SqlApiClient { inner: sdk.sql },
             })
             .map_err(errors::map_sdk_err)
     }
@@ -1389,6 +1401,38 @@ impl KvStoreApiClient {
         self.inner
             .delete_list(&key)
             .await
+            .map_err(errors::map_sdk_err)
+    }
+}
+
+// ── SqlApiClient ───────────────────────────────────────────────
+
+#[derive(Clone)]
+#[napi]
+pub struct SqlApiClient {
+    inner: core::sql::SqlApiClient,
+}
+
+#[napi]
+impl SqlApiClient {
+    /// Executes a SQL query against the given cluster and returns the result set.
+    #[napi]
+    pub async fn query(&self, query: String, cluster_id: String) -> Result<sql::QueryResponseNode> {
+        self.inner
+            .query(&core::sql::QueryParams { query, cluster_id })
+            .await
+            .map(sql::QueryResponseNode::from)
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Fetches the database schema for a cluster, including table names,
+    /// columns, types, sort keys, and partition strategies.
+    #[napi]
+    pub async fn get_schema(&self, cluster_id: String) -> Result<sql::ChainSchemaNode> {
+        self.inner
+            .get_schema(&cluster_id)
+            .await
+            .map(sql::ChainSchemaNode::from)
             .map_err(errors::map_sdk_err)
     }
 }

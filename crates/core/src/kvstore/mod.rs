@@ -696,6 +696,7 @@ mod tests {
             kvstore: Some(KvStoreConfig {
                 base_url: Some(base_url),
             }),
+            sql: None,
         })
         .unwrap()
     }

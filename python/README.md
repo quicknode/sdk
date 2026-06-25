@@ -46,6 +46,7 @@ This is one of four language bindings published from the same Rust core. See the
   - [KV Store Client](#kv-store-client)
     - [Sets](#sets)
     - [Lists](#lists)
+  - [SQL Client](#sql-client)
 - [Error Handling](#error-handling)
 - [License](#license)
 
@@ -55,7 +56,7 @@ This is one of four language bindings published from the same Rust core. See the
 
 ## Quick Start
 
-Construct the SDK once, then reach into the four sub-clients (`admin`, `streams`, `webhooks`, `kvstore`). Subsequent API Reference snippets assume you have a `qn` handle from one of these blocks.
+Construct the SDK once, then reach into the five sub-clients (`admin`, `streams`, `webhooks`, `kvstore`, `sql`). Subsequent API Reference snippets assume you have a `qn` handle from one of these blocks.
 
 ```python
 # Python
@@ -100,6 +101,7 @@ Environment variables (prefix `QN_SDK__`, separator `__`):
 | `QN_SDK__STREAMS__BASE_URL` | no | `https://api.quicknode.com/streams/rest/v1/` | Override streams base URL |
 | `QN_SDK__WEBHOOKS__BASE_URL` | no | `https://api.quicknode.com/webhooks/rest/v1/` | Override webhooks base URL |
 | `QN_SDK__KVSTORE__BASE_URL` | no | `https://api.quicknode.com/kv/rest/v1/` | Override KV store base URL |
+| `QN_SDK__SQL__BASE_URL` | no | `https://api.quicknode.com/sql/rest/v1/` | Override SQL Explorer base URL |
 | `QN_SDK__HTTP__HEADERS__<NAME>` | no | — | Custom HTTP header sent on every request. Overrides SDK-managed headers (see below). |
 
 ### Custom headers and `User-Agent`
@@ -1604,6 +1606,43 @@ Deletes a list and all of its items.
 ```python
 # Python
 await qn.kvstore.delete_list("my-list")
+```
+
+---
+
+### SQL Client
+
+Accessed as `qn.sql`. Runs SQL queries against indexed blockchain data and fetches the database schema. Backed by `https://api.quicknode.com/sql/rest/v1/`.
+
+##### `query`
+
+Executes a SQL query against a cluster and returns the result set. Paginate by writing `LIMIT`/`OFFSET` into the SQL.
+
+**Parameters**: `query` (str, required), `cluster_id` (str, required).
+
+**Returns**: `QueryResponse` — `meta` (list of `ColumnMeta`, each with `name` and `column_type`), `data` (`list[dict]`, rows keyed by column name), `rows`, `rows_before_limit_at_least`, `statistics` (`QueryStatistics` with `elapsed`, `rows_read`, `bytes_read`), and `credits`.
+
+```python
+# Python
+resp = await qn.sql.query(
+    query="SELECT action_type, user FROM hyperliquid_system_actions ORDER BY block_time DESC LIMIT 100",
+    cluster_id="hyperliquid-core-mainnet",
+)
+print(resp.rows, resp.data[0])
+```
+
+##### `get_schema`
+
+Fetches the database schema for a cluster: table names, columns, types, sort keys, and partition strategies.
+
+**Parameters**: `cluster_id` (str, required).
+
+**Returns**: `ChainSchema` — `chain`, `cluster_id`, and `tables` (list of `TableSchema`, each with `name`, `engine`, `total_rows`, `partition_key`, `sorting_key`, and `columns` of `ColumnSchema` with `name` and `column_type`).
+
+```python
+# Python
+schema = await qn.sql.get_schema("hyperliquid-core-mainnet")
+print(len(schema.tables))
 ```
 
 ## Error Handling

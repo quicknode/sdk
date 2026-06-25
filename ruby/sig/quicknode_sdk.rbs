@@ -33,6 +33,7 @@ module QuicknodeSdk
     def streams: () -> Streams
     def webhooks: () -> Webhooks
     def kvstore: () -> KvStore
+    def sql: () -> Sql
   end
 
   class DestinationAttributes
@@ -157,5 +158,12 @@ module QuicknodeSdk
     def list_contains_item: (key: String, item: String) -> untyped
     def delete_list_item: (key: String, item: String) -> void
     def delete_list: (key: String) -> void
+  end
+
+  class Sql
+    def initialize: (untyped native) -> void
+
+    def query: (query: String, cluster_id: String) -> untyped
+    def get_schema: (cluster_id: String) -> untyped
   end
 end

@@ -2,11 +2,12 @@ pub mod admin;
 pub mod config;
 pub mod errors;
 pub mod kvstore;
+pub mod sql;
 pub mod streams;
 pub mod webhooks;
 
 pub use config::{
-    AdminConfig, ClientInfo, HttpConfig, KvStoreConfig, SdkFullConfig, StreamsConfig,
+    AdminConfig, ClientInfo, HttpConfig, KvStoreConfig, SdkFullConfig, SqlConfig, StreamsConfig,
     WebhooksConfig,
 };
 pub use kvstore::{
@@ -14,6 +15,10 @@ pub use kvstore::{
     GetListParams, GetListResponse, GetListsData, GetListsParams, GetListsResponse, GetSetResponse,
     GetSetsParams, GetSetsResponse, KvSetEntry, KvStoreApiClient, ListContainsItemResponse,
     UpdateListParams,
+};
+pub use sql::{
+    ChainSchema, ColumnMeta, ColumnSchema, QueryParams, QueryResponse, QueryStatistics,
+    SqlApiClient, TableSchema,
 };
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
@@ -64,6 +69,7 @@ impl std::fmt::Debug for SdkConfig {
             .field("streams_base_url", &self.0.streams.base_url)
             .field("webhooks_base_url", &self.0.webhooks.base_url)
             .field("kvstore_base_url", &self.0.kvstore.base_url)
+            .field("sql_base_url", &self.0.sql.base_url)
             .finish()
     }
 }
@@ -74,6 +80,7 @@ struct SdkConfigInner {
     streams: streams::ResolvedStreamsConfig,
     webhooks: webhooks::ResolvedWebhooksConfig,
     kvstore: kvstore::ResolvedKvStoreConfig,
+    sql: sql::ResolvedSqlConfig,
 }
 
 impl SdkConfig {
@@ -159,6 +166,7 @@ impl SdkConfig {
             streams: streams::ResolvedStreamsConfig::from_config(config.streams.as_ref())?,
             webhooks: webhooks::ResolvedWebhooksConfig::from_config(config.webhooks.as_ref())?,
             kvstore: kvstore::ResolvedKvStoreConfig::from_config(config.kvstore.as_ref())?,
+            sql: sql::ResolvedSqlConfig::from_config(config.sql.as_ref())?,
         })))
     }
 
@@ -181,6 +189,10 @@ impl SdkConfig {
     pub(crate) fn kvstore(&self) -> &kvstore::ResolvedKvStoreConfig {
         &self.0.kvstore
     }
+
+    pub(crate) fn sql(&self) -> &sql::ResolvedSqlConfig {
+        &self.0.sql
+    }
 }
 
 /// Top-level entry point for the Quicknode SDK. Holds sub-clients for each
@@ -196,6 +208,9 @@ pub struct QuicknodeSdk {
     /// Key-Value Store client: manages sets (single values) and lists
     /// (ordered collections) under string keys.
     pub kvstore: kvstore::KvStoreApiClient,
+    /// SQL Explorer client: executes SQL queries against indexed blockchain
+    /// data and fetches the database schema.
+    pub sql: sql::SqlApiClient,
 }
 
 impl QuicknodeSdk {
@@ -216,7 +231,8 @@ impl QuicknodeSdk {
             admin: admin::AdminApiClient::new(sdk_config.clone()),
             streams: streams::StreamsApiClient::new(sdk_config.clone()),
             webhooks: webhooks::WebhooksApiClient::new(sdk_config.clone()),
-            kvstore: kvstore::KvStoreApiClient::new(sdk_config),
+            kvstore: kvstore::KvStoreApiClient::new(sdk_config.clone()),
+            sql: sql::SqlApiClient::new(sdk_config),
         })
     }
 
@@ -247,6 +263,7 @@ mod headers_tests {
             streams: None,
             webhooks: None,
             kvstore: None,
+            sql: None,
         }
     }
 
@@ -335,6 +352,7 @@ mod headers_tests {
             streams: None,
             webhooks: None,
             kvstore: None,
+            sql: None,
         };
 
         let sdk = QuicknodeSdk::new(&cfg).unwrap();
