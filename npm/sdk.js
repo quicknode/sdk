@@ -15,6 +15,7 @@ class QuicknodeSdk {
     this.streams = errors.wrapClient(this._inner.streams);
     this.webhooks = errors.wrapClient(this._inner.webhooks);
     this.kvstore = errors.wrapClient(this._inner.kvstore);
+    this.sql = errors.wrapClient(this._inner.sql);
   }
 
   static fromEnv() {
@@ -28,6 +29,7 @@ class QuicknodeSdk {
     instance.streams = errors.wrapClient(instance._inner.streams);
     instance.webhooks = errors.wrapClient(instance._inner.webhooks);
     instance.kvstore = errors.wrapClient(instance._inner.kvstore);
+    instance.sql = errors.wrapClient(instance._inner.sql);
     return instance;
   }
 }

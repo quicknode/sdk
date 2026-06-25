@@ -144,6 +144,26 @@ impl KvStoreConfig {
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct SqlConfig {
+    pub base_url: Option<String>,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl SqlConfig {
+    #[new]
+    #[pyo3(signature = (base_url=None))]
+    pub fn new(base_url: Option<String>) -> Self {
+        SqlConfig { base_url }
+    }
+}
+
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SdkFullConfig {
     pub api_key: String,
@@ -152,6 +172,7 @@ pub struct SdkFullConfig {
     pub streams: Option<StreamsConfig>,
     pub webhooks: Option<WebhooksConfig>,
     pub kvstore: Option<KvStoreConfig>,
+    pub sql: Option<SqlConfig>,
 }
 
 impl SdkFullConfig {
@@ -163,6 +184,7 @@ impl SdkFullConfig {
             streams: None,
             webhooks: None,
             kvstore: None,
+            sql: None,
         }
     }
 
@@ -189,7 +211,7 @@ impl SdkFullConfig {
 #[pymethods]
 impl SdkFullConfig {
     #[new]
-    #[pyo3(signature = (api_key, http=None, admin=None, streams=None, webhooks=None, kvstore=None))]
+    #[pyo3(signature = (api_key, http=None, admin=None, streams=None, webhooks=None, kvstore=None, sql=None))]
     pub fn new(
         api_key: String,
         http: Option<HttpConfig>,
@@ -197,6 +219,7 @@ impl SdkFullConfig {
         streams: Option<StreamsConfig>,
         webhooks: Option<WebhooksConfig>,
         kvstore: Option<KvStoreConfig>,
+        sql: Option<SqlConfig>,
     ) -> Self {
         SdkFullConfig {
             api_key,
@@ -205,6 +228,7 @@ impl SdkFullConfig {
             streams,
             webhooks,
             kvstore,
+            sql,
         }
     }
 }

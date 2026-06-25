@@ -1903,6 +1903,7 @@ mod tests {
             streams: None,
             webhooks: None,
             kvstore: None,
+            sql: None,
         })
         .unwrap()
     }
@@ -3673,6 +3674,7 @@ mod tests {
             streams: None,
             webhooks: None,
             kvstore: None,
+            sql: None,
         });
         assert!(matches!(result, Err(crate::errors::SdkError::Config(_))));
     }

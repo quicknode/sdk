@@ -6,6 +6,7 @@ use pyo3_stub_gen::{
 use quicknode_sdk as core;
 
 mod errors;
+mod sql;
 mod streams_destination;
 mod webhooks_template;
 
@@ -22,6 +23,8 @@ pub struct QuicknodeSdk {
     webhooks: WebhooksApiClient,
     #[pyo3(get)]
     kvstore: KvStoreApiClient,
+    #[pyo3(get)]
+    sql: SqlApiClient,
 }
 
 /// Build a [`core::ClientInfo`] from the live Python runtime so the SDK's
@@ -73,7 +76,10 @@ impl QuicknodeSdk {
                 inner: core::streams::StreamsApiClient::new(sdk_config.clone()),
             },
             kvstore: KvStoreApiClient {
-                inner: core::kvstore::KvStoreApiClient::new(sdk_config),
+                inner: core::kvstore::KvStoreApiClient::new(sdk_config.clone()),
+            },
+            sql: SqlApiClient {
+                inner: core::sql::SqlApiClient::new(sdk_config),
             },
         })
     }
@@ -89,6 +95,7 @@ impl QuicknodeSdk {
                     inner: sdk.webhooks,
                 },
                 kvstore: KvStoreApiClient { inner: sdk.kvstore },
+                sql: SqlApiClient { inner: sdk.sql },
             })
             .map_err(errors::map_sdk_err)
     }
@@ -2357,6 +2364,57 @@ impl KvStoreApiClient {
     }
 }
 
+// ── SqlApiClient ───────────────────────────────────────────────
+
+#[gen_stub_pyclass]
+#[pyclass]
+#[derive(Clone)]
+pub struct SqlApiClient {
+    inner: core::sql::SqlApiClient,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl SqlApiClient {
+    /// Executes a SQL query against the given cluster and returns the result
+    /// set.
+    #[pyo3(signature = (query, cluster_id))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, QueryResponse]"
+    ))]
+    fn query<'py>(
+        &self,
+        py: Python<'py>,
+        query: String,
+        cluster_id: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let resp = client
+                .query(&core::sql::QueryParams { query, cluster_id })
+                .await
+                .map_err(errors::map_sdk_err)?;
+            Python::attach(|py| sql::PyQueryResponse::from_core(resp, py))
+        })
+    }
+
+    /// Fetches the database schema for a cluster, including table names,
+    /// columns, types, sort keys, and partition strategies.
+    #[pyo3(signature = (cluster_id))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ChainSchema]"
+    ))]
+    fn get_schema<'py>(&self, py: Python<'py>, cluster_id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_schema(&cluster_id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+}
+
 // ── Module ─────────────────────────────────────────────────────
 
 #[pymodule]
@@ -2499,6 +2557,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::StreamsConfig>()?;
     m.add_class::<core::WebhooksConfig>()?;
     m.add_class::<core::KvStoreConfig>()?;
+    m.add_class::<core::SqlConfig>()?;
     m.add_class::<core::SdkFullConfig>()?;
     m.add_class::<StreamsApiClient>()?;
     m.add_class::<streams_destination::PyStream>()?;
@@ -2566,6 +2625,14 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::kvstore::GetListData>()?;
     m.add_class::<core::kvstore::GetListResponse>()?;
     m.add_class::<core::kvstore::ListContainsItemResponse>()?;
+    // sql
+    m.add_class::<SqlApiClient>()?;
+    m.add_class::<sql::PyQueryResponse>()?;
+    m.add_class::<core::sql::ColumnMeta>()?;
+    m.add_class::<core::sql::QueryStatistics>()?;
+    m.add_class::<core::sql::ChainSchema>()?;
+    m.add_class::<core::sql::TableSchema>()?;
+    m.add_class::<core::sql::ColumnSchema>()?;
     Ok(())
 }
 

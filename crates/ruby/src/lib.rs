@@ -271,7 +271,9 @@ impl QuicknodeSdk {
     fn from_config(opts: RHash) -> Result<Self, Error> {
         validate_keys(
             &opts,
-            &["api_key", "http", "admin", "streams", "webhooks", "kvstore"],
+            &[
+                "api_key", "http", "admin", "streams", "webhooks", "kvstore", "sql",
+            ],
         )?;
         let config: core::SdkFullConfig =
             serde_magnus::deserialize(&ruby(), opts).map_err(|e| {
@@ -303,6 +305,12 @@ impl QuicknodeSdk {
     fn kvstore(&self) -> KvStoreApiClient {
         KvStoreApiClient {
             inner: self.inner.kvstore.clone(),
+        }
+    }
+
+    fn sql(&self) -> SqlApiClient {
+        SqlApiClient {
+            inner: self.inner.sql.clone(),
         }
     }
 }
@@ -1782,6 +1790,39 @@ impl KvStoreApiClient {
     }
 }
 
+// ── SqlApiClient ────────────────────────────────────────────────────────────
+
+#[magnus::wrap(class = "QuicknodeSdk::Native::Sql", free_immediately, size)]
+#[derive(Clone)]
+pub struct SqlApiClient {
+    inner: core::sql::SqlApiClient,
+}
+
+#[allow(clippy::needless_pass_by_value)]
+impl SqlApiClient {
+    fn query(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["query", "cluster_id"])?;
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.query(&core::sql::QueryParams {
+                query: hash_require_string(&opts, "query")?,
+                cluster_id: hash_require_string(&opts, "cluster_id")?,
+            }))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_schema(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["cluster_id"])?;
+        let client = self.inner.clone();
+        let cluster_id = hash_require_string(&opts, "cluster_id")?;
+        runtime()
+            .block_on(client.get_schema(&cluster_id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+}
+
 // ── Extension init ──────────────────────────────────────────────────────────
 
 #[magnus::init(name = "quicknode_sdk")]
@@ -1802,6 +1843,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     sdk.define_method("streams", method!(QuicknodeSdk::streams, 0))?;
     sdk.define_method("webhooks", method!(QuicknodeSdk::webhooks, 0))?;
     sdk.define_method("kvstore", method!(QuicknodeSdk::kvstore, 0))?;
+    sdk.define_method("sql", method!(QuicknodeSdk::sql, 0))?;
 
     // ── Admin ─────────────────────────────────────────────────
     let admin = native.define_class("Admin", ruby.class_object())?;
@@ -2087,6 +2129,11 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
         method!(KvStoreApiClient::delete_list_item, 1),
     )?;
     kvstore.define_method("delete_list", method!(KvStoreApiClient::delete_list, 1))?;
+
+    // ── Sql ───────────────────────────────────────────────────
+    let sql = native.define_class("Sql", ruby.class_object())?;
+    sql.define_method("query", method!(SqlApiClient::query, 1))?;
+    sql.define_method("get_schema", method!(SqlApiClient::get_schema, 1))?;
 
     Ok(())
 }

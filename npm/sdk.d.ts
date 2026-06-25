@@ -310,6 +310,15 @@ export type {
   UpdateListParams,
   AddListItemParams,
   ListContainsItemResponse,
+  // sql
+  SqlConfig,
+  SqlApiClient,
+  QueryResponseNode,
+  ColumnMetaNode,
+  QueryStatisticsNode,
+  ChainSchemaNode,
+  TableSchemaNode,
+  ColumnSchemaNode,
 } from "./index";
 
 // const enums must use `export` (not `export type`) so they are usable as values
@@ -363,6 +372,19 @@ export interface WebhooksApiClientTyped {
   ): Promise<import("./index").Webhook>;
 }
 
+// Retypes the query response `data` rows from napi's `any[]` to
+// `Record<string, unknown>[]` (rows are objects keyed by the selected columns;
+// shape varies per query). Keep method signatures in sync with the
+// napi-generated SqlApiClient in ./index.d.ts.
+export interface QueryResult extends Omit<QueryResponseNode, "data"> {
+  data: Array<Record<string, unknown>>;
+}
+
+export interface SqlApiClientTyped {
+  query(query: string, clusterId: string): Promise<QueryResult>;
+  getSchema(clusterId: string): Promise<ChainSchemaNode>;
+}
+
 export class QuicknodeSdk {
   constructor(config: SdkFullConfig);
   static fromEnv(): QuicknodeSdk;
@@ -370,6 +392,7 @@ export class QuicknodeSdk {
   streams: StreamsApiClientTyped;
   webhooks: WebhooksApiClientTyped;
   kvstore: _QuicknodeSdk["kvstore"];
+  sql: SqlApiClientTyped;
 }
 
 // Typed static factory methods producing each discriminated variant of

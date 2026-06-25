@@ -34,5 +34,9 @@ module QuicknodeSdk
     def kvstore
       KvStore.new(@native.kvstore)
     end
+
+    def sql
+      Sql.new(@native.sql)
+    end
   end
 end

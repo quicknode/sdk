@@ -201,12 +201,38 @@ export interface ChainNetwork {
   chainId?: number
 }
 
+/** Response from `get_schema`: the schema for a single chain/cluster. */
+export interface ChainSchema {
+  /** Human-readable chain name (e.g. `"Hyperliquid (HyperCore)"`). */
+  chain: string
+  /** Cluster identifier the schema belongs to. */
+  clusterId: string
+  /** Tables available in this cluster. */
+  tables: Array<TableSchema>
+}
+
 /** Per-chain usage row. */
 export interface ChainUsage {
   /** Chain name or slug. */
   name: string
   /** Credits consumed on the chain. */
   creditsUsed: number
+}
+
+/** Metadata describing a single column in a query result set. */
+export interface ColumnMeta {
+  /** Column name as it appears in the result set. */
+  name: string
+  /** Column data type (e.g. `"DateTime('UTC')"`, `"LowCardinality(String)"`). */
+  columnType: string
+}
+
+/** A single column in a table schema. */
+export interface ColumnSchema {
+  /** Column name. */
+  name: string
+  /** Column data type (e.g. `"UInt64"`, `"FixedString(42)"`). */
+  columnType: string
 }
 
 /** Parameters for `create_domain_mask`. */
@@ -1301,6 +1327,27 @@ export declare const enum ProductType {
   Webhook = 'Webhook'
 }
 
+/** Parameters for `query`. */
+export interface QueryParams {
+  /**
+   * The SQL query to execute. Pagination is expressed in the SQL itself via
+   * `LIMIT`/`OFFSET`; the API caps results at 1000 rows per request.
+   */
+  query: string
+  /** The blockchain network identifier (e.g. `"hyperliquid-core-mainnet"`). */
+  clusterId: string
+}
+
+/** Execution statistics returned alongside query results. */
+export interface QueryStatistics {
+  /** Total query execution time in seconds. */
+  elapsed: number
+  /** Total number of rows scanned during execution. */
+  rowsRead: number
+  /** Total data scanned in bytes. */
+  bytesRead: number
+}
+
 /**
  * A single rate-limit row returned by `get_rate_limits`, identifying the
  * bucket (`rps`/`rpm`/`rpd`), the value enforced, and whether the value comes
@@ -1398,6 +1445,7 @@ export interface SdkFullConfig {
   streams?: StreamsConfig
   webhooks?: WebhooksConfig
   kvstore?: KvStoreConfig
+  sql?: SqlConfig
 }
 
 /** A single security feature's name, status, and optional value. */
@@ -1484,6 +1532,10 @@ export interface SolanaWalletFilterTemplate {
   accounts: Array<string>
 }
 
+export interface SqlConfig {
+  baseUrl?: string
+}
+
 /** ByList form of `StellarWalletTransactionsFilterTemplate`. */
 export interface StellarWalletTransactionsFilterByListTemplate {
   /** Name of the pre-created wallets list. */
@@ -1555,6 +1607,22 @@ export declare const enum StreamStatus {
   Terminated = 'Terminated',
   Completed = 'Completed',
   Blocked = 'Blocked'
+}
+
+/** Schema for a single table. */
+export interface TableSchema {
+  /** Table name. */
+  name: string
+  /** Storage engine backing the table. */
+  engine: string
+  /** Approximate total number of rows in the table. */
+  totalRows: number
+  /** Partition key expression; empty string for views. */
+  partitionKey: string
+  /** Sorting key columns; empty for views. */
+  sortingKey: Array<string>
+  /** Columns in the table. */
+  columns: Array<ColumnSchema>
 }
 
 /** Per-tag usage row. */
@@ -2291,8 +2359,20 @@ export declare class QuicknodeSdk {
   get webhooks(): WebhooksApiClient
   /** Returns the kvstore sub-client. */
   get kvstore(): KvStoreApiClient
+  /** Returns the sql sub-client. */
+  get sql(): SqlApiClient
   /** Creates a new SDK instance using configuration from environment variables. */
   static fromEnv(): QuicknodeSdk
+}
+
+export declare class SqlApiClient {
+  /** Executes a SQL query against the given cluster and returns the result set. */
+  query(query: string, clusterId: string): Promise<QueryResponseNode>
+  /**
+   * Fetches the database schema for a cluster, including table names,
+   * columns, types, sort keys, and partition strategies.
+   */
+  getSchema(clusterId: string): Promise<ChainSchemaNode>
 }
 
 export declare class StreamsApiClient {
@@ -2419,6 +2499,29 @@ export declare class WebhooksApiClient {
   updateWebhookTemplate(webhookId: string, params: UpdateWebhookTemplateParamsNode): Promise<Webhook>
 }
 
+export interface ChainSchemaNode {
+  /** Human-readable chain name. */
+  chain: string
+  /** Cluster identifier the schema belongs to. */
+  clusterId: string
+  /** Tables available in this cluster. */
+  tables: Array<TableSchemaNode>
+}
+
+export interface ColumnMetaNode {
+  /** Column name as it appears in the result set. */
+  name: string
+  /** Column data type (e.g. `"DateTime('UTC')"`). */
+  type: string
+}
+
+export interface ColumnSchemaNode {
+  /** Column name. */
+  name: string
+  /** Column data type (e.g. `"UInt64"`, `"FixedString(42)"`). */
+  type: string
+}
+
 export interface CreateStreamParamsNode {
   name: string
   region: StreamRegion
@@ -2460,6 +2563,33 @@ export interface ListStreamsResponseNode {
   pageInfo: PageInfo
 }
 
+export interface QueryResponseNode {
+  /** Column metadata for each column in the result set. */
+  meta: Array<ColumnMetaNode>
+  /**
+   * Result rows. Each row is an object keyed by the selected columns; shape
+   * varies per query.
+   */
+  data: Array<any>
+  /** Number of rows returned in this response. */
+  rows: number
+  /** Total rows that matched the query before applying `LIMIT`. */
+  rowsBeforeLimitAtLeast: number
+  /** Query execution statistics. */
+  statistics: QueryStatisticsNode
+  /** Credits consumed by the query. */
+  credits: number
+}
+
+export interface QueryStatisticsNode {
+  /** Total query execution time in seconds. */
+  elapsed: number
+  /** Total number of rows scanned during execution. */
+  rowsRead: number
+  /** Total data scanned in bytes. */
+  bytesRead: number
+}
+
 export interface StreamNode {
   id: string
   name: string
@@ -2493,6 +2623,21 @@ export interface StreamNode {
   memo?: string
   addressBookConfig?: AddressBookConfig
   extraDestinations?: Array<any>
+}
+
+export interface TableSchemaNode {
+  /** Table name. */
+  name: string
+  /** Storage engine backing the table. */
+  engine: string
+  /** Approximate total number of rows in the table. */
+  totalRows: number
+  /** Partition key expression; empty string for views. */
+  partitionKey: string
+  /** Sorting key columns; empty for views. */
+  sortingKey: Array<string>
+  /** Columns in the table. */
+  columns: Array<ColumnSchemaNode>
 }
 
 export interface UpdateStreamParamsNode {

@@ -46,6 +46,7 @@ This is one of four language bindings published from the same Rust core. See the
   - [KV Store Client](#kv-store-client)
     - [Sets](#sets)
     - [Lists](#lists)
+  - [SQL Client](#sql-client)
 - [Error Handling](#error-handling)
 - [License](#license)
 
@@ -55,7 +56,7 @@ This is one of four language bindings published from the same Rust core. See the
 
 ## Quick Start
 
-Construct the SDK once, then reach into the four sub-clients (`admin`, `streams`, `webhooks`, `kvstore`). Subsequent API Reference snippets assume you have a `qn` handle from one of these blocks.
+Construct the SDK once, then reach into the five sub-clients (`admin`, `streams`, `webhooks`, `kvstore`, `sql`). Subsequent API Reference snippets assume you have a `qn` handle from one of these blocks.
 
 ```typescript
 // Node.js
@@ -96,6 +97,7 @@ Environment variables (prefix `QN_SDK__`, separator `__`):
 | `QN_SDK__STREAMS__BASE_URL` | no | `https://api.quicknode.com/streams/rest/v1/` | Override streams base URL |
 | `QN_SDK__WEBHOOKS__BASE_URL` | no | `https://api.quicknode.com/webhooks/rest/v1/` | Override webhooks base URL |
 | `QN_SDK__KVSTORE__BASE_URL` | no | `https://api.quicknode.com/kv/rest/v1/` | Override KV store base URL |
+| `QN_SDK__SQL__BASE_URL` | no | `https://api.quicknode.com/sql/rest/v1/` | Override SQL Explorer base URL |
 | `QN_SDK__HTTP__HEADERS__<NAME>` | no | — | Custom HTTP header sent on every request. Overrides SDK-managed headers (see below). |
 
 ### Custom headers and `User-Agent`
@@ -1604,6 +1606,43 @@ Deletes a list and all of its items.
 ```typescript
 // Node.js
 await qn.kvstore.deleteList("my-list");
+```
+
+---
+
+### SQL Client
+
+Accessed as `qn.sql`. Runs SQL queries against indexed blockchain data and fetches the database schema. Backed by `https://api.quicknode.com/sql/rest/v1/`.
+
+##### `query`
+
+Executes a SQL query against a cluster and returns the result set. Paginate by writing `LIMIT`/`OFFSET` into the SQL.
+
+**Parameters**: `query` (string, required), `cluster_id` / `clusterId` (string, required).
+
+**Returns**: a query result — `meta` (column metadata, each with `name` and `type`), `data` (rows as objects keyed by column name), `rows`, `rows_before_limit_at_least` / `rowsBeforeLimitAtLeast`, `statistics` (`elapsed`, `rows_read`/`rowsRead`, `bytes_read`/`bytesRead`), and `credits`.
+
+```typescript
+// Node.js
+const resp = await qn.sql.query(
+  "SELECT action_type, user FROM hyperliquid_system_actions ORDER BY block_time DESC LIMIT 100",
+  "hyperliquid-core-mainnet",
+);
+console.log(resp.rows, resp.data[0]);
+```
+
+##### `get_schema` / `getSchema`
+
+Fetches the database schema for a cluster: table names, columns, types, sort keys, and partition strategies.
+
+**Parameters**: `cluster_id` / `clusterId` (string, required).
+
+**Returns**: a chain schema — `chain`, `cluster_id` / `clusterId`, and `tables` (each with `name`, `engine`, `total_rows` / `totalRows`, `partition_key` / `partitionKey`, `sorting_key` / `sortingKey`, and `columns` of `{ name, type }`).
+
+```typescript
+// Node.js
+const schema = await qn.sql.getSchema("hyperliquid-core-mainnet");
+console.log(schema.tables.length);
 ```
 
 ## Error Handling

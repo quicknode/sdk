@@ -46,6 +46,7 @@ This is one of four language bindings published from the same Rust core. See the
   - [KV Store Client](#kv-store-client)
     - [Sets](#sets)
     - [Lists](#lists)
+  - [SQL Client](#sql-client)
 - [Error Handling](#error-handling)
 - [License](#license)
 
@@ -55,7 +56,7 @@ This is one of four language bindings published from the same Rust core. See the
 
 ## Quick Start
 
-Construct the SDK once, then reach into the four sub-clients (`admin`, `streams`, `webhooks`, `kvstore`). Subsequent API Reference snippets assume you have a `qn` handle from one of these blocks.
+Construct the SDK once, then reach into the five sub-clients (`admin`, `streams`, `webhooks`, `kvstore`, `sql`). Subsequent API Reference snippets assume you have a `qn` handle from one of these blocks.
 
 ```rust
 // Rust
@@ -99,6 +100,7 @@ Environment variables (prefix `QN_SDK__`, separator `__`):
 | `QN_SDK__STREAMS__BASE_URL` | no | `https://api.quicknode.com/streams/rest/v1/` | Override streams base URL |
 | `QN_SDK__WEBHOOKS__BASE_URL` | no | `https://api.quicknode.com/webhooks/rest/v1/` | Override webhooks base URL |
 | `QN_SDK__KVSTORE__BASE_URL` | no | `https://api.quicknode.com/kv/rest/v1/` | Override KV store base URL |
+| `QN_SDK__SQL__BASE_URL` | no | `https://api.quicknode.com/sql/rest/v1/` | Override SQL Explorer base URL |
 | `QN_SDK__HTTP__HEADERS__<NAME>` | no | — | Custom HTTP header sent on every request. Overrides SDK-managed headers (see below). |
 
 ### Custom headers and `User-Agent`
@@ -1687,6 +1689,46 @@ Deletes a list and all of its items.
 ```rust
 // Rust
 qn.kvstore.delete_list("my-list").await?;
+```
+
+---
+
+### SQL Client
+
+Accessed as `qn.sql`. Runs SQL queries against indexed blockchain data and fetches the database schema. Backed by `https://api.quicknode.com/sql/rest/v1/`.
+
+##### `query`
+
+Executes a SQL query against a cluster and returns the result set. Paginate by writing `LIMIT`/`OFFSET` into the SQL.
+
+**Parameters**: `QueryParams` with `query` (String, required) and `cluster_id` (String, required).
+
+**Returns**: `QueryResponse` — `meta` (`Vec<ColumnMeta>`, each with `name` and `column_type`), `data` (`Vec<serde_json::Value>`, rows as JSON objects keyed by column name), `rows`, `rows_before_limit_at_least`, `statistics` (`QueryStatistics` with `elapsed`, `rows_read`, `bytes_read`), and `credits`.
+
+```rust
+// Rust
+let resp = qn
+    .sql
+    .query(&QueryParams {
+        query: "SELECT action_type, user FROM hyperliquid_system_actions ORDER BY block_time DESC LIMIT 100".to_string(),
+        cluster_id: "hyperliquid-core-mainnet".to_string(),
+    })
+    .await?;
+println!("{} rows, {:?}", resp.rows, resp.data.first());
+```
+
+##### `get_schema`
+
+Fetches the database schema for a cluster: table names, columns, types, sort keys, and partition strategies.
+
+**Parameters**: `cluster_id` (`&str`, required).
+
+**Returns**: `ChainSchema` — `chain`, `cluster_id`, and `tables` (`Vec<TableSchema>`, each with `name`, `engine`, `total_rows`, `partition_key`, `sorting_key`, and `columns` of `ColumnSchema { name, column_type }`).
+
+```rust
+// Rust
+let schema = qn.sql.get_schema("hyperliquid-core-mainnet").await?;
+println!("{} tables", schema.tables.len());
 ```
 
 ## Error Handling
