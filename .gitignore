@@ -71,3 +71,8 @@ notes.md
 # Ruby native extension (built locally by `just ruby-build`)
 ruby/lib/quicknode_sdk/*.bundle
 ruby/lib/quicknode_sdk/*.so
+
+# Go native staticlib (built fresh by `just go-build`, never committed). The
+# generated Go source (go/quicknode_sdk/*.go, *.h) IS committed. *.so/*.dylib
+# are already ignored globally above; *.a is not, so ignore it under go/.
+go/quicknode_sdk/lib/**/*.a

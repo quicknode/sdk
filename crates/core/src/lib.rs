@@ -1,10 +1,23 @@
 pub mod admin;
 pub mod config;
 pub mod errors;
+#[cfg(feature = "go")]
+pub mod go;
 pub mod kvstore;
 pub mod sql;
 pub mod streams;
 pub mod webhooks;
+
+// Establishes `crate::UniFfiTag` (required by the `go`-gated
+// `#[derive(uniffi::Record)]` annotations on core types) and emits the runtime
+// FFI scaffolding exactly once for the whole library. Gated on `go` so default
+// and python/node/ruby builds are entirely unaffected. The Go facade lives in
+// the `go` module rather than a separate crate because uniffi 0.31 requires the
+// deriving crate and the scaffolding crate to be the same one — splitting them
+// either double-emits the FFI symbols (link-time collision) or forces
+// hand-mirroring every core type via `#[uniffi::remote]`.
+#[cfg(feature = "go")]
+uniffi::setup_scaffolding!();
 
 pub use config::{
     AdminConfig, ClientInfo, HttpConfig, KvStoreConfig, SdkFullConfig, SqlConfig, StreamsConfig,

@@ -40,6 +40,12 @@ just ruby-build                                   # cargo build + copy .bundle a
 ```
 The build compiles `crates/ruby` and copies the resulting `libquicknode_sdk.dylib` to `ruby/lib/quicknode_sdk/quicknode_sdk.bundle` (macOS) or equivalent `.so` on Linux. The native lib lives under `lib/quicknode_sdk/` so `require_relative "quicknode_sdk/quicknode_sdk"` picks the platform extension automatically.
 
+### Go
+```bash
+just go-build                                     # build staticlib + run uniffi-bindgen-go + emit Go into go/
+```
+The build compiles the `crates/go` UniFFI facade (`cargo build -p sdk-go --release`) to a `staticlib`/`cdylib`, runs `uniffi-bindgen-go` against the compiled library to regenerate the Go package under `go/`, and leaves the native `libquicknode_sdk.a` for the Go test/build to link via cgo. The generated Go is committed; the `.a` is gitignored and built fresh. `uniffi-bindgen-go` must be installed at the tag whose `+vA.B.C` suffix matches the `uniffi` crate version in `[workspace.dependencies]` — see §Architecture → Go Binding (UniFFI).
+
 ## Verification
 
 When verifying changes, use these commands based on what was modified:
@@ -48,7 +54,8 @@ When verifying changes, use these commands based on what was modified:
 - **Python crate/bindings** — `just python-setup` (first time only), then `just python-build`
 - **Node/npm** — `just node-build`
 - **Ruby** — `just ruby-build`
-- **Full verification** — `cargo check && just lint && just python-build && just node-build && just ruby-build && just test`
+- **Go** — `just go-build`, then run the Go tests (which statically link the `.a`). Requires the pinned `uniffi-bindgen-go` and a Go toolchain installed.
+- **Full verification** — `cargo check && just lint && just python-build && just node-build && just ruby-build && just go-build && just test`
 
 > Note: Do not use `cargo build` directly — Python bindings are compiled via maturin (`just python-build`).
 
@@ -56,17 +63,32 @@ if you can't run a just command, see what it's executing and run it manually
 
 ## Architecture
 
-This is a polyglot SDK: one Rust core library with Python, Node.js, and Ruby bindings generated from the same types
+This is a polyglot SDK: one Rust core library with Python, Node.js, Ruby, and Go bindings generated from the same types
 
 ### Workspace Layout
 - `crates/core` — Pure Rust business logic (HTTP client, request/response types, errors)
 - `crates/python` — PyO3 wrapper crate, compiles to `quicknode_sdk._core` Python extension
 - `crates/node` — napi-rs wrapper crate, compiles to native `.node` module
 - `crates/ruby` — Magnus wrapper crate, compiles to native `.bundle`/`.so` module
+- `crates/go` — trivial cdylib/staticlib shim (`pub use quicknode_sdk::go::*;`) that produces the linkable native artifact; the UniFFI facade itself lives in `crates/core/src/go.rs` (see Go Binding below)
 - `crates/python-stubs` — Generates `.pyi` type stub files
 - `python/quicknode_sdk/` — Python package directory (distributed via maturin)
 - `npm/` — Node.js package directory
 - `ruby/` — Ruby package directory (`lib/quicknode_sdk.rb` entry point, `examples/`)
+- `go/` — Go package directory (generated Go from uniffi-bindgen-go, plus any hand-written wrappers and `examples/`)
+
+### Go Binding (UniFFI)
+
+The Go binding differs from the other three: Python/Node/Ruby each use a VM-specific FFI (PyO3/napi/magnus), but Go consumes the core through [`uniffi-bindgen-go`](https://github.com/NordSecurity/uniffi-bindgen-go) (NordSecurity) over a UniFFI facade. The design and its rationale:
+
+- **Facade, not logic.** The facade lives in `crates/core/src/go.rs` (gated on the `go` feature) and re-exports the public core surface through UniFFI — no HTTP, no business logic. Drift from core is caught at compile time: the facade fails to build when the core surface changes. This is the genuine "reuse the core" path — there is no second hand-written client.
+- **Why the facade is in core, not a separate crate.** uniffi 0.31's `#[derive(uniffi::Record)]`/`Error` require `crate::UniFfiTag`, which only `uniffi::setup_scaffolding!` provides — and `setup_scaffolding!` also emits the runtime FFI symbols. Calling it in two crates (core + a separate facade) double-emits those symbols and the static link fails with duplicate-symbol errors; the documented alternative (`#[uniffi::remote]` / `use_remote_type!`) forces hand-mirroring every core type's fields. So the deriving crate and the scaffolding crate must be the **same** crate: core. `crates/go` is then a trivial shim (`pub use quicknode_sdk::go::*;`) whose only job is to be the `cdylib`/`staticlib` that pulls core's FFI symbols into the final artifact (emitted exactly once). All Go-specific code is `go`-feature-gated, so default and python/node/ruby builds are byte-unaffected.
+- **Full-surface facade.** The facade covers the **entire** public core surface (admin, streams, webhooks, kvstore, sql), even though early consumers may use only a slice. uniffi-bindgen-go generates Go from the whole facade regardless, so covering everything from day one keeps the SDK complete and keeps any future Terraform provider / public distribution a pure additive step rather than a redesign.
+- **Sync via `block_on`.** Core methods are `async fn`; the facade wraps each in a shared `tokio` runtime (`OnceLock`) and `block_on`s it to export **synchronous** functions — the same pattern as the Ruby binding. uniffi-bindgen-go surfaces async as plain blocking Go calls anyway (no `context.Context`, no channels), so there is no ergonomic loss, and this avoids the churnier async codegen path. Go callers do concurrency with their own goroutines.
+- **Error mapping at the boundary.** `SdkError` cannot cross UniFFI as-is (it wraps `reqwest::Error` and `serde_json::Error`). The facade defines its own `#[derive(uniffi::Error)]` enum (`QuicknodeError`) and maps `SdkError` → that enum at the boundary, exactly as the other three bindings map at their FFI boundary. It surfaces in Go as a single `*QuicknodeError` wrapping a variant struct (`QuicknodeErrorApi` carries `Status`/`Body`); read variants with `errors.As`. See §Error Handling.
+- **Version pinning.** uniffi-bindgen-go pins to an exact `uniffi-rs` minor version (e.g. generator `v0.7.1+v0.31.0` ⇒ `uniffi = "0.31.0"`) and lags upstream UniFFI by ~2–3 months. Core's `uniffi` dependency must match the installed generator's `+vA.B.C` tag — do not bump `uniffi` ahead of the generator.
+- **cgo + static link.** The generated Go requires `cgo` (`CGO_ENABLED=1`) and links the compiled `staticlib`. Per-`GOOS`/`GOARCH` cgo directives live in a hand-written `go/quicknode_sdk/cgo_link_<goos>_<goarch>.go` (build-tag gated). Generated Go **is committed** (it is source, like the Ruby `.rb` wrappers and napi JS); the native `.a` is **gitignored** and built fresh, matching every other binding.
+- **Scope (current phase): internal scaffolding.** The Go SDK is built but **not yet published** as a `go get`-able module. Its only intended consumer is a future Terraform provider, which will statically link it at build time. The public-Go-module distribution question (committed-`.a`-in-monorepo vs. a separate mirrored repo; the `go/vX.Y.Z` submodule tag scheme) is **deliberately deferred** until there is an external consumer — do not solve it now. Because the facade is already full-surface, promoting the Go binding to a published SDK later is an additive release step, not a rewrite.
 
 ### Core Pattern
 - `QuicknodeSdk` is the root entry point holding sub-clients (e.g., `admin: AdminApiClient`). All clients share a `SdkConfig(Arc<SdkConfigInner>)` wrapping one `reqwest` HTTP client and the API key.
@@ -90,7 +112,7 @@ impl Resolved<Name>Config {
 ```
 `SdkConfigInner` holds one field per sub-client (e.g., `admin: admin::ResolvedAdminConfig`), and `SdkConfig` exposes a matching accessor (e.g., `fn admin(&self) -> &admin::ResolvedAdminConfig`). Call sites use `self.config.admin().base_url` instead of a flat `admin_base_url` field. Resolved config structs should be cheaply cloneable — prefer types like `reqwest::Url` (which implements `Clone`) and avoid heap allocations that would make cloning expensive; `SdkConfig` itself is a cheap clone via `Arc<SdkConfigInner>`.
 
-- Any update to types in the core crate need to be checked for updates in the language crates (python, node, ruby)
+- Any update to types in the core crate need to be checked for updates in the language crates (python, node, ruby, and the `crates/go` UniFFI facade)
 
 ### Multi-Language Type Annotations
 Data types are defined once in `crates/core/src/` with feature-gated attribute macros:

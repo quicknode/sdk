@@ -1,0 +1,22 @@
+[package]
+name = "sdk-go"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Go bindings cdylib shim for quicknode sdk (UniFFI)"
+publish = false
+
+[lints]
+workspace = true
+
+[lib]
+name = "quicknode_sdk"
+# cdylib so uniffi-bindgen-go can inspect the compiled library; staticlib so
+# the generated Go links the facade into the consuming binary via cgo. This
+# crate is a thin shim: all UniFFI types/exports and the scaffolding live in
+# `quicknode-sdk`'s `go` module — this crate only re-exports them so the FFI
+# symbols land in the final cdylib/staticlib.
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+quicknode-sdk = { path = "../core", features = ["go"] }

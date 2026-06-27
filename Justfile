@@ -11,6 +11,16 @@ ruby-build:
   cargo build -p sdk-ruby --release
   cp target/release/libquicknode_sdk.dylib ruby/lib/quicknode_sdk/quicknode_sdk.bundle
 
+# Build the UniFFI cdylib/staticlib, regenerate the Go package from it, and
+# stage the staticlib for cgo to link (gitignored; rebuilt fresh). The arch
+# subdir mirrors the GOOS/GOARCH build tag in cgo_link_<goos>_<goarch>.go.
+go-build:
+  cargo build -p sdk-go --release
+  uniffi-bindgen-go --library target/release/libquicknode_sdk.dylib --out-dir go
+  mkdir -p go/quicknode_sdk/lib/darwin_arm64
+  cp target/release/libquicknode_sdk.a go/quicknode_sdk/lib/darwin_arm64/
+  cd go/quicknode_sdk && CGO_ENABLED=1 go test ./...
+
 macos-dist-python:
   uv python install 3.11 3.12 3.13 3.14
   mkdir -p dist

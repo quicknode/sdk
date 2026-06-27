@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetEndpointsRequest {
@@ -57,6 +58,7 @@ pub struct GetEndpointsRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetEndpointsResponse {
     /// Endpoints on the current page.
@@ -72,6 +74,7 @@ pub struct GetEndpointsResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pagination {
     /// Total number of items matching the query across all pages.
@@ -86,6 +89,7 @@ pub struct Pagination {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Endpoint {
     /// Unique endpoint identifier.
@@ -120,6 +124,7 @@ pub struct Endpoint {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointTag {
     /// Tag identifier.

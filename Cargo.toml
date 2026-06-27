@@ -6,6 +6,7 @@ members = [
     "crates/node",
     "crates/python-stubs",
     "crates/ruby",
+    "crates/go",
 ]
 
 [workspace.package]
@@ -33,3 +34,7 @@ napi = { version = "3", features = ["async", "tokio_rt", "compat-mode"] }
 napi-derive = { version = "3", features = ["compat-mode"] }
 pyo3-stub-gen = { version = "0.19.0" }
 magnus = { version = "0.8" }
+# Pinned to match the installed uniffi-bindgen-go generator tag
+# (v0.7.1+v0.31.0). Do NOT bump ahead of the generator — see CLAUDE.md
+# §Architecture → Go Binding (UniFFI).
+uniffi = { version = "0.31.0" }
