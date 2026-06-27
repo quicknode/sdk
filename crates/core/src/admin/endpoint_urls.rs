@@ -11,6 +11,7 @@ use std::collections::HashMap;
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointUrl {
     /// HTTP RPC URL.
@@ -24,6 +25,7 @@ pub struct EndpointUrl {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetEndpointUrlsData {
     /// HTTP RPC URL.
@@ -38,6 +40,7 @@ pub struct GetEndpointUrlsData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetEndpointUrlsResponse {
     /// URLs for the endpoint.

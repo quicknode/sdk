@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainNetwork {
     /// Network slug (e.g. `mainnet`).
@@ -24,6 +25,7 @@ pub struct ChainNetwork {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Chain {
     /// Chain slug (e.g. `ethereum`).
@@ -39,6 +41,7 @@ pub struct Chain {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListChainsResponse {
     /// Supported chains and their networks.

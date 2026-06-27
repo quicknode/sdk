@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct BulkUpdateEndpointStatusRequest {
@@ -25,6 +26,7 @@ pub struct BulkUpdateEndpointStatusRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkOperationResult {
     /// Endpoint id the result refers to.
@@ -37,6 +39,7 @@ pub struct BulkOperationResult {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkUpdateEndpointStatusData {
     /// Total number of endpoints processed.
@@ -54,6 +57,7 @@ pub struct BulkUpdateEndpointStatusData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkUpdateEndpointStatusResponse {
     /// Bulk update summary.
@@ -66,6 +70,7 @@ pub struct BulkUpdateEndpointStatusResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct BulkAddTagRequest {
@@ -79,6 +84,7 @@ pub struct BulkAddTagRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkTag {
     /// Tag identifier.
@@ -91,6 +97,7 @@ pub struct BulkTag {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkAddTagData {
     /// Total number of endpoints processed.
@@ -110,6 +117,7 @@ pub struct BulkAddTagData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkAddTagResponse {
     /// Bulk add-tag summary.
@@ -122,6 +130,7 @@ pub struct BulkAddTagResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct BulkRemoveTagRequest {
@@ -135,6 +144,7 @@ pub struct BulkRemoveTagRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkRemoveTagData {
     /// Total number of endpoints processed.
@@ -152,6 +162,7 @@ pub struct BulkRemoveTagData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkRemoveTagResponse {
     /// Bulk remove-tag summary.

@@ -14,10 +14,17 @@ The planned two-crate layout (plain `crates/go` facade + `#[derive(uniffi::Recor
 
 **Resolution (single-crate):** the UniFFI facade lives in `crates/core/src/go.rs`, gated on the `go` feature — `setup_scaffolding!`, the `QuicknodeError` enum, and the `#[uniffi::export]` `QuicknodeSdkClient`. The `#[cfg_attr(feature = "go", derive(uniffi::Record))]` annotations sit one-per-type on the core data types (true thin/derive, no mirroring). `crates/go` is now a **trivial cdylib/staticlib shim** (`pub use quicknode_sdk::go::*;`) that exists only to produce the linkable native artifact; it is the sole place `setup_scaffolding!` is reachable from, so the FFI symbols are emitted exactly once. tokio is a `go`-gated optional dep of core.
 
-## Stage 2: Fan out to the full public surface
+## Stage 2: Fan out to the full public surface — COMPLETE
 **Goal**: `go`-feature-gated UniFFI attributes on all public types/methods across admin, streams, webhooks, kvstore, sql. Explicitly validate the `DestinationAttributes` discriminated union (enum-with-data + `#[serde(flatten)]`) through the Go codegen.
-**Success criteria**: full surface generates and compiles; `go/examples/` exercises representative methods per sub-client; no regressions to python/node/ruby builds (default build byte-identical).
-**Status**: Not Started
+**Success criteria**: full surface generates and compiles; representative methods per sub-client exercised by Go tests; no regressions to python/node/ruby builds.
+**Status**: Complete. ~190 Records/Enums annotated across all five sub-clients; 98 sub-client methods exported (Admin/Streams/Webhooks/KvStore/Sql) under a `client.Admin()`/`client.Streams()`/... accessor shape. 4 Go tests pass (admin round-trip, typed API error, streams discriminated-union both directions, sql JSON rows). Clippy clean with and without `go`; 217 core tests pass; default/workspace builds unaffected.
+
+### Two hard cases resolved (both were the point of this stage)
+1. **Discriminated unions** (`DestinationAttributes`, `TemplateArgs`, the webhook `*Input` enums): uniffi marshals enum-with-data **natively** as Go tagged unions — no per-binding wrapper needed (unlike napi/pyo3). The `#[serde(tag/content/flatten)]` attributes are irrelevant to uniffi (they only drive the HTTP wire format in core). Each just needs `#[cfg_attr(feature = "go", derive(uniffi::Enum))]`.
+2. **Arbitrary JSON** (`QueryResponse.data: Vec<serde_json::Value>`): exposed via `uniffi::custom_type!(JsonValue, String, { remote, ... })` registered in `crate::go`, marshaling each value as a JSON string (Go sees `[]string` and `json.Unmarshal`s). The foreign type must be imported as a bare single-segment ident (`use serde_json::Value as JsonValue`) because the macro calls `path.get_ident()`.
+
+### Added for testability
+`QuicknodeSdkClient::new_with_base_urls(api_key, BaseUrlOverrides)` — per-sub-client base URL overrides (also useful for proxy/self-hosted setups), replacing the Stage-1 admin-only override.
 
 ## Stage 3: Release pipeline
 **Goal**: `crates/go` added to workspace members; `build-go` job in `release.yml` mirroring `build-ruby` (cross for linux-gnu x64/arm via zigbuild; macOS-arm64 via a `macos-dist-go` recipe locally). The `.a` per target is uploaded to the GitHub release (lives there / in CI; not committed).

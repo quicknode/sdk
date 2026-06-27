@@ -37,6 +37,7 @@ where
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetEndpointMetricsRequest {
     /// Time period (`hour`, `day`, `week`, or `month`).
@@ -49,6 +50,7 @@ pub struct GetEndpointMetricsRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetAccountMetricsRequest {
     /// Time period (`hour`, `day`, `week`, or `month`).
@@ -64,6 +66,7 @@ pub struct GetAccountMetricsRequest {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointMetric {
     /// Data points, each as `[timestamp, value]`.
@@ -79,6 +82,7 @@ pub struct EndpointMetric {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetEndpointMetricsResponse {
     /// Metric series returned for the endpoint.
@@ -92,6 +96,7 @@ pub struct GetEndpointMetricsResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetAccountMetricsResponse {
     /// Metric series returned for the account.

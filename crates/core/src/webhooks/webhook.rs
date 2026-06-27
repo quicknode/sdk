@@ -25,6 +25,7 @@ where
 
 /// Identifier of a predefined webhook filter template.
 #[cfg_attr(feature = "node", napi(string_enum))]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -58,6 +59,7 @@ impl WebhookTemplateId {
 
 /// Position a webhook begins (or resumes) delivering from when activated.
 #[cfg_attr(feature = "node", napi(string_enum))]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -76,6 +78,7 @@ pub enum WebhookStartFrom {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvmWalletFilterTemplate {
     /// Wallet addresses to match against.
@@ -98,6 +101,7 @@ impl EvmWalletFilterTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EvmContractEventsTemplate {
@@ -126,6 +130,7 @@ impl EvmContractEventsTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvmAbiFilterTemplate {
     /// JSON-encoded contract ABI used to decode event data.
@@ -150,6 +155,7 @@ impl EvmAbiFilterTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SolanaWalletFilterTemplate {
     /// Solana account addresses to match against.
@@ -171,6 +177,7 @@ impl SolanaWalletFilterTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BitcoinWalletFilterTemplate {
     /// Bitcoin wallet addresses to match against.
@@ -192,6 +199,7 @@ impl BitcoinWalletFilterTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XrplWalletFilterTemplate {
     /// XRPL wallet addresses to match against.
@@ -213,6 +221,7 @@ impl XrplWalletFilterTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HyperliquidWalletEventsFilterTemplate {
     /// Hyperliquid wallet addresses to match against.
@@ -235,6 +244,7 @@ impl HyperliquidWalletEventsFilterTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StellarWalletTransactionsFilterTemplate {
     /// Stellar wallet addresses to match against.
@@ -265,6 +275,7 @@ impl StellarWalletTransactionsFilterTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EvmWalletFilterByListTemplate {
@@ -289,6 +300,7 @@ impl EvmWalletFilterByListTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EvmContractEventsByListTemplate {
@@ -322,6 +334,7 @@ impl EvmContractEventsByListTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EvmAbiFilterByListTemplate {
@@ -352,6 +365,7 @@ impl EvmAbiFilterByListTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SolanaWalletFilterByListTemplate {
@@ -374,6 +388,7 @@ impl SolanaWalletFilterByListTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BitcoinWalletFilterByListTemplate {
@@ -396,6 +411,7 @@ impl BitcoinWalletFilterByListTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct XrplWalletFilterByListTemplate {
@@ -418,6 +434,7 @@ impl XrplWalletFilterByListTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HyperliquidWalletEventsFilterByListTemplate {
@@ -440,6 +457,7 @@ impl HyperliquidWalletEventsFilterByListTemplate {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StellarWalletTransactionsFilterByListTemplate {
@@ -465,6 +483,7 @@ impl StellarWalletTransactionsFilterByListTemplate {
 /// `EvmWalletFilter` template arguments in either inline or by-list form.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 pub enum EvmWalletFilterInput {
     Inline(EvmWalletFilterTemplate),
     ByList(EvmWalletFilterByListTemplate),
@@ -473,6 +492,7 @@ pub enum EvmWalletFilterInput {
 /// `EvmContractEvents` template arguments in either inline or by-list form.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 pub enum EvmContractEventsInput {
     Inline(EvmContractEventsTemplate),
     ByList(EvmContractEventsByListTemplate),
@@ -481,6 +501,7 @@ pub enum EvmContractEventsInput {
 /// `EvmAbiFilter` template arguments in either inline or by-list form.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 pub enum EvmAbiFilterInput {
     Inline(EvmAbiFilterTemplate),
     ByList(EvmAbiFilterByListTemplate),
@@ -489,6 +510,7 @@ pub enum EvmAbiFilterInput {
 /// `SolanaWalletFilter` template arguments in either inline or by-list form.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 pub enum SolanaWalletFilterInput {
     Inline(SolanaWalletFilterTemplate),
     ByList(SolanaWalletFilterByListTemplate),
@@ -497,6 +519,7 @@ pub enum SolanaWalletFilterInput {
 /// `BitcoinWalletFilter` template arguments in either inline or by-list form.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 pub enum BitcoinWalletFilterInput {
     Inline(BitcoinWalletFilterTemplate),
     ByList(BitcoinWalletFilterByListTemplate),
@@ -505,6 +528,7 @@ pub enum BitcoinWalletFilterInput {
 /// `XrplWalletFilter` template arguments in either inline or by-list form.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 pub enum XrplWalletFilterInput {
     Inline(XrplWalletFilterTemplate),
     ByList(XrplWalletFilterByListTemplate),
@@ -513,6 +537,7 @@ pub enum XrplWalletFilterInput {
 /// `HyperliquidWalletEventsFilter` template arguments in either inline or by-list form.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 pub enum HyperliquidWalletEventsFilterInput {
     Inline(HyperliquidWalletEventsFilterTemplate),
     ByList(HyperliquidWalletEventsFilterByListTemplate),
@@ -522,6 +547,7 @@ pub enum HyperliquidWalletEventsFilterInput {
 /// either inline or by-list form.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 pub enum StellarWalletTransactionsFilterInput {
     Inline(StellarWalletTransactionsFilterTemplate),
     ByList(StellarWalletTransactionsFilterByListTemplate),
@@ -540,6 +566,7 @@ pub enum StellarWalletTransactionsFilterInput {
 // a request struct.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "templateId", content = "templateArgs", rename_all = "camelCase")]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 pub enum TemplateArgs {
     /// EVM wallet filter.
     EvmWalletFilter(EvmWalletFilterInput),
@@ -584,6 +611,7 @@ impl TemplateArgs {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookDestinationAttributes {
     /// Target URL that receives webhook payloads.
@@ -616,6 +644,7 @@ impl WebhookDestinationAttributes {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GetWebhooksParams {
@@ -643,6 +672,7 @@ impl GetWebhooksParams {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct UpdateWebhookParams {
@@ -678,6 +708,7 @@ impl UpdateWebhookParams {
 
 /// Parameters for `activate_webhook`.
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -687,6 +718,7 @@ pub struct ActivateWebhookParams {
 }
 
 /// Parameters for `create_webhook_from_template`.
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateWebhookFromTemplateParams {
@@ -706,6 +738,7 @@ pub struct CreateWebhookFromTemplateParams {
 }
 
 /// Parameters for `update_webhook_template`.
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateWebhookTemplateParams {
     /// New human-readable name.
@@ -729,6 +762,7 @@ pub struct UpdateWebhookTemplateParams {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Webhook {
     /// Unique webhook identifier.
@@ -763,6 +797,7 @@ pub struct Webhook {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookPageInfo {
     /// Page size used for this response.
@@ -777,6 +812,7 @@ pub struct WebhookPageInfo {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListWebhooksResponse {
     /// Webhooks on the current page.
@@ -790,6 +826,7 @@ pub struct ListWebhooksResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookEnabledCountResponse {
     /// Total count of enabled webhooks on the account.

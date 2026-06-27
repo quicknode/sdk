@@ -37,6 +37,7 @@ impl ResolvedSqlConfig {
 /// Parameters for `query`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryParams {
@@ -56,6 +57,7 @@ pub struct QueryParams {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ColumnMeta {
     /// Column name as it appears in the result set.
@@ -83,6 +85,7 @@ impl ColumnMeta {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryStatistics {
     /// Total query execution time in seconds.
@@ -113,7 +116,10 @@ impl QueryStatistics {
 // type cannot derive `#[pyclass]`/`#[napi(object)]`. It stays pure-Rust in core;
 // each binding wraps it and exposes `data` as the language's native dynamic type
 // (Python via `pythonize`, Node via napi's `serde_json::Value` support, Ruby via
-// `serde_magnus`). Mirrors the `DestinationAttributes` wrapping pattern.
+// `serde_magnus`). Mirrors the `DestinationAttributes` wrapping pattern. The Go
+// binding registers a `uniffi::custom_type!` (in `crate::go`) that marshals each
+// `serde_json::Value` as a JSON string, so `data` surfaces in Go as `[]string`.
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryResponse {
     /// Column metadata for each column in the result set.
@@ -138,6 +144,7 @@ pub struct QueryResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ColumnSchema {
     /// Column name.
@@ -162,6 +169,7 @@ impl ColumnSchema {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TableSchema {
     /// Table name.
@@ -206,6 +214,7 @@ impl TableSchema {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainSchema {
     /// Human-readable chain name (e.g. `"Hyperliquid (HyperCore)"`).

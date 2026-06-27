@@ -49,6 +49,7 @@ impl ResolvedKvStoreConfig {
 /// Parameters for `create_set`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateSetParams {
@@ -61,6 +62,7 @@ pub struct CreateSetParams {
 /// Parameters for `get_sets`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GetSetsParams {
@@ -75,6 +77,7 @@ pub struct GetSetsParams {
 /// Parameters for `bulk_sets`. Either or both fields may be supplied.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,6 +93,7 @@ pub struct BulkSetsParams {
 /// Parameters for `create_list`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateListParams {
@@ -102,6 +106,7 @@ pub struct CreateListParams {
 /// Parameters for `get_lists`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GetListsParams {
@@ -116,6 +121,7 @@ pub struct GetListsParams {
 /// Parameters for `get_list`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GetListParams {
@@ -130,6 +136,7 @@ pub struct GetListParams {
 /// Parameters for `update_list`. Either or both fields may be supplied.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -145,6 +152,7 @@ pub struct UpdateListParams {
 /// Parameters for `add_list_item`.
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AddListItemParams {
@@ -158,6 +166,7 @@ pub struct AddListItemParams {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KvSetEntry {
     /// Key identifying the set.
@@ -181,6 +190,7 @@ impl KvSetEntry {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetSetsResponse {
     /// Key/value entries on the current page.
@@ -205,6 +215,7 @@ impl GetSetsResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetSetResponse {
     /// Stored string value.
@@ -226,6 +237,7 @@ impl GetSetResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GetListsData {
     /// List keys on the current page.
@@ -247,6 +259,7 @@ impl GetListsData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetListsResponse {
     /// List keys on the current page.
@@ -271,6 +284,7 @@ impl GetListsResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetListData {
     /// Items in the list on the current page.
@@ -292,6 +306,7 @@ impl GetListData {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetListResponse {
     /// Items for the list on the current page.
@@ -314,6 +329,7 @@ impl GetListResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListContainsItemResponse {
     /// `true` when the item is present in the list.

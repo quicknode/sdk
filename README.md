@@ -34,18 +34,47 @@ API reference, configuration, and error handling for each language live next to 
 
 This file covers project structure, install index, and how to develop and release the SDK.
 
+## Go SDK
+
+A Go binding exists in `go/quicknode_sdk/`, generated from the same Rust core as
+the other languages via [UniFFI](https://mozilla.github.io/uniffi-rs/) and
+[`uniffi-bindgen-go`](https://github.com/NordSecurity/uniffi-bindgen-go). The
+facade lives in `crates/core/src/go.rs` (gated behind the `go` feature) and
+covers the full public surface (admin, streams, webhooks, kvstore, sql); the
+thin `crates/go` crate compiles it to the linkable native library. Build it with
+`just go-build`.
+
+**It is intentionally not published as a `go get`-able module yet.** Unlike the
+Python/Node/Ruby packages — which embed a precompiled native artifact inside the
+registry package so install "just works" — a Go module is fetched as source and
+compiled by the consumer with cgo. That means the consumer's build links a
+native static library and cannot use `CGO_ENABLED=0`. Distributing that cleanly
+(committing large per-platform `.a` files into a module, or maintaining a
+separate published Go repo mirrored from this monorepo, plus the `go/vX.Y.Z`
+submodule tagging that implies) is real release-engineering work whose tradeoffs
+we don't want to commit to before there's a concrete consumer.
+
+For now the Go binding is built as internal scaffolding — its intended first
+consumer is a future Terraform/OpenTofu provider, which will statically link it
+at build time. Because the facade already covers the full surface, promoting the
+binding to a published, supported Go SDK later is an additive release step, not a
+rewrite. The native `.a` is gitignored and built fresh; the generated Go source
+is committed.
+
 ## Project Structure
 
 ```
 sdk/
 ├── crates/
-│   ├── core/          # Pure Rust business logic
+│   ├── core/          # Pure Rust business logic (+ go-gated UniFFI facade in src/go.rs)
 │   ├── python/        # PyO3 bindings
 │   ├── node/          # napi-rs bindings
-│   └── ruby/          # magnus bindings
+│   ├── ruby/          # magnus bindings
+│   └── go/            # UniFFI cdylib/staticlib shim (re-exports core::go)
 ├── python/quicknode_sdk/  # Python package with type hints
 ├── npm/               # Node.js package with TypeScript types
 ├── ruby/              # Ruby package
+├── go/quicknode_sdk/  # Generated Go package (not published — see Go SDK below)
 └── pyproject.toml     # maturin build config
 ```
 
@@ -67,6 +96,7 @@ sdk/
 - Node.js 18+
 - Ruby 3.0+
 - [just](https://github.com/casey/just)
+- Go 1.21+ and [`uniffi-bindgen-go`](https://github.com/NordSecurity/uniffi-bindgen-go) (only for the Go binding; install pinned to the `uniffi` version in `Cargo.toml` — see CLAUDE.md §Go Binding)
 
 ### Build Commands
 
@@ -86,6 +116,9 @@ just node-build
 
 # Ruby
 just ruby-build
+
+# Go (requires uniffi-bindgen-go + a Go toolchain — see Prerequisites)
+just go-build
 
 # Rust
 cargo build -p quicknode-sdk

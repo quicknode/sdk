@@ -20,6 +20,7 @@ where
 
 /// Geographic region where a stream runs.
 #[cfg_attr(feature = "node", napi(string_enum))]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamRegion {
@@ -30,6 +31,7 @@ pub enum StreamRegion {
 
 /// Type of on-chain data a stream delivers (blocks, transactions, logs, etc.).
 #[cfg_attr(feature = "node", napi(string_enum))]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamDataset {
@@ -55,6 +57,7 @@ pub enum StreamDataset {
 
 /// Destination kind a stream delivers to (webhook, S3, Postgres, etc.).
 #[cfg_attr(feature = "node", napi(string_enum))]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamDestination {
@@ -67,6 +70,7 @@ pub enum StreamDestination {
 
 /// Language a stream's filter function is written in.
 #[cfg_attr(feature = "node", napi(string_enum))]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FilterLanguage {
@@ -77,6 +81,7 @@ pub enum FilterLanguage {
 
 /// Where stream metadata is included in delivered payloads.
 #[cfg_attr(feature = "node", napi(string_enum))]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamMetadataLocation {
@@ -87,6 +92,7 @@ pub enum StreamMetadataLocation {
 
 /// Billing product type the stream is associated with.
 #[cfg_attr(feature = "node", napi(string_enum))]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProductType {
@@ -96,6 +102,7 @@ pub enum ProductType {
 
 /// Operational state of a stream.
 #[cfg_attr(feature = "node", napi(string_enum))]
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StreamStatus {
@@ -115,6 +122,7 @@ pub enum StreamStatus {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookAttributes {
     /// Destination URL that receives batched stream payloads.
@@ -162,6 +170,7 @@ impl WebhookAttributes {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct S3Attributes {
     /// S3 service endpoint (e.g. `s3.amazonaws.com`).
@@ -225,6 +234,7 @@ impl S3Attributes {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AzureAttributes {
     /// Azure storage account name.
@@ -280,6 +290,7 @@ impl AzureAttributes {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PostgresAttributes {
     /// Database host.
@@ -337,6 +348,7 @@ impl PostgresAttributes {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KafkaAttributes {
     /// Comma-separated list of Kafka broker addresses (host:port).
@@ -418,6 +430,7 @@ impl KafkaAttributes {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddressBookConfig {
     /// Identifier of the address book to use.
@@ -457,6 +470,11 @@ impl AddressBookConfig {
 // wraps this type for its own FFI surface.
 // The serde tag/content pair matches the API wire format when flattened into
 // a request/response struct.
+// uniffi marshals this enum-with-data natively as a Go tagged union — unlike
+// napi/pyo3 (which need a hand-written wrapper), so no Go-side wrapper is
+// required. uniffi ignores the serde tag/content/flatten attributes entirely;
+// those only drive the HTTP wire format inside core.
+#[cfg_attr(feature = "go", derive(uniffi::Enum))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(
     tag = "destination",
@@ -491,6 +509,7 @@ impl DestinationAttributes {
 // ── Request (public-facing) ────────────────────────────────────────────────
 
 /// Parameters for creating a new stream.
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateStreamParams {
@@ -568,6 +587,7 @@ pub struct CreateStreamParams {
 // ── Response ───────────────────────────────────────────────────────────────
 
 /// A stream's full configuration and current state, as returned by the API.
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stream {
     /// Unique stream identifier.
@@ -664,6 +684,7 @@ pub struct Stream {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageInfo {
     /// Page size used for this response.
@@ -675,6 +696,7 @@ pub struct PageInfo {
 }
 
 /// Paginated response from `list_streams`.
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListStreamsResponse {
     /// Streams on the current page.
@@ -686,6 +708,7 @@ pub struct ListStreamsResponse {
 
 /// Parameters for `list_streams`.
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[cfg_attr(not(feature = "node"), derive(Clone))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ListStreamsParams {
@@ -708,6 +731,7 @@ pub struct ListStreamsParams {
 
 /// Parameters for `update_stream`. Only fields that are set are modified;
 /// omitted fields leave the current value unchanged.
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct UpdateStreamParams {
     /// New human-readable name.
@@ -790,6 +814,7 @@ pub struct UpdateStreamParams {
 
 /// Parameters for `test_filter`.
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TestFilterParams {
     /// Blockchain network to run the test against (e.g. `ethereum-mainnet`).
@@ -812,6 +837,7 @@ pub struct TestFilterParams {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestFilterResponse {
     /// Filter output as a JSON string. Shape depends on the dataset and the user's filter function.
@@ -825,6 +851,7 @@ pub struct TestFilterResponse {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "go", derive(uniffi::Record))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnabledCountResponse {
     /// Total count of currently enabled streams.
