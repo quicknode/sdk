@@ -26,10 +26,18 @@ The planned two-crate layout (plain `crates/go` facade + `#[derive(uniffi::Recor
 ### Added for testability
 `QuicknodeSdkClient::new_with_base_urls(api_key, BaseUrlOverrides)` — per-sub-client base URL overrides (also useful for proxy/self-hosted setups), replacing the Stage-1 admin-only override.
 
-## Stage 3: Release pipeline
-**Goal**: `crates/go` added to workspace members; `build-go` job in `release.yml` mirroring `build-ruby` (cross for linux-gnu x64/arm via zigbuild; macOS-arm64 via a `macos-dist-go` recipe locally). The `.a` per target is uploaded to the GitHub release (lives there / in CI; not committed).
-**Success criteria**: a tagged release builds the Go `.a` artifacts for all targets without destabilizing existing jobs; `release-bump` handles any Go version manifest.
-**Status**: Not Started
+## Stage 3: Examples + release pipeline — COMPLETE
+**Goal**: worked Go example; `build-go` job in `release.yml` mirroring `build-ruby` (cross for linux-gnu x64/arm via zigbuild). The `.a` per target uploaded to the GitHub release (lives there / in CI; not committed/published).
+**Success criteria**: example compiles (`go vet` clean); a tagged release builds the Go `.a` artifacts without destabilizing existing jobs.
+**Status**: Complete.
+- `go/examples/main.go` — read-only worked example (env-keyed construct, admin list, streams discriminated-union construction, sql JSON rows, typed-error `errors.As`). `go vet` clean.
+- `build-go` job added to `.github/workflows/release.yml`: linux-gnu x86_64/aarch64 via cargo-zigbuild (glibc-2.17 floor), strips debug symbols, uploads the staticlib renamed per-target (`libquicknode_sdk-<target>.a`) to avoid the merge-collision the shared base filename would otherwise cause in the `release` job. Added to the `release` job's `needs`. YAML validated.
+
+### Deferred (consistent with Option C — no published Go module yet)
+- macOS-arm64 `.a` is **not** wired into `just macos-build-and-publish`; it's buildable on demand via `just go-build`. Wiring it into the release recipe is premature with no external consumer.
+- musl Linux targets omitted (matches Ruby's gnu-only native targets).
+- `release-bump` needs no Go change: Go modules version via git tags, and the module isn't published yet.
+- `cgo_link` only covers `darwin_arm64`; Linux link directives are added when an external consumer needs them.
 
 ## Notes / decided constraints
 - Facade is a passthrough: no HTTP, no logic. Drift caught at compile time.

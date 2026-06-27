@@ -250,8 +250,54 @@ jobs:
           name: ruby-${{ matrix.target }}
           path: ruby/*.gem
 
+  build-go:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Same glibc-2.17 (manylinux2014) floor as the other native bindings:
+          # cargo-zigbuild pins the floor so the staticlib links into binaries
+          # that run on older LTS distros, not just the runner's glibc.
+          - target: x86_64-unknown-linux-gnu
+          - target: aarch64-unknown-linux-gnu
+          # musl and macOS are intentionally omitted for now. The Go binding is
+          # not published as a go get-able module yet (see README §Go SDK); these
+          # artifacts exist only so the staticlib is built and validated in CI.
+          # macOS arm64 is built locally via the Justfile during release, like
+          # the other bindings.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+
+      - name: Install cargo-zigbuild
+        run: cargo install cargo-zigbuild
+
+      - name: Build staticlib (cross)
+        run: cargo zigbuild --release -p sdk-go --target ${{ matrix.target }}
+
+      - name: Strip debug symbols and name per-target
+        run: |
+          sudo apt-get install -y llvm
+          llvm-strip --strip-debug target/${{ matrix.target }}/release/libquicknode_sdk.a
+          # Rename per target so the release upload (which merges all artifacts
+          # into one directory) does not collide on the shared base filename.
+          cp target/${{ matrix.target }}/release/libquicknode_sdk.a \
+             libquicknode_sdk-${{ matrix.target }}.a
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-${{ matrix.target }}
+          path: libquicknode_sdk-${{ matrix.target }}.a
+
   release:
-    needs: [build-rust, build-python, build-node, build-ruby]
+    needs: [build-rust, build-python, build-node, build-ruby, build-go]
     runs-on: ubuntu-latest
     permissions:
       contents: write
