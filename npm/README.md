@@ -34,6 +34,7 @@ This is one of four language bindings published from the same Rust core. See the
     - [Endpoint URLs](#endpoint-urls)
     - [Metrics](#metrics)
     - [Chains](#chains)
+    - [Account](#account)
     - [Billing](#billing)
     - [Bulk Operations](#bulk-operations)
     - [Account Tags](#account-tags)
@@ -930,6 +931,21 @@ Lists the blockchains supported by Quicknode along with their networks.
 ```typescript
 // Node.js
 const resp = await qn.admin.listChains();
+```
+
+#### Account
+
+##### `account_info` / `accountInfo`
+
+Returns details about the account, including its id, name, creation timestamp, billing version, and current subscription.
+
+**Parameters**: none.
+
+**Returns**: `AccountInfoResponse` with `data: AccountInfo` (including a nested `subscription: AccountSubscription`).
+
+```typescript
+// Node.js
+const resp = await qn.admin.accountInfo();
 ```
 
 #### Billing

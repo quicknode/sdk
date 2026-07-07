@@ -4,6 +4,9 @@
 import builtins
 import typing
 __all__ = [
+    "AccountInfo",
+    "AccountInfoResponse",
+    "AccountSubscription",
     "AccountTag",
     "AddressBookConfig",
     "AdminApiClient",
@@ -217,6 +220,124 @@ __all__ = [
     "XrplWalletFilterByListTemplate",
     "XrplWalletFilterTemplate",
 ]
+
+@typing.final
+class AccountInfo:
+    r"""
+    Details about a Quicknode account.
+    """
+    @property
+    def id(self) -> builtins.int:
+        r"""
+        Numeric account id.
+        """
+    @id.setter
+    def id(self, value: builtins.int) -> None:
+        r"""
+        Numeric account id.
+        """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        Account name.
+        """
+    @name.setter
+    def name(self, value: builtins.str) -> None:
+        r"""
+        Account name.
+        """
+    @property
+    def created_at(self) -> builtins.str:
+        r"""
+        ISO 8601 timestamp of when the account was created.
+        """
+    @created_at.setter
+    def created_at(self, value: builtins.str) -> None:
+        r"""
+        ISO 8601 timestamp of when the account was created.
+        """
+    @property
+    def billing_version(self) -> typing.Optional[builtins.str]:
+        r"""
+        Billing version (e.g. `v6`).
+        """
+    @billing_version.setter
+    def billing_version(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Billing version (e.g. `v6`).
+        """
+    @property
+    def subscription(self) -> typing.Optional[AccountSubscription]:
+        r"""
+        The account's current subscription, when present.
+        """
+    @subscription.setter
+    def subscription(self, value: typing.Optional[AccountSubscription]) -> None:
+        r"""
+        The account's current subscription, when present.
+        """
+
+@typing.final
+class AccountInfoResponse:
+    r"""
+    Response from `account_info`.
+    """
+    @property
+    def data(self) -> typing.Optional[AccountInfo]:
+        r"""
+        Account details, when the request succeeded.
+        """
+    @data.setter
+    def data(self, value: typing.Optional[AccountInfo]) -> None:
+        r"""
+        Account details, when the request succeeded.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error message when the request did not succeed.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error message when the request did not succeed.
+        """
+
+@typing.final
+class AccountSubscription:
+    r"""
+    The account's current subscription.
+    """
+    @property
+    def plan_name(self) -> typing.Optional[builtins.str]:
+        r"""
+        Plan name (e.g. `Accelerate`).
+        """
+    @plan_name.setter
+    def plan_name(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Plan name (e.g. `Accelerate`).
+        """
+    @property
+    def status(self) -> typing.Optional[builtins.str]:
+        r"""
+        Subscription status (e.g. `active`).
+        """
+    @status.setter
+    def status(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Subscription status (e.g. `active`).
+        """
+    @property
+    def interval(self) -> typing.Optional[builtins.str]:
+        r"""
+        Billing interval (e.g. `monthly`).
+        """
+    @interval.setter
+    def interval(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Billing interval (e.g. `monthly`).
+        """
 
 @typing.final
 class AccountTag:
@@ -528,6 +649,11 @@ class AdminApiClient:
         r"""
         Returns all chains supported by Quicknode along with their networks.
         Each entry includes the chain slug and its network slugs and names.
+        """
+    def account_info(self) -> typing.Coroutine[typing.Any, typing.Any, AccountInfoResponse]:
+        r"""
+        Returns details about the account, including its id, name, creation
+        timestamp, billing version, and current subscription.
         """
     def list_invoices(self) -> typing.Coroutine[typing.Any, typing.Any, ListInvoicesResponse]:
         r"""
@@ -5639,7 +5765,7 @@ class SqlApiClient:
     def query(self, query: builtins.str, cluster_id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, QueryResponse]:
         r"""
         Executes a SQL query against the given cluster and returns the result
-        set. Only `SELECT` queries are permitted (enforced server-side).
+        set.
         """
     def get_schema(self, cluster_id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, ChainSchema]:
         r"""
