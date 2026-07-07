@@ -9,6 +9,14 @@ if account[:data]
   puts "account #{a[:id]} | #{a[:name]} | billing=#{a[:billing_version]} | plan=#{plan}"
 end
 
+credits = qn.admin.get_api_credits(chain: "ethereum")
+if credits[:data]
+  puts "ethereum api credits: #{credits[:data].length} methods"
+  credits[:data].first(3).each do |c|
+    puts "  #{c[:method]} = #{c[:credits]}"
+  end
+end
+
 response = qn.admin.get_endpoints(
   limit: 20,
   sort_by: "created_at",

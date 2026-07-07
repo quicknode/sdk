@@ -71,6 +71,14 @@ export interface AdminConfig {
   baseUrl?: string
 }
 
+/** The API credit cost of a single RPC method on a chain. */
+export interface ApiCredit {
+  /** RPC method name (e.g. `eth_chainId`). */
+  method: string
+  /** Number of API credits the method costs. */
+  credits: number
+}
+
 /** Configuration for delivering stream batches to Azure Blob Storage. */
 export interface AzureAttributes {
   /** Azure storage account name. */
@@ -755,6 +763,17 @@ export interface GetAccountMetricsRequest {
 export interface GetAccountMetricsResponse {
   /** Metric series returned for the account. */
   data: Array<EndpointMetric>
+  /** Error message when the request did not succeed. */
+  error?: string
+}
+
+/** Response from `get_api_credits`. */
+export interface GetApiCreditsResponse {
+  /**
+   * Per-method API credit costs for the chain, when the request succeeded.
+   * `None` for an unknown chain slug.
+   */
+  data?: Array<ApiCredit>
   /** Error message when the request did not succeed. */
   error?: string
 }
@@ -2239,6 +2258,13 @@ export declare class AdminApiClient {
    * timestamp, billing version, and current subscription.
    */
   accountInfo(): Promise<AccountInfoResponse>
+  /**
+   * Returns the per-method API credit costs for a chain, identified by its
+   * slug (the same slugs returned by `list_chains`, e.g. `ethereum`). Each
+   * item carries the RPC `method` name and its `credits` cost. An unknown
+   * chain slug rejects with `ApiError` (status 404).
+   */
+  getApiCredits(chain: string): Promise<GetApiCreditsResponse>
   /**
    * Returns the account's invoices, including id, status, billing reason,
    * amounts due and paid, line items with descriptions and billing periods,

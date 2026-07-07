@@ -1,4 +1,5 @@
 pub mod account;
+pub mod api_credits;
 pub mod billing;
 pub mod bulk;
 pub mod chains;
@@ -13,6 +14,7 @@ pub mod teams;
 pub mod usage;
 
 pub use account::{AccountInfo, AccountInfoResponse, AccountSubscription};
+pub use api_credits::{ApiCredit, GetApiCreditsResponse};
 pub use billing::{
     Invoice, InvoiceLine, ListInvoicesData, ListInvoicesResponse, ListPaymentsData,
     ListPaymentsResponse, Payment,
@@ -1584,6 +1586,34 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns the per-method API credit costs for a chain, identified by its
+    /// slug (the same slugs returned by `list_chains`, e.g. `ethereum`). Each
+    /// item carries the RPC `method` name and its `credits` cost, resolved for
+    /// the calling account's billing version. An unknown chain slug returns a
+    /// 404 (surfaced as `SdkError::Api`).
+    pub async fn get_api_credits(&self, chain: &str) -> Result<GetApiCreditsResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("api-credits/{}", chain))?;
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
     /// Returns the account's invoices, including id, status, billing reason,
     /// amounts due and paid, line items with descriptions and billing periods,
     /// and creation timestamps.
@@ -3054,6 +3084,72 @@ mod tests {
 
         let sdk = make_sdk(format!("{}/", server.uri()));
         let err = sdk.admin.account_info().await.unwrap_err();
+        let SdkError::Api { status, .. } = err else {
+            unreachable!("expected SdkError::Api, got {err:?}");
+        };
+        assert_eq!(status.as_u16(), 401);
+    }
+
+    #[tokio::test]
+    async fn get_api_credits_success() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/api-credits/ethereum"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": [
+                    {"method": "eth_chainId", "credits": 20},
+                    {"method": "eth_sendRawTransaction", "credits": 40}
+                ],
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.admin.get_api_credits("ethereum").await.unwrap();
+        let data = resp.data.expect("expected credits data");
+        assert_eq!(data.len(), 2);
+        assert_eq!(data[0].method, "eth_chainId");
+        assert_eq!(data[0].credits, 20);
+        assert_eq!(data[1].method, "eth_sendRawTransaction");
+        assert_eq!(data[1].credits, 40);
+    }
+
+    #[tokio::test]
+    async fn get_api_credits_unknown_chain() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/api-credits/not-a-chain"))
+            .respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+                "data": null,
+                "error": "Chain not found"
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk.admin.get_api_credits("not-a-chain").await.unwrap_err();
+        let SdkError::Api { status, body } = err else {
+            unreachable!("expected SdkError::Api, got {err:?}");
+        };
+        assert_eq!(status.as_u16(), 404);
+        assert!(body.contains("Chain not found"));
+    }
+
+    #[tokio::test]
+    async fn get_api_credits_api_error() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/api-credits/ethereum"))
+            .respond_with(ResponseTemplate::new(401).set_body_string("Unauthorized"))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk.admin.get_api_credits("ethereum").await.unwrap_err();
         let SdkError::Api { status, .. } = err else {
             unreachable!("expected SdkError::Api, got {err:?}");
         };

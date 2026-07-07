@@ -138,6 +138,9 @@ export type {
   AccountSubscription,
   AccountInfo,
   AccountInfoResponse,
+  // api credits
+  ApiCredit,
+  GetApiCreditsResponse,
   // metrics
   GetEndpointMetricsRequest,
   GetAccountMetricsRequest,

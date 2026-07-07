@@ -722,6 +722,21 @@ impl AdminApiClient {
         self.inner.account_info().await.map_err(errors::map_sdk_err)
     }
 
+    /// Returns the per-method API credit costs for a chain, identified by its
+    /// slug (the same slugs returned by `list_chains`, e.g. `ethereum`). Each
+    /// item carries the RPC `method` name and its `credits` cost. An unknown
+    /// chain slug rejects with `ApiError` (status 404).
+    #[napi]
+    pub async fn get_api_credits(
+        &self,
+        chain: String,
+    ) -> Result<core::admin::GetApiCreditsResponse> {
+        self.inner
+            .get_api_credits(&chain)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
     /// Returns the account's invoices, including id, status, billing reason,
     /// amounts due and paid, line items with descriptions and billing periods,
     /// and creation timestamps.
