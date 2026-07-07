@@ -987,6 +987,19 @@ Returns details about the account, including its id, name, creation timestamp, b
 let resp = qn.admin.account_info().await?;
 ```
 
+##### `get_api_credits` / `getApiCredits`
+
+Returns the per-method API credit costs for a chain, identified by its slug (the same slugs returned by `list_chains`, e.g. `ethereum`). An unknown chain slug returns a 404 (surfaced as `ApiError`).
+
+**Parameters**: `chain` (string, required) — the chain slug.
+
+**Returns**: `GetApiCreditsResponse` with `data: Vec<ApiCredit>`, where each `ApiCredit` has `method` and `credits`.
+
+```rust
+// Rust
+let resp = qn.admin.get_api_credits("ethereum").await?;
+```
+
 #### Billing
 
 ##### `list_invoices` / `listInvoices`

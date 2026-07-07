@@ -20,6 +20,12 @@ async def main():
         plan = a.subscription.plan_name if a.subscription is not None else "<none>"
         print(f"account {a.id} | {a.name} | billing={a.billing_version} | plan={plan}")
 
+    credits = await qn.admin.get_api_credits("ethereum")
+    if credits.data is not None:
+        print(f"ethereum api credits: {len(credits.data)} methods")
+        for c in credits.data[:3]:
+            print(f"  {c.method} = {c.credits}")
+
     response = await qn.admin.get_endpoints(
         limit=20,
         sort_by="created_at",

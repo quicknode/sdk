@@ -944,6 +944,19 @@ Returns details about the account, including its id, name, creation timestamp, b
 resp = qn.admin.account_info
 ```
 
+##### `get_api_credits` / `getApiCredits`
+
+Returns the per-method API credit costs for a chain, identified by its slug (the same slugs returned by `list_chains`, e.g. `ethereum`). An unknown chain slug raises `ApiError` (status 404).
+
+**Parameters**: `chain` (string, required) — the chain slug.
+
+**Returns**: `GetApiCreditsResponse` with `data: [ApiCredit]`, where each `ApiCredit` has `method` and `credits`.
+
+```ruby
+# Ruby
+resp = qn.admin.get_api_credits(chain: "ethereum")
+```
+
 #### Billing
 
 ##### `list_invoices` / `listInvoices`

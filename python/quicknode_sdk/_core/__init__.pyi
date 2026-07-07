@@ -11,6 +11,7 @@ __all__ = [
     "AddressBookConfig",
     "AdminApiClient",
     "AdminConfig",
+    "ApiCredit",
     "AzureAttributes",
     "BitcoinWalletFilterArgs",
     "BitcoinWalletFilterByListArgs",
@@ -86,6 +87,7 @@ __all__ = [
     "EvmWalletFilterTemplate",
     "GetAccountMetricsRequest",
     "GetAccountMetricsResponse",
+    "GetApiCreditsResponse",
     "GetEndpointLogsRequest",
     "GetEndpointLogsResponse",
     "GetEndpointMetricsRequest",
@@ -655,6 +657,13 @@ class AdminApiClient:
         Returns details about the account, including its id, name, creation
         timestamp, billing version, and current subscription.
         """
+    def get_api_credits(self, chain: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetApiCreditsResponse]:
+        r"""
+        Returns the per-method API credit costs for a chain, identified by its
+        slug (the same slugs returned by `list_chains`, e.g. `ethereum`). Each
+        item carries the RPC `method` name and its `credits` cost. An unknown
+        chain slug raises `ApiError` with status 404.
+        """
     def list_invoices(self) -> typing.Coroutine[typing.Any, typing.Any, ListInvoicesResponse]:
         r"""
         Returns the account's invoices, including id, status, billing reason,
@@ -765,6 +774,32 @@ class AdminConfig:
     @base_url.setter
     def base_url(self, value: typing.Optional[builtins.str]) -> None: ...
     def __new__(cls, base_url: typing.Optional[builtins.str] = None) -> AdminConfig: ...
+
+@typing.final
+class ApiCredit:
+    r"""
+    The API credit cost of a single RPC method on a chain.
+    """
+    @property
+    def method(self) -> builtins.str:
+        r"""
+        RPC method name (e.g. `eth_chainId`).
+        """
+    @method.setter
+    def method(self, value: builtins.str) -> None:
+        r"""
+        RPC method name (e.g. `eth_chainId`).
+        """
+    @property
+    def credits(self) -> builtins.int:
+        r"""
+        Number of API credits the method costs.
+        """
+    @credits.setter
+    def credits(self, value: builtins.int) -> None:
+        r"""
+        Number of API credits the method costs.
+        """
 
 @typing.final
 class AzureAttributes:
@@ -3005,6 +3040,34 @@ class GetAccountMetricsResponse:
     def data(self, value: builtins.list[EndpointMetric]) -> None:
         r"""
         Metric series returned for the account.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error message when the request did not succeed.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error message when the request did not succeed.
+        """
+
+@typing.final
+class GetApiCreditsResponse:
+    r"""
+    Response from `get_api_credits`.
+    """
+    @property
+    def data(self) -> typing.Optional[builtins.list[ApiCredit]]:
+        r"""
+        Per-method API credit costs for the chain, when the request succeeded.
+        `None` for an unknown chain slug.
+        """
+    @data.setter
+    def data(self, value: typing.Optional[builtins.list[ApiCredit]]) -> None:
+        r"""
+        Per-method API credit costs for the chain, when the request succeeded.
+        `None` for an unknown chain slug.
         """
     @property
     def error(self) -> typing.Optional[builtins.str]:

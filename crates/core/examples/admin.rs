@@ -23,6 +23,18 @@ async fn main() {
         Err(e) => eprintln!("account_info error: {e}"),
     }
 
+    match qn.admin.get_api_credits("ethereum").await {
+        Ok(resp) => {
+            if let Some(credits) = &resp.data {
+                println!("ethereum api credits: {} methods", credits.len());
+                for c in credits.iter().take(3) {
+                    println!("  {} = {}", c.method, c.credits);
+                }
+            }
+        }
+        Err(e) => eprintln!("get_api_credits error: {e}"),
+    }
+
     let params = GetEndpointsRequest::builder()
         .limit(20)
         .sort_by("created_at".to_string())

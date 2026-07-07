@@ -918,6 +918,16 @@ impl AdminApiClient {
             .and_then(to_ruby)
     }
 
+    fn get_api_credits(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["chain"])?;
+        let client = self.inner.clone();
+        let chain = hash_require_string(&opts, "chain")?;
+        runtime()
+            .block_on(client.get_api_credits(&chain))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
     fn list_invoices(&self) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         runtime()
@@ -1996,6 +2006,10 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     admin.define_method("list_chains", method!(AdminApiClient::list_chains, 0))?;
     admin.define_method("account_info", method!(AdminApiClient::account_info, 0))?;
+    admin.define_method(
+        "get_api_credits",
+        method!(AdminApiClient::get_api_credits, 1),
+    )?;
     admin.define_method("list_invoices", method!(AdminApiClient::list_invoices, 0))?;
     admin.define_method("list_payments", method!(AdminApiClient::list_payments, 0))?;
     admin.define_method("list_teams", method!(AdminApiClient::list_teams, 0))?;

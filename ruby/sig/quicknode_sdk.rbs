@@ -92,6 +92,7 @@ module QuicknodeSdk
     def get_account_metrics: (period: String, metric: String, ?percentile: String) -> untyped
     def list_chains: () -> untyped
     def account_info: () -> untyped
+    def get_api_credits: (chain: String) -> untyped
     def list_invoices: () -> untyped
     def list_payments: () -> untyped
     def list_teams: () -> untyped

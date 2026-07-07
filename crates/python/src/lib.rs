@@ -1086,6 +1086,23 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns the per-method API credit costs for a chain, identified by its
+    /// slug (the same slugs returned by `list_chains`, e.g. `ethereum`). Each
+    /// item carries the RPC `method` name and its `credits` cost. An unknown
+    /// chain slug raises `ApiError` with status 404.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetApiCreditsResponse]"
+    ))]
+    fn get_api_credits<'py>(&self, py: Python<'py>, chain: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_api_credits(&chain)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
     /// Returns the account's invoices, including id, status, billing reason,
     /// amounts due and paid, line items with descriptions and billing periods,
     /// and creation timestamps.

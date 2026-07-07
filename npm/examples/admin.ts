@@ -15,6 +15,14 @@ async function main() {
     console.log(`account ${a.id} | ${a.name} | billing=${a.billingVersion} | plan=${plan}`);
   }
 
+  const credits = await qn.admin.getApiCredits("ethereum");
+  if (credits.data) {
+    console.log(`ethereum api credits: ${credits.data.length} methods`);
+    for (const c of credits.data.slice(0, 3)) {
+      console.log(`  ${c.method} = ${c.credits}`);
+    }
+  }
+
   const response = await qn.admin.getEndpoints({
     limit: 20,
     sortBy: "created_at",
