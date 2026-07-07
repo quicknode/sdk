@@ -134,6 +134,10 @@ export type {
   ChainNetwork,
   Chain,
   ListChainsResponse,
+  // account
+  AccountSubscription,
+  AccountInfo,
+  AccountInfoResponse,
   // metrics
   GetEndpointMetricsRequest,
   GetAccountMetricsRequest,

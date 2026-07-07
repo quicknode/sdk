@@ -8,6 +8,13 @@ import {
 async function main() {
   const qn = QuicknodeSdk.fromEnv();
 
+  const account = await qn.admin.accountInfo();
+  if (account.data) {
+    const a = account.data;
+    const plan = a.subscription?.planName ?? "<none>";
+    console.log(`account ${a.id} | ${a.name} | billing=${a.billingVersion} | plan=${plan}`);
+  }
+
   const response = await qn.admin.getEndpoints({
     limit: 20,
     sortBy: "created_at",

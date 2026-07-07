@@ -1,3 +1,4 @@
+pub mod account;
 pub mod billing;
 pub mod bulk;
 pub mod chains;
@@ -11,6 +12,7 @@ pub mod tags;
 pub mod teams;
 pub mod usage;
 
+pub use account::{AccountInfo, AccountInfoResponse, AccountSubscription};
 pub use billing::{
     Invoice, InvoiceLine, ListInvoicesData, ListInvoicesResponse, ListPaymentsData,
     ListPaymentsResponse, Payment,
@@ -1561,6 +1563,27 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Returns details about the account, including its id, name, creation
+    /// timestamp, billing version, and current subscription.
+    pub async fn account_info(&self) -> Result<AccountInfoResponse, SdkError> {
+        let url = self.config.admin().base_url.join("account/info")?;
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
     /// Returns the account's invoices, including id, status, billing reason,
     /// amounts due and paid, line items with descriptions and billing periods,
     /// and creation timestamps.
@@ -2982,6 +3005,59 @@ mod tests {
         assert_eq!(resp.data.len(), 1);
         assert_eq!(resp.data[0].slug, "eth");
         assert_eq!(resp.data[0].networks[0].chain_id, Some(1));
+    }
+
+    #[tokio::test]
+    async fn account_info_success() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/account/info"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": {
+                    "id": 794770,
+                    "name": "MCP Test Account",
+                    "created_at": "2026-03-27T20:22:32.536Z",
+                    "billing_version": "v6",
+                    "subscription": {
+                        "plan_name": "Accelerate",
+                        "status": "active",
+                        "interval": "monthly"
+                    }
+                },
+                "error": null
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.admin.account_info().await.unwrap();
+        let data = resp.data.expect("expected account data");
+        assert_eq!(data.id, 794770);
+        assert_eq!(data.name, "MCP Test Account");
+        assert_eq!(data.billing_version.as_deref(), Some("v6"));
+        let subscription = data.subscription.expect("expected subscription");
+        assert_eq!(subscription.plan_name.as_deref(), Some("Accelerate"));
+        assert_eq!(subscription.status.as_deref(), Some("active"));
+        assert_eq!(subscription.interval.as_deref(), Some("monthly"));
+    }
+
+    #[tokio::test]
+    async fn account_info_api_error() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/account/info"))
+            .respond_with(ResponseTemplate::new(401).set_body_string("Unauthorized"))
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk.admin.account_info().await.unwrap_err();
+        let SdkError::Api { status, .. } = err else {
+            unreachable!("expected SdkError::Api, got {err:?}");
+        };
+        assert_eq!(status.as_u16(), 401);
     }
 
     #[tokio::test]

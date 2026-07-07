@@ -1074,6 +1074,18 @@ impl AdminApiClient {
         })
     }
 
+    /// Returns details about the account, including its id, name, creation
+    /// timestamp, billing version, and current subscription.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, AccountInfoResponse]"
+    ))]
+    fn account_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.account_info().await.map_err(errors::map_sdk_err)
+        })
+    }
+
     /// Returns the account's invoices, including id, status, billing reason,
     /// amounts due and paid, line items with descriptions and billing periods,
     /// and creation timestamps.
@@ -2501,6 +2513,9 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::ChainNetwork>()?;
     m.add_class::<core::admin::Chain>()?;
     m.add_class::<core::admin::ListChainsResponse>()?;
+    m.add_class::<core::admin::AccountSubscription>()?;
+    m.add_class::<core::admin::AccountInfo>()?;
+    m.add_class::<core::admin::AccountInfoResponse>()?;
     m.add_class::<core::admin::InvoiceLine>()?;
     m.add_class::<core::admin::Invoice>()?;
     m.add_class::<core::admin::ListInvoicesData>()?;

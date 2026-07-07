@@ -2,6 +2,13 @@ require_relative "../lib/quicknode_sdk"
 
 qn = QuicknodeSdk::SDK.from_env
 
+account = qn.admin.account_info
+if account[:data]
+  a = account[:data]
+  plan = a.dig(:subscription, :plan_name) || "<none>"
+  puts "account #{a[:id]} | #{a[:name]} | billing=#{a[:billing_version]} | plan=#{plan}"
+end
+
 response = qn.admin.get_endpoints(
   limit: 20,
   sort_by: "created_at",

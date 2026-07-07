@@ -715,6 +715,13 @@ impl AdminApiClient {
         self.inner.list_chains().await.map_err(errors::map_sdk_err)
     }
 
+    /// Returns details about the account, including its id, name, creation
+    /// timestamp, billing version, and current subscription.
+    #[napi]
+    pub async fn account_info(&self) -> Result<core::admin::AccountInfoResponse> {
+        self.inner.account_info().await.map_err(errors::map_sdk_err)
+    }
+
     /// Returns the account's invoices, including id, status, billing reason,
     /// amounts due and paid, line items with descriptions and billing periods,
     /// and creation timestamps.

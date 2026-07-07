@@ -910,6 +910,14 @@ impl AdminApiClient {
             .and_then(to_ruby)
     }
 
+    fn account_info(&self) -> Result<magnus::Value, Error> {
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.account_info())
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
     fn list_invoices(&self) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         runtime()
@@ -1987,6 +1995,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
         method!(AdminApiClient::get_account_metrics, 1),
     )?;
     admin.define_method("list_chains", method!(AdminApiClient::list_chains, 0))?;
+    admin.define_method("account_info", method!(AdminApiClient::account_info, 0))?;
     admin.define_method("list_invoices", method!(AdminApiClient::list_invoices, 0))?;
     admin.define_method("list_payments", method!(AdminApiClient::list_payments, 0))?;
     admin.define_method("list_teams", method!(AdminApiClient::list_teams, 0))?;

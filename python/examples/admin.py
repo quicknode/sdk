@@ -14,6 +14,12 @@ from quicknode_sdk import (
 async def main():
     qn = QuicknodeSdk.from_env()
 
+    account = await qn.admin.account_info()
+    if account.data is not None:
+        a = account.data
+        plan = a.subscription.plan_name if a.subscription is not None else "<none>"
+        print(f"account {a.id} | {a.name} | billing={a.billing_version} | plan={plan}")
+
     response = await qn.admin.get_endpoints(
         limit=20,
         sort_by="created_at",

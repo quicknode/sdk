@@ -6,6 +6,23 @@ async fn main() {
     let config = SdkFullConfig::from_env().expect("Config from env failed");
     let qn = QuicknodeSdk::new(&config).expect("sdk failed to initialize");
 
+    match qn.admin.account_info().await {
+        Ok(resp) => {
+            if let Some(a) = &resp.data {
+                let plan = a
+                    .subscription
+                    .as_ref()
+                    .and_then(|s| s.plan_name.clone())
+                    .unwrap_or_else(|| "<none>".to_string());
+                println!(
+                    "account {} | {} | billing={:?} | plan={}",
+                    a.id, a.name, a.billing_version, plan
+                );
+            }
+        }
+        Err(e) => eprintln!("account_info error: {e}"),
+    }
+
     let params = GetEndpointsRequest::builder()
         .limit(20)
         .sort_by("created_at".to_string())
