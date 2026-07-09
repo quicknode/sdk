@@ -1525,17 +1525,24 @@ impl RpcApiClient {
     /// automatically). `params` accepts an array (positional) or object
     /// (by-name) and defaults to `[]`. `network` selects a chain on the
     /// multichain endpoint (a key in the seeded network map, e.g.
-    /// `"solana-mainnet"`); omit for the endpoint's default network. Returns
-    /// the JSON-RPC `result`. A JSON-RPC error is thrown as `RpcError`.
+    /// `"solana-mainnet"`); omit for the endpoint's default network.
+    ///
+    /// `endpointUrl` sends this call to a custom HTTP URL instead, bypassing the
+    /// Tooling Access endpoint and the session JWT (no Authorization header is
+    /// attached). It overrides the client-wide `RpcConfig.endpointUrl` default.
+    /// Passing both `endpointUrl` and `network` throws (they are mutually
+    /// exclusive). Returns the JSON-RPC `result`; a JSON-RPC error is thrown as
+    /// `RpcError`.
     #[napi]
     pub async fn call(
         &self,
         method: String,
         params: Option<serde_json::Value>,
         network: Option<String>,
+        endpoint_url: Option<String>,
     ) -> Result<serde_json::Value> {
         self.inner
-            .call(&method, params, network)
+            .call(&method, params, network, endpoint_url)
             .await
             .map_err(errors::map_sdk_err)
     }

@@ -24,7 +24,7 @@ async fn main() {
     }
 
     // Make a JSON-RPC call. The SDK mints and refreshes the session JWT.
-    match qn.rpc.call("eth_blockNumber", None, None).await {
+    match qn.rpc.call("eth_blockNumber", None, None, None).await {
         Ok(result) => println!("eth_blockNumber => {result}"),
         Err(e) => eprintln!("rpc call error: {e}"),
     }
@@ -38,7 +38,7 @@ async fn main() {
                     .set_networks(mc.into_iter().map(|(k, v)| (k, v.http_url)).collect());
                 match qn
                     .rpc
-                    .call("getSlot", None, Some("solana-mainnet".to_string()))
+                    .call("getSlot", None, Some("solana-mainnet".to_string()), None)
                     .await
                 {
                     Ok(result) => println!("solana getSlot => {result}"),
@@ -55,6 +55,7 @@ async fn main() {
             "eth_getBalance",
             Some(serde_json::json!(["not-an-address"])),
             None,
+            None,
         )
         .await
     {
@@ -63,5 +64,20 @@ async fn main() {
             println!("got expected RpcError: code={code} message={message}");
         }
         Err(e) => eprintln!("other error: {e}"),
+    }
+
+    // Custom endpoint URL: send a call to a fully-formed HTTP URL, bypassing the
+    // Tooling Access endpoint and the session JWT entirely. Useful for a
+    // provisioned `.quiknode.pro` URL or a self-hosted node. Set it per-call
+    // here, or client-wide via `RpcConfig::endpoint_url`.
+    if let Ok(custom_url) = std::env::var("QN_RPC_ENDPOINT_URL") {
+        match qn
+            .rpc
+            .call("eth_blockNumber", None, None, Some(custom_url))
+            .await
+        {
+            Ok(result) => println!("custom endpoint eth_blockNumber => {result}"),
+            Err(e) => eprintln!("custom endpoint rpc error: {e}"),
+        }
     }
 }

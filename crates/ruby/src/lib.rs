@@ -1889,15 +1889,20 @@ pub struct RpcApiClient {
 
 #[allow(clippy::needless_pass_by_value)]
 impl RpcApiClient {
-    // call(method:, params: nil, network: nil) — params accepts an Array
-    // (positional) or Hash (by-name) and defaults to []. network selects a chain
-    // on the multichain endpoint (a key in the seeded network map, e.g.
-    // "solana-mainnet"); omit for the default network. Returns the JSON-RPC
-    // result; a JSON-RPC error is raised as QuicknodeSdk::RpcError.
+    // call(method:, params: nil, network: nil, endpoint_url: nil) — params
+    // accepts an Array (positional) or Hash (by-name) and defaults to []. network
+    // selects a chain on the multichain endpoint (a key in the seeded network
+    // map, e.g. "solana-mainnet"); omit for the default network. endpoint_url
+    // sends the call to a custom HTTP URL instead, bypassing the Tooling Access
+    // endpoint and the session JWT (no Authorization header); it overrides the
+    // client-wide RpcConfig endpoint_url default. Passing both endpoint_url and
+    // network raises (mutually exclusive). Returns the JSON-RPC result; a
+    // JSON-RPC error is raised as QuicknodeSdk::RpcError.
     fn call(&self, opts: RHash) -> Result<magnus::Value, Error> {
-        validate_keys(&opts, &["method", "params", "network"])?;
+        validate_keys(&opts, &["method", "params", "network", "endpoint_url"])?;
         let method = hash_require_string(&opts, "method")?;
         let network = hash_get_string(&opts, "network")?;
+        let endpoint_url = hash_get_string(&opts, "endpoint_url")?;
         let r = ruby();
         let params: Option<serde_json::Value> = match opts.get(r.to_symbol("params")) {
             // serde_magnus::deserialize already returns a magnus::Error.
@@ -1906,7 +1911,7 @@ impl RpcApiClient {
         };
         let client = self.inner.clone();
         runtime()
-            .block_on(client.call(&method, params, network))
+            .block_on(client.call(&method, params, network, endpoint_url))
             .map_err(map_err)
             .and_then(to_ruby)
     }

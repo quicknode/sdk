@@ -38,3 +38,12 @@ begin
 rescue QuicknodeSdk::RpcError => e
   puts "got expected RpcError: code=#{e.code} message=#{e.message}"
 end
+
+# Custom endpoint URL: send a call to a fully-formed HTTP URL, bypassing the
+# Tooling Access endpoint and the session JWT entirely. Set it per-call here,
+# or client-wide via RpcConfig(endpoint_url:).
+custom_url = ENV.fetch("QN_RPC_ENDPOINT_URL", nil)
+if custom_url
+  result = qn.rpc.call(method: "eth_blockNumber", endpoint_url: custom_url)
+  puts "custom endpoint eth_blockNumber => #{result}"
+end

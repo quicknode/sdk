@@ -41,6 +41,15 @@ async function main() {
     if (!(e instanceof RpcError)) throw e;
     console.log(`got expected RpcError: code=${e.code} message=${e.message}`);
   }
+
+  // Custom endpoint URL: send a call to a fully-formed HTTP URL, bypassing the
+  // Tooling Access endpoint and the session JWT entirely. Set it per-call here
+  // (4th arg), or client-wide via `new RpcConfig({ endpointUrl })`.
+  const customUrl = process.env.QN_RPC_ENDPOINT_URL;
+  if (customUrl) {
+    const result = await qn.rpc.call("eth_blockNumber", [], undefined, customUrl);
+    console.log(`custom endpoint eth_blockNumber => ${result}`);
+  }
 }
 
 main();

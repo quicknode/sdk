@@ -1,4 +1,5 @@
 import asyncio
+import os
 from quicknode_sdk import QuicknodeSdk, RpcError
 
 
@@ -36,6 +37,14 @@ async def main():
         await qn.rpc.call("eth_getBalance", ["not-an-address"])
     except RpcError as e:
         print(f"got expected RpcError: code={e.code} message={e.message}")
+
+    # Custom endpoint URL: send a call to a fully-formed HTTP URL, bypassing the
+    # Tooling Access endpoint and the session JWT entirely. Set it per-call here,
+    # or client-wide via RpcConfig(endpoint_url=...).
+    custom_url = os.environ.get("QN_RPC_ENDPOINT_URL")
+    if custom_url:
+        result = await qn.rpc.call("eth_blockNumber", endpoint_url=custom_url)
+        print(f"custom endpoint eth_blockNumber => {result}")
 
 
 asyncio.run(main())

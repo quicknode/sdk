@@ -1703,6 +1703,12 @@ mc = urls.data.multichain_urls if urls.data else {}
 qn.rpc.set_networks({k: v.http_url for k, v in (mc or {}).items()})
 slot = await qn.rpc.call("getSlot", network="solana-mainnet")
 
+# Custom endpoint URL: send to a fully-formed HTTP URL, bypassing Tooling Access
+# and the JWT (no Authorization header). Per-call via endpoint_url=, or
+# client-wide via RpcConfig(endpoint_url=...). endpoint_url and network are
+# mutually exclusive (a custom URL is not multichain-routed).
+block = await qn.rpc.call("eth_blockNumber", endpoint_url="https://my-endpoint.example/rpc")
+
 # A JSON-RPC error member is raised as RpcError (with .code and .message).
 from quicknode_sdk import RpcError
 try:
@@ -1713,7 +1719,9 @@ except RpcError as e:
 
 A host that persists across processes can snapshot the cached token with
 `qn.rpc.current_token()` and re-seed it via `RpcConfig(seed=...)` on the next
-construction; `refresh_margin_secs` (default 60) tunes how early the token is refreshed.
+construction; `refresh_margin_secs` (default 60) tunes how early the token is
+refreshed. Set `RpcConfig(endpoint_url=...)` to route every call to a custom
+HTTP URL by default (no JWT minted); a per-call `endpoint_url` overrides it.
 
 ## Error Handling
 

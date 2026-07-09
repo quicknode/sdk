@@ -192,6 +192,13 @@ impl CachedToken {
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct RpcConfig {
+    /// Custom HTTP URL to send JSON-RPC calls to, bypassing the Tooling Access
+    /// endpoint. When set, every `rpc.call` on this client goes straight to this
+    /// URL with NO session token minted or attached — the URL is treated as a
+    /// self-authenticating endpoint (e.g. a provisioned `.quiknode.pro` URL that
+    /// already embeds its token, or a self-hosted node). A per-call
+    /// `endpoint_url` overrides this default. Unset means tooling-JWT mode.
+    pub endpoint_url: Option<String>,
     /// Optional pre-existing token to seed the in-memory cache (e.g. loaded
     /// from a host's on-disk cache). Advisory: a malformed or expired seed is
     /// treated as a cache miss and a fresh token is minted.
@@ -213,13 +220,15 @@ pub struct RpcConfig {
 #[pymethods]
 impl RpcConfig {
     #[new]
-    #[pyo3(signature = (seed=None, refresh_margin_secs=None, networks=None))]
+    #[pyo3(signature = (endpoint_url=None, seed=None, refresh_margin_secs=None, networks=None))]
     pub fn new(
+        endpoint_url: Option<String>,
         seed: Option<CachedToken>,
         refresh_margin_secs: Option<i64>,
         networks: Option<std::collections::HashMap<String, String>>,
     ) -> Self {
         RpcConfig {
+            endpoint_url,
             seed,
             refresh_margin_secs,
             networks,

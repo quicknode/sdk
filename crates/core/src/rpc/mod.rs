@@ -46,6 +46,10 @@ pub struct RpcApiClient {
     // `admin.get_endpoint_urls`). `None` until seeded; a `call` with a network
     // then errors with a clear message.
     networks: Arc<Mutex<Option<HashMap<String, String>>>>,
+    // Client-wide default custom endpoint URL. When set, calls bypass the
+    // Tooling Access endpoint and the JWT entirely (see `RpcConfig::endpoint_url`).
+    // A per-call `endpoint_url` overrides this. Immutable after construction.
+    endpoint_url: Option<String>,
 }
 
 impl std::fmt::Debug for RpcApiClient {
@@ -71,6 +75,7 @@ impl RpcApiClient {
         // the first call and is replaced by a fresh mint.
         let seed = rpc_config.and_then(|c| c.seed.clone());
         let networks = rpc_config.and_then(|c| c.networks.clone());
+        let endpoint_url = rpc_config.and_then(|c| c.endpoint_url.clone());
         Self {
             admin: AdminApiClient::new(config.clone()),
             config,
@@ -78,6 +83,7 @@ impl RpcApiClient {
             cache: Arc::new(Mutex::new(seed)),
             refresh_lock: Arc::new(tokio::sync::Mutex::new(())),
             networks: Arc::new(Mutex::new(networks)),
+            endpoint_url,
         }
     }
 
@@ -109,6 +115,13 @@ impl RpcApiClient {
     /// Makes a JSON-RPC call. `params` defaults to an empty array when `None`;
     /// it accepts both a positional array and a by-name object.
     ///
+    /// `endpoint_url` sends this call to a custom HTTP URL, bypassing the
+    /// Tooling Access endpoint and the session JWT entirely — the URL is treated
+    /// as self-authenticating and gets no Authorization header. It overrides the
+    /// client-wide [`RpcConfig::endpoint_url`] default for this call. Because a
+    /// custom URL is not multichain-routed, passing both `endpoint_url` and
+    /// `network` is a [`SdkError::Config`] error.
+    ///
     /// `network` selects which chain to route to on a multichain endpoint: it
     /// is a key in the seeded network map (e.g. `"solana-mainnet"`, `"polygon"`).
     /// When `None`, the call goes to the endpoint's default network. When `Some`,
@@ -122,12 +135,32 @@ impl RpcApiClient {
         method: &str,
         params: Option<Value>,
         network: Option<String>,
+        endpoint_url: Option<String>,
     ) -> Result<Value, SdkError> {
+        // Precedence: a per-call custom URL wins; then a per-call network; then
+        // the client-wide custom URL default; then the tooling default endpoint.
+        // A per-call URL and network are mutually exclusive (custom URLs are not
+        // multichain-routed).
+        if endpoint_url.is_some() && network.is_some() {
+            return Err(SdkError::Config(
+                "`endpoint_url` and `network` are mutually exclusive: a custom \
+                 URL is not multichain-routed"
+                    .into(),
+            ));
+        }
+        let custom_url = endpoint_url.or_else(|| self.endpoint_url.clone());
+
+        // Custom mode: no token minted or attached; the URL authenticates itself.
+        // There is no JWT to refresh, so no reactive-401 retry path.
+        if let Some(url) = custom_url {
+            let resp = self.send(None, &url, method, &params).await?;
+            return Self::parse_rpc(resp);
+        }
+
+        // Tooling mode: mint/refresh the JWT and route via the token/network map.
         let token = self.valid_token().await?;
-        // Resolve the target URL: default endpoint for None, else the network's
-        // mapped URL. The JWT is endpoint-wide, so the token is unchanged.
         let url = self.resolve_url(&token, network.as_deref())?;
-        let resp = self.send(&token, &url, method, &params).await?;
+        let resp = self.send(Some(&token), &url, method, &params).await?;
 
         // Reactive refresh: a 401 means the token was rejected (expired at the
         // edge, revoked, clock skew past the margin). Discard, mint once, retry
@@ -136,7 +169,7 @@ impl RpcApiClient {
             self.invalidate();
             let token = self.refresh().await?;
             let url = self.resolve_url(&token, network.as_deref())?;
-            let retry = self.send(&token, &url, method, &params).await?;
+            let retry = self.send(Some(&token), &url, method, &params).await?;
             return Self::parse_rpc(retry);
         }
         Self::parse_rpc(resp)
@@ -215,9 +248,14 @@ impl RpcApiClient {
 
     // ── Transport ─────────────────────────────────────────────────────────────
 
+    // Sends the JSON-RPC request. `token` is `Some` in tooling mode (attaches a
+    // Bearer JWT) and `None` for a custom endpoint URL, which is treated as
+    // self-authenticating and gets no Authorization header. Either way the
+    // request goes through the keyless `rpc_http_client`, so the account
+    // `x-api-key` never reaches the data plane.
     async fn send(
         &self,
-        token: &CachedToken,
+        token: Option<&CachedToken>,
         target_url: &str,
         method: &str,
         params: &Option<Value>,
@@ -229,15 +267,11 @@ impl RpcApiClient {
             "method": method,
             "params": params.clone().unwrap_or_else(|| Value::Array(vec![])),
         });
-        let resp = self
-            .config
-            .rpc_http_client()
-            .post(url)
-            .bearer_auth(&token.token)
-            .json(&body)
-            .send()
-            .await
-            .map_err(SdkError::Http)?;
+        let mut req = self.config.rpc_http_client().post(url).json(&body);
+        if let Some(token) = token {
+            req = req.bearer_auth(&token.token);
+        }
+        let resp = req.send().await.map_err(SdkError::Http)?;
         let status = resp.status().as_u16();
         let text = resp.text().await.map_err(SdkError::Http)?;
         Ok(RawResponse { status, text })
@@ -354,6 +388,7 @@ mod tests {
             base_url: Some(format!("{admin_base}/")),
         });
         cfg.rpc = Some(RpcConfig {
+            endpoint_url: None,
             seed: Some(CachedToken {
                 endpoint_url: rpc_endpoint.to_string(),
                 token: "seeded.jwt".to_string(),
@@ -383,7 +418,11 @@ mod tests {
         // Use the same server for both admin and rpc; if mint were called it
         // would 404 (no mock for /tooling-access/token) and the test would fail.
         let sdk = sdk_with_seed(&server.uri(), &server.uri());
-        let result = sdk.rpc.call("eth_blockNumber", None, None).await.unwrap();
+        let result = sdk
+            .rpc
+            .call("eth_blockNumber", None, None, None)
+            .await
+            .unwrap();
         assert_eq!(result, serde_json::json!("0x1335f9a"));
     }
 
@@ -404,8 +443,100 @@ mod tests {
             .await;
 
         let sdk = sdk_with_seed(&server.uri(), &server.uri());
-        let result = sdk.rpc.call("eth_blockNumber", None, None).await.unwrap();
+        let result = sdk
+            .rpc
+            .call("eth_blockNumber", None, None, None)
+            .await
+            .unwrap();
         assert_eq!(result, serde_json::json!("0xok"));
+    }
+
+    // Builds an SDK whose RPC client has a client-wide custom `endpoint_url` and
+    // NO seed. The admin base points at a dead address, so any attempt to mint a
+    // tooling token would fail — proving custom mode never touches the JWT path.
+    fn sdk_with_custom_url(endpoint_url: &str) -> QuicknodeSdk {
+        let mut cfg = SdkFullConfig::from_api_key("test-key".to_string());
+        cfg.admin = Some(AdminConfig {
+            base_url: Some("http://127.0.0.1:1/".to_string()),
+        });
+        cfg.rpc = Some(RpcConfig {
+            endpoint_url: Some(endpoint_url.to_string()),
+            seed: None,
+            refresh_margin_secs: None,
+            networks: None,
+        });
+        QuicknodeSdk::new(&cfg).unwrap()
+    }
+
+    #[tokio::test]
+    async fn config_endpoint_url_bypasses_jwt_and_minting() {
+        let server = MockServer::start().await;
+        // Custom endpoint must receive the call with NO Authorization header and
+        // NO account key. If minting were attempted it would fail against the
+        // dead admin base and the call would error instead.
+        Mock::given(method("POST"))
+            .and(path("/custom"))
+            .and(|req: &Request| {
+                !req.headers.contains_key("authorization") && !req.headers.contains_key("x-api-key")
+            })
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "jsonrpc": "2.0", "id": 1, "result": "0xcustom"
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = sdk_with_custom_url(&format!("{}/custom", server.uri()));
+        let result = sdk
+            .rpc
+            .call("eth_blockNumber", None, None, None)
+            .await
+            .unwrap();
+        assert_eq!(result, serde_json::json!("0xcustom"));
+        // No token was ever minted or cached.
+        assert!(sdk.rpc.current_token().is_none());
+    }
+
+    #[tokio::test]
+    async fn per_call_endpoint_url_overrides_config_default() {
+        let server = MockServer::start().await;
+        // The per-call URL points here; the config default points at /wrong,
+        // which has no mock and would 404.
+        Mock::given(method("POST"))
+            .and(path("/override"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "jsonrpc": "2.0", "id": 1, "result": "0xoverride"
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = sdk_with_custom_url(&format!("{}/wrong", server.uri()));
+        let result = sdk
+            .rpc
+            .call(
+                "eth_blockNumber",
+                None,
+                None,
+                Some(format!("{}/override", server.uri())),
+            )
+            .await
+            .unwrap();
+        assert_eq!(result, serde_json::json!("0xoverride"));
+    }
+
+    #[tokio::test]
+    async fn endpoint_url_and_network_together_is_config_error() {
+        let sdk = sdk_with_custom_url("https://example.invalid/rpc");
+        let err = sdk
+            .rpc
+            .call(
+                "eth_blockNumber",
+                None,
+                Some("solana-mainnet".to_string()),
+                Some("https://example.invalid/other".to_string()),
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SdkError::Config(msg) if msg.contains("mutually exclusive")));
     }
 
     #[tokio::test]
@@ -423,7 +554,7 @@ mod tests {
         let sdk = sdk_with_seed(&server.uri(), &server.uri());
         let err = sdk
             .rpc
-            .call("eth_getBalance", None, None)
+            .call("eth_getBalance", None, None, None)
             .await
             .unwrap_err();
         match err {
@@ -474,7 +605,11 @@ mod tests {
             .await;
 
         let sdk = sdk_with_seed(&server.uri(), &format!("{}/rpc", server.uri()));
-        let result = sdk.rpc.call("eth_blockNumber", None, None).await.unwrap();
+        let result = sdk
+            .rpc
+            .call("eth_blockNumber", None, None, None)
+            .await
+            .unwrap();
         assert_eq!(result, serde_json::json!("0xokay"));
     }
 
@@ -498,7 +633,7 @@ mod tests {
         let sdk = sdk_with_seed(&server.uri(), &format!("{}/rpc", server.uri()));
         let err = sdk
             .rpc
-            .call("eth_blockNumber", None, None)
+            .call("eth_blockNumber", None, None, None)
             .await
             .unwrap_err();
         assert!(matches!(err, SdkError::Api { status, .. } if status.as_u16() == 401));
@@ -529,6 +664,7 @@ mod tests {
             base_url: Some(format!("{}/", server.uri())),
         });
         cfg.rpc = Some(RpcConfig {
+            endpoint_url: None,
             seed: Some(CachedToken {
                 endpoint_url: format!("{}/rpc", server.uri()),
                 token: "expired.jwt".to_string(),
@@ -539,7 +675,11 @@ mod tests {
         });
         let sdk = QuicknodeSdk::new(&cfg).unwrap();
 
-        let result = sdk.rpc.call("eth_blockNumber", None, None).await.unwrap();
+        let result = sdk
+            .rpc
+            .call("eth_blockNumber", None, None, None)
+            .await
+            .unwrap();
         assert_eq!(result, serde_json::json!("0xfresh"));
         // current_token now reflects the minted token.
         assert_eq!(sdk.rpc.current_token().unwrap().token, "minted.jwt.value");
@@ -568,6 +708,7 @@ mod tests {
             format!("{}/solana", server.uri()),
         );
         cfg.rpc = Some(RpcConfig {
+            endpoint_url: None,
             seed: Some(CachedToken {
                 endpoint_url: format!("{}/default", server.uri()),
                 token: "seeded.jwt".to_string(),
@@ -580,7 +721,7 @@ mod tests {
 
         let result = sdk
             .rpc
-            .call("getSlot", None, Some("solana-mainnet".to_string()))
+            .call("getSlot", None, Some("solana-mainnet".to_string()), None)
             .await
             .unwrap();
         assert_eq!(result, serde_json::json!("12345"));
@@ -597,7 +738,7 @@ mod tests {
         )]));
         let err = sdk
             .rpc
-            .call("getSlot", None, Some("polygon".to_string()))
+            .call("getSlot", None, Some("polygon".to_string()), None)
             .await
             .unwrap_err();
         match err {
@@ -618,7 +759,7 @@ mod tests {
         let sdk = sdk_with_seed(&server.uri(), &server.uri());
         let err = sdk
             .rpc
-            .call("getSlot", None, Some("solana-mainnet".to_string()))
+            .call("getSlot", None, Some("solana-mainnet".to_string()), None)
             .await
             .unwrap_err();
         assert!(matches!(err, SdkError::Config(msg) if msg.contains("no network map")));

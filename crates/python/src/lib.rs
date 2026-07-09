@@ -2527,9 +2527,15 @@ impl RpcApiClient {
     /// automatically). `params` accepts a list (positional) or dict (by-name)
     /// and defaults to `[]`. `network` selects a chain on the multichain
     /// endpoint (a key in the seeded network map, e.g. `"solana-mainnet"`);
-    /// omit for the endpoint's default network. Returns the JSON-RPC `result`.
-    /// A JSON-RPC error is raised as `RpcError`.
-    #[pyo3(signature = (method, params=None, network=None))]
+    /// omit for the endpoint's default network.
+    ///
+    /// `endpoint_url` sends this call to a custom HTTP URL instead, bypassing
+    /// the Tooling Access endpoint and the session JWT (no Authorization header
+    /// is attached). It overrides the client-wide `RpcConfig.endpoint_url`
+    /// default. Passing both `endpoint_url` and `network` raises (they are
+    /// mutually exclusive). Returns the JSON-RPC `result`; a JSON-RPC error is
+    /// raised as `RpcError`.
+    #[pyo3(signature = (method, params=None, network=None, endpoint_url=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
     ))]
@@ -2539,6 +2545,7 @@ impl RpcApiClient {
         method: String,
         params: Option<Bound<'py, PyAny>>,
         network: Option<String>,
+        endpoint_url: Option<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         // Convert the Python params to serde_json::Value up front (needs the
@@ -2549,7 +2556,7 @@ impl RpcApiClient {
         };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             let result = client
-                .call(&method, params_value, network)
+                .call(&method, params_value, network, endpoint_url)
                 .await
                 .map_err(errors::map_sdk_err)?;
             // Convert the JSON result back to a Python object under the GIL.

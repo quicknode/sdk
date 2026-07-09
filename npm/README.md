@@ -1706,6 +1706,12 @@ const map = Object.fromEntries(
 qn.rpc.setNetworks(map);
 const slot = await qn.rpc.call("getSlot", [], "solana-mainnet");
 
+// Custom endpoint URL: send to a fully-formed HTTP URL, bypassing Tooling Access
+// and the JWT (no Authorization header). Per-call via the 4th arg, or client-wide
+// via `new RpcConfig({ endpointUrl })`. endpointUrl and network are mutually
+// exclusive (a custom URL is not multichain-routed).
+const block = await qn.rpc.call("eth_blockNumber", [], undefined, "https://my-endpoint.example/rpc");
+
 // A JSON-RPC error member is thrown as RpcError (with .code and .message).
 import { RpcError } from "@quicknode/sdk";
 try {
@@ -1717,7 +1723,9 @@ try {
 
 A host that persists across processes can snapshot the cached token with
 `qn.rpc.currentToken()` and re-seed it via `RpcConfig.seed` on the next construction;
-`refreshMarginSecs` (default 60) tunes how early the token is refreshed.
+`refreshMarginSecs` (default 60) tunes how early the token is refreshed. Set
+`RpcConfig.endpointUrl` to route every call to a custom HTTP URL by default (no
+JWT minted); a per-call `endpointUrl` overrides it.
 
 ## Error Handling
 

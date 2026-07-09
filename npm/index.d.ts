@@ -1484,6 +1484,15 @@ export interface ResendTeamInviteResponse {
 
 export interface RpcConfig {
   /**
+   * Custom HTTP URL to send JSON-RPC calls to, bypassing the Tooling Access
+   * endpoint. When set, every `rpc.call` on this client goes straight to this
+   * URL with NO session token minted or attached — the URL is treated as a
+   * self-authenticating endpoint (e.g. a provisioned `.quiknode.pro` URL that
+   * already embeds its token, or a self-hosted node). A per-call
+   * `endpoint_url` overrides this default. Unset means tooling-JWT mode.
+   */
+  endpointUrl?: string
+  /**
    * Optional pre-existing token to seed the in-memory cache (e.g. loaded
    * from a host's on-disk cache). Advisory: a malformed or expired seed is
    * treated as a cache miss and a fresh token is minted.
@@ -2513,10 +2522,16 @@ export declare class RpcApiClient {
    * automatically). `params` accepts an array (positional) or object
    * (by-name) and defaults to `[]`. `network` selects a chain on the
    * multichain endpoint (a key in the seeded network map, e.g.
-   * `"solana-mainnet"`); omit for the endpoint's default network. Returns
-   * the JSON-RPC `result`. A JSON-RPC error is thrown as `RpcError`.
+   * `"solana-mainnet"`); omit for the endpoint's default network.
+   *
+   * `endpointUrl` sends this call to a custom HTTP URL instead, bypassing the
+   * Tooling Access endpoint and the session JWT (no Authorization header is
+   * attached). It overrides the client-wide `RpcConfig.endpointUrl` default.
+   * Passing both `endpointUrl` and `network` throws (they are mutually
+   * exclusive). Returns the JSON-RPC `result`; a JSON-RPC error is thrown as
+   * `RpcError`.
    */
-  call(method: string, params?: any | undefined | null, network?: string | undefined | null): Promise<any>
+  call(method: string, params?: any | undefined | null, network?: string | undefined | null, endpointUrl?: string | undefined | null): Promise<any>
   /**
    * Seeds the per-network URL map for multichain routing (network key ->
    * full http_url), typically built from

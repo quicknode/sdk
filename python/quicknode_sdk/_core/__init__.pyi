@@ -5432,15 +5432,21 @@ class ResendTeamInviteResponse:
 
 @typing.final
 class RpcApiClient:
-    def call(self, method: builtins.str, params: typing.Optional[typing.Any] = None, network: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+    def call(self, method: builtins.str, params: typing.Optional[typing.Any] = None, network: typing.Optional[builtins.str] = None, endpoint_url: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
         r"""
         Makes a JSON-RPC call against the account's Tooling Access endpoint,
         authenticated with a short-lived session JWT (minted and refreshed
         automatically). `params` accepts a list (positional) or dict (by-name)
         and defaults to `[]`. `network` selects a chain on the multichain
         endpoint (a key in the seeded network map, e.g. `"solana-mainnet"`);
-        omit for the endpoint's default network. Returns the JSON-RPC `result`.
-        A JSON-RPC error is raised as `RpcError`.
+        omit for the endpoint's default network.
+        
+        `endpoint_url` sends this call to a custom HTTP URL instead, bypassing
+        the Tooling Access endpoint and the session JWT (no Authorization header
+        is attached). It overrides the client-wide `RpcConfig.endpoint_url`
+        default. Passing both `endpoint_url` and `network` raises (they are
+        mutually exclusive). Returns the JSON-RPC `result`; a JSON-RPC error is
+        raised as `RpcError`.
         """
     def set_networks(self, networks: typing.Mapping[builtins.str, builtins.str]) -> None:
         r"""
@@ -5462,6 +5468,26 @@ class RpcApiClient:
 
 @typing.final
 class RpcConfig:
+    @property
+    def endpoint_url(self) -> typing.Optional[builtins.str]:
+        r"""
+        Custom HTTP URL to send JSON-RPC calls to, bypassing the Tooling Access
+        endpoint. When set, every `rpc.call` on this client goes straight to this
+        URL with NO session token minted or attached — the URL is treated as a
+        self-authenticating endpoint (e.g. a provisioned `.quiknode.pro` URL that
+        already embeds its token, or a self-hosted node). A per-call
+        `endpoint_url` overrides this default. Unset means tooling-JWT mode.
+        """
+    @endpoint_url.setter
+    def endpoint_url(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Custom HTTP URL to send JSON-RPC calls to, bypassing the Tooling Access
+        endpoint. When set, every `rpc.call` on this client goes straight to this
+        URL with NO session token minted or attached — the URL is treated as a
+        self-authenticating endpoint (e.g. a provisioned `.quiknode.pro` URL that
+        already embeds its token, or a self-hosted node). A per-call
+        `endpoint_url` overrides this default. Unset means tooling-JWT mode.
+        """
     @property
     def seed(self) -> typing.Optional[CachedToken]:
         r"""
@@ -5508,7 +5534,7 @@ class RpcConfig:
         a `network` resolves the target URL here. Optional; the default-network
         call path needs no map.
         """
-    def __new__(cls, seed: typing.Optional[CachedToken] = None, refresh_margin_secs: typing.Optional[builtins.int] = None, networks: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> RpcConfig: ...
+    def __new__(cls, endpoint_url: typing.Optional[builtins.str] = None, seed: typing.Optional[CachedToken] = None, refresh_margin_secs: typing.Optional[builtins.int] = None, networks: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> RpcConfig: ...
 
 @typing.final
 class S3Attributes:

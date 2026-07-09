@@ -1779,14 +1779,15 @@ if !status.enabled {
     qn.admin.enable_tooling_access().await?; // idempotent; admin role required
 }
 
-// Make on-chain calls. params is Option<serde_json::Value>; None defaults to [].
-// The third arg selects a network on the multichain endpoint; None = default.
-let block_number = qn.rpc.call("eth_blockNumber", None, None).await?;
+// call(method, params, network, endpoint_url). params is Option<serde_json::Value>;
+// None defaults to []. Both trailing args are Option and independently omittable.
+let block_number = qn.rpc.call("eth_blockNumber", None, None, None).await?;
 let balance = qn
     .rpc
     .call(
         "eth_getBalance",
         Some(serde_json::json!(["0xabc...", "latest"])),
+        None,
         None,
     )
     .await?;
@@ -1800,14 +1801,25 @@ if let Some(data) = urls.data {
             .set_networks(mc.into_iter().map(|(k, v)| (k, v.http_url)).collect());
     }
 }
-let slot = qn.rpc.call("getSlot", None, Some("solana-mainnet".into())).await?;
+let slot = qn.rpc.call("getSlot", None, Some("solana-mainnet".into()), None).await?;
+
+// Custom endpoint URL: send to a fully-formed HTTP URL, bypassing Tooling Access
+// and the JWT (no Authorization header). Per-call via the 4th arg, or client-wide
+// via RpcConfig { endpoint_url, .. }. endpoint_url and network are mutually
+// exclusive (a custom URL is not multichain-routed).
+let block = qn
+    .rpc
+    .call("eth_blockNumber", None, None, Some("https://my-endpoint.example/rpc".into()))
+    .await?;
 
 // A JSON-RPC error member is returned as SdkError::Rpc { code, message }.
 ```
 
 A host that persists across processes can snapshot the cached token with
 `qn.rpc.current_token()` and re-seed it via `RpcConfig { seed, .. }`;
-`refresh_margin_secs` (default 60) tunes how early the token is refreshed.
+`refresh_margin_secs` (default 60) tunes how early the token is refreshed. Set
+`RpcConfig { endpoint_url, .. }` to route every call to a custom HTTP URL by
+default (no JWT minted); a per-call `endpoint_url` overrides it.
 
 ## Error Handling
 

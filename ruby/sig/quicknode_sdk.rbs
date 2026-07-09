@@ -182,7 +182,7 @@ module QuicknodeSdk
   class Rpc
     def initialize: (untyped native) -> void
 
-    def call: (method: String, ?params: untyped, ?network: String) -> untyped
+    def call: (method: String, ?params: untyped, ?network: String, ?endpoint_url: String) -> untyped
     def set_networks: (networks: Hash[String, String]) -> void
     def clear_cached_token: () -> void
     def current_token: () -> untyped
