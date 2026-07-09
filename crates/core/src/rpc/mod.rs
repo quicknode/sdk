@@ -343,10 +343,9 @@ struct JsonRpcError {
 fn now_unix() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
         // Pre-epoch system clock is implausible; treat as 0 so a fresh token is
         // always considered valid rather than panicking.
-        .unwrap_or(0)
+        .map_or(0, |d| d.as_secs() as i64)
 }
 
 fn status_code(status: u16) -> reqwest::StatusCode {
