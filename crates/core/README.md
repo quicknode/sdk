@@ -1824,7 +1824,7 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
-| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
 
 Variants: pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config, Rpc }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`.
 

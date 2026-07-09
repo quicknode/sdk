@@ -5463,18 +5463,6 @@ class RpcApiClient:
 @typing.final
 class RpcConfig:
     @property
-    def base_url(self) -> typing.Optional[builtins.str]:
-        r"""
-        Override for the tooling-access control-plane base URL used to mint
-        session tokens. When unset, falls back to the tooling-access default.
-        """
-    @base_url.setter
-    def base_url(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        Override for the tooling-access control-plane base URL used to mint
-        session tokens. When unset, falls back to the tooling-access default.
-        """
-    @property
     def seed(self) -> typing.Optional[CachedToken]:
         r"""
         Optional pre-existing token to seed the in-memory cache (e.g. loaded
@@ -5520,7 +5508,7 @@ class RpcConfig:
         a `network` resolves the target URL here. Optional; the default-network
         call path needs no map.
         """
-    def __new__(cls, base_url: typing.Optional[builtins.str] = None, seed: typing.Optional[CachedToken] = None, refresh_margin_secs: typing.Optional[builtins.int] = None, networks: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> RpcConfig: ...
+    def __new__(cls, seed: typing.Optional[CachedToken] = None, refresh_margin_secs: typing.Optional[builtins.int] = None, networks: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> RpcConfig: ...
 
 @typing.final
 class S3Attributes:

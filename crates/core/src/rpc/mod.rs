@@ -231,7 +231,7 @@ impl RpcApiClient {
         });
         let resp = self
             .config
-            .http_client()
+            .rpc_http_client()
             .post(url)
             .bearer_auth(&token.token)
             .json(&body)
@@ -326,7 +326,7 @@ mod tests {
     use crate::config::{AdminConfig, SdkFullConfig};
     use crate::QuicknodeSdk;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use wiremock::matchers::{body_partial_json, method, path};
+    use wiremock::matchers::{body_partial_json, header, method, path};
     use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
 
     // A future exp so seeded tokens are considered fresh.
@@ -354,7 +354,6 @@ mod tests {
             base_url: Some(format!("{admin_base}/")),
         });
         cfg.rpc = Some(RpcConfig {
-            base_url: None,
             seed: Some(CachedToken {
                 endpoint_url: rpc_endpoint.to_string(),
                 token: "seeded.jwt".to_string(),
@@ -386,6 +385,27 @@ mod tests {
         let sdk = sdk_with_seed(&server.uri(), &server.uri());
         let result = sdk.rpc.call("eth_blockNumber", None, None).await.unwrap();
         assert_eq!(result, serde_json::json!("0x1335f9a"));
+    }
+
+    #[tokio::test]
+    async fn call_sends_bearer_jwt_but_not_account_api_key() {
+        let server = MockServer::start().await;
+        // Match only requests that carry the Bearer JWT and omit the account
+        // key: the data-plane client must never leak `x-api-key`. If the key
+        // were present this mock would not match and the call would 404.
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .and(header("authorization", "Bearer seeded.jwt"))
+            .and(|req: &Request| !req.headers.contains_key("x-api-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "jsonrpc": "2.0", "id": 1, "result": "0xok"
+            })))
+            .mount(&server)
+            .await;
+
+        let sdk = sdk_with_seed(&server.uri(), &server.uri());
+        let result = sdk.rpc.call("eth_blockNumber", None, None).await.unwrap();
+        assert_eq!(result, serde_json::json!("0xok"));
     }
 
     #[tokio::test]
@@ -509,7 +529,6 @@ mod tests {
             base_url: Some(format!("{}/", server.uri())),
         });
         cfg.rpc = Some(RpcConfig {
-            base_url: None,
             seed: Some(CachedToken {
                 endpoint_url: format!("{}/rpc", server.uri()),
                 token: "expired.jwt".to_string(),
@@ -549,7 +568,6 @@ mod tests {
             format!("{}/solana", server.uri()),
         );
         cfg.rpc = Some(RpcConfig {
-            base_url: None,
             seed: Some(CachedToken {
                 endpoint_url: format!("{}/default", server.uri()),
                 token: "seeded.jwt".to_string(),

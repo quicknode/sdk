@@ -79,6 +79,9 @@ impl std::fmt::Debug for SdkConfig {
 
 struct SdkConfigInner {
     http_client: ReqwestClient,
+    // Separate client for RPC data-plane calls: no account `x-api-key` header,
+    // authenticates per-request with a Bearer JWT. See `new_with_client_info`.
+    rpc_http_client: ReqwestClient,
     admin: admin::ResolvedAdminConfig,
     streams: streams::ResolvedStreamsConfig,
     webhooks: webhooks::ResolvedWebhooksConfig,
@@ -102,8 +105,6 @@ impl SdkConfig {
         config: &SdkFullConfig,
         client_info: Option<ClientInfo>,
     ) -> Result<Self, SdkError> {
-        let mut builder = ReqwestClient::builder();
-
         let timeout_secs = match &config.http {
             Some(h) => match h.timeout_secs {
                 Some(secs) if secs < 0 => {
@@ -114,29 +115,37 @@ impl SdkConfig {
             },
             None => DEFAULT_TIMEOUT_SECS,
         };
-        builder = builder.timeout(std::time::Duration::from_secs(timeout_secs));
+        let pool_max_idle_per_host = config
+            .http
+            .as_ref()
+            .and_then(|http| http.pool_max_idle_per_host);
 
-        if let Some(http) = &config.http {
-            if let Some(max_idle) = http.pool_max_idle_per_host {
+        // `ClientBuilder` is not cloneable, so build a freshly-configured
+        // builder for each client from the shared transport settings.
+        let make_builder = || {
+            let mut builder =
+                ReqwestClient::builder().timeout(std::time::Duration::from_secs(timeout_secs));
+            if let Some(max_idle) = pool_max_idle_per_host {
                 builder = builder.pool_max_idle_per_host(max_idle as usize);
             }
-        }
+            builder
+        };
 
-        let mut default_headers = HeaderMap::new();
-        default_headers.insert(
+        // Headers common to every client. The account `x-api-key` is added on
+        // top of this only for the control-plane client below — RPC data-plane
+        // calls authenticate with a short-lived Bearer JWT and must never carry
+        // the long-lived account key.
+        let mut common_headers = HeaderMap::new();
+        common_headers.insert(
             reqwest::header::ACCEPT,
             HeaderValue::from_static("application/json"),
         );
-        default_headers.insert(
+        common_headers.insert(
             reqwest::header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),
         );
-        default_headers.insert(
-            "x-api-key",
-            HeaderValue::from_str(&config.api_key).map_err(|e| SdkError::Config(e.to_string()))?,
-        );
         let ua = build_user_agent(&client_info.unwrap_or_else(default_rust_client_info));
-        default_headers.insert(
+        common_headers.insert(
             reqwest::header::USER_AGENT,
             HeaderValue::from_str(&ua).map_err(|e| SdkError::Config(e.to_string()))?,
         );
@@ -152,19 +161,38 @@ impl SdkConfig {
                     let header_value = HeaderValue::from_str(value).map_err(|e| {
                         SdkError::Config(format!("invalid header value for {name:?}: {e}"))
                     })?;
-                    default_headers.insert(header_name, header_value);
+                    common_headers.insert(header_name, header_value);
                 }
             }
         }
 
-        builder = builder.default_headers(default_headers);
+        // Control-plane client: carries the account `x-api-key` used to reach
+        // the QuickNode management APIs (admin, streams, webhooks, etc.). Insert
+        // the key first, then overlay `common_headers` so a caller-supplied
+        // `x-api-key` in custom headers still wins (custom headers override all
+        // SDK-managed defaults).
+        let mut main_headers = HeaderMap::new();
+        main_headers.insert(
+            "x-api-key",
+            HeaderValue::from_str(&config.api_key).map_err(|e| SdkError::Config(e.to_string()))?,
+        );
+        main_headers.extend(common_headers.clone());
+        let http_client = make_builder()
+            .default_headers(main_headers)
+            .build()
+            .map_err(|e| SdkError::Config(e.to_string()))?;
 
-        let http_client = builder
+        // RPC data-plane client: identical transport config, but WITHOUT the
+        // account `x-api-key` default header. RPC calls attach a Bearer JWT
+        // per-request so the account key never leaves the control plane.
+        let rpc_http_client = make_builder()
+            .default_headers(common_headers)
             .build()
             .map_err(|e| SdkError::Config(e.to_string()))?;
 
         Ok(Self(Arc::new(SdkConfigInner {
             http_client,
+            rpc_http_client,
             admin: admin::ResolvedAdminConfig::from_config(config.admin.as_ref())?,
             streams: streams::ResolvedStreamsConfig::from_config(config.streams.as_ref())?,
             webhooks: webhooks::ResolvedWebhooksConfig::from_config(config.webhooks.as_ref())?,
@@ -175,6 +203,10 @@ impl SdkConfig {
 
     pub(crate) fn http_client(&self) -> &ReqwestClient {
         &self.0.http_client
+    }
+
+    pub(crate) fn rpc_http_client(&self) -> &ReqwestClient {
+        &self.0.rpc_http_client
     }
 
     pub(crate) fn admin(&self) -> &admin::ResolvedAdminConfig {

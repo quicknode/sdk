@@ -1738,7 +1738,7 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
-| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
 
 Class names: `QuicknodeSdk::Error`, `QuicknodeSdk::ConfigError`, `QuicknodeSdk::HttpError`, `QuicknodeSdk::TimeoutError`, `QuicknodeSdk::ConnectionError`, `QuicknodeSdk::ApiError`, `QuicknodeSdk::DecodeError`, `QuicknodeSdk::RpcError`. All extend `StandardError`. Hash-key validation still raises `ArgumentError`.
 

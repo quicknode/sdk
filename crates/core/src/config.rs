@@ -150,7 +150,7 @@ impl KvStoreConfig {
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(feature = "rust", derive(Builder))]
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct CachedToken {
     /// The provisioned tooling-access endpoint URL the JWT authenticates against.
     pub endpoint_url: String,
@@ -158,6 +158,18 @@ pub struct CachedToken {
     pub token: String,
     /// JWT `exp` claim in unix seconds.
     pub exp_unix: i64,
+}
+
+// Manual Debug that redacts the JWT: the token is a live bearer credential and
+// must never appear in logs or panic messages.
+impl std::fmt::Debug for CachedToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CachedToken")
+            .field("endpoint_url", &self.endpoint_url)
+            .field("token", &"[redacted]")
+            .field("exp_unix", &self.exp_unix)
+            .finish()
+    }
 }
 
 #[cfg(feature = "python")]
@@ -180,9 +192,6 @@ impl CachedToken {
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct RpcConfig {
-    /// Override for the tooling-access control-plane base URL used to mint
-    /// session tokens. When unset, falls back to the tooling-access default.
-    pub base_url: Option<String>,
     /// Optional pre-existing token to seed the in-memory cache (e.g. loaded
     /// from a host's on-disk cache). Advisory: a malformed or expired seed is
     /// treated as a cache miss and a fresh token is minted.
@@ -204,15 +213,13 @@ pub struct RpcConfig {
 #[pymethods]
 impl RpcConfig {
     #[new]
-    #[pyo3(signature = (base_url=None, seed=None, refresh_margin_secs=None, networks=None))]
+    #[pyo3(signature = (seed=None, refresh_margin_secs=None, networks=None))]
     pub fn new(
-        base_url: Option<String>,
         seed: Option<CachedToken>,
         refresh_margin_secs: Option<i64>,
         networks: Option<std::collections::HashMap<String, String>>,
     ) -> Self {
         RpcConfig {
-            base_url,
             seed,
             refresh_margin_secs,
             networks,

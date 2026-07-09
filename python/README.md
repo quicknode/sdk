@@ -1703,7 +1703,7 @@ mc = urls.data.multichain_urls if urls.data else {}
 qn.rpc.set_networks({k: v.http_url for k, v in (mc or {}).items()})
 slot = await qn.rpc.call("getSlot", network="solana-mainnet")
 
-# A JSON-RPC error member is raised as RpcError (with .code).
+# A JSON-RPC error member is raised as RpcError (with .code and .message).
 from quicknode_sdk import RpcError
 try:
     await qn.rpc.call("eth_getBalance", ["bad"])
@@ -1730,7 +1730,7 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
-| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
 
 Class names: Importable from `quicknode_sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`, `RpcError`.
 

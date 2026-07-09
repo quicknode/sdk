@@ -1706,7 +1706,7 @@ const map = Object.fromEntries(
 qn.rpc.setNetworks(map);
 const slot = await qn.rpc.call("getSlot", [], "solana-mainnet");
 
-// A JSON-RPC error member is thrown as RpcError (with .code).
+// A JSON-RPC error member is thrown as RpcError (with .code and .message).
 import { RpcError } from "@quicknode/sdk";
 try {
   await qn.rpc.call("eth_getBalance", ["bad"]);
@@ -1734,7 +1734,7 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
-| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
 
 Class names: Importable from `@quicknode/sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`, `RpcError`. All extend `Error`.
 

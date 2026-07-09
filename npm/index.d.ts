@@ -1484,11 +1484,6 @@ export interface ResendTeamInviteResponse {
 
 export interface RpcConfig {
   /**
-   * Override for the tooling-access control-plane base URL used to mint
-   * session tokens. When unset, falls back to the tooling-access default.
-   */
-  baseUrl?: string
-  /**
    * Optional pre-existing token to seed the in-memory cache (e.g. loaded
    * from a host's on-disk cache). Advisory: a malformed or expired seed is
    * treated as a cache miss and a fresh token is minted.
