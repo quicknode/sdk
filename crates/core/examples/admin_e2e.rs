@@ -874,6 +874,7 @@ async fn main() {
         webhooks: None,
         kvstore: None,
         sql: None,
+        rpc: None,
     };
     let headered = QuicknodeSdk::new(&with_headers).expect("build sdk with custom headers");
     match headered
@@ -900,6 +901,8 @@ async fn main() {
         streams: None,
         webhooks: None,
         kvstore: None,
+        sql: None,
+        rpc: None,
     };
     let tiny = QuicknodeSdk::new(&blackhole).expect("build tiny sdk");
     match tiny

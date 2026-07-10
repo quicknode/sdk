@@ -17,6 +17,7 @@ pub struct QuicknodeSdk {
     webhooks: WebhooksApiClient,
     kvstore: KvStoreApiClient,
     sql: SqlApiClient,
+    rpc: RpcApiClient,
 }
 
 /// Build a [`core::ClientInfo`] from the live Node.js runtime so the SDK's
@@ -62,7 +63,10 @@ impl QuicknodeSdk {
                 inner: core::kvstore::KvStoreApiClient::new(sdk_config.clone()),
             },
             sql: SqlApiClient {
-                inner: core::sql::SqlApiClient::new(sdk_config),
+                inner: core::sql::SqlApiClient::new(sdk_config.clone()),
+            },
+            rpc: RpcApiClient {
+                inner: core::rpc::RpcApiClient::new(sdk_config, config.rpc.as_ref()),
             },
         })
     }
@@ -97,6 +101,12 @@ impl QuicknodeSdk {
         self.sql.clone()
     }
 
+    /// Returns the JSON-RPC sub-client.
+    #[napi(getter)]
+    pub fn rpc(&self) -> RpcApiClient {
+        self.rpc.clone()
+    }
+
     /// Creates a new SDK instance using configuration from environment variables.
     #[napi(factory)]
     pub fn from_env() -> Result<Self> {
@@ -109,6 +119,7 @@ impl QuicknodeSdk {
                 },
                 kvstore: KvStoreApiClient { inner: sdk.kvstore },
                 sql: SqlApiClient { inner: sdk.sql },
+                rpc: RpcApiClient { inner: sdk.rpc },
             })
             .map_err(errors::map_sdk_err)
     }
@@ -733,6 +744,46 @@ impl AdminApiClient {
     ) -> Result<core::admin::GetApiCreditsResponse> {
         self.inner
             .get_api_credits(&chain)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Returns the current Tooling Access status for the account. Inspect
+    /// `enabled` to decide whether to enable provisioning.
+    #[napi]
+    pub async fn tooling_access_status(&self) -> Result<core::admin::ToolingAccessStatus> {
+        self.inner
+            .tooling_access_status()
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Enables (provisions) Tooling Access. Idempotent. Requires an admin role
+    /// and an eligible plan.
+    #[napi]
+    pub async fn enable_tooling_access(&self) -> Result<core::admin::ToolingAccessStatus> {
+        self.inner
+            .enable_tooling_access()
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Disables Tooling Access, pausing the endpoint. Idempotent.
+    #[napi]
+    pub async fn disable_tooling_access(&self) -> Result<core::admin::ToolingAccessStatus> {
+        self.inner
+            .disable_tooling_access()
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Mints a short-lived session JWT for the provisioned Tooling Access
+    /// endpoint. Returns the endpoint URL, the JWT, and its expiry. Requires
+    /// Tooling Access to be enabled first.
+    #[napi]
+    pub async fn mint_tooling_token(&self) -> Result<core::CachedToken> {
+        self.inner
+            .mint_tooling_token()
             .await
             .map_err(errors::map_sdk_err)
     }
@@ -1456,5 +1507,66 @@ impl SqlApiClient {
             .await
             .map(sql::ChainSchemaNode::from)
             .map_err(errors::map_sdk_err)
+    }
+}
+
+// ── RpcApiClient ───────────────────────────────────────────────
+
+#[derive(Clone)]
+#[napi]
+pub struct RpcApiClient {
+    inner: core::rpc::RpcApiClient,
+}
+
+#[napi]
+impl RpcApiClient {
+    /// Makes a JSON-RPC call against the account's Tooling Access endpoint,
+    /// authenticated with a short-lived session JWT (minted and refreshed
+    /// automatically). `params` accepts an array (positional) or object
+    /// (by-name) and defaults to `[]`. `network` selects a chain on the
+    /// multichain endpoint (a key in the seeded network map, e.g.
+    /// `"solana-mainnet"`); omit for the endpoint's default network.
+    ///
+    /// `endpointUrl` sends this call to a custom HTTP URL instead, bypassing the
+    /// Tooling Access endpoint and the session JWT (no Authorization header is
+    /// attached). It overrides the client-wide `RpcConfig.endpointUrl` default.
+    /// Passing both `endpointUrl` and `network` throws (they are mutually
+    /// exclusive). Returns the JSON-RPC `result`; a JSON-RPC error is thrown as
+    /// `RpcError`.
+    #[napi]
+    pub async fn call(
+        &self,
+        method: String,
+        params: Option<serde_json::Value>,
+        network: Option<String>,
+        endpoint_url: Option<String>,
+    ) -> Result<serde_json::Value> {
+        self.inner
+            .call(&method, params, network, endpoint_url)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Seeds the per-network URL map for multichain routing (network key ->
+    /// full http_url), typically built from
+    /// `admin.getEndpointUrls(...).multichainUrls`.
+    #[napi]
+    pub fn set_networks(&self, networks: std::collections::HashMap<String, String>) {
+        self.inner.set_networks(networks);
+    }
+
+    /// Discards the in-memory cached token, forcing the next call to mint a
+    /// fresh one. Use when the cached token is known stale beyond expiry.
+    #[napi]
+    pub fn clear_cached_token(&self) {
+        self.inner.clear_cached_token();
+    }
+
+    /// Returns a snapshot of the currently cached session token, or `null` if
+    /// no token has been minted or seeded yet. Hosts use this to persist the
+    /// token between processes.
+    #[napi]
+    pub fn current_token(&self) -> Option<core::CachedToken> {
+        self.inner.current_token()
     }
 }

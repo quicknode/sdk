@@ -21,6 +21,9 @@ pub enum SdkError {
 
     #[error("Configuration error: {0}")]
     Config(String),
+
+    #[error("JSON-RPC error (code {code}): {message}")]
+    Rpc { code: i64, message: String },
 }
 
 // Classifies a transport-level HTTP failure. Bindings use this to pick a

@@ -12,6 +12,13 @@ pub fn map_parse_err(e: serde_json::Error) -> PyErr {
     PyValueError::new_err(e.to_string())
 }
 
+// Conversion failures between Python objects and JSON (rpc params/results) are
+// argument errors, surfaced as PyValueError like other parse failures.
+#[allow(clippy::needless_pass_by_value)]
+pub fn map_pythonize_err(e: pythonize::PythonizeError) -> PyErr {
+    PyValueError::new_err(e.to_string())
+}
+
 create_exception!(_core, QuicknodeError, PyException);
 create_exception!(_core, ConfigError, QuicknodeError);
 create_exception!(_core, HttpError, QuicknodeError);
@@ -19,6 +26,7 @@ create_exception!(_core, TimeoutError, HttpError);
 create_exception!(_core, ConnectionError, HttpError);
 create_exception!(_core, ApiError, QuicknodeError);
 create_exception!(_core, DecodeError, QuicknodeError);
+create_exception!(_core, RpcError, QuicknodeError);
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn map_sdk_err(e: SdkError) -> PyErr {
@@ -47,6 +55,17 @@ pub fn map_sdk_err(e: SdkError) -> PyErr {
                 err
             })
         }
+        SdkError::Rpc { code, message } => {
+            let code = *code;
+            let message = message.clone();
+            Python::attach(|py| {
+                let err = RpcError::new_err(msg);
+                let val = err.value(py);
+                let _ = val.setattr("code", code);
+                let _ = val.setattr("message", message);
+                err
+            })
+        }
         SdkError::Http(_) => match e.http_kind() {
             Some(HttpKind::Timeout) => TimeoutError::new_err(msg),
             Some(HttpKind::Connect) => ConnectionError::new_err(msg),
@@ -64,5 +83,6 @@ pub fn add_to_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("ConnectionError", py.get_type::<ConnectionError>())?;
     m.add("ApiError", py.get_type::<ApiError>())?;
     m.add("DecodeError", py.get_type::<DecodeError>())?;
+    m.add("RpcError", py.get_type::<RpcError>())?;
     Ok(())
 }

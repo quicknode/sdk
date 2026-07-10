@@ -1760,6 +1760,67 @@ let schema = qn.sql.get_schema("hyperliquid-core-mainnet").await?;
 println!("{} tables", schema.tables.len());
 ```
 
+---
+
+### RPC & Tooling Access
+
+Tooling Access provisions a single multichain, read-only endpoint per account and
+mints short-lived session JWTs. `qn.rpc` makes JSON-RPC calls directly against that
+endpoint, minting and refreshing the JWT automatically — no endpoint URL or token to
+manage.
+
+Tooling Access must be enabled once (admin role + eligible plan). The control-plane
+methods live on `qn.admin`:
+
+```rust
+// Rust
+let status = qn.admin.tooling_access_status().await?;
+if !status.enabled {
+    qn.admin.enable_tooling_access().await?; // idempotent; admin role required
+}
+
+// call(method, params, network, endpoint_url). params is Option<serde_json::Value>;
+// None defaults to []. Both trailing args are Option and independently omittable.
+let block_number = qn.rpc.call("eth_blockNumber", None, None, None).await?;
+let balance = qn
+    .rpc
+    .call(
+        "eth_getBalance",
+        Some(serde_json::json!(["0xabc...", "latest"])),
+        None,
+        None,
+    )
+    .await?;
+
+// Multichain: seed the per-network URL map (from get_endpoint_urls), then pass
+// the network key as the third arg.
+let urls = qn.admin.get_endpoint_urls(endpoint_id).await?;
+if let Some(data) = urls.data {
+    if let Some(mc) = data.multichain_urls {
+        qn.rpc
+            .set_networks(mc.into_iter().map(|(k, v)| (k, v.http_url)).collect());
+    }
+}
+let slot = qn.rpc.call("getSlot", None, Some("solana-mainnet".into()), None).await?;
+
+// Custom endpoint URL: send to a fully-formed HTTP URL, bypassing Tooling Access
+// and the JWT (no Authorization header). Per-call via the 4th arg, or client-wide
+// via RpcConfig { endpoint_url, .. }. endpoint_url and network are mutually
+// exclusive (a custom URL is not multichain-routed).
+let block = qn
+    .rpc
+    .call("eth_blockNumber", None, None, Some("https://my-endpoint.example/rpc".into()))
+    .await?;
+
+// A JSON-RPC error member is returned as SdkError::Rpc { code, message }.
+```
+
+A host that persists across processes can snapshot the cached token with
+`qn.rpc.current_token()` and re-seed it via `RpcConfig { seed, .. }`;
+`refresh_margin_secs` (default 60) tunes how early the token is refreshed. Set
+`RpcConfig { endpoint_url, .. }` to route every call to a custom HTTP URL by
+default (no JWT minted); a per-call `endpoint_url` overrides it.
+
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
@@ -1775,8 +1836,9 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
 
-Variants: pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`.
+Variants: pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config, Rpc }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`.
 
 ```rust
 // Rust

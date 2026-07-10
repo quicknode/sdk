@@ -309,6 +309,7 @@ mod tests {
             sql: Some(SqlConfig {
                 base_url: Some(base_url),
             }),
+            rpc: None,
         })
         .unwrap()
     }

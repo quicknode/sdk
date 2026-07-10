@@ -1682,6 +1682,54 @@ schema = qn.sql.get_schema(cluster_id: "hyperliquid-core-mainnet")
 puts schema[:tables].length
 ```
 
+---
+
+### RPC & Tooling Access
+
+Tooling Access provisions a single multichain, read-only endpoint per account and
+mints short-lived session JWTs. `qn.rpc` makes JSON-RPC calls directly against that
+endpoint, minting and refreshing the JWT automatically — no endpoint URL or token to
+manage.
+
+Tooling Access must be enabled once (admin role + eligible plan). The control-plane
+methods live on `qn.admin`:
+
+```ruby
+# Ruby
+status = qn.admin.tooling_access_status
+qn.admin.enable_tooling_access unless status["enabled"] # idempotent; admin role required
+
+# Make on-chain calls. params defaults to []; pass an Array (positional) or Hash.
+block_number = qn.rpc.call(method: "eth_blockNumber")
+balance = qn.rpc.call(method: "eth_getBalance", params: ["0xabc...", "latest"])
+
+# Multichain: select a network by its multichain_urls key. Seed the map first
+# (from admin.get_endpoint_urls), then pass network:.
+urls = qn.admin.get_endpoint_urls(id: endpoint_id)
+map = (urls.dig("data", "multichain_urls") || {}).transform_values { |v| v["http_url"] }
+qn.rpc.set_networks(networks: map)
+slot = qn.rpc.call(method: "getSlot", network: "solana-mainnet")
+
+# Custom endpoint URL: send to a fully-formed HTTP URL, bypassing Tooling Access
+# and the JWT (no Authorization header). Per-call via endpoint_url:, or client-wide
+# via the rpc: { endpoint_url: ... } config key. endpoint_url and network are
+# mutually exclusive (a custom URL is not multichain-routed).
+block = qn.rpc.call(method: "eth_blockNumber", endpoint_url: "https://my-endpoint.example/rpc")
+
+# A JSON-RPC error member is raised as QuicknodeSdk::RpcError (with #code, #message).
+begin
+  qn.rpc.call(method: "eth_getBalance", params: ["bad"])
+rescue QuicknodeSdk::RpcError => e
+  warn "#{e.code}: #{e.message}"
+end
+```
+
+Responses are wrapped in `QuicknodeSdk::IndifferentHash` — access with `[]`. A host that
+persists across processes can snapshot the cached token with `qn.rpc.current_token` and
+re-seed it via the `rpc: { seed: ... }` config key; `refresh_margin_secs` (default 60)
+tunes how early the token is refreshed. Set `rpc: { endpoint_url: ... }` to route every
+call to a custom HTTP URL by default (no JWT minted); a per-call `endpoint_url` overrides it.
+
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
@@ -1697,8 +1745,9 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
 
-Class names: `QuicknodeSdk::Error`, `QuicknodeSdk::ConfigError`, `QuicknodeSdk::HttpError`, `QuicknodeSdk::TimeoutError`, `QuicknodeSdk::ConnectionError`, `QuicknodeSdk::ApiError`, `QuicknodeSdk::DecodeError`. All extend `StandardError`. Hash-key validation still raises `ArgumentError`.
+Class names: `QuicknodeSdk::Error`, `QuicknodeSdk::ConfigError`, `QuicknodeSdk::HttpError`, `QuicknodeSdk::TimeoutError`, `QuicknodeSdk::ConnectionError`, `QuicknodeSdk::ApiError`, `QuicknodeSdk::DecodeError`, `QuicknodeSdk::RpcError`. All extend `StandardError`. Hash-key validation still raises `ArgumentError`.
 
 ```ruby
 # Ruby

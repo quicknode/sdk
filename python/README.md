@@ -1674,6 +1674,55 @@ schema = await qn.sql.get_schema("hyperliquid-core-mainnet")
 print(len(schema.tables))
 ```
 
+---
+
+### RPC & Tooling Access
+
+Tooling Access provisions a single multichain, read-only endpoint per account and
+mints short-lived session JWTs. `qn.rpc` makes JSON-RPC calls directly against that
+endpoint, minting and refreshing the JWT automatically — no endpoint URL or token to
+manage.
+
+Tooling Access must be enabled once (admin role + eligible plan). The control-plane
+methods live on `qn.admin`:
+
+```python
+# Python
+status = await qn.admin.tooling_access_status()
+if not status.enabled:
+    await qn.admin.enable_tooling_access()  # idempotent; admin role required
+
+# Make on-chain calls. params defaults to []; pass a list (positional) or dict.
+block_number = await qn.rpc.call("eth_blockNumber")
+balance = await qn.rpc.call("eth_getBalance", ["0xabc...", "latest"])
+
+# Multichain: select a network by its multichain_urls key. Seed the map first
+# (from admin.get_endpoint_urls), then pass network=.
+urls = await qn.admin.get_endpoint_urls(endpoint_id)
+mc = urls.data.multichain_urls if urls.data else {}
+qn.rpc.set_networks({k: v.http_url for k, v in (mc or {}).items()})
+slot = await qn.rpc.call("getSlot", network="solana-mainnet")
+
+# Custom endpoint URL: send to a fully-formed HTTP URL, bypassing Tooling Access
+# and the JWT (no Authorization header). Per-call via endpoint_url=, or
+# client-wide via RpcConfig(endpoint_url=...). endpoint_url and network are
+# mutually exclusive (a custom URL is not multichain-routed).
+block = await qn.rpc.call("eth_blockNumber", endpoint_url="https://my-endpoint.example/rpc")
+
+# A JSON-RPC error member is raised as RpcError (with .code and .message).
+from quicknode_sdk import RpcError
+try:
+    await qn.rpc.call("eth_getBalance", ["bad"])
+except RpcError as e:
+    print(e.code, e.message)
+```
+
+A host that persists across processes can snapshot the cached token with
+`qn.rpc.current_token()` and re-seed it via `RpcConfig(seed=...)` on the next
+construction; `refresh_margin_secs` (default 60) tunes how early the token is
+refreshed. Set `RpcConfig(endpoint_url=...)` to route every call to a custom
+HTTP URL by default (no JWT minted); a per-call `endpoint_url` overrides it.
+
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
@@ -1689,8 +1738,9 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
 
-Class names: Importable from `quicknode_sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`.
+Class names: Importable from `quicknode_sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`, `RpcError`.
 
 ```python
 # Python

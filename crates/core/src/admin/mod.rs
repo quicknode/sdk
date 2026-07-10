@@ -11,6 +11,7 @@ pub mod endpoints;
 pub mod logs;
 pub mod tags;
 pub mod teams;
+pub mod tooling_access;
 pub mod usage;
 
 pub use account::{AccountInfo, AccountInfoResponse, AccountSubscription};
@@ -66,6 +67,7 @@ pub use teams::{
     TeamDetail, TeamEndpoint, TeamMessageData, TeamSummary, TeamUser, UpdateTeamEndpointsData,
     UpdateTeamEndpointsRequest, UpdateTeamEndpointsResponse,
 };
+pub use tooling_access::ToolingAccessStatus;
 
 pub use usage::{
     ChainUsage, EndpointUsage, GetUsageByChainResponse, GetUsageByEndpointResponse,
@@ -1957,6 +1959,7 @@ mod tests {
             webhooks: None,
             kvstore: None,
             sql: None,
+            rpc: None,
         })
         .unwrap()
     }
@@ -3847,6 +3850,7 @@ mod tests {
             webhooks: None,
             kvstore: None,
             sql: None,
+            rpc: None,
         });
         assert!(matches!(result, Err(crate::errors::SdkError::Config(_))));
     }

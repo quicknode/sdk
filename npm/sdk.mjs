@@ -25,6 +25,7 @@ export const {
   WebhooksApiClient,
   KvStoreApiClient,
   SqlApiClient,
+  RpcApiClient,
   QuicknodeError,
   ConfigError,
   HttpError,
@@ -32,4 +33,5 @@ export const {
   ConnectionError,
   ApiError,
   DecodeError,
+  RpcError,
 } = cjs;

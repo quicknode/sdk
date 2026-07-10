@@ -1674,6 +1674,59 @@ const schema = await qn.sql.getSchema("hyperliquid-core-mainnet");
 console.log(schema.tables.length);
 ```
 
+---
+
+### RPC & Tooling Access
+
+Tooling Access provisions a single multichain, read-only endpoint per account and
+mints short-lived session JWTs. `qn.rpc` makes JSON-RPC calls directly against that
+endpoint, minting and refreshing the JWT automatically — no endpoint URL or token to
+manage.
+
+Tooling Access must be enabled once (admin role + eligible plan). The control-plane
+methods live on `qn.admin`:
+
+```typescript
+// Node.js
+const status = await qn.admin.toolingAccessStatus();
+if (!status.enabled) {
+  await qn.admin.enableToolingAccess(); // idempotent; admin role required
+}
+
+// Make on-chain calls. params defaults to []; pass an array (positional) or object.
+const blockNumber = await qn.rpc.call("eth_blockNumber");
+const balance = await qn.rpc.call("eth_getBalance", ["0xabc...", "latest"]);
+
+// Multichain: select a network by its multichain_urls key. Seed the map first
+// (from admin.getEndpointUrls), then pass the network as the 3rd arg.
+const urls = await qn.admin.getEndpointUrls(endpointId);
+const map = Object.fromEntries(
+  Object.entries(urls.multichainUrls ?? {}).map(([k, v]) => [k, v.httpUrl]),
+);
+qn.rpc.setNetworks(map);
+const slot = await qn.rpc.call("getSlot", [], "solana-mainnet");
+
+// Custom endpoint URL: send to a fully-formed HTTP URL, bypassing Tooling Access
+// and the JWT (no Authorization header). Per-call via the 4th arg, or client-wide
+// via `new RpcConfig({ endpointUrl })`. endpointUrl and network are mutually
+// exclusive (a custom URL is not multichain-routed).
+const block = await qn.rpc.call("eth_blockNumber", [], undefined, "https://my-endpoint.example/rpc");
+
+// A JSON-RPC error member is thrown as RpcError (with .code and .message).
+import { RpcError } from "@quicknode/sdk";
+try {
+  await qn.rpc.call("eth_getBalance", ["bad"]);
+} catch (e) {
+  if (e instanceof RpcError) console.error(e.code, e.message);
+}
+```
+
+A host that persists across processes can snapshot the cached token with
+`qn.rpc.currentToken()` and re-seed it via `RpcConfig.seed` on the next construction;
+`refreshMarginSecs` (default 60) tunes how early the token is refreshed. Set
+`RpcConfig.endpointUrl` to route every call to a custom HTTP URL by default (no
+JWT minted); a per-call `endpointUrl` overrides it.
+
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
@@ -1689,8 +1742,9 @@ subclass to branch on transport vs. API semantics.
 | `ConnectionError`    | connection refused / DNS / TLS (subclass of `HttpError`)    | —                    |
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
+| `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
 
-Class names: Importable from `@quicknode/sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`. All extend `Error`.
+Class names: Importable from `@quicknode/sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`, `RpcError`. All extend `Error`.
 
 ```typescript
 // Node.js

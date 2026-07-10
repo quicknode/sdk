@@ -115,7 +115,11 @@ from quicknode_sdk._core import (
     StreamsConfig,
     KvStoreConfig,
     SqlConfig,
+    RpcConfig,
+    CachedToken,
     SdkFullConfig,
+    RpcApiClient,
+    ToolingAccessStatus,
     KvStoreApiClient,
     KvSetEntry,
     GetSetsResponse,
@@ -208,6 +212,7 @@ from quicknode_sdk._core import (
     ConnectionError,
     ApiError,
     DecodeError,
+    RpcError,
 )
 
 __all__ = [
@@ -326,7 +331,11 @@ __all__ = [
     "AdminConfig",
     "KvStoreConfig",
     "SqlConfig",
+    "RpcConfig",
+    "CachedToken",
     "SdkFullConfig",
+    "RpcApiClient",
+    "ToolingAccessStatus",
     "KvStoreApiClient",
     "KvSetEntry",
     "GetSetsResponse",
@@ -419,4 +428,5 @@ __all__ = [
     "ConnectionError",
     "ApiError",
     "DecodeError",
+    "RpcError",
 ]

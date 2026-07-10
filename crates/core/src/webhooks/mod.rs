@@ -347,6 +347,7 @@ mod tests {
             }),
             kvstore: None,
             sql: None,
+            rpc: None,
         })
         .unwrap()
     }
