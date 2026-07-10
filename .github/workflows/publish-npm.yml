@@ -27,8 +27,11 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Ensure npm supports trusted publishing
-        run: npm install -g npm@latest
+      # Pin npm rather than tracking @latest: some published npm releases ship a
+      # broken bundled `sigstore` that crashes provenance generation with
+      # MODULE_NOT_FOUND. 11.6.2 has a working sigstore and supports trusted publishing.
+      - name: Install pinned npm
+        run: npm install -g npm@11.6.2
 
       - name: Download node .node artifacts from GitHub release
         run: |
@@ -122,9 +125,9 @@ jobs:
         run: |
           for pkg_dir in */; do
             echo "Publishing $pkg_dir"
-            (cd "$pkg_dir" && npm publish --access public --tag "${{ inputs.npm_tag }}")
+            (cd "$pkg_dir" && npm publish --access public --provenance --tag "${{ inputs.npm_tag }}")
           done
 
       - name: Publish main package
         working-directory: npm
-        run: npm publish --access public --tag "${{ inputs.npm_tag }}"
+        run: npm publish --access public --provenance --tag "${{ inputs.npm_tag }}"
