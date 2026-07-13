@@ -68,6 +68,46 @@ fn hash_require_string(h: &RHash, key: &str) -> Result<String, Error> {
     })
 }
 
+// Pull the payment lane out of `config[:rpc][:payment]`. RpcConfig.payment is
+// serde-skipped (never env-derived), so serde_magnus won't populate it — this
+// builds the PaymentConfig from the hash so Ruby callers can set it
+// programmatically. Returns None when no rpc.payment sub-hash is present.
+fn extract_payment_config(opts: &RHash) -> Result<Option<core::PaymentConfig>, Error> {
+    let r = ruby();
+    let Some(rpc_val) = opts.get(r.to_symbol("rpc")) else {
+        return Ok(None);
+    };
+    let Some(rpc) = RHash::from_value(rpc_val) else {
+        return Ok(None);
+    };
+    let Some(payment_val) = rpc.get(r.to_symbol("payment")) else {
+        return Ok(None);
+    };
+    let payment = RHash::from_value(payment_val)
+        .ok_or_else(|| Error::new(r.exception_arg_error(), "rpc.payment must be a Hash"))?;
+    validate_keys(
+        &payment,
+        &[
+            "scheme",
+            "key",
+            "pay_network",
+            "asset",
+            "max_amount",
+            "svm_rpc_url",
+            "base_url_override",
+        ],
+    )?;
+    Ok(Some(core::PaymentConfig {
+        scheme: hash_require_string(&payment, "scheme")?,
+        key: hash_require_string(&payment, "key")?,
+        pay_network: hash_require_string(&payment, "pay_network")?,
+        asset: hash_require_string(&payment, "asset")?,
+        max_amount: hash_require_string(&payment, "max_amount")?,
+        svm_rpc_url: hash_get_string(&payment, "svm_rpc_url")?,
+        base_url_override: hash_get_string(&payment, "base_url_override")?,
+    }))
+}
+
 fn hash_get_i64(h: &RHash, key: &str) -> Result<Option<i64>, Error> {
     let r = ruby();
     match h.get(r.to_symbol(key)) {
@@ -275,10 +315,17 @@ impl QuicknodeSdk {
                 "api_key", "http", "admin", "streams", "webhooks", "kvstore", "sql", "rpc",
             ],
         )?;
-        let config: core::SdkFullConfig =
+        let mut config: core::SdkFullConfig =
             serde_magnus::deserialize(&ruby(), opts).map_err(|e| {
                 Error::new(ruby().exception_arg_error(), format!("invalid config: {e}"))
             })?;
+        // RpcConfig.payment is `#[serde(skip)]` (so it can never be populated
+        // from the environment), which also means serde_magnus won't pick it up
+        // from the config hash. Extract it manually and attach it here so Ruby
+        // callers can configure the payment lane programmatically.
+        if let Some(payment) = extract_payment_config(&opts)? {
+            config.rpc.get_or_insert_with(Default::default).payment = Some(payment);
+        }
         core::QuicknodeSdk::new_with_client_info(&config, Some(ruby_client_info()))
             .map(|inner| Self { inner })
             .map_err(map_err)
@@ -1916,6 +1963,38 @@ impl RpcApiClient {
             .and_then(to_ruby)
     }
 
+    // call_with_receipt(method:, params:, network:, endpoint_url:) — like call
+    // but also returns the crypto-micropayment settlement receipt. Returns a
+    // Hash {"result" => ..., "payment_receipt" => {..}|nil}. payment_receipt is
+    // present only on the MPP payment lane; nil for x402 and non-payment lanes.
+    fn call_with_receipt(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["method", "params", "network", "endpoint_url"])?;
+        let method = hash_require_string(&opts, "method")?;
+        let network = hash_get_string(&opts, "network")?;
+        let endpoint_url = hash_get_string(&opts, "endpoint_url")?;
+        let r = ruby();
+        let params: Option<serde_json::Value> = match opts.get(r.to_symbol("params")) {
+            Some(v) if !v.is_nil() => Some(serde_magnus::deserialize(&r, v)?),
+            _ => None,
+        };
+        let client = self.inner.clone();
+        let resp = runtime()
+            .block_on(client.call_with_receipt(&method, params, network, endpoint_url))
+            .map_err(map_err)?;
+        // Build a JSON value at the boundary (RpcCallResponse holds a
+        // serde_json::Value) and hand it to Ruby as an IndifferentHash.
+        let json = serde_json::json!({
+            "result": resp.result,
+            "payment_receipt": resp.payment_receipt.map(|rc| serde_json::json!({
+                "method": rc.method,
+                "status": rc.status,
+                "timestamp": rc.timestamp,
+                "reference": rc.reference,
+            })),
+        });
+        to_ruby(json)
+    }
+
     // set_networks(networks:) — seed the per-network URL map (key -> http_url)
     // for multichain routing, from get_endpoint_urls(...)["multichain_urls"].
     fn set_networks(&self, opts: RHash) -> Result<(), Error> {
@@ -2273,6 +2352,10 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     // ── Rpc ───────────────────────────────────────────────────
     let rpc = native.define_class("Rpc", ruby.class_object())?;
     rpc.define_method("call", method!(RpcApiClient::call, 1))?;
+    rpc.define_method(
+        "call_with_receipt",
+        method!(RpcApiClient::call_with_receipt, 1),
+    )?;
     rpc.define_method("set_networks", method!(RpcApiClient::set_networks, 1))?;
     rpc.define_method(
         "clear_cached_token",

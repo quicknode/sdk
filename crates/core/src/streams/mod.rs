@@ -319,7 +319,7 @@ mod tests {
 
     fn make_sdk(base_url: String) -> QuicknodeSdk {
         QuicknodeSdk::new(&SdkFullConfig {
-            api_key: "test-key".to_string(),
+            api_key: Some("test-key".to_string()),
             http: None,
             admin: None,
             streams: Some(StreamsConfig {

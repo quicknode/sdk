@@ -1367,6 +1367,55 @@ export interface Payment {
   marketplaceAmount?: string
 }
 
+/**
+ * Binding-facing crypto-micropayment configuration. **Plain data** — all
+ * fields are strings so this can be a `napi(object)` / `pyclass` / Ruby hash;
+ * it is converted to the internal `enum Signer` + resolved config at the Rust
+ * boundary. The private `key` field stays readable to the caller (the
+ * ethers `.privateKey` / web3.py convention), but the SDK's own `Debug`
+ * redacts it (below) so an SDK log line or panic can't leak it.
+ *
+ * **Do not log your own `PaymentConfig`** — `println!("{config:?}")` on the
+ * derived-Debug *binding* object (napi/pyclass/hash) still shows the raw key,
+ * exactly like ethers' readable `privateKey`. Only the SDK's internal
+ * rendering is redacted.
+ */
+export interface PaymentConfig {
+  /** Payment protocol: `"x402"` (pay-per-request) or `"mpp"` (MPP charge). */
+  scheme: string
+  /**
+   * Raw private key. EVM/Tempo: hex (with or without `0x`). Solana: base58
+   * 64-byte secret key.
+   */
+  key: string
+  /**
+   * CAIP-2 pay network selector, e.g. `"eip155:84532"` (x402/EVM),
+   * `"solana:5eykt4…"` (x402/Solana), or `"eip155:42431"` (MPP/Tempo).
+   */
+  payNetwork: string
+  /**
+   * Asset (token) address/mint to pay in. Matches the offered menu entry's
+   * `asset`. EVM: token contract hex. Solana: mint base58.
+   */
+  asset: string
+  /**
+   * Spend ceiling in base units of `asset` (integer string). **Required.**
+   * The selector skips any offered entry above this, and the driver refuses
+   * to sign one — guarding against a buggy/hostile gateway overcharging a
+   * custodied key.
+   */
+  maxAmount: string
+  /**
+   * Explicit Solana RPC URL for x402/Solana payment-build reads (recent
+   * blockhash). Optional; when unset the SDK falls back to a public Solana
+   * RPC matching the pay cluster. **Set this at any real volume** — the
+   * public default rate-limits aggressively.
+   */
+  svmRpcUrl?: string
+  /** Test-only gateway base override (points the lane at a mock gateway). */
+  baseUrlOverride?: string
+}
+
 /** Configuration for delivering stream batches to a PostgreSQL database. */
 export interface PostgresAttributes {
   /** Database host. */
@@ -1512,6 +1561,17 @@ export interface RpcConfig {
    * call path needs no map.
    */
   networks?: Record<string, string>
+  /**
+   * Crypto-micropayment lane. When set, `rpc.call` pays per request with a
+   * stablecoin against Quicknode's x402/MPP gateways instead of using the
+   * account API key + session JWT. `#[serde(skip)]` so `from_env` can never
+   * populate it — an env-derived private key is exactly what we don't want;
+   * callers must pass this programmatically. The field is always present
+   * (plain data), but actually *using* it requires the crypto features
+   * (`payments`/`payments-svm`/`payments-tempo`); without them a set
+   * `payment` yields a clear `Config` error at call time.
+   */
+  payment?: PaymentConfig
 }
 
 /** Configuration for delivering stream batches to an S3-compatible object store. */
@@ -1539,7 +1599,15 @@ export interface S3Attributes {
 }
 
 export interface SdkFullConfig {
-  apiKey: string
+  /**
+   * Account API key. **Optional** so a keyless SDK can be built for the
+   * crypto-micropayment lane (`rpc.call` with `RpcConfig.payment`). When
+   * absent, no `x-api-key` header is installed and every keyed surface
+   * (admin/streams/webhooks/kvstore/sql and tooling-JWT `rpc.call`) fails
+   * with a clear `Config` error. `from_env` still requires it (validated in
+   * `from_config`) — only programmatic construction may omit it.
+   */
+  apiKey?: string
   http?: HttpConfig
   admin?: AdminConfig
   streams?: StreamsConfig
@@ -2532,6 +2600,13 @@ export declare class RpcApiClient {
    * `RpcError`.
    */
   call(method: string, params?: any | undefined | null, network?: string | undefined | null, endpointUrl?: string | undefined | null): Promise<any>
+  /**
+   * Like `call`, but also returns the crypto-micropayment settlement
+   * receipt. Resolves to `{ result, paymentReceipt }` where `paymentReceipt`
+   * is `{ method, status, timestamp, reference }` on the MPP payment lane and
+   * `null` for x402 and every non-payment lane (identical to `call`).
+   */
+  callWithReceipt(method: string, params?: any | undefined | null, network?: string | undefined | null, endpointUrl?: string | undefined | null): Promise<any>
   /**
    * Seeds the per-network URL map for multichain routing (network key ->
    * full http_url), typically built from

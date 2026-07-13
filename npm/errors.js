@@ -62,7 +62,40 @@ class RpcError extends QuicknodeError {
   }
 }
 
-const TAG_RE = /^\[(Config|Http|Timeout|Connect|Api|Decode|Rpc)\|([^|]+)\|([^\]]+)\](.*)$/s;
+// Payment-lane errors. PaymentError is the family base; PaymentRejectedError
+// carries the gateway status/body; PaymentIndeterminateError is its own class
+// so callers can catch "may have been charged — do not retry" distinctly.
+class PaymentError extends QuicknodeError {
+  constructor(message) {
+    super(message);
+    this.name = "PaymentError";
+  }
+}
+
+class PaymentUnsupportedError extends PaymentError {
+  constructor(message) {
+    super(message);
+    this.name = "PaymentUnsupportedError";
+  }
+}
+
+class PaymentRejectedError extends PaymentError {
+  constructor(message, status, body) {
+    super(message);
+    this.name = "PaymentRejectedError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
+class PaymentIndeterminateError extends PaymentError {
+  constructor(message) {
+    super(message);
+    this.name = "PaymentIndeterminateError";
+  }
+}
+
+const TAG_RE = /^\[(Config|Http|Timeout|Connect|Api|Decode|Rpc|PaymentUnsupported|PaymentRejected|PaymentIndeterminate)\|([^|]+)\|([^\]]+)\](.*)$/s;
 
 function fromNapiError(err) {
   if (!(err instanceof Error)) return err;
@@ -92,6 +125,9 @@ function fromNapiError(err) {
     case "Decode": return new DecodeError(msg, body);
     // For Rpc, statusStr is the JSON-RPC code and body is its message.
     case "Rpc": return new RpcError(body || msg, Number(statusStr));
+    case "PaymentUnsupported": return new PaymentUnsupportedError(msg);
+    case "PaymentRejected": return new PaymentRejectedError(msg, Number(statusStr), body);
+    case "PaymentIndeterminate": return new PaymentIndeterminateError(msg);
     default: return err;
   }
 }
@@ -127,6 +163,10 @@ module.exports = {
   ApiError,
   DecodeError,
   RpcError,
+  PaymentError,
+  PaymentUnsupportedError,
+  PaymentRejectedError,
+  PaymentIndeterminateError,
   fromNapiError,
   wrapClient,
 };

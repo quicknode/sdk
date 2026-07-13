@@ -27,6 +27,14 @@ create_exception!(_core, ConnectionError, HttpError);
 create_exception!(_core, ApiError, QuicknodeError);
 create_exception!(_core, DecodeError, QuicknodeError);
 create_exception!(_core, RpcError, QuicknodeError);
+// Payment-lane errors. PaymentError is the family base; PaymentRejectedError
+// carries the gateway status/body like ApiError; PaymentIndeterminateError is
+// its own class so a caller can catch "may have been charged — do not retry"
+// distinctly from every other failure.
+create_exception!(_core, PaymentError, QuicknodeError);
+create_exception!(_core, PaymentUnsupportedError, PaymentError);
+create_exception!(_core, PaymentRejectedError, PaymentError);
+create_exception!(_core, PaymentIndeterminateError, PaymentError);
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn map_sdk_err(e: SdkError) -> PyErr {
@@ -71,6 +79,19 @@ pub fn map_sdk_err(e: SdkError) -> PyErr {
             Some(HttpKind::Connect) => ConnectionError::new_err(msg),
             _ => HttpError::new_err(msg),
         },
+        SdkError::PaymentUnsupported { .. } => PaymentUnsupportedError::new_err(msg),
+        SdkError::PaymentRejected { status, body } => {
+            let status = *status;
+            let body = body.clone();
+            Python::attach(|py| {
+                let err = PaymentRejectedError::new_err(msg);
+                let val = err.value(py);
+                let _ = val.setattr("status", status);
+                let _ = val.setattr("body", body);
+                err
+            })
+        }
+        SdkError::PaymentIndeterminate => PaymentIndeterminateError::new_err(msg),
     }
 }
 
@@ -84,5 +105,18 @@ pub fn add_to_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("ApiError", py.get_type::<ApiError>())?;
     m.add("DecodeError", py.get_type::<DecodeError>())?;
     m.add("RpcError", py.get_type::<RpcError>())?;
+    m.add("PaymentError", py.get_type::<PaymentError>())?;
+    m.add(
+        "PaymentUnsupportedError",
+        py.get_type::<PaymentUnsupportedError>(),
+    )?;
+    m.add(
+        "PaymentRejectedError",
+        py.get_type::<PaymentRejectedError>(),
+    )?;
+    m.add(
+        "PaymentIndeterminateError",
+        py.get_type::<PaymentIndeterminateError>(),
+    )?;
     Ok(())
 }

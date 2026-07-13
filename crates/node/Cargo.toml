@@ -13,7 +13,7 @@ workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
-quicknode-sdk = { path = "../core", features = ["node"] }
+quicknode-sdk = { path = "../core", features = ["node", "payments", "payments-svm", "payments-tempo"] }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 napi = { workspace = true, features = ["serde-json"] }
 napi-derive = { workspace = true }

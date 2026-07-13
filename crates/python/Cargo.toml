@@ -17,7 +17,7 @@ crate-type = ["cdylib", "rlib"]
 extension-module = ["pyo3/extension-module", "quicknode-sdk/extension-module"]
 
 [dependencies]
-quicknode-sdk = { path = "../core", features = ["python"] }
+quicknode-sdk = { path = "../core", features = ["python", "payments", "payments-svm", "payments-tempo"] }
 pyo3 = { workspace = true }
 pyo3-async-runtimes = { workspace = true, features = ["tokio-runtime"] }
 pyo3-stub-gen = { workspace = true }

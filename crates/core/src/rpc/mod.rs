@@ -17,6 +17,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
 
+#[cfg(feature = "payments")]
+pub mod payment;
+
+#[cfg(feature = "payments")]
+pub use crate::config::PaymentConfig;
+#[cfg(feature = "payments")]
+pub use payment::{PaymentReceipt, PaymentScheme};
+
 use crate::admin::AdminApiClient;
 use crate::config::{CachedToken, RpcConfig};
 use crate::errors::SdkError;
@@ -50,6 +58,22 @@ pub struct RpcApiClient {
     // Tooling Access endpoint and the JWT entirely (see `RpcConfig::endpoint_url`).
     // A per-call `endpoint_url` overrides this. Immutable after construction.
     endpoint_url: Option<String>,
+    // Crypto-micropayment lane config. When set, `call`/`call_with_receipt`
+    // pay per request against the x402/MPP gateways instead of minting a JWT.
+    // Resolved to the internal Signer at call time so a malformed config
+    // (bad max_amount, unknown scheme) surfaces as a clear `Config` error.
+    #[cfg(feature = "payments")]
+    payment: Option<Arc<crate::config::PaymentConfig>>,
+}
+
+/// The result of a JSON-RPC call plus an optional settlement receipt. Returned
+/// by [`RpcApiClient::call_with_receipt`]; `payment_receipt` is `Some` only for
+/// the MPP payment lane and `None` for x402 and the non-payment lanes.
+#[cfg(feature = "payments")]
+#[derive(Debug, Clone)]
+pub struct RpcCallResponse {
+    pub result: Value,
+    pub payment_receipt: Option<payment::PaymentReceipt>,
 }
 
 impl std::fmt::Debug for RpcApiClient {
@@ -76,6 +100,11 @@ impl RpcApiClient {
         let seed = rpc_config.and_then(|c| c.seed.clone());
         let networks = rpc_config.and_then(|c| c.networks.clone());
         let endpoint_url = rpc_config.and_then(|c| c.endpoint_url.clone());
+        // Hold the plain-data payment config; resolve it to the internal enum
+        // Signer at call time so a malformed config surfaces as a clear
+        // `Config` error (keeps `new` infallible).
+        #[cfg(feature = "payments")]
+        let payment = rpc_config.and_then(|c| c.payment.clone()).map(Arc::new);
         Self {
             admin: AdminApiClient::new(config.clone()),
             config,
@@ -84,6 +113,8 @@ impl RpcApiClient {
             refresh_lock: Arc::new(tokio::sync::Mutex::new(())),
             networks: Arc::new(Mutex::new(networks)),
             endpoint_url,
+            #[cfg(feature = "payments")]
+            payment,
         }
     }
 
@@ -137,6 +168,17 @@ impl RpcApiClient {
         network: Option<String>,
         endpoint_url: Option<String>,
     ) -> Result<Value, SdkError> {
+        // Payment lane wins when configured (see the precedence rules in
+        // `run_payment_lane`); it returns the bare result and discards any
+        // receipt. Every other caller keeps today's behavior unchanged.
+        #[cfg(feature = "payments")]
+        if self.payment.is_some() {
+            return self
+                .run_payment_lane(method, &params, network.as_deref(), endpoint_url.as_deref())
+                .await
+                .map(|(result, _receipt)| result);
+        }
+
         // Precedence: a per-call custom URL wins; then a per-call network; then
         // the client-wide custom URL default; then the tooling default endpoint.
         // A per-call URL and network are mutually exclusive (custom URLs are not
@@ -173,6 +215,131 @@ impl RpcApiClient {
             return Self::parse_rpc(retry);
         }
         Self::parse_rpc(resp)
+    }
+
+    /// Like [`Self::call`], but also returns the settlement receipt for the
+    /// crypto-micropayment lane. `payment_receipt` is `Some` only on the MPP
+    /// happy path; it is `None` for x402 and for every non-payment lane (which
+    /// behave exactly like [`Self::call`]).
+    #[cfg(feature = "payments")]
+    pub async fn call_with_receipt(
+        &self,
+        method: &str,
+        params: Option<Value>,
+        network: Option<String>,
+        endpoint_url: Option<String>,
+    ) -> Result<RpcCallResponse, SdkError> {
+        if self.payment.is_some() {
+            let (result, payment_receipt) = self
+                .run_payment_lane(method, &params, network.as_deref(), endpoint_url.as_deref())
+                .await?;
+            return Ok(RpcCallResponse {
+                result,
+                payment_receipt,
+            });
+        }
+        // No payment lane: delegate to the ordinary call and report no receipt.
+        let result = self.call(method, params, network, endpoint_url).await?;
+        Ok(RpcCallResponse {
+            result,
+            payment_receipt: None,
+        })
+    }
+
+    // Payment-lane precedence + dispatch. Called only when `self.payment` is set.
+    //
+    // Precedence rules (mutually-exclusive with the self-auth URL lanes):
+    // - a per-call `endpoint_url` + payment => Config error;
+    // - a client-wide `endpoint_url` + payment => Config error (a custom
+    //   self-auth URL and a payment lane are mutually exclusive);
+    // - payment present => `network` (the QUERY chain) is required and routed to
+    //   the gateway path slug (NOT looked up in the tooling network map).
+    #[cfg(feature = "payments")]
+    async fn run_payment_lane(
+        &self,
+        method: &str,
+        params: &Option<Value>,
+        network: Option<&str>,
+        endpoint_url: Option<&str>,
+    ) -> Result<(Value, Option<payment::PaymentReceipt>), SdkError> {
+        if endpoint_url.is_some() {
+            return Err(SdkError::Config(
+                "`endpoint_url` and a payment lane are mutually exclusive: a \
+                 self-authenticating URL does not use per-request payment"
+                    .into(),
+            ));
+        }
+        if self.endpoint_url.is_some() {
+            return Err(SdkError::Config(
+                "a client-wide `endpoint_url` and a payment lane are mutually \
+                 exclusive: configure one or the other"
+                    .into(),
+            ));
+        }
+        let query_network = network.ok_or_else(|| {
+            SdkError::Config(
+                "the payment lane requires `network` (the query chain, e.g. \
+                 \"base-sepolia\" or \"solana-mainnet\")"
+                    .into(),
+            )
+        })?;
+
+        // Resolve the plain-data config to the internal Signer here so a
+        // malformed config (bad max_amount, unknown scheme) surfaces as a
+        // clear `Config` error rather than being silently dropped.
+        let config = self
+            .payment
+            .as_ref()
+            .ok_or_else(|| SdkError::Config("no payment lane configured".into()))?;
+        // `resolved` is only mutated on the SVM RPC-source step below, which is
+        // compiled out without `payments-svm`.
+        #[cfg_attr(not(feature = "payments-svm"), allow(unused_mut))]
+        let mut resolved = payment::ResolvedPayment::from_config(config)?;
+
+        // SVM RPC source precedence: an explicit override (already applied in
+        // from_config) wins; otherwise, if the tooling lane is enabled and its
+        // network map resolves the pay-chain's Solana network, read through the
+        // caller's own Quicknode endpoint; else the public default (best-effort
+        // — no API key just means skip to public, never an error).
+        #[cfg(feature = "payments-svm")]
+        if resolved.svm_rpc_url.is_some() && config.svm_rpc_url.is_none() {
+            if let Some(tooling_url) = self.tooling_svm_url(&resolved.pay_network) {
+                resolved.svm_rpc_url = Some(tooling_url);
+            }
+        }
+
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": params.clone().unwrap_or_else(|| Value::Array(vec![])),
+        });
+
+        let (text, receipt) = payment::pay_and_call(
+            self.config.rpc_http_client(),
+            &resolved,
+            query_network,
+            &body,
+        )
+        .await?;
+
+        let result = Self::parse_rpc(RawResponse { status: 200, text })?;
+        Ok((result, receipt))
+    }
+
+    // Best-effort tooling-endpoint lookup for the pay-chain's Solana network.
+    // Returns None (skip to the public default) when no API key / no map / no
+    // matching key — never an error.
+    #[cfg(feature = "payments-svm")]
+    fn tooling_svm_url(&self, pay_network: &str) -> Option<String> {
+        // Map the CAIP-2 solana cluster to a likely tooling network key.
+        let key = if pay_network.contains("devnet") {
+            "solana-devnet"
+        } else {
+            "solana-mainnet"
+        };
+        let guard = self.networks.lock().ok()?;
+        guard.as_ref()?.get(key).cloned()
     }
 
     // Resolve the target URL for a call. `None` network -> the token's default
@@ -395,6 +562,7 @@ mod tests {
             }),
             refresh_margin_secs: None,
             networks: None,
+            payment: None,
         });
         QuicknodeSdk::new(&cfg).unwrap()
     }
@@ -463,6 +631,7 @@ mod tests {
             seed: None,
             refresh_margin_secs: None,
             networks: None,
+            payment: None,
         });
         QuicknodeSdk::new(&cfg).unwrap()
     }
@@ -671,6 +840,7 @@ mod tests {
             }),
             refresh_margin_secs: None,
             networks: None,
+            payment: None,
         });
         let sdk = QuicknodeSdk::new(&cfg).unwrap();
 
@@ -715,6 +885,7 @@ mod tests {
             }),
             refresh_margin_secs: None,
             networks: Some(networks),
+            payment: None,
         });
         let sdk = QuicknodeSdk::new(&cfg).unwrap();
 
@@ -762,5 +933,174 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, SdkError::Config(msg) if msg.contains("no network map")));
+    }
+}
+
+#[cfg(all(test, feature = "payments"))]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod payment_lane_tests {
+    use super::*;
+    use crate::config::{PaymentConfig, SdkFullConfig};
+    use crate::QuicknodeSdk;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use wiremock::matchers::method;
+    use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
+
+    const EVM_KEY: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+    const USDC: &str = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+    // A keyless SDK whose RPC client carries an x402/EVM payment lane pointed at
+    // the given mock gateway base.
+    fn keyless_x402_sdk(gateway_base: &str) -> QuicknodeSdk {
+        let mut cfg = SdkFullConfig::keyless();
+        cfg.rpc = Some(RpcConfig {
+            endpoint_url: None,
+            seed: None,
+            refresh_margin_secs: None,
+            networks: None,
+            payment: Some(PaymentConfig {
+                scheme: "x402".into(),
+                key: EVM_KEY.into(),
+                pay_network: "eip155:84532".into(),
+                asset: USDC.into(),
+                max_amount: "10000".into(),
+                svm_rpc_url: None,
+                base_url_override: Some(gateway_base.to_string()),
+            }),
+        });
+        QuicknodeSdk::new(&cfg).unwrap()
+    }
+
+    // Mock gateway: unpaid POST -> 402 menu; paid POST (has PAYMENT-SIGNATURE)
+    // -> 200 result.
+    async fn mount_x402_gateway(server: &MockServer) {
+        struct Seq {
+            calls: AtomicUsize,
+        }
+        impl Respond for Seq {
+            fn respond(&self, req: &Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n == 0 && !req.headers.contains_key("payment-signature") {
+                    ResponseTemplate::new(402).set_body_json(serde_json::json!({
+                        "x402Version": 2,
+                        "accepts": [{
+                            "scheme": "exact", "network": "eip155:84532",
+                            "amount": "1000", "payTo": "0x000000000000000000000000000000000000dEaD",
+                            "maxTimeoutSeconds": 60, "asset": USDC,
+                            "extra": { "name": "USDC", "version": "2" }
+                        }]
+                    }))
+                } else {
+                    ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                        "jsonrpc": "2.0", "id": 1, "result": "0x1335f9a"
+                    }))
+                }
+            }
+        }
+        Mock::given(method("POST"))
+            .respond_with(Seq {
+                calls: AtomicUsize::new(0),
+            })
+            .mount(server)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn keyless_payment_call_returns_unwrapped_result() {
+        let server = MockServer::start().await;
+        mount_x402_gateway(&server).await;
+        let sdk = keyless_x402_sdk(&server.uri());
+        let result = sdk
+            .rpc
+            .call(
+                "eth_blockNumber",
+                None,
+                Some("base-sepolia".to_string()),
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(result, serde_json::json!("0x1335f9a"));
+    }
+
+    #[tokio::test]
+    async fn x402_call_with_receipt_has_no_receipt() {
+        let server = MockServer::start().await;
+        mount_x402_gateway(&server).await;
+        let sdk = keyless_x402_sdk(&server.uri());
+        let resp = sdk
+            .rpc
+            .call_with_receipt(
+                "eth_blockNumber",
+                None,
+                Some("base-sepolia".to_string()),
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.result, serde_json::json!("0x1335f9a"));
+        assert!(resp.payment_receipt.is_none());
+    }
+
+    #[tokio::test]
+    async fn payment_lane_requires_network() {
+        let server = MockServer::start().await;
+        let sdk = keyless_x402_sdk(&server.uri());
+        let err = sdk
+            .rpc
+            .call("eth_blockNumber", None, None, None)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SdkError::Config(m) if m.contains("requires `network`")));
+    }
+
+    #[tokio::test]
+    async fn per_call_endpoint_url_plus_payment_is_config_error() {
+        let server = MockServer::start().await;
+        let sdk = keyless_x402_sdk(&server.uri());
+        let err = sdk
+            .rpc
+            .call(
+                "eth_blockNumber",
+                None,
+                None,
+                Some("https://example.invalid/rpc".to_string()),
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SdkError::Config(m) if m.contains("mutually exclusive")));
+    }
+
+    #[tokio::test]
+    async fn bad_max_amount_is_config_error_at_call() {
+        let server = MockServer::start().await;
+        let mut cfg = SdkFullConfig::keyless();
+        cfg.rpc = Some(RpcConfig {
+            endpoint_url: None,
+            seed: None,
+            refresh_margin_secs: None,
+            networks: None,
+            payment: Some(PaymentConfig {
+                scheme: "x402".into(),
+                key: EVM_KEY.into(),
+                pay_network: "eip155:84532".into(),
+                asset: USDC.into(),
+                max_amount: "not-a-number".into(),
+                svm_rpc_url: None,
+                base_url_override: Some(server.uri()),
+            }),
+        });
+        let sdk = QuicknodeSdk::new(&cfg).unwrap();
+        let err = sdk
+            .rpc
+            .call(
+                "eth_blockNumber",
+                None,
+                Some("base-sepolia".to_string()),
+                None,
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SdkError::Config(m) if m.contains("max_amount")));
     }
 }

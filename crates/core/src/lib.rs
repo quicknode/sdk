@@ -19,6 +19,8 @@ pub use kvstore::{
     UpdateListParams,
 };
 pub use rpc::RpcApiClient;
+#[cfg(feature = "payments")]
+pub use rpc::{PaymentConfig, PaymentReceipt, PaymentScheme, RpcCallResponse};
 pub use sql::{
     ChainSchema, ColumnMeta, ColumnSchema, QueryParams, QueryResponse, QueryStatistics,
     SqlApiClient, TableSchema,
@@ -171,11 +173,17 @@ impl SdkConfig {
         // the key first, then overlay `common_headers` so a caller-supplied
         // `x-api-key` in custom headers still wins (custom headers override all
         // SDK-managed defaults).
+        //
+        // A keyless config (no `api_key`) installs NO key header: the payment
+        // lane needs no account key, and every keyed surface fails later with a
+        // clear `Config` error rather than sending an empty key.
         let mut main_headers = HeaderMap::new();
-        main_headers.insert(
-            "x-api-key",
-            HeaderValue::from_str(&config.api_key).map_err(|e| SdkError::Config(e.to_string()))?,
-        );
+        if let Some(api_key) = config.api_key.as_deref() {
+            main_headers.insert(
+                "x-api-key",
+                HeaderValue::from_str(api_key).map_err(|e| SdkError::Config(e.to_string()))?,
+            );
+        }
         main_headers.extend(common_headers.clone());
         let http_client = make_builder()
             .default_headers(main_headers)
@@ -296,7 +304,7 @@ mod headers_tests {
 
     fn base_config(api_key: &str) -> SdkFullConfig {
         SdkFullConfig {
-            api_key: api_key.to_string(),
+            api_key: Some(api_key.to_string()),
             http: None,
             admin: None,
             streams: None,
@@ -380,7 +388,7 @@ mod headers_tests {
         headers.insert("x-api-key".to_string(), "override-key".to_string());
 
         let cfg = SdkFullConfig {
-            api_key: "real-key".to_string(),
+            api_key: Some("real-key".to_string()),
             http: Some(HttpConfig {
                 timeout_secs: None,
                 pool_max_idle_per_host: None,

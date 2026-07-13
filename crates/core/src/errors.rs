@@ -24,6 +24,27 @@ pub enum SdkError {
 
     #[error("JSON-RPC error (code {code}): {message}")]
     Rpc { code: i64, message: String },
+
+    /// No offered payment option matched the caller's selector (pay_network +
+    /// asset), or every match was skipped (over `max_amount`, unsupported
+    /// `extra` shape, non-integer amount). `offered` lists what the gateway
+    /// presented, for diagnosis. Not retryable without changing the selector.
+    #[error("no supported payment option matched the selector; offered: {offered}")]
+    PaymentUnsupported { offered: String },
+
+    /// A signed payment was submitted and the gateway rejected it (a second
+    /// 402, or a non-2xx settlement response). Terminal — the SDK will not
+    /// resend. `body` carries the gateway's explanation.
+    #[error("payment rejected by the gateway (status {status}): {body}")]
+    PaymentRejected { status: u16, body: String },
+
+    /// A paid request was sent but its response was lost (timeout or a
+    /// transport error after the bytes may have reached the gateway). The
+    /// payment MAY have settled — callers must NOT blindly retry, or they risk
+    /// a double charge. Distinct from a plain `Http` error precisely so this
+    /// case can be caught separately.
+    #[error("payment result indeterminate: request sent but response lost — do not blindly retry (may have been charged)")]
+    PaymentIndeterminate,
 }
 
 // Classifies a transport-level HTTP failure. Bindings use this to pick a

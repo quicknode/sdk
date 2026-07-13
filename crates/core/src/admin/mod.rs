@@ -1950,7 +1950,7 @@ mod tests {
 
     fn make_sdk(base_url: String) -> QuicknodeSdk {
         QuicknodeSdk::new(&SdkFullConfig {
-            api_key: "test-key".to_string(),
+            api_key: Some("test-key".to_string()),
             http: None,
             admin: Some(AdminConfig {
                 base_url: Some(base_url),
@@ -3839,7 +3839,7 @@ mod tests {
     fn negative_timeout_secs_returns_error() {
         use crate::{HttpConfig, SdkConfig, SdkFullConfig};
         let result = SdkConfig::new(&SdkFullConfig {
-            api_key: "test-key".to_string(),
+            api_key: Some("test-key".to_string()),
             http: Some(HttpConfig {
                 timeout_secs: Some(-1),
                 pool_max_idle_per_host: None,

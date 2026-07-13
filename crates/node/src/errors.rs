@@ -30,6 +30,13 @@ pub fn map_sdk_err(e: SdkError) -> Error {
             Some(HttpKind::Connect) => ("Connect", None, None),
             _ => ("Http", None, None),
         },
+        SdkError::PaymentUnsupported { .. } => ("PaymentUnsupported", None, None),
+        SdkError::PaymentRejected { status, body } => (
+            "PaymentRejected",
+            Some(status.to_string()),
+            Some(body.clone()),
+        ),
+        SdkError::PaymentIndeterminate => ("PaymentIndeterminate", None, None),
     };
     let status_s = status_str.unwrap_or_else(|| "-".to_string());
     let body_s = body.as_deref().unwrap_or("");

@@ -150,6 +150,7 @@ __all__ = [
     "PageInfo",
     "Pagination",
     "Payment",
+    "PaymentConfig",
     "PostgresAttributes",
     "QueryResponse",
     "QueryStatistics",
@@ -5060,6 +5061,111 @@ class Payment:
         """
 
 @typing.final
+class PaymentConfig:
+    r"""
+    Binding-facing crypto-micropayment configuration. **Plain data** — all
+    fields are strings so this can be a `napi(object)` / `pyclass` / Ruby hash;
+    it is converted to the internal `enum Signer` + resolved config at the Rust
+    boundary. The private `key` field stays readable to the caller (the
+    ethers `.privateKey` / web3.py convention), but the SDK's own `Debug`
+    redacts it (below) so an SDK log line or panic can't leak it.
+    
+    **Do not log your own `PaymentConfig`** — `println!("{config:?}")` on the
+    derived-Debug *binding* object (napi/pyclass/hash) still shows the raw key,
+    exactly like ethers' readable `privateKey`. Only the SDK's internal
+    rendering is redacted.
+    """
+    @property
+    def scheme(self) -> builtins.str:
+        r"""
+        Payment protocol: `"x402"` (pay-per-request) or `"mpp"` (MPP charge).
+        """
+    @scheme.setter
+    def scheme(self, value: builtins.str) -> None:
+        r"""
+        Payment protocol: `"x402"` (pay-per-request) or `"mpp"` (MPP charge).
+        """
+    @property
+    def key(self) -> builtins.str:
+        r"""
+        Raw private key. EVM/Tempo: hex (with or without `0x`). Solana: base58
+        64-byte secret key.
+        """
+    @key.setter
+    def key(self, value: builtins.str) -> None:
+        r"""
+        Raw private key. EVM/Tempo: hex (with or without `0x`). Solana: base58
+        64-byte secret key.
+        """
+    @property
+    def pay_network(self) -> builtins.str:
+        r"""
+        CAIP-2 pay network selector, e.g. `"eip155:84532"` (x402/EVM),
+        `"solana:5eykt4…"` (x402/Solana), or `"eip155:42431"` (MPP/Tempo).
+        """
+    @pay_network.setter
+    def pay_network(self, value: builtins.str) -> None:
+        r"""
+        CAIP-2 pay network selector, e.g. `"eip155:84532"` (x402/EVM),
+        `"solana:5eykt4…"` (x402/Solana), or `"eip155:42431"` (MPP/Tempo).
+        """
+    @property
+    def asset(self) -> builtins.str:
+        r"""
+        Asset (token) address/mint to pay in. Matches the offered menu entry's
+        `asset`. EVM: token contract hex. Solana: mint base58.
+        """
+    @asset.setter
+    def asset(self, value: builtins.str) -> None:
+        r"""
+        Asset (token) address/mint to pay in. Matches the offered menu entry's
+        `asset`. EVM: token contract hex. Solana: mint base58.
+        """
+    @property
+    def max_amount(self) -> builtins.str:
+        r"""
+        Spend ceiling in base units of `asset` (integer string). **Required.**
+        The selector skips any offered entry above this, and the driver refuses
+        to sign one — guarding against a buggy/hostile gateway overcharging a
+        custodied key.
+        """
+    @max_amount.setter
+    def max_amount(self, value: builtins.str) -> None:
+        r"""
+        Spend ceiling in base units of `asset` (integer string). **Required.**
+        The selector skips any offered entry above this, and the driver refuses
+        to sign one — guarding against a buggy/hostile gateway overcharging a
+        custodied key.
+        """
+    @property
+    def svm_rpc_url(self) -> typing.Optional[builtins.str]:
+        r"""
+        Explicit Solana RPC URL for x402/Solana payment-build reads (recent
+        blockhash). Optional; when unset the SDK falls back to a public Solana
+        RPC matching the pay cluster. **Set this at any real volume** — the
+        public default rate-limits aggressively.
+        """
+    @svm_rpc_url.setter
+    def svm_rpc_url(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Explicit Solana RPC URL for x402/Solana payment-build reads (recent
+        blockhash). Optional; when unset the SDK falls back to a public Solana
+        RPC matching the pay cluster. **Set this at any real volume** — the
+        public default rate-limits aggressively.
+        """
+    @property
+    def base_url_override(self) -> typing.Optional[builtins.str]:
+        r"""
+        Test-only gateway base override (points the lane at a mock gateway).
+        """
+    @base_url_override.setter
+    def base_url_override(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Test-only gateway base override (points the lane at a mock gateway).
+        """
+    def __new__(cls, scheme: builtins.str, key: builtins.str, pay_network: builtins.str, asset: builtins.str, max_amount: builtins.str, svm_rpc_url: typing.Optional[builtins.str] = None, base_url_override: typing.Optional[builtins.str] = None) -> PaymentConfig: ...
+
+@typing.final
 class PostgresAttributes:
     r"""
     Configuration for delivering stream batches to a PostgreSQL database.
@@ -5448,6 +5554,14 @@ class RpcApiClient:
         mutually exclusive). Returns the JSON-RPC `result`; a JSON-RPC error is
         raised as `RpcError`.
         """
+    def call_with_receipt(self, method: builtins.str, params: typing.Optional[typing.Any] = None, network: typing.Optional[builtins.str] = None, endpoint_url: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Like `call`, but also returns the crypto-micropayment settlement
+        receipt. Returns a dict `{"result": <json>, "payment_receipt": <dict|None>}`.
+        `payment_receipt` is a dict `{method, status, timestamp, reference}` on
+        the MPP payment lane and `None` for x402 and every non-payment lane
+        (where this behaves exactly like `call`).
+        """
     def set_networks(self, networks: typing.Mapping[builtins.str, builtins.str]) -> None:
         r"""
         Seeds the per-network URL map for multichain routing (network key ->
@@ -5534,7 +5648,31 @@ class RpcConfig:
         a `network` resolves the target URL here. Optional; the default-network
         call path needs no map.
         """
-    def __new__(cls, endpoint_url: typing.Optional[builtins.str] = None, seed: typing.Optional[CachedToken] = None, refresh_margin_secs: typing.Optional[builtins.int] = None, networks: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> RpcConfig: ...
+    @property
+    def payment(self) -> typing.Optional[PaymentConfig]:
+        r"""
+        Crypto-micropayment lane. When set, `rpc.call` pays per request with a
+        stablecoin against Quicknode's x402/MPP gateways instead of using the
+        account API key + session JWT. `#[serde(skip)]` so `from_env` can never
+        populate it — an env-derived private key is exactly what we don't want;
+        callers must pass this programmatically. The field is always present
+        (plain data), but actually *using* it requires the crypto features
+        (`payments`/`payments-svm`/`payments-tempo`); without them a set
+        `payment` yields a clear `Config` error at call time.
+        """
+    @payment.setter
+    def payment(self, value: typing.Optional[PaymentConfig]) -> None:
+        r"""
+        Crypto-micropayment lane. When set, `rpc.call` pays per request with a
+        stablecoin against Quicknode's x402/MPP gateways instead of using the
+        account API key + session JWT. `#[serde(skip)]` so `from_env` can never
+        populate it — an env-derived private key is exactly what we don't want;
+        callers must pass this programmatically. The field is always present
+        (plain data), but actually *using* it requires the crypto features
+        (`payments`/`payments-svm`/`payments-tempo`); without them a set
+        `payment` yields a clear `Config` error at call time.
+        """
+    def __new__(cls, endpoint_url: typing.Optional[builtins.str] = None, seed: typing.Optional[CachedToken] = None, refresh_margin_secs: typing.Optional[builtins.int] = None, networks: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None, payment: typing.Optional[PaymentConfig] = None) -> RpcConfig: ...
 
 @typing.final
 class S3Attributes:
@@ -5646,9 +5784,25 @@ class S3Attributes:
 @typing.final
 class SdkFullConfig:
     @property
-    def api_key(self) -> builtins.str: ...
+    def api_key(self) -> typing.Optional[builtins.str]:
+        r"""
+        Account API key. **Optional** so a keyless SDK can be built for the
+        crypto-micropayment lane (`rpc.call` with `RpcConfig.payment`). When
+        absent, no `x-api-key` header is installed and every keyed surface
+        (admin/streams/webhooks/kvstore/sql and tooling-JWT `rpc.call`) fails
+        with a clear `Config` error. `from_env` still requires it (validated in
+        `from_config`) — only programmatic construction may omit it.
+        """
     @api_key.setter
-    def api_key(self, value: builtins.str) -> None: ...
+    def api_key(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Account API key. **Optional** so a keyless SDK can be built for the
+        crypto-micropayment lane (`rpc.call` with `RpcConfig.payment`). When
+        absent, no `x-api-key` header is installed and every keyed surface
+        (admin/streams/webhooks/kvstore/sql and tooling-JWT `rpc.call`) fails
+        with a clear `Config` error. `from_env` still requires it (validated in
+        `from_config`) — only programmatic construction may omit it.
+        """
     @property
     def http(self) -> typing.Optional[HttpConfig]: ...
     @http.setter
@@ -5677,7 +5831,7 @@ class SdkFullConfig:
     def rpc(self) -> typing.Optional[RpcConfig]: ...
     @rpc.setter
     def rpc(self, value: typing.Optional[RpcConfig]) -> None: ...
-    def __new__(cls, api_key: builtins.str, http: typing.Optional[HttpConfig] = None, admin: typing.Optional[AdminConfig] = None, streams: typing.Optional[StreamsConfig] = None, webhooks: typing.Optional[WebhooksConfig] = None, kvstore: typing.Optional[KvStoreConfig] = None, sql: typing.Optional[SqlConfig] = None, rpc: typing.Optional[RpcConfig] = None) -> SdkFullConfig: ...
+    def __new__(cls, api_key: typing.Optional[builtins.str] = None, http: typing.Optional[HttpConfig] = None, admin: typing.Optional[AdminConfig] = None, streams: typing.Optional[StreamsConfig] = None, webhooks: typing.Optional[WebhooksConfig] = None, kvstore: typing.Optional[KvStoreConfig] = None, sql: typing.Optional[SqlConfig] = None, rpc: typing.Optional[RpcConfig] = None) -> SdkFullConfig: ...
 
 @typing.final
 class SecurityOption:

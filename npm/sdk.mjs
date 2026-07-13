@@ -34,4 +34,8 @@ export const {
   ApiError,
   DecodeError,
   RpcError,
+  PaymentError,
+  PaymentUnsupportedError,
+  PaymentRejectedError,
+  PaymentIndeterminateError,
 } = cjs;

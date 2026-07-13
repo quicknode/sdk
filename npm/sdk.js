@@ -90,4 +90,8 @@ module.exports = {
   ApiError: errors.ApiError,
   DecodeError: errors.DecodeError,
   RpcError: errors.RpcError,
+  PaymentError: errors.PaymentError,
+  PaymentUnsupportedError: errors.PaymentUnsupportedError,
+  PaymentRejectedError: errors.PaymentRejectedError,
+  PaymentIndeterminateError: errors.PaymentIndeterminateError,
 };

@@ -1547,6 +1547,35 @@ impl RpcApiClient {
             .map_err(errors::map_sdk_err)
     }
 
+    /// Like `call`, but also returns the crypto-micropayment settlement
+    /// receipt. Resolves to `{ result, paymentReceipt }` where `paymentReceipt`
+    /// is `{ method, status, timestamp, reference }` on the MPP payment lane and
+    /// `null` for x402 and every non-payment lane (identical to `call`).
+    #[napi]
+    pub async fn call_with_receipt(
+        &self,
+        method: String,
+        params: Option<serde_json::Value>,
+        network: Option<String>,
+        endpoint_url: Option<String>,
+    ) -> Result<serde_json::Value> {
+        let resp = self
+            .inner
+            .call_with_receipt(&method, params, network, endpoint_url)
+            .await
+            .map_err(errors::map_sdk_err)?;
+        // RpcCallResponse holds a serde_json::Value; build the JS object here.
+        Ok(serde_json::json!({
+            "result": resp.result,
+            "paymentReceipt": resp.payment_receipt.map(|r| serde_json::json!({
+                "method": r.method,
+                "status": r.status,
+                "timestamp": r.timestamp,
+                "reference": r.reference,
+            })),
+        }))
+    }
+
     /// Seeds the per-network URL map for multichain routing (network key ->
     /// full http_url), typically built from
     /// `admin.getEndpointUrls(...).multichainUrls`.

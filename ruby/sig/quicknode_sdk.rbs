@@ -30,6 +30,22 @@ module QuicknodeSdk
     attr_reader message: String
   end
 
+  # Payment-lane errors. PaymentIndeterminateError means the paid request was
+  # sent but its response was lost — do not retry (may have been charged).
+  class PaymentError < Error
+  end
+
+  class PaymentUnsupportedError < PaymentError
+  end
+
+  class PaymentRejectedError < PaymentError
+    attr_reader status: Integer
+    attr_reader body: String
+  end
+
+  class PaymentIndeterminateError < PaymentError
+  end
+
   class SDK
     def self.from_env: () -> SDK
     def self.from_config: (Hash[Symbol | String, untyped] opts) -> SDK
@@ -183,6 +199,7 @@ module QuicknodeSdk
     def initialize: (untyped native) -> void
 
     def call: (method: String, ?params: untyped, ?network: String, ?endpoint_url: String) -> untyped
+    def call_with_receipt: (method: String, ?params: untyped, ?network: String, ?endpoint_url: String) -> untyped
     def set_networks: (networks: Hash[String, String]) -> void
     def clear_cached_token: () -> void
     def current_token: () -> untyped

@@ -19,6 +19,9 @@ struct ErrorClasses {
     api: Opaque<ExceptionClass>,
     decode: Opaque<ExceptionClass>,
     rpc: Opaque<ExceptionClass>,
+    payment_unsupported: Opaque<ExceptionClass>,
+    payment_rejected: Opaque<ExceptionClass>,
+    payment_indeterminate: Opaque<ExceptionClass>,
 }
 
 static CLASSES: OnceLock<ErrorClasses> = OnceLock::new();
@@ -33,14 +36,21 @@ pub fn init(ruby: &Ruby, module: &RModule) -> Result<(), magnus::Error> {
     let api = module.define_error("ApiError", base)?;
     let decode = module.define_error("DecodeError", base)?;
     let rpc = module.define_error("RpcError", base)?;
+    // Payment-lane errors under a PaymentError family base.
+    let payment = module.define_error("PaymentError", base)?;
+    let payment_unsupported = module.define_error("PaymentUnsupportedError", payment)?;
+    let payment_rejected = module.define_error("PaymentRejectedError", payment)?;
+    let payment_indeterminate = module.define_error("PaymentIndeterminateError", payment)?;
 
     // attr_reader :status, :body on ApiError; :body on DecodeError;
-    // :code, :message on RpcError
+    // :code, :message on RpcError; :status, :body on PaymentRejectedError.
     api.define_method("status", magnus::method!(read_status, 0))?;
     api.define_method("body", magnus::method!(read_body, 0))?;
     decode.define_method("body", magnus::method!(read_body, 0))?;
     rpc.define_method("code", magnus::method!(read_code, 0))?;
     rpc.define_method("message", magnus::method!(read_message, 0))?;
+    payment_rejected.define_method("status", magnus::method!(read_status, 0))?;
+    payment_rejected.define_method("body", magnus::method!(read_body, 0))?;
 
     CLASSES
         .set(ErrorClasses {
@@ -52,6 +62,9 @@ pub fn init(ruby: &Ruby, module: &RModule) -> Result<(), magnus::Error> {
             api: api.into(),
             decode: decode.into(),
             rpc: rpc.into(),
+            payment_unsupported: payment_unsupported.into(),
+            payment_rejected: payment_rejected.into(),
+            payment_indeterminate: payment_indeterminate.into(),
         })
         .map_err(|_| {
             magnus::Error::new(
@@ -130,6 +143,19 @@ pub fn map_err(e: SdkError) -> magnus::Error {
                 _ => ruby.get_inner(c.http),
             };
             magnus::Error::new(cls, msg)
+        }
+        SdkError::PaymentUnsupported { .. } => {
+            magnus::Error::new(ruby.get_inner(c.payment_unsupported), msg)
+        }
+        SdkError::PaymentRejected { status, body } => build_with_ivars(
+            &ruby,
+            ruby.get_inner(c.payment_rejected),
+            &msg,
+            Some(*status),
+            Some(body.clone()),
+        ),
+        SdkError::PaymentIndeterminate => {
+            magnus::Error::new(ruby.get_inner(c.payment_indeterminate), msg)
         }
     }
 }

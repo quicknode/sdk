@@ -2568,6 +2568,52 @@ impl RpcApiClient {
         })
     }
 
+    /// Like `call`, but also returns the crypto-micropayment settlement
+    /// receipt. Returns a dict `{"result": <json>, "payment_receipt": <dict|None>}`.
+    /// `payment_receipt` is a dict `{method, status, timestamp, reference}` on
+    /// the MPP payment lane and `None` for x402 and every non-payment lane
+    /// (where this behaves exactly like `call`).
+    #[pyo3(signature = (method, params=None, network=None, endpoint_url=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn call_with_receipt<'py>(
+        &self,
+        py: Python<'py>,
+        method: String,
+        params: Option<Bound<'py, PyAny>>,
+        network: Option<String>,
+        endpoint_url: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params_value = match params {
+            Some(obj) => Some(pythonize::depythonize(&obj).map_err(errors::map_pythonize_err)?),
+            None => None,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let resp = client
+                .call_with_receipt(&method, params_value, network, endpoint_url)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            // Build a plain dict at the FFI boundary: RpcCallResponse holds a
+            // serde_json::Value, which cannot be a pyclass field.
+            let json = serde_json::json!({
+                "result": resp.result,
+                "payment_receipt": resp.payment_receipt.map(|r| serde_json::json!({
+                    "method": r.method,
+                    "status": r.status,
+                    "timestamp": r.timestamp,
+                    "reference": r.reference,
+                })),
+            });
+            Python::attach(|py| {
+                pythonize::pythonize(py, &json)
+                    .map(pyo3::Bound::unbind)
+                    .map_err(errors::map_pythonize_err)
+            })
+        })
+    }
+
     /// Seeds the per-network URL map for multichain routing (network key ->
     /// full http_url), typically built from
     /// `admin.get_endpoint_urls(...).multichain_urls`.
@@ -2679,6 +2725,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::AccountSubscription>()?;
     m.add_class::<core::admin::AccountInfo>()?;
     m.add_class::<core::admin::AccountInfoResponse>()?;
+    m.add_class::<core::admin::ApiCredit>()?;
+    m.add_class::<core::admin::GetApiCreditsResponse>()?;
     m.add_class::<core::admin::InvoiceLine>()?;
     m.add_class::<core::admin::Invoice>()?;
     m.add_class::<core::admin::ListInvoicesData>()?;
@@ -2737,6 +2785,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::KvStoreConfig>()?;
     m.add_class::<core::SqlConfig>()?;
     m.add_class::<core::RpcConfig>()?;
+    m.add_class::<core::PaymentConfig>()?;
     m.add_class::<core::CachedToken>()?;
     m.add_class::<core::SdkFullConfig>()?;
     m.add_class::<RpcApiClient>()?;

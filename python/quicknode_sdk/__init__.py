@@ -116,6 +116,7 @@ from quicknode_sdk._core import (
     KvStoreConfig,
     SqlConfig,
     RpcConfig,
+    PaymentConfig,
     CachedToken,
     SdkFullConfig,
     RpcApiClient,
@@ -213,6 +214,10 @@ from quicknode_sdk._core import (
     ApiError,
     DecodeError,
     RpcError,
+    PaymentError,
+    PaymentUnsupportedError,
+    PaymentRejectedError,
+    PaymentIndeterminateError,
 )
 
 __all__ = [
@@ -332,6 +337,7 @@ __all__ = [
     "KvStoreConfig",
     "SqlConfig",
     "RpcConfig",
+    "PaymentConfig",
     "CachedToken",
     "SdkFullConfig",
     "RpcApiClient",
@@ -429,4 +435,8 @@ __all__ = [
     "ApiError",
     "DecodeError",
     "RpcError",
+    "PaymentError",
+    "PaymentUnsupportedError",
+    "PaymentRejectedError",
+    "PaymentIndeterminateError",
 ]

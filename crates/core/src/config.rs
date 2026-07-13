@@ -213,6 +213,103 @@ pub struct RpcConfig {
     /// a `network` resolves the target URL here. Optional; the default-network
     /// call path needs no map.
     pub networks: Option<std::collections::HashMap<String, String>>,
+    /// Crypto-micropayment lane. When set, `rpc.call` pays per request with a
+    /// stablecoin against Quicknode's x402/MPP gateways instead of using the
+    /// account API key + session JWT. `#[serde(skip)]` so `from_env` can never
+    /// populate it — an env-derived private key is exactly what we don't want;
+    /// callers must pass this programmatically. The field is always present
+    /// (plain data), but actually *using* it requires the crypto features
+    /// (`payments`/`payments-svm`/`payments-tempo`); without them a set
+    /// `payment` yields a clear `Config` error at call time.
+    #[serde(skip)]
+    pub payment: Option<PaymentConfig>,
+}
+
+/// Binding-facing crypto-micropayment configuration. **Plain data** — all
+/// fields are strings so this can be a `napi(object)` / `pyclass` / Ruby hash;
+/// it is converted to the internal `enum Signer` + resolved config at the Rust
+/// boundary. The private `key` field stays readable to the caller (the
+/// ethers `.privateKey` / web3.py convention), but the SDK's own `Debug`
+/// redacts it (below) so an SDK log line or panic can't leak it.
+///
+/// **Do not log your own `PaymentConfig`** — `println!("{config:?}")` on the
+/// derived-Debug *binding* object (napi/pyclass/hash) still shows the raw key,
+/// exactly like ethers' readable `privateKey`. Only the SDK's internal
+/// rendering is redacted.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct PaymentConfig {
+    /// Payment protocol: `"x402"` (pay-per-request) or `"mpp"` (MPP charge).
+    pub scheme: String,
+    /// Raw private key. EVM/Tempo: hex (with or without `0x`). Solana: base58
+    /// 64-byte secret key.
+    pub key: String,
+    /// CAIP-2 pay network selector, e.g. `"eip155:84532"` (x402/EVM),
+    /// `"solana:5eykt4…"` (x402/Solana), or `"eip155:42431"` (MPP/Tempo).
+    pub pay_network: String,
+    /// Asset (token) address/mint to pay in. Matches the offered menu entry's
+    /// `asset`. EVM: token contract hex. Solana: mint base58.
+    pub asset: String,
+    /// Spend ceiling in base units of `asset` (integer string). **Required.**
+    /// The selector skips any offered entry above this, and the driver refuses
+    /// to sign one — guarding against a buggy/hostile gateway overcharging a
+    /// custodied key.
+    pub max_amount: String,
+    /// Explicit Solana RPC URL for x402/Solana payment-build reads (recent
+    /// blockhash). Optional; when unset the SDK falls back to a public Solana
+    /// RPC matching the pay cluster. **Set this at any real volume** — the
+    /// public default rate-limits aggressively.
+    pub svm_rpc_url: Option<String>,
+    /// Test-only gateway base override (points the lane at a mock gateway).
+    pub base_url_override: Option<String>,
+}
+
+// Manual redacting Debug: the SDK must never print the raw key in its own log
+// lines, error context, or panics. Mirrors the CachedToken pattern above. The
+// caller's own object is still readable (see the struct doc) — this only
+// governs the SDK's `{:?}` output.
+impl std::fmt::Debug for PaymentConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PaymentConfig")
+            .field("scheme", &self.scheme)
+            .field("key", &"[redacted]")
+            .field("pay_network", &self.pay_network)
+            .field("asset", &self.asset)
+            .field("max_amount", &self.max_amount)
+            .field("svm_rpc_url", &self.svm_rpc_url)
+            .field("base_url_override", &self.base_url_override)
+            .finish()
+    }
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl PaymentConfig {
+    #[new]
+    #[pyo3(signature = (scheme, key, pay_network, asset, max_amount, svm_rpc_url=None, base_url_override=None))]
+    pub fn new(
+        scheme: String,
+        key: String,
+        pay_network: String,
+        asset: String,
+        max_amount: String,
+        svm_rpc_url: Option<String>,
+        base_url_override: Option<String>,
+    ) -> Self {
+        PaymentConfig {
+            scheme,
+            key,
+            pay_network,
+            asset,
+            max_amount,
+            svm_rpc_url,
+            base_url_override,
+        }
+    }
 }
 
 #[cfg(feature = "python")]
@@ -220,18 +317,20 @@ pub struct RpcConfig {
 #[pymethods]
 impl RpcConfig {
     #[new]
-    #[pyo3(signature = (endpoint_url=None, seed=None, refresh_margin_secs=None, networks=None))]
+    #[pyo3(signature = (endpoint_url=None, seed=None, refresh_margin_secs=None, networks=None, payment=None))]
     pub fn new(
         endpoint_url: Option<String>,
         seed: Option<CachedToken>,
         refresh_margin_secs: Option<i64>,
         networks: Option<std::collections::HashMap<String, String>>,
+        payment: Option<PaymentConfig>,
     ) -> Self {
         RpcConfig {
             endpoint_url,
             seed,
             refresh_margin_secs,
             networks,
+            payment,
         }
     }
 }
@@ -262,7 +361,14 @@ impl SqlConfig {
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SdkFullConfig {
-    pub api_key: String,
+    /// Account API key. **Optional** so a keyless SDK can be built for the
+    /// crypto-micropayment lane (`rpc.call` with `RpcConfig.payment`). When
+    /// absent, no `x-api-key` header is installed and every keyed surface
+    /// (admin/streams/webhooks/kvstore/sql and tooling-JWT `rpc.call`) fails
+    /// with a clear `Config` error. `from_env` still requires it (validated in
+    /// `from_config`) — only programmatic construction may omit it.
+    #[serde(default)]
+    pub api_key: Option<String>,
     pub http: Option<HttpConfig>,
     pub admin: Option<AdminConfig>,
     pub streams: Option<StreamsConfig>,
@@ -275,7 +381,23 @@ pub struct SdkFullConfig {
 impl SdkFullConfig {
     pub fn from_api_key(api_key: String) -> Self {
         SdkFullConfig {
-            api_key,
+            api_key: Some(api_key),
+            http: None,
+            admin: None,
+            streams: None,
+            webhooks: None,
+            kvstore: None,
+            sql: None,
+            rpc: None,
+        }
+    }
+
+    /// Build a keyless config for the crypto-micropayment lane. No API key is
+    /// installed; only payment-lane `rpc.call` works, every other surface
+    /// returns a clear `Config` error.
+    pub fn keyless() -> Self {
+        SdkFullConfig {
+            api_key: None,
             http: None,
             admin: None,
             streams: None,
@@ -299,8 +421,19 @@ impl SdkFullConfig {
     }
 
     fn from_config(cfg: config::Config) -> Result<Self, SdkError> {
-        cfg.try_deserialize::<SdkFullConfig>()
-            .map_err(|e| SdkError::Config(e.to_string()))
+        let parsed: SdkFullConfig = cfg
+            .try_deserialize::<SdkFullConfig>()
+            .map_err(|e| SdkError::Config(e.to_string()))?;
+        // from_env stays strict: it can't configure payments (payment is
+        // serde-skipped), so a from_env caller by definition wants the keyed
+        // lanes. Fail fast here rather than surfacing a confusing per-call
+        // Config error later from a typo'd env var.
+        if parsed.api_key.as_deref().unwrap_or("").is_empty() {
+            return Err(SdkError::Config(
+                "api_key is required (set QN_SDK__API_KEY)".into(),
+            ));
+        }
+        Ok(parsed)
     }
 }
 
@@ -309,10 +442,10 @@ impl SdkFullConfig {
 #[pymethods]
 impl SdkFullConfig {
     #[new]
-    #[pyo3(signature = (api_key, http=None, admin=None, streams=None, webhooks=None, kvstore=None, sql=None, rpc=None))]
+    #[pyo3(signature = (api_key=None, http=None, admin=None, streams=None, webhooks=None, kvstore=None, sql=None, rpc=None))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        api_key: String,
+        api_key: Option<String>,
         http: Option<HttpConfig>,
         admin: Option<AdminConfig>,
         streams: Option<StreamsConfig>,
@@ -360,7 +493,7 @@ mod tests {
     fn from_env_only_api_key() {
         let cfg = build_config(&[("api_key", "test-key")]);
         let config = SdkFullConfig::from_config(cfg).unwrap();
-        assert_eq!(config.api_key, "test-key");
+        assert_eq!(config.api_key.as_deref(), Some("test-key"));
         assert!(config.http.is_none());
         assert!(config.admin.is_none());
     }
@@ -374,7 +507,7 @@ mod tests {
             ("admin.base_url", "https://example.com/"),
         ]);
         let config = SdkFullConfig::from_config(cfg).unwrap();
-        assert_eq!(config.api_key, "my-api-key");
+        assert_eq!(config.api_key.as_deref(), Some("my-api-key"));
         let http = config.http.unwrap();
         assert_eq!(http.timeout_secs, Some(30));
         assert_eq!(http.pool_max_idle_per_host, Some(5));

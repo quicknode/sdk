@@ -1723,6 +1723,60 @@ construction; `refresh_margin_secs` (default 60) tunes how early the token is
 refreshed. Set `RpcConfig(endpoint_url=...)` to route every call to a custom
 HTTP URL by default (no JWT minted); a per-call `endpoint_url` overrides it.
 
+## Crypto-micropayment lane (`rpc.call`)
+
+Pay per RPC request with a stablecoin instead of a provisioned account + API key,
+against Quicknode's `x402.quicknode.com` and `mpp.quicknode.com` gateways. Configure
+it by setting `payment` on the RPC config; the SDK runs the `402` → sign → resend
+handshake for you. An API key is **not** required for this lane — build a keyless SDK.
+
+Confirmed paths: **x402/EVM** (EIP-712 `TransferWithAuthorization`), **x402/Solana**
+(SPL `TransferChecked`, gateway sponsors gas), and **MPP/Tempo** (native Tempo tx).
+
+`PaymentConfig` fields:
+
+| Field | Meaning |
+|---|---|
+| `scheme` | `"x402"` (pay-per-request) or `"mpp"` (MPP charge) |
+| `key` | raw private key — EVM/Tempo: hex; Solana: base58 64-byte secret |
+| `pay_network` | CAIP-2 pay network, e.g. `eip155:84532`, `solana:5eykt4…` |
+| `asset` | token address/mint to pay in (matches the offered menu entry) |
+| `max_amount` | **required** spend ceiling in integer base units of `asset` |
+| `svm_rpc_url` | optional Solana RPC for x402/Solana blockhash reads |
+| `base_url_override` | optional gateway base (testing) |
+
+`network` on the call is the **query** chain (gateway path slug), independent of the
+pay network. Use `call_with_receipt` to also get the settlement receipt (`reference` =
+settlement tx hash) — populated on the MPP lane, `null`/`None`/`nil` for x402.
+
+**Things to know:**
+
+- **Do not log your own `PaymentConfig`** — the `key` field is readable (like ethers'
+  `.privateKey`). The SDK never prints it in its own errors/`Debug`, but a plain
+  `print(config)` will show it.
+- **`max_amount` is integer base units of the selected asset.** The SDK skips any offered
+  entry above it and refuses to sign one — a guard against an overcharging gateway.
+- **`PaymentIndeterminateError` means the paid request was sent but the response was lost.**
+  You MAY have been charged — do **not** blindly retry.
+- **x402/Solana: one payment per call.** The blockhash read defaults to a public Solana
+  RPC that **rate-limits aggressively** — set `svm_rpc_url` to your own endpoint at any volume.
+
+```python
+import os
+from quicknode_sdk import QuicknodeSdk, SdkFullConfig, RpcConfig, PaymentConfig
+
+qn = QuicknodeSdk(SdkFullConfig(api_key=None, rpc=RpcConfig(payment=PaymentConfig(
+    scheme="x402",
+    key=os.environ["QN_PAYMENT_KEY"],
+    pay_network="eip155:84532",
+    asset="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    max_amount="10000",
+))))
+resp = await qn.rpc.call_with_receipt("eth_blockNumber", [], "base-sepolia")
+print(resp["result"], resp["payment_receipt"])
+```
+
+
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
@@ -1739,6 +1793,10 @@ subclass to branch on transport vs. API semantics.
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
 | `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
+| `PaymentError`       | base class for the crypto-micropayment lane                 | —                    |
+| `PaymentUnsupportedError` | no offered payment option matched your selector (or all were over `max_amount`/unsupported) | — |
+| `PaymentRejectedError` | the gateway rejected a signed payment (terminal, one resend only) | `status`, `body` |
+| `PaymentIndeterminateError` | paid request sent but response lost — MAY have been charged; do NOT blindly retry | — |
 
 Class names: Importable from `quicknode_sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`, `RpcError`.
 

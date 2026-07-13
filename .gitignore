@@ -71,3 +71,7 @@ notes.md
 # Ruby native extension (built locally by `just ruby-build`)
 ruby/lib/quicknode_sdk/*.bundle
 ruby/lib/quicknode_sdk/*.so
+
+# Local scratch: payment-lane spike probes reference throwaway funded wallets.
+# Never commit — see IMPLEMENTATION_PLAN.md § scratch/ hygiene.
+scratch/

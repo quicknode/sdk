@@ -331,7 +331,26 @@ export type {
   CachedToken,
   ToolingAccessStatus,
   RpcApiClient,
+  // payment lane
+  PaymentConfig,
 } from "./index";
+
+// A settlement receipt for the crypto-micropayment lane. Returned inside
+// `RpcCallResponse.paymentReceipt` by `rpc.callWithReceipt`. `reference` is the
+// settlement transaction hash. Present only on the MPP lane; `null` otherwise.
+export interface PaymentReceipt {
+  method: string;
+  status: string;
+  timestamp: string;
+  reference: string;
+}
+
+// The result of `rpc.callWithReceipt`: the JSON-RPC `result` plus the optional
+// settlement receipt (`null` for x402 and non-payment lanes).
+export interface RpcCallResponse {
+  result: any;
+  paymentReceipt: PaymentReceipt | null;
+}
 
 // const enums must use `export` (not `export type`) so they are usable as values
 export {
@@ -459,3 +478,13 @@ export class DecodeError extends QuicknodeError {
 export class RpcError extends QuicknodeError {
   code: number;
 }
+// Payment-lane errors (crypto-micropayment `rpc.call`). Catch PaymentError to
+// handle them all. PaymentIndeterminateError means the paid request was sent
+// but its response was lost — the payment MAY have settled, so do NOT retry.
+export class PaymentError extends QuicknodeError {}
+export class PaymentUnsupportedError extends PaymentError {}
+export class PaymentRejectedError extends PaymentError {
+  status: number;
+  body: string;
+}
+export class PaymentIndeterminateError extends PaymentError {}

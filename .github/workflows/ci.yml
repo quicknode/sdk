@@ -29,6 +29,45 @@ jobs:
       - name: cargo test
         run: cargo test -p quicknode-sdk --lib
 
+  # Payment lanes are feature-gated and add crypto deps + #[cfg]'d types, so
+  # each combo must build and test independently, plus a features-off build to
+  # prove the base crate is unaffected.
+  payment-features:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - "" # features-off baseline
+          - "payments"
+          - "payments-svm"
+          - "payments-tempo"
+          - "payments,payments-svm,payments-tempo"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo clippy (features="${{ matrix.features }}")
+        run: |
+          if [ -z "${{ matrix.features }}" ]; then
+            cargo clippy -p quicknode-sdk --lib --tests -- -D warnings
+          else
+            cargo clippy -p quicknode-sdk --lib --tests --features "${{ matrix.features }}" -- -D warnings
+          fi
+
+      - name: cargo test (features="${{ matrix.features }}")
+        run: |
+          if [ -z "${{ matrix.features }}" ]; then
+            cargo test -p quicknode-sdk --lib
+          else
+            cargo test -p quicknode-sdk --lib --features "${{ matrix.features }}"
+          fi
+
   python:
     runs-on: ubuntu-latest
     steps:
