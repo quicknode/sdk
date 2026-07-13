@@ -162,11 +162,18 @@ impl ResolvedPayment {
     }
 }
 
+// Solana CAIP-2 ids are `solana:<genesis-hash-prefix>`. Devnet's genesis hash
+// begins `EtWTRAB…`; the literal string "devnet" never appears in a CAIP-2 id,
+// so both the RPC default and the tooling-key resolution must key off this
+// prefix (not `contains("devnet")`). Returns true for the devnet cluster.
+pub(crate) fn solana_pay_network_is_devnet(pay_network: &str) -> bool {
+    pay_network.contains("EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+}
+
 // Public Solana RPC default matching the pay cluster. Rate-limits aggressively;
 // callers at any volume should set an explicit `svm_rpc_url`.
 fn default_solana_rpc(pay_network: &str) -> &'static str {
-    // solana:5eykt4… = mainnet-beta; solana:EtWTRAB… = devnet.
-    if pay_network.contains("devnet") || pay_network.ends_with("EtWTRABZaYq6iMfeYKouRu166VU2xqa1") {
+    if solana_pay_network_is_devnet(pay_network) {
         "https://api.devnet.solana.com"
     } else {
         "https://api.mainnet-beta.solana.com"
@@ -258,8 +265,13 @@ pub async fn pay_and_call(
     };
     let paid_status = paid.status().as_u16();
 
-    // A second 402 is terminal.
-    if paid_status == 402 {
+    // Any non-2xx on the paid resend is terminal: the payment credential was
+    // submitted and the gateway did not accept it. This covers a second 402
+    // (rejected credential) AND a 5xx/other settlement failure — both must
+    // surface as PaymentRejected so the caller keeps the "payment was
+    // submitted" signal, rather than the 5xx body falling through to a Decode
+    // error on a non-JSON-RPC response.
+    if !(200..300).contains(&paid_status) {
         let body = paid.text().await.unwrap_or_default();
         return Err(SdkError::PaymentRejected {
             status: paid_status,
@@ -879,6 +891,25 @@ mod tests {
     }
 
     #[test]
+    fn solana_devnet_detection_by_genesis_hash() {
+        // CAIP-2 ids carry a genesis-hash prefix, never the literal "devnet".
+        assert!(solana_pay_network_is_devnet(
+            "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        ));
+        assert!(!solana_pay_network_is_devnet(
+            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        ));
+        assert_eq!(
+            default_solana_rpc("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"),
+            "https://api.devnet.solana.com"
+        );
+        assert_eq!(
+            default_solana_rpc("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"),
+            "https://api.mainnet-beta.solana.com"
+        );
+    }
+
+    #[test]
     fn caip2_or_bare_parse() {
         assert_eq!(caip2_or_bare_chain_id("eip155:42431").unwrap(), 42431);
         assert_eq!(caip2_or_bare_chain_id("42431").unwrap(), 42431);
@@ -1121,6 +1152,46 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, SdkError::PaymentRejected { status, .. } if status == 402));
+    }
+
+    #[tokio::test]
+    async fn gateway_5xx_on_paid_resend_is_rejection_not_decode() {
+        // The unpaid probe 402s; the paid resend returns a 500 with a non-JSON
+        // body. This must surface as PaymentRejected (payment was submitted),
+        // NOT fall through to a Decode error.
+        let server = MockServer::start().await;
+        struct Seq {
+            calls: AtomicUsize,
+        }
+        impl Respond for Seq {
+            fn respond(&self, req: &Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n == 0 && !req.headers.contains_key("payment-signature") {
+                    ResponseTemplate::new(402).set_body_json(json!({
+                        "x402Version": 2,
+                        "accepts": [ x402_accepts_entry("1000", "USDC") ]
+                    }))
+                } else {
+                    ResponseTemplate::new(500).set_body_string("upstream settlement error")
+                }
+            }
+        }
+        Mock::given(method("POST"))
+            .respond_with(Seq {
+                calls: AtomicUsize::new(0),
+            })
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri(), 10_000);
+        let client = reqwest::Client::new();
+        let err = pay_and_call(&client, &payment, "base-sepolia", &rpc_body())
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, SdkError::PaymentRejected { status, body } if *status == 500 && body.contains("settlement error")),
+            "expected PaymentRejected(500), got {err:?}"
+        );
     }
 
     #[tokio::test]

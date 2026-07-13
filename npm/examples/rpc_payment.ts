@@ -17,7 +17,7 @@ const key = process.env.QN_PAYMENT_KEY;
 if (!key) throw new Error("set QN_PAYMENT_KEY to a throwaway key");
 
 // A keyless SDK: the payment lane needs no account API key. Do NOT log the
-// config object — the `key` field is readable (like ethers' .privateKey).
+// config object — the `key` field is readable.
 const qn = new QuicknodeSdk({
   rpc: {
     payment: {

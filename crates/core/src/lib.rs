@@ -175,8 +175,9 @@ impl SdkConfig {
         // SDK-managed defaults).
         //
         // A keyless config (no `api_key`) installs NO key header: the payment
-        // lane needs no account key, and every keyed surface fails later with a
-        // clear `Config` error rather than sending an empty key.
+        // lane needs no account key. Keyed surfaces then send un-authenticated
+        // requests that the gateway rejects (surfacing as `ApiError`), rather
+        // than sending an empty key header.
         let mut main_headers = HeaderMap::new();
         if let Some(api_key) = config.api_key.as_deref() {
             main_headers.insert(

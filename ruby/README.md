@@ -1758,9 +1758,8 @@ settlement tx hash) — populated on the MPP lane, `null`/`None`/`nil` for x402.
 
 **Things to know:**
 
-- **Do not log your own `PaymentConfig`** — the `key` field is readable (like ethers'
-  `.privateKey`). The SDK never prints it in its own errors/`Debug`, but a plain
-  `print(config)` will show it.
+- **Do not log your own `PaymentConfig`** — the `key` field is readable. The SDK
+  never prints it in its own errors/`Debug`, but a plain `p config` will show it.
 - **`max_amount` is integer base units of the selected asset.** The SDK skips any offered
   entry above it and refuses to sign one — a guard against an overcharging gateway.
 - **`PaymentIndeterminateError` means the paid request was sent but the response was lost.**
@@ -1807,7 +1806,7 @@ subclass to branch on transport vs. API semantics.
 | `PaymentRejectedError` | the gateway rejected a signed payment (terminal, one resend only) | `status`, `body` |
 | `PaymentIndeterminateError` | paid request sent but response lost — MAY have been charged; do NOT blindly retry | — |
 
-Class names: `QuicknodeSdk::Error`, `QuicknodeSdk::ConfigError`, `QuicknodeSdk::HttpError`, `QuicknodeSdk::TimeoutError`, `QuicknodeSdk::ConnectionError`, `QuicknodeSdk::ApiError`, `QuicknodeSdk::DecodeError`, `QuicknodeSdk::RpcError`. All extend `StandardError`. Hash-key validation still raises `ArgumentError`.
+Class names: `QuicknodeSdk::Error`, `QuicknodeSdk::ConfigError`, `QuicknodeSdk::HttpError`, `QuicknodeSdk::TimeoutError`, `QuicknodeSdk::ConnectionError`, `QuicknodeSdk::ApiError`, `QuicknodeSdk::DecodeError`, `QuicknodeSdk::RpcError`, `QuicknodeSdk::PaymentError`, `QuicknodeSdk::PaymentUnsupportedError`, `QuicknodeSdk::PaymentRejectedError`, `QuicknodeSdk::PaymentIndeterminateError`. All extend `StandardError`. Hash-key validation still raises `ArgumentError`.
 
 ```ruby
 # Ruby

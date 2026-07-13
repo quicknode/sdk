@@ -69,7 +69,7 @@ ed25519-dalek = { version = "2", optional = true }
 bs58 = { version = "0.5", optional = true }
 sha2 = { version = "0.10", optional = true }
 # MPP/Tempo native type-0x76 tx. default-features=false is REQUIRED (see feature
-# comment). alloy-* pinned to the versions proven in the Stage 1a spike.
+# comment). alloy-* pinned to the versions tempo-primitives 1.8.1 builds against.
 tempo-primitives = { version = "1.8.1", optional = true, default-features = false }
 alloy-primitives = { version = "1.6", optional = true }
 alloy-consensus = { version = "2.1", optional = true }

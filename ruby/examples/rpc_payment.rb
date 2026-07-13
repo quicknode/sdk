@@ -36,7 +36,7 @@ unless key
 end
 
 # A keyless SDK: the payment lane needs no account API key. Do NOT log the
-# config hash — the `key` field is readable (like ethers' .privateKey).
+# config hash — the `key` field is readable.
 sdk = QuicknodeSdk::SDK.from_config(
   api_key: nil,
   rpc: {

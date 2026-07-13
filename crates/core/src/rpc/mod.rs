@@ -328,12 +328,17 @@ impl RpcApiClient {
     }
 
     // Best-effort tooling-endpoint lookup for the pay-chain's Solana network.
-    // Returns None (skip to the public default) when no API key / no map / no
-    // matching key — never an error.
+    // Returns None (skip to the public default) when no map / no matching key —
+    // never an error. The seeded map is itself the effective API-key gate: it's
+    // built from `admin.get_endpoint_urls`, which a keyless SDK cannot call, so
+    // a keyless instance never has a map here and falls through to the public
+    // default exactly as the precedence requires.
     #[cfg(feature = "payments-svm")]
     fn tooling_svm_url(&self, pay_network: &str) -> Option<String> {
-        // Map the CAIP-2 solana cluster to a likely tooling network key.
-        let key = if pay_network.contains("devnet") {
+        // Map the CAIP-2 solana cluster to its tooling network key. Devnet is
+        // identified by its genesis-hash prefix (the literal "devnet" never
+        // appears in a CAIP-2 id — see payment::solana_pay_network_is_devnet).
+        let key = if payment::solana_pay_network_is_devnet(pay_network) {
             "solana-devnet"
         } else {
             "solana-mainnet"

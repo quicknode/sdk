@@ -4,10 +4,9 @@
 //! `SecretString` and dispatches to one of three signing constructions at
 //! runtime. An enum is used deliberately: a trait would force `Box<dyn Signer>`
 //! into the FFI-facing config and break its derived `Clone`/`Serialize`/
-//! `napi(object)`/`pyclass`. See `IMPLEMENTATION_PLAN.md` for the rationale.
+//! `napi(object)`/`pyclass`, and would expose the key through `get_all`.
 //!
-//! The three constructions (each verified byte-for-byte against a gateway-
-//! accepted payload during Stage 0/1a research):
+//! The three constructions:
 //! - `Evm` — EIP-712 `TransferWithAuthorization` (x402/EVM). Sync, no chain I/O.
 //! - `Svm` — partially-signed SPL `TransferChecked` tx (x402/Solana). Async;
 //!   reads a recent blockhash + the payer's ATA from a Solana RPC.
@@ -255,10 +254,10 @@ pub use svm::SvmTransferRequest;
 mod tests {
     use super::*;
 
-    // Known-good EIP-712 vector regenerated from a throwaway key (anvil test
-    // key #0, publicly known, never funded) so the funded-wallet capture in
-    // scratch/ never enters the repo. Signature produced offline with viem's
-    // signTypedData over the same domain/message.
+    // Known-good EIP-712 vector from a publicly-known throwaway key (anvil test
+    // key #0, never funded) — no real wallet's credentials enter the repo. The
+    // expected signature below was produced offline with viem's `signTypedData`
+    // over the exact domain/message in `eip712_reproduces_known_good_vector`.
     const THROWAWAY_KEY: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const THROWAWAY_ADDR: &str = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
 
@@ -279,8 +278,9 @@ mod tests {
     #[test]
     fn eip712_digest_is_deterministic_and_domain_bound() {
         // The digest must change when any domain/message field changes, and be
-        // stable for identical inputs. (Full on-wire acceptance is proven by
-        // the Stage 5 live smoke; here we lock the construction is wired.)
+        // stable for identical inputs — locks that the EIP-712 encoding is
+        // domain-bound. Byte-level acceptance is covered by the known-good
+        // vector test below.
         let domain = Eip712Domain {
             name: "USDC".into(),
             version: "2".into(),
@@ -309,11 +309,10 @@ mod tests {
 
     #[test]
     fn eip712_reproduces_known_good_vector() {
-        // Known-good signature produced by viem's signTypedData over the exact
-        // domain/message below, using the throwaway anvil key #0 (never funded).
-        // Regenerated offline via scratch/gen-eip712-vector.mjs so no funded
-        // wallet's auth is committed. This is the Stage 1 acceptance vector for
-        // the x402/EVM construction.
+        // Known-good signature produced by viem's `signTypedData` over the
+        // exact domain/message below, using the throwaway anvil key #0 (never
+        // funded). Reproducing it byte-for-byte proves the x402/EVM EIP-712
+        // construction matches the reference wallet libraries.
         const EXPECTED_SIG: &str = "0xc3a69d1a9043a75d840f66ccc9a95cdbc690bdd669424f00ba955ee7bcdb4a1e3293d7ab2e9663fc3486215be0cbb3da6c3cdcb71cf811b8b612c004014f0ba71b";
         let signer = Signer::Evm(SecretString::new(THROWAWAY_KEY.to_string()));
         let domain = Eip712Domain {

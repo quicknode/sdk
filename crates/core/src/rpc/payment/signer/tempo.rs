@@ -1,13 +1,11 @@
 //! MPP/Tempo native type-0x76 transaction signer.
 //!
-//! Ported directly from the Stage 1a Rust spike, which reproduced the
-//! ox/tempo (viem/mppx) reference vector 6/6 byte-for-byte and settled a real
-//! payment against the live gateway (`scratch/STAGE1A-FINDINGS.md`). The
-//! credential's `payload.signature` is the **0x78 fee-payer handoff envelope**:
-//! the sender signs a type-0x76 preimage (fee-payer slot = `0x00` placeholder,
-//! `feeToken` skipped — the gateway sponsors gas), then re-serializes with its
-//! own address in the fee-payer slot and the sig appended. The gateway relay
-//! co-signs server-side.
+//! Matches the wire format produced by the `ox/tempo` (viem) reference encoder.
+//! The credential's `payload.signature` is the **0x78 fee-payer handoff
+//! envelope**: the sender signs a type-0x76 preimage (fee-payer slot = `0x00`
+//! placeholder, `feeToken` skipped — the gateway sponsors gas), then
+//! re-serializes with its own address in the fee-payer slot and the sig
+//! appended. The gateway relay co-signs server-side.
 //!
 //! Sync, zero chain reads: `nonceKey:"expiring"` resolves locally
 //! (`nonceKey = U256::MAX`, `nonce = 0`, `validBefore = min(now+25s, expiry)`)
@@ -29,8 +27,9 @@ use crate::errors::SdkError;
 // TIP20 transferWithMemo(address,uint256,bytes32) selector.
 const TRANSFER_WITH_MEMO_SELECTOR: [u8; 4] = [0x95, 0x77, 0x7d, 0x59];
 
-// Generous fixed caps (live-confirmed in probe 2). The gateway sponsors the
-// fee under `feePayer:true`, so these only need to exceed inclusion cost.
+// Generous fixed gas/fee caps. Under `feePayer:true` the gateway sponsors the
+// fee, so the sender's caps cost it nothing and only need to exceed inclusion
+// cost — no fee/gas RPC estimation is required.
 const DEFAULT_GAS_LIMIT: u64 = 150_000;
 const DEFAULT_MAX_FEE_PER_GAS: u128 = 10_000_000_000; // 10 gwei
 const DEFAULT_MAX_PRIORITY_FEE_PER_GAS: u128 = 2_000_000_000; // 2 gwei
@@ -111,9 +110,9 @@ impl Signer {
         let sig65 = secp::sign_prehash_65(&key, &sign_hash.0);
 
         // 2. Fee-payer handoff envelope (0x78): the same fields with the sender
-        //    address in the fee-payer slot and the sender sig appended. No
-        //    public serializer exists for this exact form; assembled with
-        //    alloy-rlp exactly as the spike proved.
+        //    address in the fee-payer slot and the sender sig appended.
+        //    `tempo-primitives` has no public serializer for this exact form, so
+        //    it is assembled field-by-field with alloy-rlp (see encode_handoff).
         Ok(encode_handoff(
             req.chain_id,
             max_prio,
@@ -230,10 +229,10 @@ fn encode_calls(calls: &[Call], out: &mut Vec<u8>) {
 mod tests {
     use super::*;
 
-    // Reference vector from the Stage 1a spike (tempo-vector.mjs, anvil key #0,
-    // fixed validBefore/gas/fees, real captured challenge fields). The spike
-    // proved these byte-for-byte against ox/tempo. Porting the vector here as
-    // the unit test locks the construction.
+    // Reference vector generated offline by the `ox/tempo` encoder with the
+    // publicly-known throwaway anvil key #0 (never funded) and fixed
+    // validBefore/gas/fee inputs. Reproducing the 0x78 handoff bytes exactly
+    // proves the MPP/Tempo construction matches the reference encoder.
     const KEY: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const EXPECTED_HANDOFF: &str = "78f9011382a5bf830f4240843b9aca0083019a28f87ef87c9420c000000000000000000000000000000000000080b86495777d59000000000000000000000000fd24114c3981aba78ae2441991b1bdb89329c55600000000000000000000000000000000000000000000000000000000000003e8ef1ed712013846ebb93fa448b84b800000000000000000000060f498736fd943c0a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80846a543ee5808094f39fd6e51aad88f6f4ce6ab8827279cfffb92266c0b841ca92118d9f7da00c84c2445bd3ee164cef9f60742771ca8a1700f15357f1437122ff663f076b0a54bbbfc614fb28f6c8e69a29735ad555ca71c25a889180e0c01c";
 

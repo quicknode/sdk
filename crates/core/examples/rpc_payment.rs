@@ -23,8 +23,8 @@ async fn main() {
     let mut config = SdkFullConfig::keyless();
     config.rpc = Some(RpcConfig {
         // The payment config is plain data; the private key stays in `key`.
-        // WARNING: do not log this object — the key is readable, like ethers'
-        // `.privateKey`. The SDK never prints it in its own errors/Debug.
+        // WARNING: do not log this object — the `key` field is readable. The
+        // SDK never prints it in its own errors/Debug.
         payment: Some(PaymentConfig {
             scheme: "x402".into(),
             key,

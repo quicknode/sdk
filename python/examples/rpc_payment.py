@@ -59,7 +59,7 @@ async def main() -> None:
         return
 
     # A keyless SDK: the payment lane needs no account API key. Do NOT log the
-    # config object — the `key` field is readable (like ethers' .privateKey).
+    # config object — the `key` field is readable.
     config = SdkFullConfig(
         api_key=None,
         rpc=RpcConfig(

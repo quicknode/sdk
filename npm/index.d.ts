@@ -1371,14 +1371,13 @@ export interface Payment {
  * Binding-facing crypto-micropayment configuration. **Plain data** — all
  * fields are strings so this can be a `napi(object)` / `pyclass` / Ruby hash;
  * it is converted to the internal `enum Signer` + resolved config at the Rust
- * boundary. The private `key` field stays readable to the caller (the
- * ethers `.privateKey` / web3.py convention), but the SDK's own `Debug`
- * redacts it (below) so an SDK log line or panic can't leak it.
+ * boundary. The private `key` field stays readable to the caller, but the
+ * SDK's own `Debug` redacts it (below) so an SDK log line or panic can't leak
+ * it.
  *
  * **Do not log your own `PaymentConfig`** — `println!("{config:?}")` on the
- * derived-Debug *binding* object (napi/pyclass/hash) still shows the raw key,
- * exactly like ethers' readable `privateKey`. Only the SDK's internal
- * rendering is redacted.
+ * derived-Debug *binding* object (napi/pyclass/hash) still shows the raw key.
+ * Only the SDK's internal rendering is redacted.
  */
 export interface PaymentConfig {
   /** Payment protocol: `"x402"` (pay-per-request) or `"mpp"` (MPP charge). */
@@ -1567,9 +1566,11 @@ export interface RpcConfig {
    * account API key + session JWT. `#[serde(skip)]` so `from_env` can never
    * populate it — an env-derived private key is exactly what we don't want;
    * callers must pass this programmatically. The field is always present
-   * (plain data), but actually *using* it requires the crypto features
-   * (`payments`/`payments-svm`/`payments-tempo`); without them a set
-   * `payment` yields a clear `Config` error at call time.
+   * (plain data), but the payment lane is only wired into `rpc.call` when a
+   * crypto feature (`payments`/`payments-svm`/`payments-tempo`) is enabled;
+   * built without any of them, a set `payment` is ignored and `rpc.call`
+   * keeps its normal tooling-JWT behavior. The precompiled Python/Node/Ruby
+   * packages always ship with the payment features on.
    */
   payment?: PaymentConfig
 }
@@ -1602,10 +1603,12 @@ export interface SdkFullConfig {
   /**
    * Account API key. **Optional** so a keyless SDK can be built for the
    * crypto-micropayment lane (`rpc.call` with `RpcConfig.payment`). When
-   * absent, no `x-api-key` header is installed and every keyed surface
-   * (admin/streams/webhooks/kvstore/sql and tooling-JWT `rpc.call`) fails
-   * with a clear `Config` error. `from_env` still requires it (validated in
-   * `from_config`) — only programmatic construction may omit it.
+   * absent, no `x-api-key` header is installed: the payment lane works, while
+   * the keyed surfaces (admin/streams/webhooks/kvstore/sql and tooling-JWT
+   * `rpc.call`) send un-authenticated requests and the gateway rejects them
+   * (surfacing as an `ApiError`, typically 401). `from_env` still requires
+   * the key (validated in `from_config`) — only programmatic construction
+   * may omit it.
    */
   apiKey?: string
   http?: HttpConfig

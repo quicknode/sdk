@@ -1866,9 +1866,8 @@ settlement tx hash) — populated on the MPP lane, `null`/`None`/`nil` for x402.
 
 **Things to know:**
 
-- **Do not log your own `PaymentConfig`** — the `key` field is readable (like ethers'
-  `.privateKey`). The SDK never prints it in its own errors/`Debug`, but a plain
-  `print(config)` will show it.
+- **Do not log your own `PaymentConfig`** — the `key` field is readable. The SDK
+  never prints it in its own errors/`Debug`, but a plain `{:?}`/`dbg!(config)` will show it.
 - **`max_amount` is integer base units of the selected asset.** The SDK skips any offered
   entry above it and refuses to sign one — a guard against an overcharging gateway.
 - **`PaymentIndeterminateError` means the paid request was sent but the response was lost.**
@@ -1919,7 +1918,7 @@ subclass to branch on transport vs. API semantics.
 | `PaymentRejectedError` | the gateway rejected a signed payment (terminal, one resend only) | `status`, `body` |
 | `PaymentIndeterminateError` | paid request sent but response lost — MAY have been charged; do NOT blindly retry | — |
 
-Variants: pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config, Rpc }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`.
+Variants: pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config, Rpc, PaymentUnsupported, PaymentRejected, PaymentIndeterminate }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`. The `Payment*` variants require a `payments*` feature.
 
 ```rust
 // Rust
