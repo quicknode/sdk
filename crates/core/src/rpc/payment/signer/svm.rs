@@ -111,6 +111,21 @@ impl Signer {
     }
 }
 
+/// Generates a fresh Solana keypair. Returns the base58-encoded 64-byte
+/// `[seed(32) || public(32)]` secret key (the format `svm_signing_key` reads).
+/// Randomness comes from `rand::thread_rng` (the OS CSPRNG), matching the
+/// nonce generator used elsewhere in this module.
+pub(super) fn generate_svm_key() -> String {
+    use rand::RngCore;
+    let mut seed = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut seed);
+    let key = SigningKey::from_bytes(&seed);
+    let mut full = Vec::with_capacity(64);
+    full.extend_from_slice(&seed);
+    full.extend_from_slice(&key.verifying_key().to_bytes());
+    bs58::encode(full).into_string()
+}
+
 fn svm_signing_key(signer: &Signer) -> Result<SigningKey, SdkError> {
     let Signer::Svm(secret) = signer else {
         return Err(SdkError::Config(

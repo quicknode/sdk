@@ -23,6 +23,8 @@ pub mod payment;
 #[cfg(feature = "payments")]
 pub use crate::config::PaymentConfig;
 #[cfg(feature = "payments")]
+pub use payment::signer::{generate_payment_wallet, ChainKind, GeneratedWallet};
+#[cfg(feature = "payments")]
 pub use payment::{PaymentReceipt, PaymentScheme};
 
 use crate::admin::AdminApiClient;

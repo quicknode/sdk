@@ -100,6 +100,21 @@ mod secp {
         Keccak256::digest(bytes).into()
     }
 
+    // Generate a fresh secp256k1 key, returned as `0x`-prefixed hex (the form
+    // `signing_key` reads). Randomness comes from `rand::thread_rng` (the OS
+    // CSPRNG), matching the nonce generator used elsewhere in this module;
+    // rejection-samples until the bytes are a valid non-zero scalar.
+    pub(super) fn generate_key() -> String {
+        use rand::RngCore;
+        loop {
+            let mut bytes = [0u8; 32];
+            rand::thread_rng().fill_bytes(&mut bytes);
+            if SigningKey::from_slice(&bytes).is_ok() {
+                return format!("0x{}", hex::encode(bytes));
+            }
+        }
+    }
+
     // Sign a 32-byte prehash, returning 65 bytes r||s||v where v is 27/28
     // (the encoding both ox and viem emit for EIP-712 sigs and Tempo handoffs).
     pub(super) fn sign_prehash_65(key: &SigningKey, prehash: &[u8; 32]) -> [u8; 65] {
@@ -170,6 +185,54 @@ impl Signer {
         let digest = eip712_digest(domain, message)?;
         Ok(secp::sign_prehash_65(&key, &digest))
     }
+}
+
+/// A freshly generated payment wallet: the raw private key in the on-wire
+/// format the key-file reader expects, plus its derived on-chain address.
+///
+/// The key is held in a [`SecretString`] so it is never printed or logged by
+/// accident; the caller decides where to persist it. `chain` records which
+/// pay-chain family the key targets.
+#[cfg(feature = "payments")]
+pub struct GeneratedWallet {
+    /// Raw private key: EVM/Tempo → `0x`-prefixed secp256k1 hex; SVM → base58
+    /// 64-byte `[secret || public]`.
+    pub key: SecretString,
+    /// On-chain address: EVM/Tempo → `0x…` hex; SVM → base58 pubkey.
+    pub address: String,
+    /// The pay-chain family this key is for.
+    pub chain: ChainKind,
+}
+
+/// Generates a fresh payment keypair for `chain`, returning the raw key (in the
+/// format `--payment-key-file` / config `key_file` reads) and its derived
+/// address. Randomness comes from the OS CSPRNG.
+///
+/// `Tempo` uses the same secp256k1 key format as `Evm`.
+#[cfg(feature = "payments")]
+pub fn generate_payment_wallet(chain: ChainKind) -> Result<GeneratedWallet, SdkError> {
+    let raw = match chain {
+        ChainKind::Evm | ChainKind::Tempo => secp::generate_key(),
+        #[cfg(feature = "payments-svm")]
+        ChainKind::Svm => svm::generate_svm_key(),
+        #[cfg(not(feature = "payments-svm"))]
+        ChainKind::Svm => {
+            return Err(SdkError::Config(
+                "x402/Solana wallet generation requires the `payments-svm` feature".into(),
+            ))
+        }
+    };
+    let signer = match chain {
+        ChainKind::Evm => Signer::Evm(SecretString::new(raw.clone())),
+        ChainKind::Tempo => Signer::Tempo(SecretString::new(raw.clone())),
+        ChainKind::Svm => Signer::Svm(SecretString::new(raw.clone())),
+    };
+    let address = signer.address()?;
+    Ok(GeneratedWallet {
+        key: SecretString::new(raw),
+        address,
+        chain,
+    })
 }
 
 // EIP-712 final digest: keccak256(0x1901 || domainSeparator || hashStruct).
@@ -273,6 +336,47 @@ mod tests {
         let rendered = format!("{signer:?}");
         assert!(rendered.contains("[redacted]"));
         assert!(!rendered.contains(THROWAWAY_KEY));
+    }
+
+    // Generated keys must round-trip: the raw key parses back through the same
+    // signer construction, and re-deriving its address matches the reported one.
+    #[test]
+    fn generated_evm_wallet_round_trips() {
+        let w = generate_payment_wallet(ChainKind::Evm).unwrap();
+        assert!(matches!(w.chain, ChainKind::Evm));
+        let raw = w.key.expose_secret();
+        assert!(raw.starts_with("0x"));
+        let reparsed = Signer::Evm(SecretString::new(raw.to_string()));
+        assert_eq!(reparsed.address().unwrap(), w.address);
+        assert!(w.address.starts_with("0x") && w.address.len() == 42);
+    }
+
+    #[test]
+    fn generated_tempo_wallet_round_trips() {
+        let w = generate_payment_wallet(ChainKind::Tempo).unwrap();
+        let raw = w.key.expose_secret();
+        let reparsed = Signer::Tempo(SecretString::new(raw.to_string()));
+        assert_eq!(reparsed.address().unwrap(), w.address);
+    }
+
+    #[cfg(feature = "payments-svm")]
+    #[test]
+    fn generated_svm_wallet_round_trips() {
+        let w = generate_payment_wallet(ChainKind::Svm).unwrap();
+        assert!(matches!(w.chain, ChainKind::Svm));
+        let raw = w.key.expose_secret();
+        let reparsed = Signer::Svm(SecretString::new(raw.to_string()));
+        assert_eq!(reparsed.address().unwrap(), w.address);
+        // base58 32-byte pubkey.
+        assert_eq!(bs58::decode(&w.address).into_vec().unwrap().len(), 32);
+    }
+
+    // Two generations must not collide (sanity check the RNG is actually random).
+    #[test]
+    fn generated_wallets_are_unique() {
+        let a = generate_payment_wallet(ChainKind::Evm).unwrap();
+        let b = generate_payment_wallet(ChainKind::Evm).unwrap();
+        assert_ne!(a.address, b.address);
     }
 
     #[test]
