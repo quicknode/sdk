@@ -471,11 +471,24 @@ async fn authorize_x402_svm(
         .pointer("/extra/feePayer")
         .and_then(Value::as_str)
         .ok_or_else(|| SdkError::Config("x402 Solana entry missing extra.feePayer".into()))?;
-    let amount = entry
+    // The menu selector admits amounts as u128, but SPL TransferChecked encodes
+    // the amount as a u64 (the Solana token-program ABI ceiling). Parse as u128
+    // and narrow explicitly so an over-u64 amount surfaces as a clear overflow
+    // error rather than being conflated with a missing/malformed field.
+    let amount_str = entry
         .get("amount")
         .and_then(Value::as_str)
-        .and_then(|s| s.parse::<u64>().ok())
-        .ok_or_else(|| SdkError::Config("x402 Solana entry missing/invalid amount".into()))?;
+        .ok_or_else(|| SdkError::Config("x402 Solana entry missing amount".into()))?;
+    let amount = amount_str
+        .parse::<u128>()
+        .ok()
+        .filter(|a| *a <= u128::from(u64::MAX))
+        .and_then(|a| u64::try_from(a).ok())
+        .ok_or_else(|| {
+            SdkError::Config(format!(
+                "x402 Solana amount {amount_str:?} is not a valid u64 base-unit integer"
+            ))
+        })?;
     // Decimals may be carried in the entry's extra; default to 6 (USDC).
     let decimals = entry
         .pointer("/extra/decimals")
@@ -1368,5 +1381,42 @@ mod tests {
         let receipt = receipt.expect("MPP happy path must capture a receipt");
         assert_eq!(receipt.method, "tempo");
         assert_eq!(receipt.reference, "0xdeadbeef");
+    }
+
+    // The menu selector compares amounts as u128, but SPL TransferChecked can
+    // only encode a u64. An amount the selector admits but that overflows u64
+    // must fail with a clear overflow message, not a vague "missing amount".
+    #[cfg(feature = "payments-svm")]
+    #[tokio::test]
+    async fn x402_svm_amount_over_u64_is_clear_error() {
+        let over_u64 = (u128::from(u64::MAX) + 1).to_string();
+        let entry = json!({
+            "scheme": "exact",
+            "network": "solana:mainnet",
+            "amount": over_u64,
+            "payTo": "11111111111111111111111111111112",
+            "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "extra": { "feePayer": "11111111111111111111111111111112", "decimals": 6 }
+        });
+        let payment = ResolvedPayment {
+            scheme: PaymentScheme::X402,
+            signer: Signer::Svm(SecretString::new(EVM_KEY.to_string())),
+            pay_network: "solana:mainnet".into(),
+            asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".into(),
+            max_amount: u128::MAX,
+            base_url_override: None,
+            svm_rpc_url: Some("http://127.0.0.1:1".into()),
+        };
+        let client = reqwest::Client::new();
+        // Amount check runs before the blockhash RPC fetch, so the unreachable
+        // svm_rpc_url is never contacted.
+        let Err(err) = authorize_x402_svm(&client, &payment, &2, &entry).await else {
+            unreachable!("over-u64 amount must be rejected");
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("not a valid u64"),
+            "expected u64 overflow error, got: {msg}"
+        );
     }
 }
