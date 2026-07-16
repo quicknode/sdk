@@ -204,6 +204,16 @@ pub struct GeneratedWallet {
     pub chain: ChainKind,
 }
 
+#[cfg(feature = "payments")]
+impl GeneratedWallet {
+    /// Consumes the wallet and returns the raw private key string, for callers
+    /// that must persist it (e.g. writing a key file). Consuming (rather than
+    /// borrowing) keeps the exposure a deliberate, one-shot step.
+    pub fn into_key(self) -> String {
+        self.key.expose_secret().to_string()
+    }
+}
+
 /// Generates a fresh payment keypair for `chain`, returning the raw key (in the
 /// format `--payment-key-file` / config `key_file` reads) and its derived
 /// address. Randomness comes from the OS CSPRNG.
