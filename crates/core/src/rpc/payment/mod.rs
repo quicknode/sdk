@@ -317,10 +317,12 @@ async fn authorize_x402(
     payment: &ResolvedPayment,
     challenge_body: &str,
 ) -> Result<Authorized, SdkError> {
+    // Pre-payment: nothing has been signed or sent yet, so an unreadable menu
+    // is "no usable offer" (PaymentUnsupported), never a Decode — paid-lane
+    // callers treat Decode as a post-payment failure whose outcome is unknown.
     let parsed: X402Body =
-        serde_json::from_str(challenge_body).map_err(|source| SdkError::Decode {
-            source,
-            body: challenge_body.to_string(),
+        serde_json::from_str(challenge_body).map_err(|source| SdkError::PaymentUnsupported {
+            offered: format!("an unparseable x402 challenge (invalid JSON: {source})"),
         })?;
 
     let mut skipped: Vec<String> = Vec::new();
@@ -529,9 +531,13 @@ async fn fetch_latest_blockhash(
         .await
         .map_err(SdkError::Http)?;
     let text = resp.text().await.map_err(SdkError::Http)?;
-    let parsed: Value = serde_json::from_str(&text).map_err(|source| SdkError::Decode {
-        source,
-        body: text.clone(),
+    // Also pre-payment (the blockhash goes into a transaction that has not
+    // been signed yet): a bad RPC response is a Config-class failure, not a
+    // Decode.
+    let parsed: Value = serde_json::from_str(&text).map_err(|source| {
+        SdkError::Config(format!(
+            "could not parse the Solana RPC response as JSON: {source}"
+        ))
     })?;
     parsed
         .pointer("/result/value/blockhash")
@@ -1152,6 +1158,28 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, SdkError::PaymentRejected { status, .. } if status == 402));
+    }
+
+    #[tokio::test]
+    async fn malformed_challenge_menu_is_unsupported_not_decode() {
+        let server = MockServer::start().await;
+        // The 402 challenge body is not JSON. Nothing has been signed, so this
+        // must surface as PaymentUnsupported (nothing charged), never Decode.
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(402).set_body_string("<html>menu?</html>"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri(), 10_000);
+        let client = reqwest::Client::new();
+        let err = pay_and_call(&client, &payment, "base-sepolia", &rpc_body())
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, SdkError::PaymentUnsupported { offered } if offered.contains("unparseable")),
+            "expected PaymentUnsupported, got {err:?}"
+        );
     }
 
     #[tokio::test]
