@@ -53,6 +53,9 @@ pub struct ChannelState {
     pub deposit: u128,
     /// Highest cumulative amount authorized by a voucher so far.
     pub cumulative_spent: u128,
+    /// The gateway's per-call price (from the open challenge), so the caller can
+    /// advance `cumulative_spent` by one unit per session call.
+    pub per_call: u128,
     /// CAIP-2 chain id the channel lives on.
     pub chain_id: u64,
 }
@@ -181,6 +184,7 @@ pub async fn open(
         expiring_nonce_hash: signed.expiring_nonce_hash,
         deposit,
         cumulative_spent: per_unit,
+        per_call: per_unit,
         chain_id,
     })
 }
@@ -570,6 +574,7 @@ mod tests {
             expiring_nonce_hash: format!("0x{}", "33".repeat(32)),
             deposit: 100_000,
             cumulative_spent: 500,
+            per_call: 500,
             chain_id: 42431,
         }
     }
