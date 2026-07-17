@@ -211,6 +211,79 @@ impl Signer {
             )),
         }
     }
+
+    /// Sign a TIP-1034 MPP session voucher (`Voucher(bytes32 channelId,uint96
+    /// cumulativeAmount)`) against the TIP-20 Channel Reserve EIP-712 domain,
+    /// returning the `0x`-prefixed 65-byte `r||s||v` hex. For a secp256k1 payer
+    /// the on-wire TIP-1020 SignatureEnvelope is the raw 65 bytes (no type
+    /// prefix), so this hex IS the envelope. `escrow` is the verifying contract.
+    pub fn sign_session_voucher(
+        &self,
+        channel_id: &str,
+        cumulative_amount: u128,
+        chain_id: u64,
+        escrow: &str,
+    ) -> Result<String, SdkError> {
+        let key = secp::signing_key(self.secret().expose_secret())?;
+        let digest = session_voucher_digest(channel_id, cumulative_amount, chain_id, escrow)?;
+        let sig = secp::sign_prehash_65(&key, &digest);
+        Ok(format!("0x{}", hex::encode(sig)))
+    }
+}
+
+// TIP-20 Channel Reserve voucher EIP-712 digest:
+// keccak256(0x1901 || domainSeparator || voucherHash), matching the on-chain
+// precompile's getVoucherDigest and ox/tempo Channel.getVoucherSignPayload.
+#[cfg(feature = "payments")]
+fn session_voucher_digest(
+    channel_id: &str,
+    cumulative_amount: u128,
+    chain_id: u64,
+    escrow: &str,
+) -> Result<[u8; 32], SdkError> {
+    // domainSeparator = keccak(domainTypehash || nameHash || versionHash
+    //                          || chainId || verifyingContract)
+    let domain_type =
+        b"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
+    let mut sep = Vec::with_capacity(160);
+    sep.extend_from_slice(&secp::keccak256(domain_type));
+    sep.extend_from_slice(&secp::keccak256(b"TIP20 Channel Reserve"));
+    sep.extend_from_slice(&secp::keccak256(b"1"));
+    sep.extend_from_slice(&u256_be(chain_id as u128));
+    sep.extend_from_slice(&address_word(escrow)?);
+    let domain_separator = secp::keccak256(&sep);
+
+    // voucherHash = keccak(voucherTypehash || channelId || cumulativeAmount)
+    let voucher_type = b"Voucher(bytes32 channelId,uint96 cumulativeAmount)";
+    let channel = bytes32_word(channel_id)?;
+    let mut vh = Vec::with_capacity(96);
+    vh.extend_from_slice(&secp::keccak256(voucher_type));
+    vh.extend_from_slice(&channel);
+    vh.extend_from_slice(&u256_be(cumulative_amount));
+    let voucher_hash = secp::keccak256(&vh);
+
+    let mut final_input = Vec::with_capacity(66);
+    final_input.extend_from_slice(&[0x19, 0x01]);
+    final_input.extend_from_slice(&domain_separator);
+    final_input.extend_from_slice(&voucher_hash);
+    Ok(secp::keccak256(&final_input))
+}
+
+// A 32-byte value (`0x`-prefixed hex) as a raw EVM word. Errors if not 32 bytes.
+#[cfg(feature = "payments")]
+fn bytes32_word(hex_str: &str) -> Result<[u8; 32], SdkError> {
+    let cleaned = hex_str.strip_prefix("0x").unwrap_or(hex_str);
+    let bytes = hex::decode(cleaned)
+        .map_err(|_| SdkError::Config(format!("invalid bytes32: {hex_str}")))?;
+    if bytes.len() != 32 {
+        return Err(SdkError::Config(format!(
+            "channelId must be 32 bytes, got {}",
+            bytes.len()
+        )));
+    }
+    let mut word = [0u8; 32];
+    word.copy_from_slice(&bytes);
+    Ok(word)
 }
 
 /// A freshly generated payment wallet: the raw private key in the on-wire
@@ -340,7 +413,7 @@ mod svm;
 
 // ── MPP/Tempo (native type-0x76 tx) ──────────────────────────────────────────
 #[cfg(feature = "payments-tempo")]
-mod tempo;
+pub(crate) mod tempo;
 
 #[cfg(feature = "payments-tempo")]
 pub use tempo::TempoChargeRequest;
@@ -471,5 +544,33 @@ mod tests {
         };
         let sig = signer.sign_eip712(&domain, &message).unwrap();
         assert_eq!(format!("0x{}", hex::encode(sig)), EXPECTED_SIG);
+    }
+
+    #[test]
+    fn session_voucher_digest_reproduces_reference_vector() {
+        // Known-good digest computed offline with viem over the TIP-20 Channel
+        // Reserve EIP-712 domain + Voucher type (see mppx/ox Channel encoder).
+        // Reproducing it byte-for-byte proves the voucher construction matches
+        // the on-chain precompile's getVoucherDigest.
+        const CHANNEL_ID: &str =
+            "0x1111111111111111111111111111111111111111111111111111111111111111";
+        const ESCROW: &str = "0x4d50500000000000000000000000000000000000";
+        const EXPECTED: &str = "0x770fb9481d6b3c4a03639f4389e6b361c77557331871ad3d41dc8e456760375f";
+        let digest = session_voucher_digest(CHANNEL_ID, 1000, 42431, ESCROW).unwrap();
+        assert_eq!(format!("0x{}", hex::encode(digest)), EXPECTED);
+    }
+
+    #[test]
+    fn session_voucher_digest_is_domain_and_amount_bound() {
+        let ch = "0x1111111111111111111111111111111111111111111111111111111111111111";
+        let escrow = "0x4d50500000000000000000000000000000000000";
+        let base = session_voucher_digest(ch, 1000, 42431, escrow).unwrap();
+        // Changing the cumulative amount changes the digest.
+        assert_ne!(
+            base,
+            session_voucher_digest(ch, 1001, 42431, escrow).unwrap()
+        );
+        // Changing the chain id changes the digest.
+        assert_ne!(base, session_voucher_digest(ch, 1000, 1, escrow).unwrap());
     }
 }

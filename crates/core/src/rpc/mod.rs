@@ -24,6 +24,8 @@ pub mod payment;
 pub use crate::config::PaymentConfig;
 #[cfg(feature = "payments")]
 pub use payment::drawdown::{CreditBalance, GatewaySession};
+#[cfg(feature = "payments-tempo")]
+pub use payment::session::{ChannelState, ChannelStatus};
 #[cfg(feature = "payments")]
 pub use payment::signer::{generate_payment_wallet, ChainKind, GeneratedWallet};
 #[cfg(feature = "payments")]
@@ -352,6 +354,14 @@ impl RpcApiClient {
         Ok(resolved)
     }
 
+    /// The configured payment wallet's on-chain address (EVM/Tempo `0x…` hex,
+    /// Solana base58), derived offline from the key. A host uses this to key a
+    /// gateway-session cache by wallet without a network round trip.
+    #[cfg(feature = "payments")]
+    pub fn payment_address(&self) -> Result<String, SdkError> {
+        self.resolve_payment()?.signer.address()
+    }
+
     /// Authenticates against the x402 gateway with a SIWX message and returns a
     /// [`payment::drawdown::GatewaySession`] (the session JWT). Free — no funds
     /// move — so a host may (re)auth transparently before a drawdown call. The
@@ -423,6 +433,101 @@ impl RpcApiClient {
             &resolved,
             session,
             network,
+            &body,
+        )
+        .await?;
+        Self::parse_rpc(RawResponse { status: 200, text })
+    }
+
+    /// Opens an MPP payment channel by depositing `deposit` base units into the
+    /// escrow and returns the new [`payment::session::ChannelState`]. Moves real
+    /// funds; single-attempt.
+    #[cfg(feature = "payments-tempo")]
+    pub async fn mpp_open(
+        &self,
+        network: &str,
+        deposit: u128,
+    ) -> Result<payment::session::ChannelState, SdkError> {
+        let resolved = self.resolve_payment()?;
+        payment::session::open(self.config.rpc_http_client(), &resolved, network, deposit).await
+    }
+
+    /// Adds `additional_deposit` base units to an open MPP channel. Moves real
+    /// funds; single-attempt.
+    #[cfg(feature = "payments-tempo")]
+    pub async fn mpp_top_up(
+        &self,
+        network: &str,
+        channel: &payment::session::ChannelState,
+        additional_deposit: u128,
+    ) -> Result<payment::session::ChannelState, SdkError> {
+        let resolved = self.resolve_payment()?;
+        payment::session::top_up(
+            self.config.rpc_http_client(),
+            &resolved,
+            network,
+            channel,
+            additional_deposit,
+        )
+        .await
+    }
+
+    /// Cooperatively closes an MPP channel: settles the final cumulative spend
+    /// on-chain and refunds the unused deposit. Single-attempt.
+    #[cfg(feature = "payments-tempo")]
+    pub async fn mpp_close(
+        &self,
+        network: &str,
+        channel: &payment::session::ChannelState,
+    ) -> Result<(), SdkError> {
+        let resolved = self.resolve_payment()?;
+        payment::session::close(self.config.rpc_http_client(), &resolved, network, channel).await
+    }
+
+    /// Fetches the gateway's status for a channel — the recovery path when local
+    /// channel state is lost.
+    #[cfg(feature = "payments-tempo")]
+    pub async fn mpp_status(
+        &self,
+        network: &str,
+        channel_id: &str,
+    ) -> Result<payment::session::ChannelStatus, SdkError> {
+        let resolved = self.resolve_payment()?;
+        payment::session::status(
+            self.config.rpc_http_client(),
+            &resolved,
+            network,
+            channel_id,
+        )
+        .await
+    }
+
+    /// Makes one MPP session-lane JSON-RPC call, authorizing it with a
+    /// cumulative voucher for `new_cumulative` (the running total after this
+    /// call). Returns the unwrapped JSON-RPC `result`. Single-attempt; the caller
+    /// advances the persisted `cumulative_spent` after a success.
+    #[cfg(feature = "payments-tempo")]
+    pub async fn mpp_session_call(
+        &self,
+        method: &str,
+        params: Option<Value>,
+        network: &str,
+        channel: &payment::session::ChannelState,
+        new_cumulative: u128,
+    ) -> Result<Value, SdkError> {
+        let resolved = self.resolve_payment()?;
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": params.unwrap_or_else(|| Value::Array(vec![])),
+        });
+        let text = payment::session::voucher_call(
+            self.config.rpc_http_client(),
+            &resolved,
+            network,
+            channel,
+            new_cumulative,
             &body,
         )
         .await?;

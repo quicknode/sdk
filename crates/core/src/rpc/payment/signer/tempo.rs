@@ -14,6 +14,7 @@
 
 use std::num::NonZeroU64;
 
+use alloy_consensus::SignableTransaction;
 use alloy_primitives::{Address, Bytes, Signature, TxKind, U256};
 use alloy_rlp::Encodable;
 use secrecy::ExposeSecret;
@@ -26,6 +27,9 @@ use crate::errors::SdkError;
 
 // TIP20 transferWithMemo(address,uint256,bytes32) selector.
 const TRANSFER_WITH_MEMO_SELECTOR: [u8; 4] = [0x95, 0x77, 0x7d, 0x59];
+
+// TIP-20 Channel Reserve escrow precompile (TIP-1034), canonical address.
+pub(crate) const TIP20_CHANNEL_ESCROW: &str = "0x4d50500000000000000000000000000000000000";
 
 // Generous fixed gas/fee caps. Under `feePayer:true` the gateway sponsors the
 // fee, so the sender's caps cost it nothing and only need to exceed inclusion
@@ -125,6 +129,271 @@ impl Signer {
             &sig65,
         ))
     }
+
+    /// Sign a TIP-1034 escrow channel `open` or `topUp` transaction. Returns the
+    /// 0x78 fee-payer handoff envelope bytes (the credential's `transaction`)
+    /// plus, for `open`, the derived channelId. Sync, no chain reads — the
+    /// escrow precompile call rides the same fee-sponsored Tempo tx as a charge.
+    pub fn sign_escrow_tx(&self, req: &TempoEscrowRequest) -> Result<TempoEscrowSigned, SdkError> {
+        let Signer::Tempo(secret) = self else {
+            return Err(SdkError::Config(
+                "sign_escrow_tx requires a Tempo signer".into(),
+            ));
+        };
+        let key = secp::signing_key(secret.expose_secret())?;
+        let sender_hex = secp::evm_address(&key);
+        let sender: Address = sender_hex
+            .parse()
+            .map_err(|_| SdkError::Config("derived sender address is invalid".into()))?;
+
+        let escrow: Address = parse_address(TIP20_CHANNEL_ESCROW)?;
+        let calldata = req.action.calldata(&sender_hex)?;
+        let gas_limit = DEFAULT_GAS_LIMIT;
+        let max_fee = DEFAULT_MAX_FEE_PER_GAS;
+        let max_prio = DEFAULT_MAX_PRIORITY_FEE_PER_GAS;
+        let valid_before = NonZeroU64::new(req.valid_before)
+            .ok_or_else(|| SdkError::Config("validBefore must be non-zero".into()))?;
+
+        let tx = TempoTransaction {
+            chain_id: req.chain_id,
+            fee_token: None,
+            max_priority_fee_per_gas: max_prio,
+            max_fee_per_gas: max_fee,
+            gas_limit,
+            calls: vec![Call {
+                to: TxKind::Call(escrow),
+                value: U256::ZERO,
+                input: Bytes::from(calldata),
+            }],
+            access_list: Default::default(),
+            nonce_key: U256::MAX,
+            nonce: 0,
+            fee_payer_signature: Some(Signature::new(U256::from(1), U256::from(1), false)),
+            valid_before: Some(valid_before),
+            valid_after: None,
+            key_authorization: None,
+            tempo_authorization_list: vec![],
+        };
+
+        // TIP-1034 expiringNonceHash = keccak256(encode_for_signing(tx) || sender)
+        // over the sender-signed body (fee-payer sig excluded from the preimage).
+        let mut signing_buf = Vec::new();
+        tx.encode_for_signing(&mut signing_buf);
+        signing_buf.extend_from_slice(sender.as_slice());
+        let expiring_nonce_hash: [u8; 32] = keccak(&signing_buf);
+
+        let sign_hash = tx.signature_hash();
+        let sig65 = secp::sign_prehash_65(&key, &sign_hash.0);
+        let transaction = encode_handoff(
+            req.chain_id,
+            max_prio,
+            max_fee,
+            gas_limit,
+            &tx.calls,
+            &tx.access_list,
+            req.valid_before,
+            sender,
+            &sig65,
+        );
+
+        // channelId is only defined for open; a top-up references an existing one.
+        let channel_id = match &req.action {
+            EscrowAction::Open {
+                payee,
+                operator,
+                token,
+                salt,
+                authorized_signer,
+                ..
+            } => Some(compute_channel_id(
+                &sender_hex,
+                payee,
+                operator,
+                token,
+                salt,
+                authorized_signer,
+                &expiring_nonce_hash,
+                escrow.to_string().as_str(),
+                req.chain_id,
+            )?),
+            EscrowAction::TopUp { .. } => None,
+        };
+
+        Ok(TempoEscrowSigned {
+            transaction,
+            channel_id,
+            expiring_nonce_hash: format!("0x{}", hex::encode(expiring_nonce_hash)),
+        })
+    }
+}
+
+/// A TIP-1034 escrow channel management transaction to sign.
+#[derive(Debug, Clone)]
+pub struct TempoEscrowRequest {
+    pub chain_id: u64,
+    /// `validBefore` = min(now+25s, expiry), computed by the caller.
+    pub valid_before: u64,
+    pub action: EscrowAction,
+}
+
+/// The escrow precompile call carried by a [`TempoEscrowRequest`].
+#[derive(Debug, Clone)]
+pub enum EscrowAction {
+    /// `open(payee, operator, token, deposit, salt, authorizedSigner)`.
+    Open {
+        payee: String,
+        operator: String,
+        token: String,
+        deposit: u128,
+        /// 32-byte payer entropy, `0x`-hex.
+        salt: String,
+        authorized_signer: String,
+    },
+    /// `topUp(descriptor, additionalDeposit)`.
+    TopUp {
+        descriptor: ChannelDescriptor,
+        additional_deposit: u128,
+    },
+}
+
+/// The full TIP-1034 channel descriptor, needed to build a `topUp`/`close`
+/// call and to re-derive the channelId.
+#[derive(Debug, Clone)]
+pub struct ChannelDescriptor {
+    pub payer: String,
+    pub payee: String,
+    pub operator: String,
+    pub token: String,
+    pub salt: String,
+    pub authorized_signer: String,
+    pub expiring_nonce_hash: String,
+}
+
+/// The result of signing an escrow management transaction.
+#[derive(Debug, Clone)]
+pub struct TempoEscrowSigned {
+    /// 0x78 fee-payer handoff envelope bytes (the credential `transaction`).
+    pub transaction: Vec<u8>,
+    /// Derived channelId (`open` only; `None` for `topUp`).
+    pub channel_id: Option<[u8; 32]>,
+    /// The tx's TIP-1034 expiringNonceHash, needed to reconstruct the descriptor.
+    pub expiring_nonce_hash: String,
+}
+
+impl EscrowAction {
+    // ABI-encode the escrow precompile calldata (selector ++ head words). All
+    // args are static, so head-only encoding matches abi.encode exactly.
+    fn calldata(&self, sender: &str) -> Result<Vec<u8>, SdkError> {
+        match self {
+            EscrowAction::Open {
+                payee,
+                operator,
+                token,
+                deposit,
+                salt,
+                authorized_signer,
+            } => {
+                // open(address,address,address,uint96,bytes32,address)
+                let selector = fn_selector(b"open(address,address,address,uint96,bytes32,address)");
+                let mut data = Vec::with_capacity(4 + 6 * 32);
+                data.extend_from_slice(&selector);
+                data.extend_from_slice(&super::address_word(payee)?);
+                data.extend_from_slice(&super::address_word(operator)?);
+                data.extend_from_slice(&super::address_word(token)?);
+                data.extend_from_slice(&u96_word(*deposit));
+                data.extend_from_slice(&bytes32(salt)?);
+                data.extend_from_slice(&super::address_word(authorized_signer)?);
+                Ok(data)
+            }
+            EscrowAction::TopUp {
+                descriptor,
+                additional_deposit,
+            } => {
+                // topUp((descriptor tuple), uint96). The tuple is static (all
+                // fixed-size fields), so it encodes inline (head, no offset).
+                let selector = fn_selector(
+                    b"topUp((address,address,address,address,bytes32,address,bytes32),uint96)",
+                );
+                let mut data = Vec::with_capacity(4 + 8 * 32);
+                data.extend_from_slice(&selector);
+                data.extend_from_slice(&encode_descriptor(descriptor)?);
+                data.extend_from_slice(&u96_word(*additional_deposit));
+                let _ = sender;
+                Ok(data)
+            }
+        }
+    }
+}
+
+// keccak256(signature)[..4] function selector.
+fn fn_selector(signature: &[u8]) -> [u8; 4] {
+    let h = keccak(signature);
+    [h[0], h[1], h[2], h[3]]
+}
+
+// A uint96 as a 32-byte left-padded EVM word (bounds-checked to 96 bits).
+fn u96_word(value: u128) -> [u8; 32] {
+    let mut word = [0u8; 32];
+    word[16..].copy_from_slice(&value.to_be_bytes());
+    word
+}
+
+// A bytes32 hex value as a raw 32-byte word.
+fn bytes32(hex_str: &str) -> Result<[u8; 32], SdkError> {
+    let cleaned = hex_str.strip_prefix("0x").unwrap_or(hex_str);
+    let bytes = hex::decode(cleaned)
+        .map_err(|_| SdkError::Config(format!("invalid bytes32: {hex_str}")))?;
+    if bytes.len() != 32 {
+        return Err(SdkError::Config(format!(
+            "bytes32 must be 32 bytes, got {}",
+            bytes.len()
+        )));
+    }
+    let mut word = [0u8; 32];
+    word.copy_from_slice(&bytes);
+    Ok(word)
+}
+
+// ABI-encode the 7-field channel descriptor tuple (all static → 7 head words).
+fn encode_descriptor(d: &ChannelDescriptor) -> Result<Vec<u8>, SdkError> {
+    let mut out = Vec::with_capacity(7 * 32);
+    out.extend_from_slice(&super::address_word(&d.payer)?);
+    out.extend_from_slice(&super::address_word(&d.payee)?);
+    out.extend_from_slice(&super::address_word(&d.operator)?);
+    out.extend_from_slice(&super::address_word(&d.token)?);
+    out.extend_from_slice(&bytes32(&d.salt)?);
+    out.extend_from_slice(&super::address_word(&d.authorized_signer)?);
+    out.extend_from_slice(&bytes32(&d.expiring_nonce_hash)?);
+    Ok(out)
+}
+
+// channelId = keccak256(abi.encode(payer, payee, operator, token, salt,
+//   authorizedSigner, expiringNonceHash, escrow, chainId)) — all static words.
+#[allow(clippy::too_many_arguments)]
+fn compute_channel_id(
+    payer: &str,
+    payee: &str,
+    operator: &str,
+    token: &str,
+    salt: &str,
+    authorized_signer: &str,
+    expiring_nonce_hash: &[u8; 32],
+    escrow: &str,
+    chain_id: u64,
+) -> Result<[u8; 32], SdkError> {
+    let mut buf = Vec::with_capacity(9 * 32);
+    buf.extend_from_slice(&super::address_word(payer)?);
+    buf.extend_from_slice(&super::address_word(payee)?);
+    buf.extend_from_slice(&super::address_word(operator)?);
+    buf.extend_from_slice(&super::address_word(token)?);
+    buf.extend_from_slice(&bytes32(salt)?);
+    buf.extend_from_slice(&super::address_word(authorized_signer)?);
+    buf.extend_from_slice(expiring_nonce_hash);
+    buf.extend_from_slice(&super::address_word(escrow)?);
+    let mut chain_word = [0u8; 32];
+    chain_word[24..].copy_from_slice(&chain_id.to_be_bytes());
+    buf.extend_from_slice(&chain_word);
+    Ok(keccak(&buf))
 }
 
 fn parse_address(addr: &str) -> Result<Address, SdkError> {
@@ -324,5 +593,53 @@ mod tests {
         assert_eq!(memo[4], 0x01);
         // bytes 15..25 are the zero clientId gap.
         assert_eq!(&memo[15..25], &[0u8; 10]);
+    }
+
+    #[test]
+    fn channel_id_reproduces_reference_vector() {
+        // Known-good channelId computed offline with viem's abi.encode + keccak
+        // over the TIP-1034 descriptor + escrow + chainId (see mppx/ox
+        // Channel.computeId). Reproducing it exactly proves the ABI encoding of
+        // the channel-id preimage matches the reference client.
+        const ZERO: &str = "0x0000000000000000000000000000000000000000";
+        let payer = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
+        let payee = "0xfd24114c3981aba78ae2441991b1bdb89329c556";
+        let token = "0x20c0000000000000000000000000000000000000";
+        let salt = format!("0x{}", "22".repeat(32));
+        let enh = [0x33u8; 32];
+        let id = compute_channel_id(
+            payer,
+            payee,
+            ZERO,
+            token,
+            &salt,
+            ZERO,
+            &enh,
+            TIP20_CHANNEL_ESCROW,
+            42431,
+        )
+        .unwrap();
+        assert_eq!(
+            format!("0x{}", hex::encode(id)),
+            "0xeca267dbed8a5cd313739c9cc6f02039888dec8d6262a95519a20a6f83917608"
+        );
+    }
+
+    #[test]
+    fn escrow_open_selector_is_correct() {
+        // open(address,address,address,uint96,bytes32,address) selector.
+        let sel = fn_selector(b"open(address,address,address,uint96,bytes32,address)");
+        // First calldata word after the selector is the payee address.
+        let action = EscrowAction::Open {
+            payee: "0xfd24114c3981aba78ae2441991b1bdb89329c556".into(),
+            operator: "0x0000000000000000000000000000000000000000".into(),
+            token: "0x20c0000000000000000000000000000000000000".into(),
+            deposit: 1000,
+            salt: format!("0x{}", "22".repeat(32)),
+            authorized_signer: "0x0000000000000000000000000000000000000000".into(),
+        };
+        let data = action.calldata("0xsender").unwrap();
+        assert_eq!(&data[0..4], &sel);
+        assert_eq!(data.len(), 4 + 6 * 32);
     }
 }

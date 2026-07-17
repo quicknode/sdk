@@ -14,6 +14,8 @@
 //! after the paid resend is [`SdkError::PaymentIndeterminate`].
 
 pub mod drawdown;
+#[cfg(feature = "payments-tempo")]
+pub mod session;
 pub mod signer;
 
 use serde::Deserialize;
@@ -736,7 +738,7 @@ fn parse_mpp_challenges(header: &str) -> Vec<MppChallenge> {
 
 // Split on `Payment ` boundaries (at start or after a comma-space).
 #[cfg(feature = "payments-tempo")]
-fn split_payment_challenges(header: &str) -> Vec<String> {
+pub(super) fn split_payment_challenges(header: &str) -> Vec<String> {
     let mut parts = Vec::new();
     let mut rest = header.trim();
     // Strip a leading "Payment ".
@@ -756,7 +758,7 @@ fn split_payment_challenges(header: &str) -> Vec<String> {
 
 // Extract key="value" (values contain no escaped quotes in the challenge).
 #[cfg(feature = "payments-tempo")]
-fn extract_quoted(part: &str, key: &str) -> Option<String> {
+pub(super) fn extract_quoted(part: &str, key: &str) -> Option<String> {
     let needle = format!("{key}=\"");
     let start = part.find(&needle)? + needle.len();
     let end = part[start..].find('"')? + start;
@@ -783,7 +785,7 @@ fn parse_receipt(header: &str) -> Option<PaymentReceipt> {
     })
 }
 
-fn decode_b64url_json(s: &str) -> Result<Value, SdkError> {
+pub(super) fn decode_b64url_json(s: &str) -> Result<Value, SdkError> {
     use base64::Engine;
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(s.trim_end_matches('='))
@@ -803,7 +805,7 @@ fn base64_std(bytes: Vec<u8>) -> String {
 // Only the MPP/Tempo credential builder uses this in non-test code; the
 // receipt-parse test exercises it regardless of features.
 #[cfg_attr(not(feature = "payments-tempo"), allow(dead_code))]
-fn base64_url_nopad(bytes: Vec<u8>) -> String {
+pub(super) fn base64_url_nopad(bytes: Vec<u8>) -> String {
     use base64::Engine;
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }

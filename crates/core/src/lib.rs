@@ -24,6 +24,8 @@ pub use rpc::{
     generate_payment_wallet, ChainKind, CreditBalance, GatewaySession, GeneratedWallet,
     PaymentConfig, PaymentReceipt, PaymentScheme, RpcCallResponse,
 };
+#[cfg(feature = "payments-tempo")]
+pub use rpc::{ChannelState, ChannelStatus};
 pub use sql::{
     ChainSchema, ColumnMeta, ColumnSchema, QueryParams, QueryResponse, QueryStatistics,
     SqlApiClient, TableSchema,
