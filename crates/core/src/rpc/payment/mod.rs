@@ -848,13 +848,33 @@ fn describe_offered(accepts: &[Value], skipped: &[String]) -> String {
 // at response time — a skewed local clock (>~25s behind) signs already-expired
 // credentials and every call ends in PaymentRejected.
 fn enrich_rejection(payment: &ResolvedPayment, body: String) -> String {
+    let out = reduce_rejection_body(body);
     if payment.signer.kind() == signer::ChainKind::Tempo {
-        format!(
-            "{body} (if this persists, check the system clock — Tempo payment windows are ~25s)"
-        )
+        format!("{out} (if this persists, check the system clock — Tempo payment windows are ~25s)")
     } else {
-        body
+        out
     }
+}
+
+/// Reduces the gateway's rejection body to its own reason when the body is the
+/// JSON error shape (`{"error": ..., "message": ...}`), so the terse reason can
+/// lead the caller's message. A body that isn't that shape (e.g. a full 402
+/// payment menu, or plain text) is returned unchanged.
+fn reduce_rejection_body(body: String) -> String {
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(&body) {
+        let err = v.get("error").and_then(|e| e.as_str());
+        let msg = v.get("message").and_then(|m| m.as_str());
+        let reason = match (err, msg) {
+            (Some(e), Some(m)) if e != m => format!("{e}: {m}"),
+            (_, Some(m)) => m.to_string(),
+            (Some(e), None) => e.to_string(),
+            _ => String::new(),
+        };
+        if !reason.is_empty() {
+            return reason;
+        }
+    }
+    body
 }
 
 fn now_unix() -> u64 {
@@ -902,6 +922,30 @@ fn random_nonce() -> [u8; 32] {
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reduce_rejection_body_extracts_json_reason() {
+        // error + message → "error: message".
+        assert_eq!(
+            reduce_rejection_body(
+                r#"{"error":"auth_required","message":"SIWX authentication required"}"#.to_string()
+            ),
+            "auth_required: SIWX authentication required"
+        );
+        // message only.
+        assert_eq!(
+            reduce_rejection_body(r#"{"message":"insufficient funds"}"#.to_string()),
+            "insufficient funds"
+        );
+        // A body that isn't the error shape (e.g. a payment menu) is unchanged.
+        let menu = r#"{"accepts":[{"amount":"1000"}]}"#.to_string();
+        assert_eq!(reduce_rejection_body(menu.clone()), menu);
+        // Plain text is unchanged.
+        assert_eq!(
+            reduce_rejection_body("bad signature".to_string()),
+            "bad signature"
+        );
+    }
 
     #[test]
     fn caip2_evm_parse() {
