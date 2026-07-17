@@ -91,9 +91,10 @@ pub struct CreditBalance {
     pub credits: u64,
 }
 
-// The SIWX statement the gateway requires. A fixed ToS acknowledgement.
+// The exact SIWX statement the gateway requires, verbatim — the /auth endpoint
+// rejects any other text as `invalid_statement`.
 const SIWX_STATEMENT: &str =
-    "I accept the Quicknode Terms of Service and authorize x402 credit drawdown.";
+    "I accept the Quicknode Terms of Service: https://www.quicknode.com/terms";
 
 /// Authenticates against the x402 gateway with a SIWE (EIP-4361) message and
 /// returns a cached [`GatewaySession`]. Free — no funds move — so a caller may
@@ -473,7 +474,7 @@ mod tests {
         let expected = "x402.quicknode.com wants you to sign in with your Ethereum account:\n\
              0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266\n\
              \n\
-             I accept the Quicknode Terms of Service and authorize x402 credit drawdown.\n\
+             I accept the Quicknode Terms of Service: https://www.quicknode.com/terms\n\
              \n\
              URI: https://x402.quicknode.com\n\
              Version: 1\n\
