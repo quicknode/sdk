@@ -107,7 +107,10 @@ pub async fn authenticate(
     payment: &ResolvedPayment,
 ) -> Result<GatewaySession, SdkError> {
     let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
-    let address = payment.signer.address()?;
+    // The SIWE `address` line must be EIP-55 checksummed: the gateway recovers
+    // the signer and compares it case-sensitively to the address in the message.
+    // The signer derives a lowercase address, so checksum it here.
+    let address = to_checksum_address(&payment.signer.address()?);
     // EIP-4361's `Chain ID` field is the decimal EIP-155 chain id, NOT the
     // CAIP-2 string: the gateway matches it numerically (a CAIP-2 value like
     // "eip155:84532" is rejected as unsupported_chain). Derive it from the
@@ -369,6 +372,35 @@ pub(super) fn siwe_message(
     )
 }
 
+// EIP-55 mixed-case checksum of a `0x`-hex EVM address: uppercase each hex
+// digit whose corresponding nibble in keccak256(lowercase-addr-without-0x) is
+// >= 8. SIWE requires the checksummed form in the `address` line.
+fn to_checksum_address(addr: &str) -> String {
+    use sha3::{Digest, Keccak256};
+    let lower = addr.strip_prefix("0x").unwrap_or(addr).to_lowercase();
+    let hash = Keccak256::digest(lower.as_bytes());
+    let mut out = String::with_capacity(42);
+    out.push_str("0x");
+    for (i, c) in lower.chars().enumerate() {
+        if c.is_ascii_digit() {
+            out.push(c);
+        } else {
+            // nibble i of the hash: high nibble for even i, low for odd.
+            let nibble = if i % 2 == 0 {
+                hash[i / 2] >> 4
+            } else {
+                hash[i / 2] & 0x0f
+            };
+            if nibble >= 8 {
+                out.push(c.to_ascii_uppercase());
+            } else {
+                out.push(c);
+            }
+        }
+    }
+    out
+}
+
 // Parse the decimal EIP-155 chain id from an `eip155:<n>` CAIP-2 pay network,
 // for the SIWE `Chain ID` field. x402 drawdown is EVM-only; a non-eip155 (e.g.
 // solana:) pay network is an unsupported config here.
@@ -402,7 +434,10 @@ fn rfc3339_now() -> String {
     let rem = secs.rem_euclid(86_400);
     let (hour, min, sec) = (rem / 3600, (rem % 3600) / 60, rem % 60);
     let (year, month, day) = civil_from_days(days);
-    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z")
+    // Millisecond precision (.000) matches the canonical EIP-4361 `Issued At`
+    // the reference SIWE libraries emit; whole-second precision can trip the
+    // gateway's format validation.
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}.000Z")
 }
 
 // Days-since-epoch → (year, month, day), Howard Hinnant's civil_from_days.
@@ -492,6 +527,21 @@ mod tests {
         let back = parse_rfc3339_to_unix(&iso).unwrap();
         let now = now_unix() as i64;
         assert!((now - back).abs() <= 1, "iso={iso} back={back} now={now}");
+    }
+
+    #[test]
+    fn checksum_address_matches_eip55() {
+        // Known-good EIP-55 checksum (anvil key #0's address), matching the
+        // reference SIWE libraries' output.
+        assert_eq!(
+            to_checksum_address("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"),
+            "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+        );
+        // Idempotent on already-checksummed input.
+        assert_eq!(
+            to_checksum_address("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
+            "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+        );
     }
 
     #[test]
