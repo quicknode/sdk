@@ -107,7 +107,11 @@ pub async fn authenticate(
 ) -> Result<GatewaySession, SdkError> {
     let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
     let address = payment.signer.address()?;
-    let chain_id = payment.pay_network.clone();
+    // EIP-4361's `Chain ID` field is the decimal EIP-155 chain id, NOT the
+    // CAIP-2 string: the gateway matches it numerically (a CAIP-2 value like
+    // "eip155:84532" is rejected as unsupported_chain). Derive it from the
+    // eip155 pay_network prefix.
+    let chain_id = eip155_chain_id(&payment.pay_network)?;
 
     // Build and sign the SIWE message. The domain/uri and statement are fixed
     // by the gateway; the nonce is a fresh random hex (≥8 chars) and issuedAt
@@ -118,7 +122,7 @@ pub async fn authenticate(
     let message = siwe_message(
         &host,
         &address,
-        &chain_id,
+        chain_id,
         &nonce,
         &issued_at,
         SIWX_STATEMENT,
@@ -342,14 +346,14 @@ pub async fn buy_credits(
 pub(super) fn siwe_message(
     host: &str,
     address: &str,
-    chain_id: &str,
+    chain_id: u64,
     nonce: &str,
     issued_at: &str,
     statement: &str,
 ) -> String {
-    // EIP-4361 field order is fixed. `Version` is always 1; `Chain ID` carries
-    // the CAIP-2 id verbatim so the gateway can bind the session to the pay
-    // chain. `URI` is https://<host>.
+    // EIP-4361 field order is fixed. `Version` is always 1; `Chain ID` is the
+    // decimal EIP-155 chain id (the gateway matches it numerically). `URI` is
+    // https://<host>.
     format!(
         "{host} wants you to sign in with your Ethereum account:\n\
          {address}\n\
@@ -362,6 +366,20 @@ pub(super) fn siwe_message(
          Nonce: {nonce}\n\
          Issued At: {issued_at}"
     )
+}
+
+// Parse the decimal EIP-155 chain id from an `eip155:<n>` CAIP-2 pay network,
+// for the SIWE `Chain ID` field. x402 drawdown is EVM-only; a non-eip155 (e.g.
+// solana:) pay network is an unsupported config here.
+fn eip155_chain_id(pay_network: &str) -> Result<u64, SdkError> {
+    pay_network
+        .strip_prefix("eip155:")
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| {
+            SdkError::Config(format!(
+                "x402 drawdown requires an eip155 pay network (e.g. eip155:84532), got {pay_network:?}"
+            ))
+        })
 }
 
 // Strip the scheme (and any trailing slash) from a gateway base URL, leaving
@@ -447,7 +465,7 @@ mod tests {
         let msg = siwe_message(
             "x402.quicknode.com",
             EVM_ADDR,
-            "eip155:84532",
+            84532,
             "abc12345",
             "2026-07-17T12:00:00Z",
             SIWX_STATEMENT,
@@ -459,7 +477,7 @@ mod tests {
              \n\
              URI: https://x402.quicknode.com\n\
              Version: 1\n\
-             Chain ID: eip155:84532\n\
+             Chain ID: 84532\n\
              Nonce: abc12345\n\
              Issued At: 2026-07-17T12:00:00Z";
         assert_eq!(msg, expected);

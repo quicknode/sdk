@@ -344,7 +344,7 @@ pub async fn voucher_call(
         "cumulativeAmount": new_cumulative.to_string(),
         "signature": signature,
     });
-    let credential = build_credential(&challenge, &payer, &payload);
+    let credential = build_credential(&challenge, &payer, channel.chain_id, &payload);
 
     let base = session_base(payment, query_network);
     let paid = match client
@@ -444,8 +444,14 @@ fn parse_session_challenge(header: &str) -> Result<SessionChallenge, SdkError> {
 
 // Build the `Payment <base64url JSON>` credential: {challenge, payload, source}
 // with the challenge's original request echoed verbatim (matches mppx's
-// Credential.serialize wire shape).
-fn build_credential(challenge: &SessionChallenge, payer: &str, payload: &Value) -> String {
+// Credential.serialize wire shape). `source` is the CAIP-10 did:pkh of the
+// payer on the channel's chain.
+fn build_credential(
+    challenge: &SessionChallenge,
+    payer: &str,
+    chain_id: u64,
+    payload: &Value,
+) -> String {
     let credential = serde_json::json!({
         "challenge": {
             "id": challenge.id,
@@ -457,7 +463,7 @@ fn build_credential(challenge: &SessionChallenge, payer: &str, payload: &Value) 
             "request": challenge.request_b64,
         },
         "payload": payload,
-        "source": format!("did:pkh:eip155:{payer}"),
+        "source": format!("did:pkh:eip155:{chain_id}:{payer}"),
     });
     super::base64_url_nopad(serde_json::to_vec(&credential).unwrap_or_default())
 }
@@ -473,7 +479,8 @@ async fn post_session_credential(
     payer: &str,
     payload: Value,
 ) -> Result<(), SdkError> {
-    let credential = build_credential(challenge, payer, &payload);
+    let chain_id = challenge_chain_id(challenge)?;
+    let credential = build_credential(challenge, payer, chain_id, &payload);
     let base = session_base(payment, query_network);
     let resp = client
         .post(&base)
