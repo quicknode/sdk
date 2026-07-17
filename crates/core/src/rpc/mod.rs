@@ -23,7 +23,7 @@ pub mod payment;
 #[cfg(feature = "payments")]
 pub use crate::config::PaymentConfig;
 #[cfg(feature = "payments")]
-pub use payment::drawdown::{CreditBalance, GatewaySession};
+pub use payment::drawdown::{CreditBalance, DripReceipt, GatewaySession};
 #[cfg(feature = "payments-tempo")]
 pub use payment::session::{ChannelState, ChannelStatus};
 #[cfg(feature = "payments")]
@@ -383,9 +383,11 @@ impl RpcApiClient {
     pub async fn gateway_buy_credits(
         &self,
         session: &payment::drawdown::GatewaySession,
+        network: &str,
     ) -> Result<payment::drawdown::CreditBalance, SdkError> {
         let resolved = self.resolve_payment()?;
-        payment::drawdown::buy_credits(self.config.rpc_http_client(), &resolved, session).await
+        payment::drawdown::buy_credits(self.config.rpc_http_client(), &resolved, session, network)
+            .await
     }
 
     /// Reads the account's current x402 credit balance (GET `/credits`).
@@ -398,13 +400,14 @@ impl RpcApiClient {
         payment::drawdown::credits(self.config.rpc_http_client(), &resolved, session).await
     }
 
-    /// Requests testnet credits from the x402 faucet (POST `/drip`). Allowed
-    /// once per account on Base Sepolia. Returns the post-drip balance.
+    /// Requests testnet tokens from the x402 faucet (POST `/drip`). Allowed once
+    /// per account on Base Sepolia. Returns the funding transaction (not a
+    /// balance — call [`Self::gateway_credits`] afterwards for the balance).
     #[cfg(feature = "payments")]
     pub async fn gateway_drip(
         &self,
         session: &payment::drawdown::GatewaySession,
-    ) -> Result<payment::drawdown::CreditBalance, SdkError> {
+    ) -> Result<payment::drawdown::DripReceipt, SdkError> {
         let resolved = self.resolve_payment()?;
         payment::drawdown::drip(self.config.rpc_http_client(), &resolved, session).await
     }

@@ -21,8 +21,8 @@ pub use kvstore::{
 pub use rpc::RpcApiClient;
 #[cfg(feature = "payments")]
 pub use rpc::{
-    generate_payment_wallet, ChainKind, CreditBalance, GatewaySession, GeneratedWallet,
-    PaymentConfig, PaymentReceipt, PaymentScheme, RpcCallResponse,
+    generate_payment_wallet, ChainKind, CreditBalance, DripReceipt, GatewaySession,
+    GeneratedWallet, PaymentConfig, PaymentReceipt, PaymentScheme, RpcCallResponse,
 };
 #[cfg(feature = "payments-tempo")]
 pub use rpc::{ChannelState, ChannelStatus};

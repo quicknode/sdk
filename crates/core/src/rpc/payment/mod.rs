@@ -340,8 +340,35 @@ pub(super) async fn authorize_x402(
             offered: format!("an unparseable x402 challenge (invalid JSON: {source})"),
         })?;
 
+    authorize_x402_entry(client, payment, &parsed, false).await
+}
+
+/// Like [`authorize_x402`], but selects the LARGEST eligible offer (≤
+/// `max_amount`) instead of the first match — the credit-drawdown tier, whose
+/// amount is higher than the per-request offer. Used by the credit-purchase
+/// path so `buy_credits` funds a block of credits rather than a single request.
+pub(super) async fn authorize_x402_largest(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+    challenge_body: &str,
+) -> Result<Authorized, SdkError> {
+    let parsed: X402Body =
+        serde_json::from_str(challenge_body).map_err(|source| SdkError::PaymentUnsupported {
+            offered: format!("an unparseable x402 challenge (invalid JSON: {source})"),
+        })?;
+    authorize_x402_entry(client, payment, &parsed, true).await
+}
+
+// Select an accepts[] entry (first-match, or largest ≤ max_amount when
+// `prefer_largest`) and authorize it with the chain-appropriate signer.
+async fn authorize_x402_entry(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+    parsed: &X402Body,
+    prefer_largest: bool,
+) -> Result<Authorized, SdkError> {
     let mut skipped: Vec<String> = Vec::new();
-    let chosen = select_x402_entry(payment, &parsed.accepts, &mut skipped);
+    let chosen = select_x402_entry(payment, &parsed.accepts, &mut skipped, prefer_largest);
     let Some(entry) = chosen else {
         return Err(SdkError::PaymentUnsupported {
             offered: describe_offered(&parsed.accepts, &skipped),
@@ -359,14 +386,18 @@ pub(super) async fn authorize_x402(
     }
 }
 
-// Select the first accepts[] entry that matches {pay_network, asset}, has a
-// supported `extra` shape, and whose amount is a non-negative integer ≤
-// max_amount. Records skip reasons for the PaymentUnsupported message.
+// Select an accepts[] entry that matches {pay_network, asset}, has a supported
+// `extra` shape, and whose amount is a non-negative integer ≤ max_amount.
+// Records skip reasons for the PaymentUnsupported message. With
+// `prefer_largest`, returns the highest-amount eligible entry (the
+// credit-drawdown tier); otherwise the first match (the per-request tier).
 fn select_x402_entry(
     payment: &ResolvedPayment,
     accepts: &[Value],
     skipped: &mut Vec<String>,
+    prefer_largest: bool,
 ) -> Option<Value> {
+    let mut best: Option<(u128, Value)> = None;
     for entry in accepts {
         let network = entry.get("network").and_then(Value::as_str).unwrap_or("");
         let asset = entry.get("asset").and_then(Value::as_str).unwrap_or("");
@@ -387,7 +418,15 @@ fn select_x402_entry(
         // Amount must be an integer base-unit string ≤ max_amount.
         let amount_str = entry.get("amount").and_then(Value::as_str).unwrap_or("");
         match amount_str.parse::<u128>() {
-            Ok(amount) if amount <= payment.max_amount => return Some(entry.clone()),
+            Ok(amount) if amount <= payment.max_amount => {
+                if !prefer_largest {
+                    return Some(entry.clone());
+                }
+                // Keep the largest eligible offer for the credit-drawdown path.
+                if best.as_ref().is_none_or(|(b, _)| amount > *b) {
+                    best = Some((amount, entry.clone()));
+                }
+            }
             Ok(amount) => skipped.push(format!(
                 "{network}/{asset}: amount {amount} exceeds max_amount {}",
                 payment.max_amount
@@ -397,7 +436,7 @@ fn select_x402_entry(
             )),
         }
     }
-    None
+    best.map(|(_, entry)| entry)
 }
 
 fn authorize_x402_evm(

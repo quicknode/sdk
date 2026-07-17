@@ -219,14 +219,24 @@ pub async fn credits(
     })
 }
 
-/// Requests testnet credits from the faucet (POST `/drip`, Bearer JWT). The
-/// gateway allows this once per account on Base Sepolia. Returns the balance
-/// after the drip.
+/// The faucet drip result: the on-chain funding transaction. The gateway's
+/// `/drip` returns the settlement tx, not a credit balance — call [`credits`]
+/// afterwards to read the updated balance.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DripReceipt {
+    pub account_id: String,
+    /// The faucet funding transaction hash.
+    pub transaction_hash: String,
+}
+
+/// Requests testnet tokens from the faucet (POST `/drip`, Bearer JWT). The
+/// gateway allows this once per account on Base Sepolia and returns the funding
+/// transaction (NOT a balance).
 pub async fn drip(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
     session: &GatewaySession,
-) -> Result<CreditBalance, SdkError> {
+) -> Result<DripReceipt, SdkError> {
     let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
     let url = format!("{}/drip", base.trim_end_matches('/'));
     let resp = client
@@ -240,11 +250,18 @@ pub async fn drip(
     if !status.is_success() {
         return Err(SdkError::Api { status, body });
     }
-    let parsed: CreditsResponse =
+    #[derive(Deserialize)]
+    struct DripBody {
+        #[serde(rename = "accountId")]
+        account_id: String,
+        #[serde(rename = "transactionHash")]
+        transaction_hash: String,
+    }
+    let parsed: DripBody =
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
-    Ok(CreditBalance {
+    Ok(DripReceipt {
         account_id: parsed.account_id,
-        credits: parsed.credits,
+        transaction_hash: parsed.transaction_hash,
     })
 }
 
@@ -261,38 +278,43 @@ pub async fn buy_credits(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
     session: &GatewaySession,
+    query_network: &str,
 ) -> Result<CreditBalance, SdkError> {
     use crate::errors::HttpKind;
 
+    // Credits are purchased by settling the credit-drawdown offer on a
+    // network-scoped RPC request (there is no dedicated /credits POST): the
+    // gateway 402s a keyed request with an `accepts` menu, and the highest-tier
+    // offer is the credit block. The 200 body is the RPC result (credits are
+    // funded as a side effect), so the new balance is read via GET /credits.
     let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
-    let url = format!("{}/credits", base.trim_end_matches('/'));
+    let url = format!("{}/{}", base.trim_end_matches('/'), query_network);
+    let rpc_body = serde_json::json!({
+        "jsonrpc": "2.0", "id": 1, "method": "eth_chainId", "params": []
+    });
 
-    // 1. Offer probe with the Bearer JWT. A non-402 means the gateway did not
-    //    demand payment (or errored) — surface it as-is.
+    // 1. Offer probe with the Bearer JWT. A non-402 means credits are already
+    //    available (the RPC ran) — nothing to buy; report the current balance.
     let first = client
         .post(&url)
         .bearer_auth(&session.token)
+        .json(&rpc_body)
         .send()
         .await
         .map_err(SdkError::Http)?;
     let status = first.status();
     if status.as_u16() != 402 {
-        let body = first.text().await.map_err(SdkError::Http)?;
         if !status.is_success() {
+            let body = first.text().await.unwrap_or_default();
             return Err(SdkError::Api { status, body });
         }
-        let parsed: CreditsResponse =
-            serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
-        return Ok(CreditBalance {
-            account_id: parsed.account_id,
-            credits: parsed.credits,
-        });
+        return credits(client, payment, session).await;
     }
 
-    // 2. Settle the credit offer with the shared x402 signer (EIP-712 for EVM,
-    //    SPL for Solana). Pre-payment parse failures stay PaymentUnsupported.
+    // 2. Settle the largest offered tier (the credit block) with the shared
+    //    x402 signer. Pre-payment parse failures stay PaymentUnsupported.
     let challenge_body = first.text().await.map_err(SdkError::Http)?;
-    let authorized = super::authorize_x402(client, payment, &challenge_body).await?;
+    let authorized = super::authorize_x402_largest(client, payment, &challenge_body).await?;
     let header = authorized
         .x402_header()
         .ok_or_else(|| SdkError::Config("credit purchase produced no x402 credential".into()))?;
@@ -303,6 +325,7 @@ pub async fn buy_credits(
         .post(&url)
         .bearer_auth(&session.token)
         .header("PAYMENT-SIGNATURE", header)
+        .json(&rpc_body)
         .send()
         .await
     {
@@ -323,22 +346,10 @@ pub async fn buy_credits(
             body,
         });
     }
-    let body = match paid.text().await {
-        Ok(t) => t,
-        Err(e) => {
-            let err = SdkError::Http(e);
-            return Err(match err.http_kind() {
-                Some(HttpKind::Connect) => err,
-                _ => SdkError::PaymentIndeterminate,
-            });
-        }
-    };
-    let parsed: CreditsResponse =
-        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
-    Ok(CreditBalance {
-        account_id: parsed.account_id,
-        credits: parsed.credits,
-    })
+    // Drain the (RPC-result) body so the connection completes, then read the
+    // freshly-funded balance from GET /credits.
+    let _ = paid.text().await;
+    credits(client, payment, session).await
 }
 
 // ── SIWE message construction ────────────────────────────────────────────────
@@ -699,12 +710,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn drip_returns_the_post_drip_balance() {
+    async fn drip_returns_the_funding_transaction() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/drip"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "accountId": "eip155:84532:0xabc", "credits": 100u64
+                "accountId": "eip155:84532:0xabc",
+                "walletAddress": "0xabc",
+                "transactionHash": "0xfeed"
             })))
             .mount(&server)
             .await;
@@ -716,15 +729,29 @@ mod tests {
             account_id: "a".into(),
         };
         let client = reqwest::Client::new();
-        let bal = drip(&client, &payment, &session).await.unwrap();
-        assert_eq!(bal.credits, 100);
+        let receipt = drip(&client, &payment, &session).await.unwrap();
+        assert_eq!(receipt.transaction_hash, "0xfeed");
+        assert_eq!(receipt.account_id, "eip155:84532:0xabc");
+    }
+
+    // A two-tier 402 menu: a per-request offer and the larger credit-drawdown
+    // offer. buy_credits must pick the LARGER (credit) tier.
+    fn two_tier_offer() -> Value {
+        json!({
+            "x402Version": 2,
+            "accepts": [
+                x402_credit_offer("1000").pointer("/accepts/0").cloned().unwrap(),
+                x402_credit_offer("1000000").pointer("/accepts/0").cloned().unwrap(),
+            ]
+        })
     }
 
     #[tokio::test]
-    async fn buy_credits_settles_the_402_offer_and_returns_balance() {
+    async fn buy_credits_settles_the_largest_offer_then_reads_balance() {
         let server = MockServer::start().await;
-        // First POST /credits -> 402 offer; the paid resend carries a
-        // PAYMENT-SIGNATURE and gets the post-purchase balance.
+        // POST /base-sepolia: first (unpaid) -> 402 two-tier menu; the paid
+        // resend (with PAYMENT-SIGNATURE) -> 200 RPC result. GET /credits then
+        // reports the funded balance.
         struct Seq {
             offer: Value,
             calls: AtomicUsize,
@@ -737,17 +764,25 @@ mod tests {
                     ResponseTemplate::new(402).set_body_json(self.offer.clone())
                 } else {
                     ResponseTemplate::new(200).set_body_json(json!({
-                        "accountId": "eip155:84532:0xabc", "credits": 1_000_095u64
+                        "jsonrpc": "2.0", "id": 1, "result": "0x1"
                     }))
                 }
             }
         }
         Mock::given(method("POST"))
-            .and(path("/credits"))
+            .and(path("/base-sepolia"))
             .respond_with(Seq {
-                offer: x402_credit_offer("1000"),
+                offer: two_tier_offer(),
                 calls: AtomicUsize::new(0),
             })
+            .expect(2)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/credits"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "accountId": "eip155:84532:0xabc", "credits": 1_000_095u64
+            })))
             .mount(&server)
             .await;
 
@@ -758,7 +793,9 @@ mod tests {
             account_id: "a".into(),
         };
         let client = reqwest::Client::new();
-        let bal = buy_credits(&client, &payment, &session).await.unwrap();
+        let bal = buy_credits(&client, &payment, &session, "base-sepolia")
+            .await
+            .unwrap();
         assert_eq!(bal.credits, 1_000_095);
     }
 
@@ -767,7 +804,7 @@ mod tests {
         let server = MockServer::start().await;
         // The only offer exceeds max_amount -> nothing signed, PaymentUnsupported.
         Mock::given(method("POST"))
-            .and(path("/credits"))
+            .and(path("/base-sepolia"))
             .respond_with(ResponseTemplate::new(402).set_body_json(x402_credit_offer("99999999")))
             .expect(1)
             .mount(&server)
@@ -781,7 +818,9 @@ mod tests {
             account_id: "a".into(),
         };
         let client = reqwest::Client::new();
-        let err = buy_credits(&client, &payment, &session).await.unwrap_err();
+        let err = buy_credits(&client, &payment, &session, "base-sepolia")
+            .await
+            .unwrap_err();
         assert!(
             matches!(&err, SdkError::PaymentUnsupported { offered } if offered.contains("exceeds max_amount"))
         );
@@ -790,9 +829,9 @@ mod tests {
     #[tokio::test]
     async fn buy_credits_second_402_is_rejection() {
         let server = MockServer::start().await;
-        // Every POST /credits 402s -> the paid resend also 402s -> rejection.
+        // Every POST 402s -> the paid resend also 402s -> rejection.
         Mock::given(method("POST"))
-            .and(path("/credits"))
+            .and(path("/base-sepolia"))
             .respond_with(ResponseTemplate::new(402).set_body_json(x402_credit_offer("1000")))
             .mount(&server)
             .await;
@@ -804,7 +843,9 @@ mod tests {
             account_id: "a".into(),
         };
         let client = reqwest::Client::new();
-        let err = buy_credits(&client, &payment, &session).await.unwrap_err();
+        let err = buy_credits(&client, &payment, &session, "base-sepolia")
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::PaymentRejected { status, .. } if status == 402));
     }
 }
