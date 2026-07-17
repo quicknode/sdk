@@ -1,0 +1,741 @@
+//! x402 credit drawdown lane for `rpc.call`.
+//!
+//! Distinct from the per-request 402 loop in the parent module: instead of
+//! signing a fresh settlement per call, the caller authenticates once with a
+//! SIWX (Sign-In-With-X) message, receives a session JWT, and prepays a block
+//! of credits. Each drawdown call then presents `Authorization: Bearer <JWT>`
+//! and draws 1 credit per successful response — no per-call signing.
+//!
+//! The flow:
+//! 1. [`authenticate`] — build a SIWE (EIP-4361) message, sign it with the
+//!    payment key, POST `/auth`, and cache the returned [`GatewaySession`].
+//! 2. [`buy_credits`] — POST `/credits` with the Bearer JWT; the gateway
+//!    answers `402` with an x402 offer, which is settled by the SAME signer
+//!    construction as the per-request lane (reusing [`super::authorize_x402`]),
+//!    then resent once.
+//! 3. [`drawdown_call`] — POST `/:network` with the Bearer JWT; returns the raw
+//!    JSON-RPC envelope text.
+//! 4. [`credits`] — GET `/credits` with the Bearer JWT → the current balance.
+//! 5. [`drip`] — POST `/drip` (testnet faucet, once per account).
+//!
+//! State (the JWT) is held by the caller: the SDK is stateless here and the CLI
+//! persists [`GatewaySession`] between runs, exactly as it does the tooling
+//! [`crate::config::CachedToken`].
+
+use serde::Deserialize;
+use serde_json::Value;
+
+use crate::admin::tooling_access::parse_rfc3339_to_unix;
+use crate::errors::SdkError;
+
+use super::{now_unix, random_nonce, ResolvedPayment};
+
+/// A gateway session JWT plus its expiry and the account it authenticates.
+/// This is the unit the drawdown lane caches; a host (the CLI) persists it
+/// between processes and re-seeds it next run, the same pattern as
+/// [`crate::config::CachedToken`].
+///
+/// `token` is a live bearer credential and is redacted in `Debug`.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct GatewaySession {
+    /// The session JWT, presented as `Authorization: Bearer <token>`.
+    pub token: String,
+    /// JWT expiry in unix seconds (from the gateway's `expiresAt`).
+    pub exp_unix: i64,
+    /// The CAIP-10 account the JWT authenticates (the payer's address on the
+    /// pay chain). Used as the cache key so distinct wallets don't collide.
+    pub account_id: String,
+}
+
+// Never print the JWT: it is a live credential.
+impl std::fmt::Debug for GatewaySession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GatewaySession")
+            .field("token", &"[redacted]")
+            .field("exp_unix", &self.exp_unix)
+            .field("account_id", &self.account_id)
+            .finish()
+    }
+}
+
+impl GatewaySession {
+    /// Whether the session is still valid `margin_secs` before its expiry.
+    /// A caller re-authenticates when this is false.
+    pub fn is_fresh(&self, margin_secs: i64) -> bool {
+        now_unix() as i64 + margin_secs < self.exp_unix
+    }
+}
+
+/// The gateway `/auth` response.
+#[derive(Deserialize)]
+struct AuthResponse {
+    token: String,
+    #[serde(rename = "expiresAt")]
+    expires_at: String,
+    #[serde(rename = "accountId")]
+    account_id: String,
+}
+
+/// The gateway `/credits` response.
+#[derive(Deserialize)]
+struct CreditsResponse {
+    #[serde(rename = "accountId")]
+    account_id: String,
+    credits: u64,
+}
+
+/// The current credit balance for an account.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreditBalance {
+    pub account_id: String,
+    pub credits: u64,
+}
+
+// The SIWX statement the gateway requires. A fixed ToS acknowledgement.
+const SIWX_STATEMENT: &str =
+    "I accept the Quicknode Terms of Service and authorize x402 credit drawdown.";
+
+/// Authenticates against the x402 gateway with a SIWE (EIP-4361) message and
+/// returns a cached [`GatewaySession`]. Free — no funds move — so a caller may
+/// (re)auth transparently on a missing/expired session without user consent.
+///
+/// EVM signers only (SIWE). An SVM signer errors: SIWS is a separate
+/// construction, deferred with x402/Solana drawdown.
+pub async fn authenticate(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+) -> Result<GatewaySession, SdkError> {
+    let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
+    let address = payment.signer.address()?;
+    let chain_id = payment.pay_network.clone();
+
+    // Build and sign the SIWE message. The domain/uri and statement are fixed
+    // by the gateway; the nonce is a fresh random hex (≥8 chars) and issuedAt
+    // is the current time (the gateway enforces a 5-minute freshness window).
+    let host = host_only(base);
+    let nonce = hex::encode(&random_nonce()[..8]);
+    let issued_at = rfc3339_now();
+    let message = siwe_message(
+        &host,
+        &address,
+        &chain_id,
+        &nonce,
+        &issued_at,
+        SIWX_STATEMENT,
+    );
+    let signature = payment.signer.sign_siwe(&message)?;
+
+    let url = format!("{}/auth", base.trim_end_matches('/'));
+    let resp = client
+        .post(&url)
+        .json(&serde_json::json!({
+            "type": "siwx",
+            "message": message,
+            "signature": signature,
+        }))
+        .send()
+        .await
+        .map_err(SdkError::Http)?;
+
+    let status = resp.status();
+    let body = resp.text().await.map_err(SdkError::Http)?;
+    if !status.is_success() {
+        return Err(SdkError::Api { status, body });
+    }
+    let parsed: AuthResponse =
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
+    let exp_unix = parse_rfc3339_to_unix(&parsed.expires_at)?;
+    Ok(GatewaySession {
+        token: parsed.token,
+        exp_unix,
+        account_id: parsed.account_id,
+    })
+}
+
+/// Makes one drawdown JSON-RPC call against `/:query_network` with the session
+/// JWT as a Bearer token, drawing 1 credit on success. Returns the raw
+/// JSON-RPC envelope text for the caller to parse.
+///
+/// Never retries on its own: the caller decides, and a paid lane never
+/// blind-retries. A 401/403 surfaces as [`SdkError::Api`] so the caller can
+/// map `token_expired` → re-auth and `monthly_limit_reached` → an actionable
+/// error.
+pub async fn drawdown_call(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+    session: &GatewaySession,
+    query_network: &str,
+    body: &Value,
+) -> Result<String, SdkError> {
+    let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
+    let url = format!("{}/{}", base.trim_end_matches('/'), query_network);
+    let resp = client
+        .post(&url)
+        .bearer_auth(&session.token)
+        .json(body)
+        .send()
+        .await
+        .map_err(SdkError::Http)?;
+    let status = resp.status();
+    let text = resp.text().await.map_err(SdkError::Http)?;
+    if !status.is_success() {
+        return Err(SdkError::Api { status, body: text });
+    }
+    Ok(text)
+}
+
+/// Fetches the account's current credit balance (GET `/credits`, Bearer JWT).
+pub async fn credits(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+    session: &GatewaySession,
+) -> Result<CreditBalance, SdkError> {
+    let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
+    let url = format!("{}/credits", base.trim_end_matches('/'));
+    let resp = client
+        .get(&url)
+        .bearer_auth(&session.token)
+        .send()
+        .await
+        .map_err(SdkError::Http)?;
+    let status = resp.status();
+    let body = resp.text().await.map_err(SdkError::Http)?;
+    if !status.is_success() {
+        return Err(SdkError::Api { status, body });
+    }
+    let parsed: CreditsResponse =
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
+    Ok(CreditBalance {
+        account_id: parsed.account_id,
+        credits: parsed.credits,
+    })
+}
+
+/// Requests testnet credits from the faucet (POST `/drip`, Bearer JWT). The
+/// gateway allows this once per account on Base Sepolia. Returns the balance
+/// after the drip.
+pub async fn drip(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+    session: &GatewaySession,
+) -> Result<CreditBalance, SdkError> {
+    let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
+    let url = format!("{}/drip", base.trim_end_matches('/'));
+    let resp = client
+        .post(&url)
+        .bearer_auth(&session.token)
+        .send()
+        .await
+        .map_err(SdkError::Http)?;
+    let status = resp.status();
+    let body = resp.text().await.map_err(SdkError::Http)?;
+    if !status.is_success() {
+        return Err(SdkError::Api { status, body });
+    }
+    let parsed: CreditsResponse =
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
+    Ok(CreditBalance {
+        account_id: parsed.account_id,
+        credits: parsed.credits,
+    })
+}
+
+/// Buys a block of credits: POST `/credits` with the Bearer JWT, settle the
+/// `402` credit offer with the SAME x402 signer construction as the
+/// per-request lane, and resend exactly once. Returns the balance after the
+/// purchase settles.
+///
+/// The amount is chosen by the gateway's offer (bounded by `payment.max_amount`
+/// like every signed payment); the caller does not name it. A second 402 is a
+/// terminal [`SdkError::PaymentRejected`]; a lost response after the paid
+/// resend is [`SdkError::PaymentIndeterminate`] — never blind-retry.
+pub async fn buy_credits(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+    session: &GatewaySession,
+) -> Result<CreditBalance, SdkError> {
+    use crate::errors::HttpKind;
+
+    let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
+    let url = format!("{}/credits", base.trim_end_matches('/'));
+
+    // 1. Offer probe with the Bearer JWT. A non-402 means the gateway did not
+    //    demand payment (or errored) — surface it as-is.
+    let first = client
+        .post(&url)
+        .bearer_auth(&session.token)
+        .send()
+        .await
+        .map_err(SdkError::Http)?;
+    let status = first.status();
+    if status.as_u16() != 402 {
+        let body = first.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        let parsed: CreditsResponse =
+            serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
+        return Ok(CreditBalance {
+            account_id: parsed.account_id,
+            credits: parsed.credits,
+        });
+    }
+
+    // 2. Settle the credit offer with the shared x402 signer (EIP-712 for EVM,
+    //    SPL for Solana). Pre-payment parse failures stay PaymentUnsupported.
+    let challenge_body = first.text().await.map_err(SdkError::Http)?;
+    let authorized = super::authorize_x402(client, payment, &challenge_body).await?;
+    let header = authorized
+        .x402_header()
+        .ok_or_else(|| SdkError::Config("credit purchase produced no x402 credential".into()))?;
+
+    // 3. Paid resend — exactly once, same indeterminate-outcome handling as the
+    //    per-request driver.
+    let paid = match client
+        .post(&url)
+        .bearer_auth(&session.token)
+        .header("PAYMENT-SIGNATURE", header)
+        .send()
+        .await
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            let err = SdkError::Http(e);
+            return Err(match err.http_kind() {
+                Some(HttpKind::Connect) => err,
+                _ => SdkError::PaymentIndeterminate,
+            });
+        }
+    };
+    let paid_status = paid.status().as_u16();
+    if !(200..300).contains(&paid_status) {
+        let body = paid.text().await.unwrap_or_default();
+        return Err(SdkError::PaymentRejected {
+            status: paid_status,
+            body,
+        });
+    }
+    let body = match paid.text().await {
+        Ok(t) => t,
+        Err(e) => {
+            let err = SdkError::Http(e);
+            return Err(match err.http_kind() {
+                Some(HttpKind::Connect) => err,
+                _ => SdkError::PaymentIndeterminate,
+            });
+        }
+    };
+    let parsed: CreditsResponse =
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
+    Ok(CreditBalance {
+        account_id: parsed.account_id,
+        credits: parsed.credits,
+    })
+}
+
+// ── SIWE message construction ────────────────────────────────────────────────
+
+/// Build a Sign-In-With-Ethereum (EIP-4361) message. The gateway pins the
+/// domain/uri to its own host and requires the ToS `statement`; `chain_id` is
+/// the caller's CAIP-2 pay network. Deterministic given its inputs so the
+/// message tests are byte-exact.
+pub(super) fn siwe_message(
+    host: &str,
+    address: &str,
+    chain_id: &str,
+    nonce: &str,
+    issued_at: &str,
+    statement: &str,
+) -> String {
+    // EIP-4361 field order is fixed. `Version` is always 1; `Chain ID` carries
+    // the CAIP-2 id verbatim so the gateway can bind the session to the pay
+    // chain. `URI` is https://<host>.
+    format!(
+        "{host} wants you to sign in with your Ethereum account:\n\
+         {address}\n\
+         \n\
+         {statement}\n\
+         \n\
+         URI: https://{host}\n\
+         Version: 1\n\
+         Chain ID: {chain_id}\n\
+         Nonce: {nonce}\n\
+         Issued At: {issued_at}"
+    )
+}
+
+// Strip the scheme (and any trailing slash) from a gateway base URL, leaving
+// the host[:port] the SIWE domain/uri fields use. A base_url_override for the
+// wiremock harness is http://127.0.0.1:PORT, which reduces to 127.0.0.1:PORT.
+fn host_only(base: &str) -> String {
+    base.trim_end_matches('/')
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .to_string()
+}
+
+// Current time as an RFC-3339 UTC timestamp to whole seconds, e.g.
+// "2026-07-17T12:00:00Z". Hand-rolled to avoid a date crate, mirroring the
+// parse side in admin::parse_rfc3339_to_unix (civil-from-days, Hinnant).
+fn rfc3339_now() -> String {
+    let secs = now_unix() as i64;
+    let days = secs.div_euclid(86_400);
+    let rem = secs.rem_euclid(86_400);
+    let (hour, min, sec) = (rem / 3600, (rem % 3600) / 60, rem % 60);
+    let (year, month, day) = civil_from_days(days);
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}Z")
+}
+
+// Days-since-epoch → (year, month, day), Howard Hinnant's civil_from_days.
+fn civil_from_days(z: i64) -> (i64, u32, u32) {
+    let z = z + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = (if mp < 10 { mp + 3 } else { mp - 9 }) as u32;
+    (if m <= 2 { y + 1 } else { y }, m, d)
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::*;
+    use secrecy::SecretString;
+    use serde_json::json;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use wiremock::matchers::{body_partial_json, header, method, path};
+    use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
+
+    // anvil key #0 (public throwaway, never funded).
+    const EVM_KEY: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+    const EVM_ADDR: &str = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
+    const USDC: &str = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+
+    fn evm_payment(base: &str) -> ResolvedPayment {
+        ResolvedPayment {
+            scheme: super::super::PaymentScheme::X402,
+            signer: super::super::signer::Signer::Evm(SecretString::new(EVM_KEY.to_string())),
+            pay_network: "eip155:84532".into(),
+            asset: USDC.into(),
+            max_amount: 10_000_000,
+            base_url_override: Some(base.to_string()),
+            svm_rpc_url: None,
+        }
+    }
+
+    fn x402_credit_offer(amount: &str) -> Value {
+        json!({
+            "x402Version": 2,
+            "accepts": [{
+                "scheme": "exact",
+                "network": "eip155:84532",
+                "amount": amount,
+                "payTo": "0x000000000000000000000000000000000000dEaD",
+                "maxTimeoutSeconds": 60,
+                "asset": USDC,
+                "extra": { "name": "USDC", "version": "2" }
+            }]
+        })
+    }
+
+    #[test]
+    fn siwe_message_is_byte_exact() {
+        let msg = siwe_message(
+            "x402.quicknode.com",
+            EVM_ADDR,
+            "eip155:84532",
+            "abc12345",
+            "2026-07-17T12:00:00Z",
+            SIWX_STATEMENT,
+        );
+        let expected = "x402.quicknode.com wants you to sign in with your Ethereum account:\n\
+             0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266\n\
+             \n\
+             I accept the Quicknode Terms of Service and authorize x402 credit drawdown.\n\
+             \n\
+             URI: https://x402.quicknode.com\n\
+             Version: 1\n\
+             Chain ID: eip155:84532\n\
+             Nonce: abc12345\n\
+             Issued At: 2026-07-17T12:00:00Z";
+        assert_eq!(msg, expected);
+    }
+
+    #[test]
+    fn rfc3339_now_round_trips_through_the_parser() {
+        // The timestamp we emit must parse back to (approximately) the same
+        // unix time the parser reads — locks the civil-from-days math.
+        let iso = rfc3339_now();
+        let back = parse_rfc3339_to_unix(&iso).unwrap();
+        let now = now_unix() as i64;
+        assert!((now - back).abs() <= 1, "iso={iso} back={back} now={now}");
+    }
+
+    #[test]
+    fn host_only_strips_scheme_and_slash() {
+        assert_eq!(
+            host_only("https://x402.quicknode.com/"),
+            "x402.quicknode.com"
+        );
+        assert_eq!(host_only("http://127.0.0.1:8080"), "127.0.0.1:8080");
+    }
+
+    #[test]
+    fn session_freshness() {
+        let s = GatewaySession {
+            token: "t".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        assert!(s.is_fresh(60));
+        let stale = GatewaySession {
+            token: "t".into(),
+            exp_unix: now_unix() as i64 + 10,
+            account_id: "a".into(),
+        };
+        assert!(!stale.is_fresh(60));
+    }
+
+    #[test]
+    fn session_debug_redacts_the_jwt() {
+        let s = GatewaySession {
+            token: "super-secret-jwt".into(),
+            exp_unix: 0,
+            account_id: "a".into(),
+        };
+        let rendered = format!("{s:?}");
+        assert!(rendered.contains("[redacted]"));
+        assert!(!rendered.contains("super-secret-jwt"));
+    }
+
+    #[tokio::test]
+    async fn authenticate_posts_siwx_and_caches_session() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/auth"))
+            .and(body_partial_json(json!({ "type": "siwx" })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "token": "jwt-abc",
+                "expiresAt": "2099-01-01T00:00:00Z",
+                "accountId": "eip155:84532:0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let client = reqwest::Client::new();
+        let session = authenticate(&client, &payment).await.unwrap();
+        assert_eq!(session.token, "jwt-abc");
+        assert!(session.account_id.contains("0xf39fd6e5"));
+        assert!(session.is_fresh(60));
+    }
+
+    #[tokio::test]
+    async fn authenticate_error_surfaces_as_api() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/auth"))
+            .respond_with(ResponseTemplate::new(401).set_body_json(json!({
+                "error": "invalid_signature", "message": "bad SIWX signature"
+            })))
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let client = reqwest::Client::new();
+        let err = authenticate(&client, &payment).await.unwrap_err();
+        assert!(matches!(err, SdkError::Api { status, .. } if status == 401));
+    }
+
+    #[tokio::test]
+    async fn drawdown_call_attaches_bearer_and_returns_envelope() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/base-sepolia"))
+            .and(header("authorization", "Bearer jwt-abc"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "jsonrpc": "2.0", "id": 1, "result": "0x1335f9a"
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let body = json!({ "jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": [] });
+        let client = reqwest::Client::new();
+        let text = drawdown_call(&client, &payment, &session, "base-sepolia", &body)
+            .await
+            .unwrap();
+        assert!(text.contains("0x1335f9a"));
+    }
+
+    #[tokio::test]
+    async fn drawdown_call_403_monthly_limit_is_api_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/base-sepolia"))
+            .respond_with(ResponseTemplate::new(403).set_body_json(json!({
+                "error": "monthly_limit_reached", "message": "monthly credit limit reached"
+            })))
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let body = json!({ "jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": [] });
+        let client = reqwest::Client::new();
+        let err = drawdown_call(&client, &payment, &session, "base-sepolia", &body)
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, SdkError::Api { status, body } if *status == 403 && body.contains("monthly_limit_reached"))
+        );
+    }
+
+    #[tokio::test]
+    async fn credits_reads_the_balance() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/credits"))
+            .and(header("authorization", "Bearer jwt-abc"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "accountId": "eip155:84532:0xabc", "credits": 1_000_095u64
+            })))
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let client = reqwest::Client::new();
+        let bal = credits(&client, &payment, &session).await.unwrap();
+        assert_eq!(bal.credits, 1_000_095);
+    }
+
+    #[tokio::test]
+    async fn drip_returns_the_post_drip_balance() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/drip"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "accountId": "eip155:84532:0xabc", "credits": 100u64
+            })))
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let client = reqwest::Client::new();
+        let bal = drip(&client, &payment, &session).await.unwrap();
+        assert_eq!(bal.credits, 100);
+    }
+
+    #[tokio::test]
+    async fn buy_credits_settles_the_402_offer_and_returns_balance() {
+        let server = MockServer::start().await;
+        // First POST /credits -> 402 offer; the paid resend carries a
+        // PAYMENT-SIGNATURE and gets the post-purchase balance.
+        struct Seq {
+            offer: Value,
+            calls: AtomicUsize,
+        }
+        impl Respond for Seq {
+            fn respond(&self, req: &Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                let has_sig = req.headers.contains_key("payment-signature");
+                if n == 0 && !has_sig {
+                    ResponseTemplate::new(402).set_body_json(self.offer.clone())
+                } else {
+                    ResponseTemplate::new(200).set_body_json(json!({
+                        "accountId": "eip155:84532:0xabc", "credits": 1_000_095u64
+                    }))
+                }
+            }
+        }
+        Mock::given(method("POST"))
+            .and(path("/credits"))
+            .respond_with(Seq {
+                offer: x402_credit_offer("1000"),
+                calls: AtomicUsize::new(0),
+            })
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let client = reqwest::Client::new();
+        let bal = buy_credits(&client, &payment, &session).await.unwrap();
+        assert_eq!(bal.credits, 1_000_095);
+    }
+
+    #[tokio::test]
+    async fn buy_credits_over_max_amount_is_unsupported_and_settles_nothing() {
+        let server = MockServer::start().await;
+        // The only offer exceeds max_amount -> nothing signed, PaymentUnsupported.
+        Mock::given(method("POST"))
+            .and(path("/credits"))
+            .respond_with(ResponseTemplate::new(402).set_body_json(x402_credit_offer("99999999")))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let mut payment = evm_payment(&server.uri());
+        payment.max_amount = 1000;
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let client = reqwest::Client::new();
+        let err = buy_credits(&client, &payment, &session).await.unwrap_err();
+        assert!(
+            matches!(&err, SdkError::PaymentUnsupported { offered } if offered.contains("exceeds max_amount"))
+        );
+    }
+
+    #[tokio::test]
+    async fn buy_credits_second_402_is_rejection() {
+        let server = MockServer::start().await;
+        // Every POST /credits 402s -> the paid resend also 402s -> rejection.
+        Mock::given(method("POST"))
+            .and(path("/credits"))
+            .respond_with(ResponseTemplate::new(402).set_body_json(x402_credit_offer("1000")))
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let client = reqwest::Client::new();
+        let err = buy_credits(&client, &payment, &session).await.unwrap_err();
+        assert!(matches!(err, SdkError::PaymentRejected { status, .. } if status == 402));
+    }
+}

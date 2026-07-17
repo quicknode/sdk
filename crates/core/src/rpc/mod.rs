@@ -23,6 +23,8 @@ pub mod payment;
 #[cfg(feature = "payments")]
 pub use crate::config::PaymentConfig;
 #[cfg(feature = "payments")]
+pub use payment::drawdown::{CreditBalance, GatewaySession};
+#[cfg(feature = "payments")]
 pub use payment::signer::{generate_payment_wallet, ChainKind, GeneratedWallet};
 #[cfg(feature = "payments")]
 pub use payment::{PaymentReceipt, PaymentScheme};
@@ -327,6 +329,104 @@ impl RpcApiClient {
 
         let result = Self::parse_rpc(RawResponse { status: 200, text })?;
         Ok((result, receipt))
+    }
+
+    // Resolve the plain-data payment config to the internal Signer + selector,
+    // applying the same SVM RPC-source precedence as `run_payment_lane`. Shared
+    // by the x402 drawdown lifecycle methods below. Errors (bad max_amount,
+    // unknown scheme) surface as a clear `Config` error.
+    #[cfg(feature = "payments")]
+    fn resolve_payment(&self) -> Result<payment::ResolvedPayment, SdkError> {
+        let config = self
+            .payment
+            .as_ref()
+            .ok_or_else(|| SdkError::Config("no payment lane configured".into()))?;
+        #[cfg_attr(not(feature = "payments-svm"), allow(unused_mut))]
+        let mut resolved = payment::ResolvedPayment::from_config(config)?;
+        #[cfg(feature = "payments-svm")]
+        if resolved.svm_rpc_url.is_some() && config.svm_rpc_url.is_none() {
+            if let Some(tooling_url) = self.tooling_svm_url(&resolved.pay_network) {
+                resolved.svm_rpc_url = Some(tooling_url);
+            }
+        }
+        Ok(resolved)
+    }
+
+    /// Authenticates against the x402 gateway with a SIWX message and returns a
+    /// [`payment::drawdown::GatewaySession`] (the session JWT). Free — no funds
+    /// move — so a host may (re)auth transparently before a drawdown call. The
+    /// host persists the session and re-seeds it next run, exactly as it does
+    /// the tooling [`crate::config::CachedToken`].
+    #[cfg(feature = "payments")]
+    pub async fn gateway_authenticate(
+        &self,
+    ) -> Result<payment::drawdown::GatewaySession, SdkError> {
+        let resolved = self.resolve_payment()?;
+        payment::drawdown::authenticate(self.config.rpc_http_client(), &resolved).await
+    }
+
+    /// Buys a block of credits against the x402 gateway, settling the offered
+    /// `402` with the same signer construction as the per-request lane. Returns
+    /// the post-purchase [`payment::drawdown::CreditBalance`]. Single-attempt:
+    /// a paid lane never blind-retries.
+    #[cfg(feature = "payments")]
+    pub async fn gateway_buy_credits(
+        &self,
+        session: &payment::drawdown::GatewaySession,
+    ) -> Result<payment::drawdown::CreditBalance, SdkError> {
+        let resolved = self.resolve_payment()?;
+        payment::drawdown::buy_credits(self.config.rpc_http_client(), &resolved, session).await
+    }
+
+    /// Reads the account's current x402 credit balance (GET `/credits`).
+    #[cfg(feature = "payments")]
+    pub async fn gateway_credits(
+        &self,
+        session: &payment::drawdown::GatewaySession,
+    ) -> Result<payment::drawdown::CreditBalance, SdkError> {
+        let resolved = self.resolve_payment()?;
+        payment::drawdown::credits(self.config.rpc_http_client(), &resolved, session).await
+    }
+
+    /// Requests testnet credits from the x402 faucet (POST `/drip`). Allowed
+    /// once per account on Base Sepolia. Returns the post-drip balance.
+    #[cfg(feature = "payments")]
+    pub async fn gateway_drip(
+        &self,
+        session: &payment::drawdown::GatewaySession,
+    ) -> Result<payment::drawdown::CreditBalance, SdkError> {
+        let resolved = self.resolve_payment()?;
+        payment::drawdown::drip(self.config.rpc_http_client(), &resolved, session).await
+    }
+
+    /// Makes one x402 drawdown JSON-RPC call against `network` with the session
+    /// JWT as a Bearer token, drawing 1 credit on success. Returns the
+    /// unwrapped JSON-RPC `result`. Single-attempt; the caller decides whether
+    /// to re-auth on a `token_expired` (surfaced as [`SdkError::Api`] 401/403).
+    #[cfg(feature = "payments")]
+    pub async fn gateway_drawdown_call(
+        &self,
+        method: &str,
+        params: Option<Value>,
+        network: &str,
+        session: &payment::drawdown::GatewaySession,
+    ) -> Result<Value, SdkError> {
+        let resolved = self.resolve_payment()?;
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": params.unwrap_or_else(|| Value::Array(vec![])),
+        });
+        let text = payment::drawdown::drawdown_call(
+            self.config.rpc_http_client(),
+            &resolved,
+            session,
+            network,
+            &body,
+        )
+        .await?;
+        Self::parse_rpc(RawResponse { status: 200, text })
     }
 
     // Best-effort tooling-endpoint lookup for the pay-chain's Solana network.

@@ -13,6 +13,7 @@
 //! A second 402 is terminal ([`SdkError::PaymentRejected`]); a lost response
 //! after the paid resend is [`SdkError::PaymentIndeterminate`].
 
+pub mod drawdown;
 pub mod signer;
 
 use serde::Deserialize;
@@ -300,7 +301,7 @@ pub async fn pay_and_call(
     Ok((text, receipt))
 }
 
-enum Authorized {
+pub(super) enum Authorized {
     X402 {
         header: String,
     },
@@ -310,9 +311,21 @@ enum Authorized {
     },
 }
 
+impl Authorized {
+    /// The x402 `PAYMENT-SIGNATURE` header value, for reuse by the drawdown
+    /// credit-purchase path. `None` for non-x402 credentials.
+    pub(super) fn x402_header(&self) -> Option<&str> {
+        match self {
+            Authorized::X402 { header } => Some(header),
+            #[cfg(feature = "payments-tempo")]
+            Authorized::Mpp { .. } => None,
+        }
+    }
+}
+
 // ── x402 authorize (EVM + Solana) ────────────────────────────────────────────
 
-async fn authorize_x402(
+pub(super) async fn authorize_x402(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
     challenge_body: &str,
@@ -877,7 +890,7 @@ fn reduce_rejection_body(body: String) -> String {
     body
 }
 
-fn now_unix() -> u64 {
+pub(super) fn now_unix() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs())
@@ -911,7 +924,7 @@ fn parse_iso_unix(iso: &str) -> Option<u64> {
     u64::try_from(secs).ok()
 }
 
-fn random_nonce() -> [u8; 32] {
+pub(super) fn random_nonce() -> [u8; 32] {
     use rand::RngCore;
     let mut nonce = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut nonce);

@@ -115,6 +115,14 @@ mod secp {
         }
     }
 
+    // EIP-191 personal_sign digest: keccak256("\x19Ethereum Signed Message:\n"
+    // || len(message) || message). Used for SIWE (EIP-4361) auth signatures.
+    pub(super) fn personal_sign_digest(message: &[u8]) -> [u8; 32] {
+        let mut prefixed = format!("\x19Ethereum Signed Message:\n{}", message.len()).into_bytes();
+        prefixed.extend_from_slice(message);
+        keccak256(&prefixed)
+    }
+
     // Sign a 32-byte prehash, returning 65 bytes r||s||v where v is 27/28
     // (the encoding both ox and viem emit for EIP-712 sigs and Tempo handoffs).
     pub(super) fn sign_prehash_65(key: &SigningKey, prehash: &[u8; 32]) -> [u8; 65] {
@@ -184,6 +192,24 @@ impl Signer {
         let key = secp::signing_key(self.secret().expose_secret())?;
         let digest = eip712_digest(domain, message)?;
         Ok(secp::sign_prehash_65(&key, &digest))
+    }
+
+    /// Sign a Sign-In-With-Ethereum (EIP-4361) message via EIP-191
+    /// `personal_sign`, returning the `0x`-prefixed 65-byte `r||s||v` hex the
+    /// gateway's SIWX `/auth` handshake expects. EVM only — an SVM signer must
+    /// use the SIWS (ed25519) construction instead.
+    pub fn sign_siwe(&self, message: &str) -> Result<String, SdkError> {
+        match self {
+            Signer::Evm(_) | Signer::Tempo(_) => {
+                let key = secp::signing_key(self.secret().expose_secret())?;
+                let digest = secp::personal_sign_digest(message.as_bytes());
+                let sig = secp::sign_prehash_65(&key, &digest);
+                Ok(format!("0x{}", hex::encode(sig)))
+            }
+            Signer::Svm(_) => Err(SdkError::Config(
+                "SIWE signing is EVM-only; an SVM signer uses SIWS (ed25519)".into(),
+            )),
+        }
     }
 }
 
