@@ -234,7 +234,7 @@ impl Signer {
 
 // Legacy escrow voucher EIP-712 digest:
 // keccak256(0x1901 || domainSeparator || voucherHash), matching the escrow
-// contract's DOMAIN_SEPARATOR/VOUCHER_TYPEHASH (mppx legacy Voucher.ts).
+// contract's DOMAIN_SEPARATOR/VOUCHER_TYPEHASH.
 #[cfg(feature = "payments")]
 fn session_voucher_digest(
     channel_id: &str,
@@ -315,8 +315,8 @@ impl GeneratedWallet {
 }
 
 /// Generates a fresh payment keypair for `chain`, returning the raw key (in the
-/// format `--payment-key-file` / config `key_file` reads) and its derived
-/// address. Randomness comes from the OS CSPRNG.
+/// format `PaymentConfig::key` accepts) and its derived address. Randomness
+/// comes from the OS CSPRNG.
 ///
 /// `Tempo` uses the same secp256k1 key format as `Evm`.
 #[cfg(feature = "payments")]
@@ -552,7 +552,7 @@ mod tests {
         // Known-good digest computed offline with viem's hashTypedData over the
         // legacy escrow EIP-712 domain ("Tempo Stream Channel") + Voucher type.
         // Reproducing it byte-for-byte proves the voucher construction matches
-        // the reference client (mppx tempo/legacy/session Voucher).
+        // what the escrow contract verifies.
         const CHANNEL_ID: &str =
             "0xfb56137dcb0089f01877bcdb72d5e028ef04aec578fb00a642f65ee293c73dec";
         const ESCROW: &str = "0x33b901018174DDabE4841042ab76ba85D4e24f25";

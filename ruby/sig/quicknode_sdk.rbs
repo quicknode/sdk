@@ -51,6 +51,19 @@ module QuicknodeSdk
   class PaymentIndeterminateError < PaymentError
   end
 
+  # The `rpc: {payment: {...}}` sub-hash accepted by SDK.from_config. An alias
+  # rather than a class because the config crosses the boundary as a plain
+  # Hash, not a wrapper object.
+  type payment_config = {
+    scheme: String,
+    key: String,
+    pay_network: String,
+    asset: String,
+    max_amount: String,
+    ?svm_rpc_url: String,
+    ?base_url_override: String
+  }
+
   class SDK
     def self.from_env: () -> SDK
     def self.from_config: (Hash[Symbol | String, untyped] opts) -> SDK

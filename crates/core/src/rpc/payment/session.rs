@@ -9,8 +9,8 @@
 //! channel on-chain in batches on its own schedule; the client cooperatively
 //! closes to settle + refund the unused deposit.
 //!
-//! Wire protocol (matches the `mppx` reference client's contract-backed
-//! session, `tempo/legacy/session`):
+//! Wire protocol (the gateway's contract-backed session, as advertised in the
+//! 402 challenge):
 //! - Endpoints under `{mpp}/session/:network`. The gateway requires the slug to
 //!   name a network it serves, but selects the challenge by the caller's pay
 //!   chain, so the value only matters for `voucher_call` (which routes an RPC
@@ -499,9 +499,9 @@ fn parse_session_challenge(header: &str, want_chain_id: u64) -> Result<SessionCh
 }
 
 // Build the `Payment <base64url JSON>` credential: {challenge, payload, source}
-// with the challenge's original request echoed verbatim (matches mppx's
-// Credential.serialize wire shape). `source` is the CAIP-10 did:pkh of the
-// payer on the channel's chain.
+// with the challenge's original request echoed verbatim, which the gateway
+// requires to bind the credential to the challenge it issued. `source` is the
+// CAIP-10 did:pkh of the payer on the channel's chain.
 fn build_credential(
     challenge: &SessionChallenge,
     payer: &str,

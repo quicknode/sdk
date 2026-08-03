@@ -3021,7 +3021,7 @@ fn depythonize_channel(obj: &Bound<'_, PyAny>) -> PyResult<core::ChannelState> {
 
 /// Generates a fresh payment keypair for `chain` (`"evm"`, `"svm"`, or
 /// `"tempo"`). Returns a dict `{address, chain, key}` where `key` is the raw
-/// private key in the format the `key_file` config reads.
+/// private key in the format the payment config's `key` accepts.
 ///
 /// The key is returned exactly once, at generation: nothing in the SDK stores or
 /// re-derives it, so persist it before discarding the dict. Randomness comes

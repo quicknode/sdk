@@ -2,24 +2,25 @@
 //!
 //! Distinct from the per-request 402 loop in the parent module: instead of
 //! signing a fresh settlement per call, the caller authenticates once with a
-//! SIWX (Sign-In-With-X) message, receives a session JWT, and prepays a block
-//! of credits. Each drawdown call then presents `Authorization: Bearer <JWT>`
-//! and draws 1 credit per successful response — no per-call signing.
+//! SIWX (Sign-In-With-X) message and receives a session JWT. Each drawdown call
+//! then presents `Authorization: Bearer <JWT>` and draws 1 credit per successful
+//! response — no per-call signing.
 //!
 //! The flow:
 //! 1. [`authenticate`] — build a SIWE (EIP-4361) message, sign it with the
 //!    payment key, POST `/auth`, and cache the returned [`GatewaySession`].
-//! 2. [`buy_credits`] — POST `/credits` with the Bearer JWT; the gateway
-//!    answers `402` with an x402 offer, which is settled by the SAME signer
-//!    construction as the per-request lane (reusing [`super::authorize_x402`]),
-//!    then resent once.
-//! 3. [`drawdown_call`] — POST `/:network` with the Bearer JWT; returns the raw
+//! 2. [`drawdown_call`] — POST `/:network` with the Bearer JWT; returns the raw
 //!    JSON-RPC envelope text.
-//! 4. [`credits`] — GET `/credits` with the Bearer JWT → the current balance.
-//! 5. [`drip`] — POST `/drip` (testnet faucet, once per account).
+//! 3. [`credits`] — GET `/credits` with the Bearer JWT → the current balance.
+//! 4. [`drip`] — POST `/drip` (testnet faucet, once per account) — funds the
+//!    wallet, not the credit ledger.
 //!
-//! State (the JWT) is held by the caller: the SDK is stateless here and the CLI
-//! persists [`GatewaySession`] between runs, exactly as it does the tooling
+//! [`buy_credits`] settles a credit block by signing the gateway's credit-tier
+//! offer. It is reachable only where that offer's construction is signable; see
+//! [`super::authorize_x402_credit`].
+//!
+//! State (the JWT) is held by the caller: the SDK is stateless here, so a host
+//! persists [`GatewaySession`] between runs exactly as it does the tooling
 //! [`crate::config::CachedToken`].
 
 use serde::Deserialize;
@@ -100,8 +101,8 @@ const SIWX_STATEMENT: &str =
 /// returns a cached [`GatewaySession`]. Free — no funds move — so a caller may
 /// (re)auth transparently on a missing/expired session without user consent.
 ///
-/// EVM signers only (SIWE). An SVM signer errors: SIWS is a separate
-/// construction, deferred with x402/Solana drawdown.
+/// EVM signers only (SIWE). An SVM signer errors — SIWS is a separate
+/// construction.
 pub async fn authenticate(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
@@ -323,16 +324,8 @@ pub async fn buy_credits(
         .ok_or_else(|| SdkError::Config("credit purchase produced no x402 credential".into()))?;
 
     // 3. Paid resend — exactly once, same indeterminate-outcome handling as the
-    //    per-request driver.
-    //
-    //    Unreachable today: `authorize_x402_credit` always returns
-    //    PaymentUnsupported because the GatewayWalletBatched construction the
-    //    credit tier requires is not implemented yet, so step 2 above always
-    //    returns early. Kept (rather than deleted) so the paid lane's
-    //    single-attempt contract stays encoded next to the request it guards —
-    //    it becomes live as soon as that construction lands. It has no test for
-    //    the same reason; the equivalent logic in the per-request driver is
-    //    covered by `lost_response_after_payment_is_indeterminate`.
+    //    per-request driver. A lost response here means the credit purchase may
+    //    have settled, so it is indeterminate and never blind-retried.
     let paid = match client
         .post(&url)
         .bearer_auth(&session.token)

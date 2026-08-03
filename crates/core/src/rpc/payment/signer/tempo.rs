@@ -372,8 +372,8 @@ fn bytes32(hex_str: &str) -> Result<[u8; 32], SdkError> {
 
 // channelId = keccak256(abi.encode(payer, payee, token, salt,
 //   authorizedSigner, escrowContract, uint256 chainId)) — all static words.
-// Mirrors the escrow contract's computeChannelId (mppx Channel.computeId);
-// the gateway re-derives this from the open calldata and requires a match.
+// Mirrors the escrow contract's computeChannelId; the gateway re-derives this
+// from the open calldata and requires a match.
 fn compute_channel_id(
     payer: &str,
     payee: &str,
@@ -416,7 +416,7 @@ fn transfer_with_memo_calldata(req: &TempoChargeRequest) -> Result<Vec<u8>, SdkE
     Ok(data)
 }
 
-// mppx Attribution memo (bytes32):
+// Attribution memo (bytes32), the layout the gateway parses to credit the call:
 //   keccak("mpp")[0..4] ++ 0x01 ++ keccak(realm)[0..10] ++ zeros[10] ++ keccak(challengeId)[0..7]
 fn attribution_memo(realm: &str, challenge_id: &str) -> [u8; 32] {
     let mut memo = [0u8; 32];
@@ -599,7 +599,7 @@ mod tests {
     // encodeFunctionData/encodeAbiParameters: anvil key #0 as payer, payee
     // 0xfd24…c556, token 0x20c0…0000, salt 0x22…22, authorizedSigner = payer,
     // escrow 0x33b9…4f25, chainId 42431. Reproducing them byte-for-byte proves
-    // the ABI encodings match the reference client (mppx tempo/legacy/session).
+    // the ABI encodings match what the escrow contract expects.
     const V_PAYER: &str = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
     const V_PAYEE: &str = "0xfd24114c3981aba78ae2441991b1bdb89329c556";
     const V_TOKEN: &str = "0x20c0000000000000000000000000000000000000";

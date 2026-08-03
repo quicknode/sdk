@@ -20,7 +20,7 @@ require_relative "quicknode_sdk/sdk"
 module QuicknodeSdk
   # Generates a fresh payment keypair for :evm, :svm, or :tempo. Offline — no
   # network call, no funds. Returns {address:, chain:, key:}; `key` is the raw
-  # private key in the format the key_file config reads.
+  # private key in the format the payment config's key: accepts.
   #
   # The key is returned exactly once, at generation: nothing in the SDK stores
   # or re-derives it, so persist it before discarding the Hash.

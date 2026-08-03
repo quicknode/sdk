@@ -11,8 +11,12 @@ This is one of four language bindings published from the same Rust core. See the
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+  - [Option A — Pass config directly](#option-a--pass-config-directly)
+  - [Option B — Load from environment (`from_env()`)](#option-b--load-from-environment-from_env)
+  - [Custom headers and `User-Agent`](#custom-headers-and-user-agent)
 - [Platform Support](#platform-support)
 - [API Reference](#api-reference)
+  - [Language conventions](#language-conventions)
   - [Admin Client](#admin-client)
     - [Endpoints](#endpoints)
     - [Endpoint Tags](#endpoint-tags)
@@ -48,6 +52,12 @@ This is one of four language bindings published from the same Rust core. See the
     - [Sets](#sets)
     - [Lists](#lists)
   - [SQL Client](#sql-client)
+  - [RPC & Tooling Access](#rpc--tooling-access)
+- [Crypto-micropayment lane (`rpc.call`)](#crypto-micropayment-lane-rpccall)
+  - [Wallet generation](#wallet-generation)
+  - [x402 credit drawdown (authenticate once, then draw one credit per call)](#x402-credit-drawdown-authenticate-once-then-draw-one-credit-per-call)
+    - [Testnet faucet](#testnet-faucet)
+  - [MPP payment channel (deposit once, then vouchers)](#mpp-payment-channel-deposit-once-then-vouchers)
 - [Error Handling](#error-handling)
 - [License](#license)
 
@@ -1734,14 +1744,30 @@ against Quicknode's `x402.quicknode.com` and `mpp.quicknode.com` gateways. Confi
 it by setting `payment` on the RPC config; the SDK runs the `402` → sign → resend
 handshake for you. An API key is **not** required for this lane — build a keyless SDK.
 
-Confirmed paths: **x402/EVM** (EIP-712 `TransferWithAuthorization`), **x402/Solana**
-(SPL `TransferChecked` in a v0 tx, gateway sponsors gas), and **MPP/Tempo** (native Tempo tx).
+There are four payment paths. Two pay per request; two amortize one signature over many
+calls.
+
+| Path | Entry point | Gateway | Signs |
+|---|---|---|---|
+| Per-request x402 | `call` / `call_with_receipt` with `scheme="x402"` | x402 | once per call |
+| Per-request MPP charge | `call` / `call_with_receipt` with `scheme="mpp"` | mpp | once per call |
+| [x402 credit drawdown](#x402-credit-drawdown-authenticate-once-then-draw-one-credit-per-call) | `gateway_authenticate` → `gateway_drawdown_call` | x402 | once per session |
+| [MPP payment channel](#mpp-payment-channel-deposit-once-then-vouchers) | `mpp_open` → `mpp_session_call` | mpp | once per channel |
+
+The signer construction is derived from the scheme and pay network, never stated directly:
+**x402/EVM** signs an EIP-712 `TransferWithAuthorization`, **x402/Solana** an SPL
+`TransferChecked` in a v0 tx (the gateway sponsors gas), and **MPP/Tempo** a native Tempo
+transaction.
+
+`scheme` selects the gateway for `call` only. The `gateway_*` drawdown methods always use
+the x402 gateway and the `mpp_*` channel methods always use the MPP gateway, whatever
+`scheme` is set to.
 
 `PaymentConfig` fields:
 
 | Field | Meaning |
 |---|---|
-| `scheme` | `"x402"` (pay-per-request) or `"mpp"` (MPP charge) |
+| `scheme` | `"x402"` (pay-per-request) or `"mpp"` (MPP charge; `"mpp-charge"` is accepted too) |
 | `key` | raw private key — EVM/Tempo: hex; Solana: base58 64-byte secret |
 | `pay_network` | CAIP-2 pay network, e.g. `eip155:84532`, `solana:5eykt4…` |
 | `asset` | token address/mint to pay in (matches the offered menu entry) |
@@ -1794,18 +1820,23 @@ print("fund this address:", wallet["address"])
 open("payment.key", "w").write(wallet["key"])  # returned exactly once
 ```
 
-### Drawdown lane (buy credits, then draw one per call)
+### x402 credit drawdown (authenticate once, then draw one credit per call)
 
-Cheaper per call than paying per request: one signature buys a block of credits, then
-each call draws a single credit. The session is free to mint, so a host can
-re-authenticate transparently. Persist it between processes.
+Cheaper per call than paying per request: one SIWE signature mints a session JWT, then
+each call draws a single credit from the account balance instead of signing a fresh
+settlement. Minting the session is free and moves no funds, so a host can re-authenticate
+transparently. Persist it between processes.
+
+Fund the payment wallet out of band — the testnet faucet below, or by sending funds to
+`payment_address()` directly. Credits are provisioned against the account gateway-side.
+
+EVM signers only: SIWE is an EIP-4361 construction, so an x402/Solana key errors here.
 
 | Method | Cost | Returns |
 |---|---|---|
 | `payment_address()` | free, offline | the wallet address derived from the key |
 | `gateway_authenticate()` | free | a dict `{token, exp_unix, account_id}` |
 | `gateway_credits(session)` | free | a dict `{account_id, credits}` |
-| `gateway_buy_credits(session, network)` | **moves funds** | the post-purchase balance |
 | `gateway_drip(session)` | free (testnet) | a dict `{account_id, transaction_hash}` |
 | `gateway_drawdown_call(method, session, network, params=None)` | 1 credit | the JSON-RPC `result` |
 
@@ -1816,11 +1847,16 @@ print("credits:", balance["credits"])
 result = await qn.rpc.gateway_drawdown_call("eth_blockNumber", session, "base-sepolia")
 ```
 
-`gateway_drip` returns the **funding transaction, not a balance** — call `gateway_credits`
-afterwards to read the new balance. A `token_expired` surfaces as an `ApiError` with
-status 401/403; re-authenticate and retry that call.
+A `token_expired` surfaces as an `ApiError` with status 401/403; re-authenticate and retry
+that call.
 
-### MPP channel lane (deposit once, then vouchers)
+#### Testnet faucet
+
+`gateway_drip` requests testnet tokens for the payment **wallet** on Base Sepolia. The
+gateway allows one drip per account, and it returns the on-chain funding transaction hash
+— not a credit balance.
+
+### MPP payment channel (deposit once, then vouchers)
 
 Open a payment channel by depositing into the escrow, then authorize each call with a
 cumulative voucher — one `ecrecover` server-side, no on-chain transaction per call.

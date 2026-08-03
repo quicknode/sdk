@@ -72,8 +72,8 @@ notes.md
 ruby/lib/quicknode_sdk/*.bundle
 ruby/lib/quicknode_sdk/*.so
 
-# Local scratch: spike probes reference throwaway funded wallets. Never commit.
+# Local scratch
 scratch/
 
-# Local working plan doc — kept out of this public repo (internal notes).
+# Local working notes
 IMPLEMENTATION_PLAN.md

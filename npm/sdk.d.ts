@@ -16,6 +16,7 @@ import {
   XrplWalletFilterTemplate,
   HyperliquidWalletEventsFilterTemplate,
   StellarWalletTransactionsFilterTemplate,
+  RpcApiClient,
 } from "./index";
 
 // Stream destination attributes (input). The inner key is `attributes` rather
@@ -486,6 +487,61 @@ export interface SqlApiClientTyped {
   getSchema(clusterId: string): Promise<ChainSchemaNode>;
 }
 
+// Retypes the payment-lane returns from napi's `any` to the interfaces above.
+// napi emits `any` for every method returning a `serde_json::Value`, so without
+// this the declared payment interfaces would be documentation only and a
+// mistyped field would not be an error. Keep method signatures in sync with the
+// napi-generated RpcApiClient in ./index.d.ts.
+export interface RpcApiClientTyped
+  extends Omit<
+    RpcApiClient,
+    | "callWithReceipt"
+    | "gatewayAuthenticate"
+    | "gatewayCredits"
+    | "gatewayBuyCredits"
+    | "gatewayDrip"
+    | "gatewayDrawdownCall"
+    | "mppOpen"
+    | "mppTopUp"
+    | "mppClose"
+    | "mppStatus"
+    | "mppSessionCall"
+  > {
+  callWithReceipt(
+    method: string,
+    params?: any | undefined | null,
+    network?: string | undefined | null,
+    endpointUrl?: string | undefined | null
+  ): Promise<RpcCallResponse>;
+  gatewayAuthenticate(): Promise<GatewaySession>;
+  gatewayCredits(session: GatewaySession): Promise<CreditBalance>;
+  gatewayBuyCredits(
+    session: GatewaySession,
+    network: string
+  ): Promise<CreditBalance>;
+  gatewayDrip(session: GatewaySession): Promise<DripReceipt>;
+  gatewayDrawdownCall(
+    method: string,
+    session: GatewaySession,
+    network: string,
+    params?: any | undefined | null
+  ): Promise<any>;
+  mppOpen(deposit: string): Promise<ChannelState>;
+  mppTopUp(
+    channel: ChannelState,
+    additionalDeposit: string
+  ): Promise<ChannelState>;
+  mppClose(channel: ChannelState): Promise<void>;
+  mppStatus(channel: ChannelState): Promise<ChannelStatus>;
+  mppSessionCall(
+    method: string,
+    network: string,
+    channel: ChannelState,
+    newCumulative: string,
+    params?: any | undefined | null
+  ): Promise<any>;
+}
+
 export class QuicknodeSdk {
   constructor(config: SdkFullConfig);
   static fromEnv(): QuicknodeSdk;
@@ -494,7 +550,7 @@ export class QuicknodeSdk {
   webhooks: WebhooksApiClientTyped;
   kvstore: _QuicknodeSdk["kvstore"];
   sql: SqlApiClientTyped;
-  rpc: _QuicknodeSdk["rpc"];
+  rpc: RpcApiClientTyped;
 }
 
 // Typed static factory methods producing each discriminated variant of

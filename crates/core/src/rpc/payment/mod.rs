@@ -351,8 +351,8 @@ pub(super) async fn authorize_x402(
 ///
 /// Signing a Circle Gateway batched transfer is a different construction from
 /// the EIP-3009 `TransferWithAuthorization` used by the per-request lane: its
-/// EIP-712 domain separator is `extra.verifyingContract`, not the asset. Until
-/// that construction lands, refuse — never fall back to a per-request offer,
+/// EIP-712 domain separator is `extra.verifyingContract`, not the asset. When the
+/// credit tier cannot be signed, refuse — never fall back to a per-request offer,
 /// which would settle a far larger amount than the caller asked for.
 pub(super) async fn authorize_x402_credit(
     _client: &reqwest::Client,
@@ -376,8 +376,8 @@ pub(super) async fn authorize_x402_credit(
         offered: if credit_offered {
             format!(
                 "the credit-drawdown offer uses the {GATEWAY_BATCHED} scheme, which this \
-                 version cannot sign. Pay per request instead (drop --x402-drawdown and \
-                 use --x402)."
+                 version cannot sign. Pay per request instead: call rpc.call rather than \
+                 buying credits."
             )
         } else {
             format!(
