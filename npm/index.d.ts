@@ -2627,6 +2627,79 @@ export declare class RpcApiClient {
    * token between processes.
    */
   currentToken(): CachedToken | null
+  /**
+   * The configured payment wallet's on-chain address (EVM/Tempo `0x…` hex,
+   * Solana base58), derived offline from the key with no network round trip.
+   */
+  paymentAddress(): string
+  /**
+   * Authenticates against the x402 gateway with a SIWX message and resolves
+   * to `{ token, expUnix, accountId }`. Free — no funds move. Persist the
+   * object and pass it back to the `gateway*` methods.
+   */
+  gatewayAuthenticate(): Promise<any>
+  /**
+   * Reads the account's current x402 credit balance. Resolves to
+   * `{ accountId, credits }`. `session` comes from `gatewayAuthenticate`.
+   */
+  gatewayCredits(session: any): Promise<any>
+  /**
+   * Buys a block of credits, settling the gateway's offer with the same
+   * signer construction as the per-request lane. Resolves to the
+   * post-purchase `{ accountId, credits }`. Single-attempt: a paid lane never
+   * blind-retries.
+   */
+  gatewayBuyCredits(session: any, network: string): Promise<any>
+  /**
+   * Requests testnet tokens from the x402 faucet. Resolves to the funding
+   * transaction `{ accountId, transactionHash }` — NOT a balance; call
+   * `gatewayCredits` afterwards for that. Allowed once per account.
+   */
+  gatewayDrip(session: any): Promise<any>
+  /**
+   * Makes one x402 drawdown JSON-RPC call with the session as a Bearer
+   * token, drawing 1 credit on success. Resolves to the unwrapped JSON-RPC
+   * `result`. Single-attempt; re-authenticate on a 401/403 `ApiError`.
+   */
+  gatewayDrawdownCall(method: string, session: any, network: string, params?: any | undefined | null): Promise<any>
+  /**
+   * Opens an MPP payment channel by depositing `deposit` base units (a
+   * decimal string) into the escrow. Resolves to the channel state — persist
+   * it; the gateway has no read-only channel endpoint, so a lost record means
+   * opening a new channel. Moves real funds; single-attempt.
+   *
+   * Takes no network: the channel is scoped by the configured pay network and
+   * asset, so one channel funds calls to every supported network.
+   */
+  mppOpen(deposit: string): Promise<any>
+  /**
+   * Adds `additionalDeposit` base units (a decimal string) to an open
+   * channel. Resolves to the updated channel state. Moves real funds;
+   * single-attempt.
+   */
+  mppTopUp(channel: any, additionalDeposit: string): Promise<any>
+  /**
+   * Cooperatively closes a channel: settles the final cumulative spend
+   * on-chain and refunds the unused deposit. Single-attempt.
+   */
+  mppClose(channel: any): Promise<void>
+  /**
+   * Fetches the gateway's view of the channel as
+   * `{ channelId, acceptedCumulative, spent }` (amounts are decimal strings).
+   *
+   * **This costs one request unit** and advances the voucher by `perCall`,
+   * exactly like a session call — persist the advanced `cumulativeSpent`.
+   * Rejects with `PaymentUnsupportedError` before any network I/O when the
+   * channel has no room left for the probe.
+   */
+  mppStatus(channel: any): Promise<any>
+  /**
+   * Makes one MPP session-lane JSON-RPC call, authorizing it with a
+   * cumulative voucher for `newCumulative` (a decimal string: the running
+   * total AFTER this call). Resolves to the unwrapped JSON-RPC `result`.
+   * Single-attempt; advance the persisted `cumulativeSpent` on success.
+   */
+  mppSessionCall(method: string, network: string, channel: any, newCumulative: string, params?: any | undefined | null): Promise<any>
 }
 
 export declare class SqlApiClient {
@@ -2821,6 +2894,17 @@ export interface CreateWebhookFromTemplateParamsNode {
   destinationAttributes: WebhookDestinationAttributes
   templateArgs: any
 }
+
+/**
+ * Generates a fresh payment keypair for `chain` (`"evm"`, `"svm"`, or
+ * `"tempo"`). Returns `{ address, chain, key }` where `key` is the raw private
+ * key in the format the `keyFile` config reads.
+ *
+ * The key is returned exactly once, at generation: nothing in the SDK stores or
+ * re-derives it, so persist it before discarding the object. Randomness comes
+ * from the OS CSPRNG.
+ */
+export declare function generatePaymentWallet(chain: string): any
 
 export interface ListStreamsResponseNode {
   data: Array<StreamNode>

@@ -16,3 +16,15 @@ require_relative "quicknode_sdk/clients/kvstore"
 require_relative "quicknode_sdk/clients/sql"
 require_relative "quicknode_sdk/clients/rpc"
 require_relative "quicknode_sdk/sdk"
+
+module QuicknodeSdk
+  # Generates a fresh payment keypair for :evm, :svm, or :tempo. Offline — no
+  # network call, no funds. Returns {address:, chain:, key:}; `key` is the raw
+  # private key in the format the key_file config reads.
+  #
+  # The key is returned exactly once, at generation: nothing in the SDK stores
+  # or re-derives it, so persist it before discarding the Hash.
+  def self.generate_payment_wallet(**opts)
+    wrap(Native.generate_payment_wallet(opts))
+  end
+end

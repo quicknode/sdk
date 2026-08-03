@@ -8,6 +8,9 @@
 #
 # Run (x402/EVM on Base Sepolia testnet):
 #   QN_PAYMENT_KEY=0x<throwaway-key> ruby -Ilib examples/rpc_payment.rb
+#
+# Run the x402 drawdown lane (authenticate once, then 1 credit per call):
+#   QN_PAYMENT_KEY=0x<key> QN_PAYMENT_LANE=drawdown ruby -Ilib examples/rpc_payment.rb
 
 require "quicknode_sdk"
 
@@ -25,9 +28,31 @@ begin
   raise "expected a ConfigError (payment lane requires network)"
 rescue QuicknodeSdk::ConfigError => e
   raise "wrong message: #{e.message}" unless e.message.include?("requires")
-
-  puts "selfcheck OK: payment error classes + network-required ConfigError"
 end
+
+# Wallet generation is offline: no gateway, no funds. The key is returned
+# exactly once — persist it here or it is gone.
+wallet = QuicknodeSdk.generate_payment_wallet(chain: "evm")
+raise "address" unless wallet[:address].start_with?("0x") && wallet[:address].length == 42
+raise "chain" unless wallet[:chain] == "evm"
+raise "key" unless wallet[:key].is_a?(String)
+begin
+  QuicknodeSdk.generate_payment_wallet(chain: "dogecoin")
+  raise "expected an ArgumentError for an unknown chain"
+rescue ArgumentError
+  # expected
+end
+
+# Base-unit amounts cross as decimal Strings, because a u128 has no magnus
+# conversion. A non-integer must be refused, not coerced.
+begin
+  check_sdk.rpc.mpp_open(deposit: "12.5")
+  raise "expected an ArgumentError for a non-integer deposit"
+rescue ArgumentError => e
+  raise "wrong message: #{e.message}" unless e.message.include?("decimal base-unit")
+end
+
+puts "selfcheck OK: error classes, wallet generation, u128 String amounts"
 
 key = ENV["QN_PAYMENT_KEY"]
 unless key
@@ -68,4 +93,35 @@ rescue QuicknodeSdk::PaymentIndeterminateError => e
   warn "payment indeterminate — do not retry: #{e.message}"
 rescue QuicknodeSdk::PaymentRejectedError => e
   warn "payment rejected (#{e.status}): #{e.body}"
+end
+
+# The x402 drawdown lane: authenticate once, then draw 1 credit per call.
+# Cheaper per call than the per-request lane, and the session JWT is free to
+# mint. Persist the session Hash between runs.
+if ENV["QN_PAYMENT_LANE"] == "drawdown"
+  # Derived offline from the key — no network round trip. Use it to key a
+  # per-wallet session cache.
+  puts "payment wallet: #{sdk.rpc.payment_address}"
+
+  session = sdk.rpc.gateway_authenticate
+  puts "session account: #{session[:account_id]} expires: #{session[:exp_unix]}"
+
+  balance = sdk.rpc.gateway_credits(session: session)
+  puts "credits: #{balance[:credits]}"
+
+  if balance[:credits].zero?
+    # Testnet faucet: allowed once per account, and it returns the funding
+    # transaction — NOT a balance. Read the balance separately afterwards.
+    begin
+      drip = sdk.rpc.gateway_drip(session: session)
+      puts "faucet tx: #{drip[:transaction_hash]}"
+    rescue QuicknodeSdk::PaymentRejectedError => e
+      warn "faucet refused (#{e.status}): #{e.body}"
+    end
+  end
+
+  result = sdk.rpc.gateway_drawdown_call(
+    method: "eth_blockNumber", session: session, network: "base-sepolia"
+  )
+  puts "drawdown eth_blockNumber => #{result}"
 end

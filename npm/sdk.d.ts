@@ -352,6 +352,76 @@ export interface RpcCallResponse {
   paymentReceipt: PaymentReceipt | null;
 }
 
+// ── Payment lanes ──────────────────────────────────────────────
+//
+// Base-unit amounts are `string`, not `number`: they are u128 in the core and a
+// JS number is an f64 that loses precision above 2^53. Pass and store them as
+// decimal strings.
+
+// An x402 gateway session (from `rpc.gatewayAuthenticate`). `token` is a live
+// bearer credential — persist it, but keep it out of logs.
+export interface GatewaySession {
+  token: string;
+  expUnix: number;
+  accountId: string;
+}
+
+// An x402 credit balance (`rpc.gatewayCredits` / `rpc.gatewayBuyCredits`).
+export interface CreditBalance {
+  accountId: string;
+  credits: number;
+}
+
+// The faucet result (`rpc.gatewayDrip`): the on-chain funding transaction, NOT
+// a balance. Call `rpc.gatewayCredits` afterwards to read the new balance.
+export interface DripReceipt {
+  accountId: string;
+  transactionHash: string;
+}
+
+// Local state for an open MPP payment channel (`rpc.mppOpen` /
+// `rpc.mppTopUp`). Persist this verbatim: the gateway has no read-only channel
+// endpoint, so a lost record means opening a new channel.
+export interface ChannelState {
+  channelId: string;
+  token: string;
+  payee: string;
+  salt: string;
+  authorizedSigner: string;
+  escrowContract: string;
+  /** Base units, decimal string. */
+  deposit: string;
+  /** Base units, decimal string. */
+  cumulativeSpent: string;
+  /** The gateway's per-call price, in base units, as a decimal string. */
+  perCall: string;
+  chainId: number;
+}
+
+// The gateway's view of a channel (`rpc.mppStatus`).
+export interface ChannelStatus {
+  channelId: string;
+  /** Base units, decimal string. */
+  acceptedCumulative: string;
+  /** Base units, decimal string. */
+  spent: string;
+}
+
+// A freshly generated payment wallet (`generatePaymentWallet`). `key` is the raw
+// private key, returned exactly once at generation — nothing in the SDK stores
+// or re-derives it, so persist it before discarding the object.
+export interface GeneratedWallet {
+  address: string;
+  chain: "evm" | "svm" | "tempo";
+  key: string;
+}
+
+/**
+ * Generates a fresh payment keypair. Offline: no network call, no funds.
+ * Randomness comes from the OS CSPRNG.
+ */
+export function generatePaymentWallet(chain: "evm" | "svm" | "tempo"): GeneratedWallet;
+
 // const enums must use `export` (not `export type`) so they are usable as values
 export {
   StreamRegion,

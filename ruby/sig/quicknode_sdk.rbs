@@ -1,6 +1,11 @@
 module QuicknodeSdk
   def self.wrap: (untyped v) -> untyped
 
+  # Generates a fresh payment keypair for "evm", "svm", or "tempo". Offline: no
+  # network call. Returns {address:, chain:, key:} — `key` is the raw private
+  # key, returned exactly once at generation.
+  def self.generate_payment_wallet: (chain: String) -> untyped
+
   class Error < StandardError
   end
 
@@ -203,5 +208,21 @@ module QuicknodeSdk
     def set_networks: (networks: Hash[String, String]) -> void
     def clear_cached_token: () -> void
     def current_token: () -> untyped
+
+    # Payment lanes. Base-unit amounts are decimal Strings, not Integers: they
+    # are u128 in the core and magnus has no u128 conversion. `session` and
+    # `channel` are the Hashes returned by gateway_authenticate and
+    # mpp_open/mpp_top_up — persist them and hand them straight back.
+    def payment_address: () -> String
+    def gateway_authenticate: () -> untyped
+    def gateway_credits: (session: untyped) -> untyped
+    def gateway_buy_credits: (session: untyped, network: String) -> untyped
+    def gateway_drip: (session: untyped) -> untyped
+    def gateway_drawdown_call: (method: String, session: untyped, network: String, ?params: untyped) -> untyped
+    def mpp_open: (deposit: String) -> untyped
+    def mpp_top_up: (channel: untyped, additional_deposit: String) -> untyped
+    def mpp_close: (channel: untyped) -> void
+    def mpp_status: (channel: untyped) -> untyped
+    def mpp_session_call: (method: String, network: String, channel: untyped, new_cumulative: String, ?params: untyped) -> untyped
   end
 end

@@ -6,15 +6,26 @@
 //
 // Run (x402/EVM on Base Sepolia testnet):
 //   QN_PAYMENT_KEY=0x<throwaway-key> npx tsx examples/rpc_payment.ts
+//
+// Run the x402 drawdown lane (authenticate once, then 1 credit per call):
+//   QN_PAYMENT_KEY=0x<key> QN_PAYMENT_LANE=drawdown npx tsx examples/rpc_payment.ts
 
 import {
   QuicknodeSdk,
   PaymentIndeterminateError,
   PaymentRejectedError,
+  generatePaymentWallet,
 } from "@quicknode/sdk";
 
 const key = process.env.QN_PAYMENT_KEY;
-if (!key) throw new Error("set QN_PAYMENT_KEY to a throwaway key");
+if (!key) {
+  // Wallet generation is offline: no gateway, no funds. The key is returned
+  // exactly once — persist it here or it is gone.
+  const wallet = generatePaymentWallet("evm");
+  console.log("generated a throwaway wallet:", wallet.address);
+  console.log("fund it, then re-run with QN_PAYMENT_KEY set to its key");
+  process.exit(0);
+}
 
 // A keyless SDK: the payment lane needs no account API key. Do NOT log the
 // config object — the `key` field is readable.
@@ -34,7 +45,46 @@ const qn = new QuicknodeSdk({
   },
 });
 
+// The x402 drawdown lane: authenticate once, then draw 1 credit per call.
+// Cheaper per call than the per-request lane, and the session JWT is free to
+// mint. Persist the session object between runs.
+async function drawdownDemo() {
+  // Derived offline from the key — no network round trip. Use it to key a
+  // per-wallet session cache.
+  console.log("payment wallet:", qn.rpc.paymentAddress());
+
+  const session = await qn.rpc.gatewayAuthenticate();
+  console.log("session account:", session.accountId, "expires:", session.expUnix);
+
+  const balance = await qn.rpc.gatewayCredits(session);
+  console.log("credits:", balance.credits);
+
+  if (balance.credits === 0) {
+    // Testnet faucet: allowed once per account, and it returns the funding
+    // transaction — NOT a balance. Read the balance separately afterwards.
+    try {
+      const drip = await qn.rpc.gatewayDrip(session);
+      console.log("faucet tx:", drip.transactionHash);
+    } catch (e) {
+      if (e instanceof PaymentRejectedError) {
+        console.error(`faucet refused (${e.status}):`, e.body);
+      } else throw e;
+    }
+  }
+
+  const result = await qn.rpc.gatewayDrawdownCall(
+    "eth_blockNumber",
+    session,
+    "base-sepolia",
+  );
+  console.log("drawdown eth_blockNumber =>", result);
+}
+
 async function main() {
+  if (process.env.QN_PAYMENT_LANE === "drawdown") {
+    await drawdownDemo();
+    return;
+  }
   try {
     // `network` is the QUERY chain (gateway path slug), independent of the pay
     // network. The SDK runs the 402 -> sign -> resend handshake.
