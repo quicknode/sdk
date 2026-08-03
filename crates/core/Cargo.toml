@@ -23,7 +23,8 @@ extension-module = ["pyo3/extension-module"]
 # opt into only the pay-chains it needs; wheels/npm/gems ship features-on, so
 # "zero cost when off" is true only for the crate itself.
 # payments       = x402/EVM (EIP-712 TransferWithAuthorization).
-# payments-svm   = + x402/Solana (hand-rolled SPL TransferChecked, ed25519).
+# payments-svm   = + x402/Solana (hand-rolled v0 tx: compute budget, SPL
+#                  TransferChecked, memo; ed25519).
 # payments-tempo = + MPP/Tempo (native type-0x76 tx via tempo-primitives).
 payments = ["dep:k256", "dep:sha3", "dep:hex", "dep:base64", "dep:rand"]
 payments-svm = ["payments", "dep:ed25519-dalek", "dep:bs58", "dep:sha2"]

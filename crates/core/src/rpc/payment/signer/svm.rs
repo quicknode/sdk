@@ -6,15 +6,24 @@
 //! The payer signs its own slot; the gateway co-signs the fee-payer slot
 //! server-side before submitting.
 //!
-//! The SPL `TransferChecked` instruction is hand-rolled (a 4-account,
-//! 10-byte-data instruction) rather than pulling `spl-token`, which drags
-//! `solana-program` → curve25519/MSRV conflicts under cross+zig at
+//! The instructions are hand-rolled rather than pulling `spl-token`, which
+//! drags `solana-program` → curve25519/MSRV conflicts under cross+zig at
 //! glibc-2.17/musl.
 //!
-//! Async: the payer's associated token account and a recent blockhash are read
-//! from a Solana RPC (source precedence resolved by the driver: explicit
-//! override → tooling endpoint → public default). The gateway 402s keyless
-//! sub-reads, so these reads go to a plain Solana RPC, not the gateway.
+//! The message is a **v0** message carrying four instructions, matching the
+//! canonical x402 Solana scheme:
+//!
+//! 1. `SetComputeUnitLimit`
+//! 2. `SetComputeUnitPrice`
+//! 3. SPL `TransferChecked`
+//! 4. `Memo` — the challenge's `extra.memo`, else a random nonce. This is the
+//!    payment's replay-protection nonce, so it is not optional.
+//!
+//! Async: the mint (for decimals and its owning token program) and a recent
+//! blockhash are read from a Solana RPC (source precedence resolved by the
+//! driver: explicit override → tooling endpoint → public default). The gateway
+//! 402s keyless sub-reads, so these reads go to a plain Solana RPC, not the
+//! gateway.
 
 use ed25519_dalek::{Signer as _, SigningKey};
 use sha2::{Digest, Sha256};
@@ -27,10 +36,25 @@ use crate::errors::SdkError;
 const TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN_2022_PROGRAM_ID: &str = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const ASSOCIATED_TOKEN_PROGRAM_ID: &str = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
-const SYSTEM_PROGRAM_ID: &str = "11111111111111111111111111111111";
+const COMPUTE_BUDGET_PROGRAM_ID: &str = "ComputeBudget111111111111111111111111111111";
+const MEMO_PROGRAM_ID: &str = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 
 // SPL TransferChecked instruction discriminant.
 const TRANSFER_CHECKED: u8 = 12;
+// ComputeBudget instruction discriminants.
+const SET_COMPUTE_UNIT_LIMIT: u8 = 2;
+const SET_COMPUTE_UNIT_PRICE: u8 = 3;
+
+// Compute-budget defaults, matching the canonical scheme.
+const DEFAULT_COMPUTE_UNIT_LIMIT: u32 = 20_000;
+const DEFAULT_COMPUTE_UNIT_PRICE_MICROLAMPORTS: u64 = 1;
+
+/// Upper bound on the memo payload, matching the canonical scheme.
+pub(crate) const MAX_MEMO_BYTES: usize = 256;
+
+// Marks the message as v0 rather than legacy. The high bit is what
+// distinguishes the two: a legacy message opens with a signature count.
+const V0_MESSAGE_PREFIX: u8 = 0x80;
 
 /// Inputs for one x402/Solana payment, derived from the decoded challenge.
 #[derive(Debug, Clone)]
@@ -47,8 +71,12 @@ pub struct SvmTransferRequest {
     pub decimals: u8,
     /// Recent blockhash (base58), read from the Solana RPC by the driver.
     pub recent_blockhash: String,
-    /// Whether the mint is a Token-2022 mint (selects the token program).
-    pub token_2022: bool,
+    /// The mint's owning token program (base58), read from the mint account by
+    /// the driver — SPL Token or Token-2022.
+    pub token_program: String,
+    /// Memo payload: the challenge's `extra.memo` when present, else a random
+    /// nonce minted by the driver. Carries the payment's replay protection.
+    pub memo: String,
 }
 
 impl Signer {
@@ -58,46 +86,119 @@ impl Signer {
         Ok(bs58::encode(key.verifying_key().to_bytes()).into_string())
     }
 
-    /// Build a partially-signed SPL `TransferChecked` transaction (x402/Solana).
-    /// Returns the serialized signed transaction bytes (the gateway base64s
-    /// them into the payment envelope's `payload`).
+    /// Build a partially-signed x402/Solana payment transaction: a v0 message
+    /// carrying compute-budget, SPL `TransferChecked` and memo instructions.
+    /// Returns the serialized signed transaction bytes (the driver base64s them
+    /// into the payment envelope's `payload.transaction`).
     pub fn sign_svm_transfer(&self, req: &SvmTransferRequest) -> Result<Vec<u8>, SdkError> {
         let key = svm_signing_key(self)?;
         let payer = key.verifying_key().to_bytes();
 
-        let token_program = decode_pubkey(if req.token_2022 {
-            TOKEN_2022_PROGRAM_ID
-        } else {
-            TOKEN_PROGRAM_ID
-        })?;
+        // Only the two SPL token programs implement TransferChecked with this
+        // ABI. Refuse anything else rather than build an instruction the
+        // program cannot parse.
+        if req.token_program != TOKEN_PROGRAM_ID && req.token_program != TOKEN_2022_PROGRAM_ID {
+            return Err(SdkError::Config(format!(
+                "mint {} is owned by {}, which is not a known SPL token program",
+                req.mint, req.token_program
+            )));
+        }
+        let token_program = decode_pubkey(&req.token_program)?;
         let mint = decode_pubkey(&req.mint)?;
         let pay_to_owner = decode_pubkey(&req.pay_to)?;
         let fee_payer = decode_pubkey(&req.fee_payer)?;
+        let compute_budget = decode_pubkey(COMPUTE_BUDGET_PROGRAM_ID)?;
+        let memo_program = decode_pubkey(MEMO_PROGRAM_ID)?;
+
+        let memo_data = req.memo.as_bytes();
+        if memo_data.len() > MAX_MEMO_BYTES {
+            return Err(SdkError::Config(format!(
+                "x402 Solana memo exceeds the maximum {MAX_MEMO_BYTES} bytes"
+            )));
+        }
 
         // Derive the source and destination associated token accounts.
         let source_ata = associated_token_address(&payer, &token_program, &mint)?;
         let dest_ata = associated_token_address(&pay_to_owner, &token_program, &mint)?;
 
+        // Account list, ordered by the runtime's header semantics:
+        // writable-signers, readonly-signers, writable-nonsigners,
+        // readonly-nonsigners.
+        //   0: fee_payer      (writable signer)   — gateway
+        //   1: payer          (writable signer)   — the SPL token owner
+        //   2: source_ata     (writable nonsigner)
+        //   3: dest_ata       (writable nonsigner)
+        //   4: mint           (readonly nonsigner)
+        //   5: token_program  (readonly nonsigner)
+        //   6: compute_budget (readonly nonsigner)
+        //   7: memo_program   (readonly nonsigner)
+        let accounts = vec![
+            fee_payer,
+            payer,
+            source_ata,
+            dest_ata,
+            mint,
+            token_program,
+            compute_budget,
+            memo_program,
+        ];
+        let header = MessageHeader {
+            num_required_signatures: 2,
+            num_readonly_signed: 0,
+            // mint, token_program, compute_budget, memo_program
+            num_readonly_unsigned: 4,
+        };
+        let index =
+            |pk: &[u8; 32]| -> u8 { accounts.iter().position(|a| a == pk).map_or(0, |p| p as u8) };
+
+        // Instruction order matches the canonical scheme: compute budget first
+        // so the limit applies to everything after it.
+        let mut cu_limit_data = Vec::with_capacity(5);
+        cu_limit_data.push(SET_COMPUTE_UNIT_LIMIT);
+        cu_limit_data.extend_from_slice(&DEFAULT_COMPUTE_UNIT_LIMIT.to_le_bytes());
+
+        let mut cu_price_data = Vec::with_capacity(9);
+        cu_price_data.push(SET_COMPUTE_UNIT_PRICE);
+        cu_price_data.extend_from_slice(&DEFAULT_COMPUTE_UNIT_PRICE_MICROLAMPORTS.to_le_bytes());
+
         // TransferChecked: accounts = [source, mint, dest, owner(=payer signer)].
         // data = discriminant(1) || amount(u64 LE) || decimals(1).
-        let mut data = Vec::with_capacity(10);
-        data.push(TRANSFER_CHECKED);
-        data.extend_from_slice(&req.amount.to_le_bytes());
-        data.push(req.decimals);
+        let mut transfer_data = Vec::with_capacity(10);
+        transfer_data.push(TRANSFER_CHECKED);
+        transfer_data.extend_from_slice(&req.amount.to_le_bytes());
+        transfer_data.push(req.decimals);
 
-        let message = build_message(
-            &fee_payer,
-            &payer,
-            &token_program,
-            &decode_pubkey(SYSTEM_PROGRAM_ID)?,
-            &source_ata,
-            &mint,
-            &dest_ata,
-            &req.recent_blockhash,
-            &data,
-        )?;
+        let instructions = vec![
+            Instruction {
+                program_index: index(&compute_budget),
+                account_indexes: Vec::new(),
+                data: cu_limit_data,
+            },
+            Instruction {
+                program_index: index(&compute_budget),
+                account_indexes: Vec::new(),
+                data: cu_price_data,
+            },
+            Instruction {
+                program_index: index(&token_program),
+                account_indexes: vec![
+                    index(&source_ata),
+                    index(&mint),
+                    index(&dest_ata),
+                    index(&payer),
+                ],
+                data: transfer_data,
+            },
+            Instruction {
+                program_index: index(&memo_program),
+                account_indexes: Vec::new(),
+                data: memo_data.to_vec(),
+            },
+        ];
 
-        // Legacy transaction wire format:
+        let message = build_message(&header, &accounts, &req.recent_blockhash, &instructions)?;
+
+        // Transaction wire format:
         //   compact-u16 signature count || signatures(64B each) || message.
         // Two signers (fee payer + payer); we fill the payer's slot and leave
         // the fee-payer slot zeroed for the gateway to co-sign.
@@ -109,6 +210,20 @@ impl Signer {
         tx.extend_from_slice(&message);
         Ok(tx)
     }
+}
+
+/// A v0 message's account-permission counts.
+struct MessageHeader {
+    num_required_signatures: u8,
+    num_readonly_signed: u8,
+    num_readonly_unsigned: u8,
+}
+
+/// One compiled instruction: indexes into the message's account list.
+struct Instruction {
+    program_index: u8,
+    account_indexes: Vec<u8>,
+    data: Vec<u8>,
 }
 
 /// Generates a fresh Solana keypair. Returns the base58-encoded 64-byte
@@ -192,67 +307,38 @@ fn is_on_curve(bytes: &[u8; 32]) -> bool {
 // Build a legacy Solana transaction message for a single TransferChecked ix.
 // Account ordering (writable-signers, readonly-signers, writable-nonsigners,
 // readonly-nonsigners) is required by the runtime's header semantics.
-#[allow(clippy::too_many_arguments)]
 fn build_message(
-    fee_payer: &[u8; 32],
-    payer_signer: &[u8; 32],
-    token_program: &[u8; 32],
-    _system_program: &[u8; 32],
-    source_ata: &[u8; 32],
-    mint: &[u8; 32],
-    dest_ata: &[u8; 32],
+    header: &MessageHeader,
+    accounts: &[[u8; 32]],
     recent_blockhash: &str,
-    ix_data: &[u8],
+    instructions: &[Instruction],
 ) -> Result<Vec<u8>, SdkError> {
-    // Ordered account list:
-    //   0: fee_payer     (writable signer)   — gateway
-    //   1: payer_signer  (writable signer)   — the SPL token owner
-    //   2: source_ata    (writable nonsigner)
-    //   3: dest_ata      (writable nonsigner)
-    //   4: mint          (readonly nonsigner)
-    //   5: token_program (readonly nonsigner)
-    let accounts: Vec<[u8; 32]> = vec![
-        *fee_payer,
-        *payer_signer,
-        *source_ata,
-        *dest_ata,
-        *mint,
-        *token_program,
-    ];
-    let num_required_signatures: u8 = 2;
-    let num_readonly_signed: u8 = 0;
-    let num_readonly_unsigned: u8 = 2; // mint + token_program
-
-    let index =
-        |pk: &[u8; 32]| -> u8 { accounts.iter().position(|a| a == pk).map_or(0, |p| p as u8) };
-
-    // TransferChecked account metas: [source, mint, dest, owner].
-    let ix_accounts = [
-        index(source_ata),
-        index(mint),
-        index(dest_ata),
-        index(payer_signer),
-    ];
-    let program_index = index(token_program);
-
     let blockhash = decode_pubkey(recent_blockhash)?; // 32-byte hash, base58
 
-    let mut msg = Vec::new();
-    msg.push(num_required_signatures);
-    msg.push(num_readonly_signed);
-    msg.push(num_readonly_unsigned);
+    // A v0 message is prefixed with the version byte (the high bit distinguishes
+    // it from a legacy message, whose first byte is a signature count), then the
+    // three account-permission counts.
+    let mut msg = vec![
+        V0_MESSAGE_PREFIX,
+        header.num_required_signatures,
+        header.num_readonly_signed,
+        header.num_readonly_unsigned,
+    ];
     write_compact_u16(&mut msg, accounts.len() as u16);
-    for acct in &accounts {
+    for acct in accounts {
         msg.extend_from_slice(acct);
     }
     msg.extend_from_slice(&blockhash);
-    // One instruction.
-    write_compact_u16(&mut msg, 1);
-    msg.push(program_index);
-    write_compact_u16(&mut msg, ix_accounts.len() as u16);
-    msg.extend_from_slice(&ix_accounts);
-    write_compact_u16(&mut msg, ix_data.len() as u16);
-    msg.extend_from_slice(ix_data);
+    write_compact_u16(&mut msg, instructions.len() as u16);
+    for ix in instructions {
+        msg.push(ix.program_index);
+        write_compact_u16(&mut msg, ix.account_indexes.len() as u16);
+        msg.extend_from_slice(&ix.account_indexes);
+        write_compact_u16(&mut msg, ix.data.len() as u16);
+        msg.extend_from_slice(&ix.data);
+    }
+    // No address-table lookups: every account is spelled out above.
+    write_compact_u16(&mut msg, 0);
     Ok(msg)
 }
 
@@ -318,38 +404,91 @@ mod tests {
         assert!(!is_on_curve(&a));
     }
 
+    fn test_request() -> SvmTransferRequest {
+        SvmTransferRequest {
+            mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".into(),
+            pay_to: bs58::encode([4u8; 32]).into_string(),
+            fee_payer: bs58::encode([5u8; 32]).into_string(),
+            amount: 1000,
+            decimals: 6,
+            recent_blockhash: bs58::encode([6u8; 32]).into_string(),
+            token_program: TOKEN_PROGRAM_ID.into(),
+            memo: "0123456789abcdef".into(),
+        }
+    }
+
     #[test]
     fn transfer_produces_two_sig_slots_with_payer_filled() {
         let signer = throwaway_signer();
-        let req = SvmTransferRequest {
-            mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".into(),
-            pay_to: "2LWbc9MihDfP4JR7YrE5MNrCq4Yd6qcT57tAt1v1qcT5"
-                .chars()
-                .take(44)
-                .collect(),
-            fee_payer: "GVJJ7rdGqjNjBqKxY9YqZ3xQ5vN8dKZ8Q9dVebDveb1"
-                .chars()
-                .take(43)
-                .collect(),
-            amount: 1000,
-            decimals: 6,
-            recent_blockhash: "11111111111111111111111111111111".into(),
-            token_2022: false,
-        };
-        // pay_to / fee_payer above may not be valid base58 pubkeys; use real
-        // 32-byte-decodable values instead.
-        let req = SvmTransferRequest {
-            pay_to: bs58::encode([4u8; 32]).into_string(),
-            fee_payer: bs58::encode([5u8; 32]).into_string(),
-            recent_blockhash: bs58::encode([6u8; 32]).into_string(),
-            ..req
-        };
-        let tx = signer.sign_svm_transfer(&req).unwrap();
+        let tx = signer.sign_svm_transfer(&test_request()).unwrap();
         // compact-u16(2) = 1 byte, then 2×64 sig bytes, then message.
         assert_eq!(tx[0], 2);
         // Fee-payer slot (bytes 1..65) is zeroed for the gateway.
         assert_eq!(&tx[1..65], &[0u8; 64]);
         // Payer slot (65..129) is filled (non-zero).
         assert!(tx[65..129].iter().any(|&b| b != 0));
+    }
+
+    // The gateway rejects a legacy message, and rejects a v0 message that
+    // omits the compute-budget or memo instructions. Lock the shape: v0
+    // prefix, 8 accounts, header (2,0,4), four instructions in canonical
+    // order, and an empty address-table-lookup vector.
+    #[test]
+    fn message_is_v0_with_four_instructions() {
+        let signer = throwaway_signer();
+        let tx = signer.sign_svm_transfer(&test_request()).unwrap();
+        let msg = &tx[129..];
+
+        assert_eq!(msg[0], V0_MESSAGE_PREFIX, "v0 version prefix");
+        assert_eq!(&msg[1..4], &[2, 0, 4], "header: 2 signers, 4 readonly");
+        assert_eq!(msg[4], 8, "account count");
+
+        // 5 = prefix + 3 header bytes + 1 account-count byte.
+        let after_accounts = 5 + 8 * 32;
+        let after_blockhash = after_accounts + 32;
+        assert_eq!(msg[after_blockhash], 4, "four instructions");
+
+        // Walk the instructions and collect (program_index, first data byte).
+        let mut cursor = after_blockhash + 1;
+        let mut seen = Vec::new();
+        for _ in 0..4 {
+            let program_index = msg[cursor];
+            cursor += 1;
+            let n_accounts = msg[cursor] as usize;
+            cursor += 1 + n_accounts;
+            let n_data = msg[cursor] as usize;
+            cursor += 1;
+            seen.push((program_index, msg[cursor], n_accounts));
+            cursor += n_data;
+        }
+
+        // Account indexes 6 = ComputeBudget, 5 = token program, 7 = Memo.
+        assert_eq!(
+            seen,
+            vec![
+                (6, SET_COMPUTE_UNIT_LIMIT, 0),
+                (6, SET_COMPUTE_UNIT_PRICE, 0),
+                (5, TRANSFER_CHECKED, 4),
+                (7, b'0', 0),
+            ]
+        );
+
+        // Trailing empty address-table-lookup vector.
+        assert_eq!(msg[cursor], 0, "no address table lookups");
+        assert_eq!(cursor + 1, msg.len(), "message fully consumed");
+    }
+
+    #[test]
+    fn oversized_memo_is_rejected() {
+        let signer = throwaway_signer();
+        let req = SvmTransferRequest {
+            memo: "x".repeat(MAX_MEMO_BYTES + 1),
+            ..test_request()
+        };
+        let err = signer.sign_svm_transfer(&req).unwrap_err();
+        assert!(
+            matches!(err, SdkError::Config(msg) if msg.contains("memo")),
+            "expected a memo-size Config error"
+        );
     }
 }

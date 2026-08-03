@@ -390,7 +390,7 @@ pub(super) async fn authorize_x402_credit(
     })
 }
 
-// Select an accepts[] entry (first match) and authorize it with the
+// Select an accepts[] entry (the cheapest match) and authorize it with the
 // chain-appropriate signer.
 async fn authorize_x402_entry(
     client: &reqwest::Client,
@@ -400,9 +400,21 @@ async fn authorize_x402_entry(
     let mut skipped: Vec<String> = Vec::new();
     let chosen = select_x402_entry(payment, &parsed.accepts, &mut skipped);
     let Some(entry) = chosen else {
-        return Err(SdkError::PaymentUnsupported {
-            offered: describe_offered(&parsed.accepts, &skipped),
-        });
+        // Lead with the one lever the caller can pull. The full menu follows,
+        // but a 20-entry dump should not bury the actionable sentence.
+        let offered = match cheapest_over_ceiling(payment, &parsed.accepts) {
+            Some(cheapest) => format!(
+                "every offer for {}/{} is above max_amount {}; the cheapest is \
+                 {cheapest} base units — raise max_amount to at least that. \
+                 Full menu: {}",
+                payment.pay_network,
+                payment.asset,
+                payment.max_amount,
+                describe_offered(&parsed.accepts, &skipped)
+            ),
+            None => describe_offered(&parsed.accepts, &skipped),
+        };
+        return Err(SdkError::PaymentUnsupported { offered });
     };
 
     match payment.signer.kind() {
@@ -423,13 +435,20 @@ const GATEWAY_BATCHED: &str = "GatewayWalletBatched";
 
 // Select an accepts[] entry that matches {pay_network, asset}, has a supported
 // `extra` shape, and whose amount is a non-negative integer ≤ max_amount.
-// Returns the first match (the per-request tier). Records skip reasons for the
-// PaymentUnsupported message.
+//
+// Returns the CHEAPEST such entry — the per-request tier. Menu order carries no
+// meaning: a gateway may advertise tiers in any order, and where a network
+// distinguishes its tiers only by amount (no `extra.name`), taking the first
+// match can land on a tier this lane cannot pay. Picking the cheapest also
+// makes `max_amount` a true ceiling rather than a tier selector.
+//
+// Records skip reasons for the PaymentUnsupported message.
 fn select_x402_entry(
     payment: &ResolvedPayment,
     accepts: &[Value],
     skipped: &mut Vec<String>,
 ) -> Option<Value> {
+    let mut best: Option<(u128, &Value)> = None;
     for entry in accepts {
         let network = entry.get("network").and_then(Value::as_str).unwrap_or("");
         let asset = entry.get("asset").and_then(Value::as_str).unwrap_or("");
@@ -446,7 +465,11 @@ fn select_x402_entry(
         // Amount must be an integer base-unit string ≤ max_amount.
         let amount_str = entry.get("amount").and_then(Value::as_str).unwrap_or("");
         match amount_str.parse::<u128>() {
-            Ok(amount) if amount <= payment.max_amount => return Some(entry.clone()),
+            Ok(amount) if amount <= payment.max_amount => {
+                if best.is_none_or(|(best_amount, _)| amount < best_amount) {
+                    best = Some((amount, entry));
+                }
+            }
             Ok(amount) => skipped.push(format!(
                 "{network}/{asset}: amount {amount} exceeds max_amount {}",
                 payment.max_amount
@@ -456,7 +479,7 @@ fn select_x402_entry(
             )),
         }
     }
-    None
+    best.map(|(_, entry)| entry.clone())
 }
 
 fn authorize_x402_evm(
@@ -569,40 +592,47 @@ async fn authorize_x402_svm(
                 "x402 Solana amount {amount_str:?} is not a valid u64 base-unit integer"
             ))
         })?;
-    // Decimals may be carried in the entry's extra; default to 6 (USDC).
-    let decimals = entry
-        .pointer("/extra/decimals")
-        .and_then(Value::as_u64)
-        .unwrap_or(6) as u8;
-    let token_2022 = entry
-        .pointer("/extra/tokenProgram")
-        .and_then(Value::as_str)
-        .is_some_and(|p| p.contains("Token2022") || p.starts_with("TokenzQd"));
-
-    // The gateway 402s keyless sub-reads, so the recent blockhash comes from a
-    // plain Solana RPC (resolved source: override → tooling → public default).
+    // The gateway 402s keyless sub-reads, so the mint and the recent blockhash
+    // come from a plain Solana RPC (resolved source: override → tooling →
+    // public default).
     let rpc_url = payment
         .svm_rpc_url
         .as_deref()
         .ok_or_else(|| SdkError::Config("x402/Solana requires a resolved Solana RPC URL".into()))?;
+
+    // Read decimals and the owning token program off the mint itself rather
+    // than trusting the challenge: `extra.decimals` is optional (and absent on
+    // the live menu), and a wrong value silently transfers the wrong amount,
+    // since TransferChecked validates decimals against the mint on-chain.
+    let mint = fetch_mint_metadata(client, rpc_url, &payment.asset).await?;
     let recent_blockhash = fetch_latest_blockhash(client, rpc_url).await?;
+
+    // The memo carries the payment's replay-protection nonce. Honour a
+    // seller-supplied `extra.memo`; otherwise mint a random one.
+    let memo = match entry.pointer("/extra/memo").and_then(Value::as_str) {
+        Some(seller_memo) => seller_memo.to_string(),
+        None => random_memo_nonce(),
+    };
 
     let req = SvmTransferRequest {
         mint: payment.asset.clone(),
         pay_to: pay_to.to_string(),
         fee_payer: fee_payer.to_string(),
         amount,
-        decimals,
+        decimals: mint.decimals,
         recent_blockhash,
-        token_2022,
+        token_program: mint.token_program,
+        memo,
     };
     let tx = payment.signer.sign_svm_transfer(&req)?;
 
-    // Envelope: {x402Version, accepted:<entry>, payload:<base64 tx>}.
+    // Envelope: {x402Version, accepted:<entry>, payload:{transaction:<base64>}}.
+    // `payload` is an object, not a bare string — the x402 v2 payload schema
+    // requires a record, and a string is rejected before verification.
     let envelope = serde_json::json!({
         "x402Version": x402_version,
         "accepted": entry,
-        "payload": base64_std(tx),
+        "payload": { "transaction": base64_std(tx) },
     });
     // Never fall back to an empty credential: sending zero bytes turns a local
     // serialization bug into an opaque gateway rejection.
@@ -645,6 +675,74 @@ async fn fetch_latest_blockhash(
         .ok_or_else(|| {
             SdkError::Config(format!("could not read blockhash from Solana RPC: {text}"))
         })
+}
+
+/// A mint's decimals and the token program that owns it.
+#[cfg(feature = "payments-svm")]
+struct MintMetadata {
+    decimals: u8,
+    token_program: String,
+}
+
+/// Reads a mint account to learn its decimals and owning token program. Both
+/// matter for `TransferChecked`: the instruction re-checks decimals against the
+/// mint on-chain, and SPL Token vs Token-2022 changes the program the
+/// instruction must target.
+#[cfg(feature = "payments-svm")]
+async fn fetch_mint_metadata(
+    client: &reqwest::Client,
+    rpc_url: &str,
+    mint: &str,
+) -> Result<MintMetadata, SdkError> {
+    let body = serde_json::json!({
+        "jsonrpc": "2.0", "id": 1, "method": "getAccountInfo",
+        "params": [mint, { "encoding": "jsonParsed", "commitment": "finalized" }]
+    });
+    let resp = client
+        .post(rpc_url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(SdkError::Http)?;
+    let text = resp.text().await.map_err(SdkError::Http)?;
+    // Pre-payment, like the blockhash read: a bad RPC response is Config-class.
+    let parsed: Value = serde_json::from_str(&text).map_err(|source| {
+        SdkError::Config(format!(
+            "could not parse the Solana RPC response as JSON: {source}"
+        ))
+    })?;
+    let account = parsed.pointer("/result/value").ok_or_else(|| {
+        SdkError::Config(format!(
+            "Solana mint {mint} was not found (asset may be wrong for this network)"
+        ))
+    })?;
+    let token_program = account
+        .get("owner")
+        .and_then(Value::as_str)
+        .ok_or_else(|| {
+            SdkError::Config(format!("could not read the owning program of mint {mint}"))
+        })?
+        .to_string();
+    let decimals = account
+        .pointer("/data/parsed/info/decimals")
+        .and_then(Value::as_u64)
+        .and_then(|d| u8::try_from(d).ok())
+        .ok_or_else(|| SdkError::Config(format!("could not read decimals of mint {mint}")))?;
+    Ok(MintMetadata {
+        decimals,
+        token_program,
+    })
+}
+
+/// A 16-byte random nonce, hex-encoded, for the payment's memo. Randomness
+/// comes from `rand::thread_rng` (the OS CSPRNG), matching the other nonce
+/// generators in this module.
+#[cfg(feature = "payments-svm")]
+fn random_memo_nonce() -> String {
+    use rand::RngCore;
+    let mut nonce = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut nonce);
+    nonce.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 #[cfg(not(feature = "payments-svm"))]
@@ -919,6 +1017,35 @@ fn caip2_or_bare_chain_id(pay_network: &str) -> Result<u64, SdkError> {
             "pay_network must be an eip155 CAIP-2 id or a bare chain id, got {pay_network:?}"
         ))
     })
+}
+
+// When every candidate for the requested network+asset was rejected only for
+// exceeding max_amount, the caller's ceiling is the single thing to change —
+// so name the cheapest offer outright rather than leaving them to read it off
+// the menu.
+fn cheapest_over_ceiling(payment: &ResolvedPayment, accepts: &[Value]) -> Option<u128> {
+    let mut cheapest: Option<u128> = None;
+    for entry in accepts {
+        let network = entry.get("network").and_then(Value::as_str).unwrap_or("");
+        let asset = entry.get("asset").and_then(Value::as_str).unwrap_or("");
+        if network != payment.pay_network || !asset.eq_ignore_ascii_case(&payment.asset) {
+            continue;
+        }
+        if entry.pointer("/extra/name").and_then(Value::as_str) == Some(GATEWAY_BATCHED) {
+            continue;
+        }
+        if let Ok(amount) = entry
+            .get("amount")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .parse::<u128>()
+        {
+            if amount > payment.max_amount && cheapest.is_none_or(|c| amount < c) {
+                cheapest = Some(amount);
+            }
+        }
+    }
+    cheapest
 }
 
 fn describe_offered(accepts: &[Value], skipped: &[String]) -> String {
@@ -1549,7 +1676,7 @@ mod tests {
             svm_rpc_url: Some("http://127.0.0.1:1".into()),
         };
         let client = reqwest::Client::new();
-        // Amount check runs before the blockhash RPC fetch, so the unreachable
+        // The amount check runs before any Solana RPC read, so the unreachable
         // svm_rpc_url is never contacted.
         let Err(err) = authorize_x402_svm(&client, &payment, &2, &entry).await else {
             unreachable!("over-u64 amount must be rejected");
@@ -1559,5 +1686,74 @@ mod tests {
             msg.contains("not a valid u64"),
             "expected u64 overflow error, got: {msg}"
         );
+    }
+
+    // Solana's menu distinguishes its tiers only by amount — no `extra.name` on
+    // either entry — and advertises the dearer one FIRST. Taking the first match
+    // lands on a tier the per-request lane cannot pay, so selection must pick
+    // the cheapest that fits the ceiling regardless of menu order.
+    fn solana_menu() -> Vec<Value> {
+        let offer = |amount: &str| {
+            json!({
+                "scheme": "exact",
+                "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+                "amount": amount,
+                "payTo": "2LWbc9Mi6dRUrdEHBttoNS4udDtH1A4xwBdm1EKqcT57",
+                "maxTimeoutSeconds": 60,
+                "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+                "extra": { "feePayer": "CPZSjRmyfTS95UjQD8ZdeTEWbQvW9QvEXnn6aGP7yyMN" }
+            })
+        };
+        vec![offer("1000000"), offer("1000")]
+    }
+
+    fn solana_payment(max_amount: u128) -> ResolvedPayment {
+        ResolvedPayment {
+            scheme: PaymentScheme::X402,
+            signer: Signer::Svm(SecretString::new(EVM_KEY.to_string())),
+            pay_network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1".into(),
+            asset: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU".into(),
+            max_amount,
+            base_url_override: None,
+            svm_rpc_url: Some("http://127.0.0.1:1".into()),
+        }
+    }
+
+    #[test]
+    fn select_prefers_the_cheapest_offer_over_menu_order() {
+        let payment = solana_payment(1_000_000);
+        let mut skipped = Vec::new();
+        let chosen = select_x402_entry(&payment, &solana_menu(), &mut skipped)
+            .expect("a matching offer exists");
+        assert_eq!(
+            chosen.get("amount").and_then(Value::as_str),
+            Some("1000"),
+            "must pick the cheapest, not the first listed"
+        );
+    }
+
+    #[test]
+    fn select_skips_offers_over_the_ceiling() {
+        // A ceiling between the two tiers admits only the cheaper one.
+        let payment = solana_payment(2_000);
+        let mut skipped = Vec::new();
+        let chosen = select_x402_entry(&payment, &solana_menu(), &mut skipped)
+            .expect("the cheap offer fits");
+        assert_eq!(chosen.get("amount").and_then(Value::as_str), Some("1000"));
+        assert_eq!(skipped.len(), 1, "the dearer offer is reported as skipped");
+        assert!(
+            skipped[0].contains("exceeds max_amount"),
+            "got: {skipped:?}"
+        );
+    }
+
+    // When the ceiling is under every offer, the caller's one lever is
+    // max_amount — so the error names the cheapest price outright.
+    #[test]
+    fn ceiling_under_every_offer_names_the_cheapest() {
+        let payment = solana_payment(100);
+        let mut skipped = Vec::new();
+        assert!(select_x402_entry(&payment, &solana_menu(), &mut skipped).is_none());
+        assert_eq!(cheapest_over_ceiling(&payment, &solana_menu()), Some(1_000));
     }
 }

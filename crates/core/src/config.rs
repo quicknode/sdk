@@ -259,10 +259,11 @@ pub struct PaymentConfig {
     /// to sign one — guarding against a buggy/hostile gateway overcharging a
     /// custodied key.
     pub max_amount: String,
-    /// Explicit Solana RPC URL for x402/Solana payment-build reads (recent
-    /// blockhash). Optional; when unset the SDK falls back to a public Solana
-    /// RPC matching the pay cluster. **Set this at any real volume** — the
-    /// public default rate-limits aggressively.
+    /// Explicit Solana RPC URL for x402/Solana payment-build reads: the mint
+    /// (for its decimals and owning token program) and a recent blockhash, so
+    /// two reads per payment. Optional; when unset the SDK falls back to a
+    /// public Solana RPC matching the pay cluster. **Set this at any real
+    /// volume** — the public default rate-limits aggressively.
     pub svm_rpc_url: Option<String>,
     /// Test-only gateway base override (points the lane at a mock gateway).
     pub base_url_override: Option<String>,

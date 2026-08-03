@@ -1735,7 +1735,7 @@ it by setting `payment` on the RPC config; the SDK runs the `402` → sign → r
 handshake for you. An API key is **not** required for this lane — build a keyless SDK.
 
 Confirmed paths: **x402/EVM** (EIP-712 `TransferWithAuthorization`), **x402/Solana**
-(SPL `TransferChecked`, gateway sponsors gas), and **MPP/Tempo** (native Tempo tx).
+(SPL `TransferChecked` in a v0 tx, gateway sponsors gas), and **MPP/Tempo** (native Tempo tx).
 
 `PaymentConfig` fields:
 
@@ -1746,7 +1746,7 @@ Confirmed paths: **x402/EVM** (EIP-712 `TransferWithAuthorization`), **x402/Sola
 | `pay_network` | CAIP-2 pay network, e.g. `eip155:84532`, `solana:5eykt4…` |
 | `asset` | token address/mint to pay in (matches the offered menu entry) |
 | `max_amount` | **required** spend ceiling in integer base units of `asset` |
-| `svm_rpc_url` | optional Solana RPC for x402/Solana blockhash reads |
+| `svm_rpc_url` | optional Solana RPC for x402/Solana payment-build reads (mint + blockhash) |
 | `base_url_override` | optional gateway base (testing) |
 
 `network` on the call is the **query** chain (gateway path slug), independent of the
@@ -1761,8 +1761,9 @@ settlement tx hash) — populated on the MPP lane, `null`/`None`/`nil` for x402.
   entry above it and refuses to sign one — a guard against an overcharging gateway.
 - **`PaymentIndeterminateError` means the paid request was sent but the response was lost.**
   You MAY have been charged — do **not** blindly retry.
-- **x402/Solana: one payment per call.** The blockhash read defaults to a public Solana
-  RPC that **rate-limits aggressively** — set `svm_rpc_url` to your own endpoint at any volume.
+- **x402/Solana: one payment per call.** Building a payment reads the mint and a recent
+  blockhash from a Solana RPC. The default is a public RPC that **rate-limits
+  aggressively** — set `svm_rpc_url` to your own endpoint at any volume.
 
 ```python
 import os

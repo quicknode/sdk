@@ -1405,10 +1405,11 @@ export interface PaymentConfig {
    */
   maxAmount: string
   /**
-   * Explicit Solana RPC URL for x402/Solana payment-build reads (recent
-   * blockhash). Optional; when unset the SDK falls back to a public Solana
-   * RPC matching the pay cluster. **Set this at any real volume** — the
-   * public default rate-limits aggressively.
+   * Explicit Solana RPC URL for x402/Solana payment-build reads: the mint
+   * (for its decimals and owning token program) and a recent blockhash, so
+   * two reads per payment. Optional; when unset the SDK falls back to a
+   * public Solana RPC matching the pay cluster. **Set this at any real
+   * volume** — the public default rate-limits aggressively.
    */
   svmRpcUrl?: string
   /** Test-only gateway base override (points the lane at a mock gateway). */

@@ -5140,18 +5140,20 @@ class PaymentConfig:
     @property
     def svm_rpc_url(self) -> typing.Optional[builtins.str]:
         r"""
-        Explicit Solana RPC URL for x402/Solana payment-build reads (recent
-        blockhash). Optional; when unset the SDK falls back to a public Solana
-        RPC matching the pay cluster. **Set this at any real volume** — the
-        public default rate-limits aggressively.
+        Explicit Solana RPC URL for x402/Solana payment-build reads: the mint
+        (for its decimals and owning token program) and a recent blockhash, so
+        two reads per payment. Optional; when unset the SDK falls back to a
+        public Solana RPC matching the pay cluster. **Set this at any real
+        volume** — the public default rate-limits aggressively.
         """
     @svm_rpc_url.setter
     def svm_rpc_url(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Explicit Solana RPC URL for x402/Solana payment-build reads (recent
-        blockhash). Optional; when unset the SDK falls back to a public Solana
-        RPC matching the pay cluster. **Set this at any real volume** — the
-        public default rate-limits aggressively.
+        Explicit Solana RPC URL for x402/Solana payment-build reads: the mint
+        (for its decimals and owning token program) and a recent blockhash, so
+        two reads per payment. Optional; when unset the SDK falls back to a
+        public Solana RPC matching the pay cluster. **Set this at any real
+        volume** — the public default rate-limits aggressively.
         """
     @property
     def base_url_override(self) -> typing.Optional[builtins.str]:
