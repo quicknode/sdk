@@ -340,15 +340,22 @@ pub(super) async fn authorize_x402(
             offered: format!("an unparseable x402 challenge (invalid JSON: {source})"),
         })?;
 
-    authorize_x402_entry(client, payment, &parsed, false).await
+    authorize_x402_entry(client, payment, &parsed).await
 }
 
-/// Like [`authorize_x402`], but selects the LARGEST eligible offer (≤
-/// `max_amount`) instead of the first match — the credit-drawdown tier, whose
-/// amount is higher than the per-request offer. Used by the credit-purchase
-/// path so `buy_credits` funds a block of credits rather than a single request.
-pub(super) async fn authorize_x402_largest(
-    client: &reqwest::Client,
+/// Like [`authorize_x402`], but selects the credit-drawdown offer rather than
+/// the per-request one. The credit tier is identified by its `extra.name`
+/// (`GatewayWalletBatched`) and its long `maxTimeoutSeconds`, NOT by amount —
+/// it is typically the *cheapest* entry on the menu, so picking by size would
+/// select a per-request offer and sign the wrong scheme against it.
+///
+/// Signing a Circle Gateway batched transfer is a different construction from
+/// the EIP-3009 `TransferWithAuthorization` used by the per-request lane: its
+/// EIP-712 domain separator is `extra.verifyingContract`, not the asset. Until
+/// that construction lands, refuse — never fall back to a per-request offer,
+/// which would settle a far larger amount than the caller asked for.
+pub(super) async fn authorize_x402_credit(
+    _client: &reqwest::Client,
     payment: &ResolvedPayment,
     challenge_body: &str,
 ) -> Result<Authorized, SdkError> {
@@ -356,19 +363,42 @@ pub(super) async fn authorize_x402_largest(
         serde_json::from_str(challenge_body).map_err(|source| SdkError::PaymentUnsupported {
             offered: format!("an unparseable x402 challenge (invalid JSON: {source})"),
         })?;
-    authorize_x402_entry(client, payment, &parsed, true).await
+
+    let credit_offered = parsed.accepts.iter().any(|entry| {
+        let network = entry.get("network").and_then(Value::as_str).unwrap_or("");
+        let asset = entry.get("asset").and_then(Value::as_str).unwrap_or("");
+        network == payment.pay_network
+            && asset.eq_ignore_ascii_case(&payment.asset)
+            && entry.pointer("/extra/name").and_then(Value::as_str) == Some(GATEWAY_BATCHED)
+    });
+
+    Err(SdkError::PaymentUnsupported {
+        offered: if credit_offered {
+            format!(
+                "the credit-drawdown offer uses the {GATEWAY_BATCHED} scheme, which this \
+                 version cannot sign. Pay per request instead (drop --x402-drawdown and \
+                 use --x402)."
+            )
+        } else {
+            format!(
+                "no credit-drawdown offer for {}/{}. {}",
+                payment.pay_network,
+                payment.asset,
+                describe_offered(&parsed.accepts, &[])
+            )
+        },
+    })
 }
 
-// Select an accepts[] entry (first-match, or largest ≤ max_amount when
-// `prefer_largest`) and authorize it with the chain-appropriate signer.
+// Select an accepts[] entry (first match) and authorize it with the
+// chain-appropriate signer.
 async fn authorize_x402_entry(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
     parsed: &X402Body,
-    prefer_largest: bool,
 ) -> Result<Authorized, SdkError> {
     let mut skipped: Vec<String> = Vec::new();
-    let chosen = select_x402_entry(payment, &parsed.accepts, &mut skipped, prefer_largest);
+    let chosen = select_x402_entry(payment, &parsed.accepts, &mut skipped);
     let Some(entry) = chosen else {
         return Err(SdkError::PaymentUnsupported {
             offered: describe_offered(&parsed.accepts, &skipped),
@@ -386,18 +416,20 @@ async fn authorize_x402_entry(
     }
 }
 
+// Circle Gateway batched-transfer scheme, advertised as `extra.name`. Its
+// EIP-712 domain separator is `extra.verifyingContract` rather than the asset,
+// so it needs a signing construction the per-request lane does not have.
+const GATEWAY_BATCHED: &str = "GatewayWalletBatched";
+
 // Select an accepts[] entry that matches {pay_network, asset}, has a supported
 // `extra` shape, and whose amount is a non-negative integer ≤ max_amount.
-// Records skip reasons for the PaymentUnsupported message. With
-// `prefer_largest`, returns the highest-amount eligible entry (the
-// credit-drawdown tier); otherwise the first match (the per-request tier).
+// Returns the first match (the per-request tier). Records skip reasons for the
+// PaymentUnsupported message.
 fn select_x402_entry(
     payment: &ResolvedPayment,
     accepts: &[Value],
     skipped: &mut Vec<String>,
-    prefer_largest: bool,
 ) -> Option<Value> {
-    let mut best: Option<(u128, Value)> = None;
     for entry in accepts {
         let network = entry.get("network").and_then(Value::as_str).unwrap_or("");
         let asset = entry.get("asset").and_then(Value::as_str).unwrap_or("");
@@ -407,26 +439,14 @@ fn select_x402_entry(
         // Skip Circle Gateway nanopayment (GatewayWalletBatched): its
         // verifyingContract is a separate field, not the asset — a different
         // signing construction, deferred from v1.
-        if let Some(name) = entry.pointer("/extra/name").and_then(Value::as_str) {
-            if name == "GatewayWalletBatched" {
-                skipped.push(format!(
-                    "{network}/{asset}: GatewayWalletBatched (deferred)"
-                ));
-                continue;
-            }
+        if entry.pointer("/extra/name").and_then(Value::as_str) == Some(GATEWAY_BATCHED) {
+            skipped.push(format!("{network}/{asset}: {GATEWAY_BATCHED} (deferred)"));
+            continue;
         }
         // Amount must be an integer base-unit string ≤ max_amount.
         let amount_str = entry.get("amount").and_then(Value::as_str).unwrap_or("");
         match amount_str.parse::<u128>() {
-            Ok(amount) if amount <= payment.max_amount => {
-                if !prefer_largest {
-                    return Some(entry.clone());
-                }
-                // Keep the largest eligible offer for the credit-drawdown path.
-                if best.as_ref().is_none_or(|(b, _)| amount > *b) {
-                    best = Some((amount, entry.clone()));
-                }
-            }
+            Ok(amount) if amount <= payment.max_amount => return Some(entry.clone()),
             Ok(amount) => skipped.push(format!(
                 "{network}/{asset}: amount {amount} exceeds max_amount {}",
                 payment.max_amount
@@ -436,7 +456,7 @@ fn select_x402_entry(
             )),
         }
     }
-    best.map(|(_, entry)| entry)
+    None
 }
 
 fn authorize_x402_evm(

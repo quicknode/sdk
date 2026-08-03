@@ -2,53 +2,56 @@
 //!
 //! The counterpart to the per-request MPP charge in the parent module: instead
 //! of signing a fresh Tempo transaction per request, the caller opens a payment
-//! channel by depositing into the TIP-1034 TIP-20 Channel Reserve escrow
-//! precompile, then authorizes spend with cumulative EIP-712 vouchers
-//! (`Authorization: Payment`) — one `ecrecover` server-side, no on-chain tx per
-//! call. The gateway settles the channel on-chain in batches on its own
-//! schedule; the client cooperatively closes to settle + refund the unused
-//! deposit.
+//! channel by depositing into the escrow contract the gateway advertises in its
+//! session challenge (`methodDetails.escrowContract`), then authorizes spend
+//! with cumulative EIP-712 vouchers (`Authorization: Payment`) — one
+//! `ecrecover` server-side, no on-chain tx per call. The gateway settles the
+//! channel on-chain in batches on its own schedule; the client cooperatively
+//! closes to settle + refund the unused deposit.
 //!
-//! Wire protocol (matches the `mppx` reference client, github.com/wevm/mppx):
+//! Wire protocol (matches the `mppx` reference client's contract-backed
+//! session, `tempo/legacy/session`):
 //! - Endpoints under `{mpp}/session/:network`.
 //! - Channel lifecycle credentials are a discriminated union on `action`
 //!   (`open`/`topUp`/`voucher`/`close`), each a `Payment <base64url JSON>`
 //!   credential of `{challenge, payload, source}`.
-//! - `open`/`topUp` carry a fee-sponsored Tempo tx that calls the escrow
-//!   precompile; `voucher`/`close` are pure EIP-712 voucher signatures.
-//! - The channelId is derived locally (TIP-1034) so client state can be
-//!   reconstructed; `status` is the recovery path (the gateway is the source of
-//!   truth for the channel high-water mark).
+//! - `open`/`topUp` carry a fee-sponsored Tempo tx with two calls — a token
+//!   `approve(escrow, amount)` plus the escrow `open`/`topUp` call;
+//!   `voucher`/`close` are pure EIP-712 voucher signatures.
+//! - The channelId is derived locally (keccak over the channel parameters, as
+//!   the escrow contract derives it) and the gateway re-derives it from the
+//!   open calldata.
+//! - The gateway exposes no read-only channel endpoint, and it prices every
+//!   `/session/:network` POST as a chargeable request: the available balance is
+//!   the NEW spend a voucher authorizes, so re-presenting the current
+//!   high-water voucher is always refused with `insufficient-balance`. `status`
+//!   therefore advances the voucher by one request unit like any session call,
+//!   and reads the `Payment-Receipt` header.
 
-use serde::Deserialize;
 use serde_json::Value;
 
 use crate::errors::{HttpKind, SdkError};
 
-use super::signer::tempo::{
-    ChannelDescriptor, EscrowAction, TempoEscrowRequest, TIP20_CHANNEL_ESCROW,
-};
+use super::signer::tempo::{EscrowAction, TempoEscrowRequest};
 use super::{now_unix, random_nonce, PaymentScheme, ResolvedPayment};
 
 /// Local state for an open MPP payment channel. The CLI persists this between
-/// runs (like the drawdown session JWT); `status` re-derives it from the
-/// gateway if the local copy is lost.
+/// runs (like the drawdown session JWT); the gateway has no read-only channel
+/// endpoint, so a lost local record means opening a new channel.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub struct ChannelState {
-    /// TIP-1034 channel id (`0x`-hex bytes32).
+    /// Channel id (`0x`-hex bytes32), derived from the channel parameters.
     pub channel_id: String,
     /// The escrow token (TIP-20 currency) the channel is denominated in.
     pub token: String,
     /// The channel payee (settlement recipient), from the open challenge.
     pub payee: String,
-    /// The channel operator (or the zero address when unset).
-    pub operator: String,
     /// Payer entropy used to derive the channel (`0x`-hex bytes32).
     pub salt: String,
-    /// Voucher signer (or the zero address, delegating to the payer).
+    /// Voucher signer (the payer; the SDK delegates to no separate signer).
     pub authorized_signer: String,
-    /// The open tx's TIP-1034 expiringNonceHash (`0x`-hex bytes32).
-    pub expiring_nonce_hash: String,
+    /// The escrow contract the channel lives in, from the open challenge.
+    pub escrow_contract: String,
     /// Total deposited into the channel so far, in token base units.
     pub deposit: u128,
     /// Highest cumulative amount authorized by a voucher so far.
@@ -56,34 +59,8 @@ pub struct ChannelState {
     /// The gateway's per-call price (from the open challenge), so the caller can
     /// advance `cumulative_spent` by one unit per session call.
     pub per_call: u128,
-    /// CAIP-2 chain id the channel lives on.
+    /// EIP-155 chain id the channel lives on.
     pub chain_id: u64,
-}
-
-impl ChannelState {
-    fn descriptor(&self, payer: &str) -> ChannelDescriptor {
-        ChannelDescriptor {
-            payer: payer.to_string(),
-            payee: self.payee.clone(),
-            operator: self.operator.clone(),
-            token: self.token.clone(),
-            salt: self.salt.clone(),
-            authorized_signer: self.authorized_signer.clone(),
-            expiring_nonce_hash: self.expiring_nonce_hash.clone(),
-        }
-    }
-}
-
-const ZERO_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
-
-// The escrow amounts are uint96 on-chain; reject anything wider before signing.
-fn assert_uint96(value: u128, what: &str) -> Result<(), SdkError> {
-    if value > (1u128 << 96) - 1 {
-        return Err(SdkError::Config(format!(
-            "{what} {value} exceeds the uint96 escrow ceiling"
-        )));
-    }
-    Ok(())
 }
 
 // ── Session challenge parse ──────────────────────────────────────────────────
@@ -116,7 +93,6 @@ pub async fn open(
     query_network: &str,
     deposit: u128,
 ) -> Result<ChannelState, SdkError> {
-    assert_uint96(deposit, "deposit")?;
     if deposit > payment.max_amount {
         return Err(SdkError::PaymentUnsupported {
             offered: format!(
@@ -129,22 +105,23 @@ pub async fn open(
     let chain_id = challenge_chain_id(&challenge)?;
     let token = require_str(&challenge.request, "currency")?;
     let payee = require_str(&challenge.request, "recipient")?;
+    let escrow = challenge_escrow_contract(&challenge)?;
     let payer = payment.signer.address()?;
 
-    // Sign the escrow `open` tx → channelId + expiringNonceHash. salt is fresh
-    // payer entropy; operator/authorizedSigner default to the zero address
-    // (payee-operator unset; voucher signer delegates to the payer).
+    // Sign the escrow `open` tx (approve + open) → channelId. salt is fresh
+    // payer entropy; the payer is its own voucher signer, and the gateway
+    // re-derives the channelId from these exact calldata parameters.
     let salt = format!("0x{}", hex::encode(random_nonce()));
     let signed = payment.signer.sign_escrow_tx(&TempoEscrowRequest {
         chain_id,
         valid_before: now_unix() + 25,
+        escrow_contract: escrow.clone(),
         action: EscrowAction::Open {
             payee: payee.clone(),
-            operator: ZERO_ADDRESS.to_string(),
             token: token.clone(),
             deposit,
             salt: salt.clone(),
-            authorized_signer: ZERO_ADDRESS.to_string(),
+            authorized_signer: payer.clone(),
         },
     })?;
     let channel_id = signed
@@ -155,21 +132,18 @@ pub async fn open(
     // The opening voucher authorizes the first unit of spend (the per-call
     // amount from the challenge). cumulativeAmount starts at that amount.
     let per_unit = require_amount(&challenge.request)?;
-    let voucher_sig = payment.signer.sign_session_voucher(
-        &channel_id,
-        per_unit,
-        chain_id,
-        TIP20_CHANNEL_ESCROW,
-    )?;
+    let voucher_sig =
+        payment
+            .signer
+            .sign_session_voucher(&channel_id, per_unit, chain_id, &escrow)?;
 
-    let descriptor = descriptor_json(&payer, &payee, &token, &salt, &signed.expiring_nonce_hash);
     let payload = serde_json::json!({
         "action": "open",
         "type": "transaction",
         "channelId": channel_id,
         "transaction": format!("0x{}", hex::encode(&signed.transaction)),
         "signature": voucher_sig,
-        "descriptor": descriptor,
+        "authorizedSigner": payer,
         "cumulativeAmount": per_unit.to_string(),
     });
     post_session_credential(client, payment, query_network, &challenge, &payer, payload).await?;
@@ -178,10 +152,9 @@ pub async fn open(
         channel_id,
         token,
         payee,
-        operator: ZERO_ADDRESS.to_string(),
         salt,
-        authorized_signer: ZERO_ADDRESS.to_string(),
-        expiring_nonce_hash: signed.expiring_nonce_hash,
+        authorized_signer: payer,
+        escrow_contract: escrow,
         deposit,
         cumulative_spent: per_unit,
         per_call: per_unit,
@@ -198,15 +171,16 @@ pub async fn top_up(
     channel: &ChannelState,
     additional_deposit: u128,
 ) -> Result<ChannelState, SdkError> {
-    assert_uint96(additional_deposit, "additionalDeposit")?;
     let payer = payment.signer.address()?;
     let challenge = probe_session_challenge(client, payment, query_network).await?;
 
     let signed = payment.signer.sign_escrow_tx(&TempoEscrowRequest {
         chain_id: channel.chain_id,
         valid_before: now_unix() + 25,
+        escrow_contract: channel.escrow_contract.clone(),
         action: EscrowAction::TopUp {
-            descriptor: channel.descriptor(&payer),
+            channel_id: channel.channel_id.clone(),
+            token: channel.token.clone(),
             additional_deposit,
         },
     })?;
@@ -215,9 +189,6 @@ pub async fn top_up(
         "type": "transaction",
         "channelId": channel.channel_id,
         "transaction": format!("0x{}", hex::encode(&signed.transaction)),
-        "descriptor": descriptor_json(
-            &payer, &channel.payee, &channel.token, &channel.salt, &channel.expiring_nonce_hash,
-        ),
         "additionalDeposit": additional_deposit.to_string(),
     });
     post_session_credential(client, payment, query_network, &challenge, &payer, payload).await?;
@@ -242,14 +213,11 @@ pub async fn close(
         &channel.channel_id,
         channel.cumulative_spent,
         channel.chain_id,
-        TIP20_CHANNEL_ESCROW,
+        &channel.escrow_contract,
     )?;
     let payload = serde_json::json!({
         "action": "close",
         "channelId": channel.channel_id,
-        "descriptor": descriptor_json(
-            &payer, &channel.payee, &channel.token, &channel.salt, &channel.expiring_nonce_hash,
-        ),
         "cumulativeAmount": channel.cumulative_spent.to_string(),
         "signature": signature,
     });
@@ -257,47 +225,79 @@ pub async fn close(
     Ok(())
 }
 
-/// The gateway's view of a channel — the recovery path when local state is
-/// lost. Returns the on-chain deposit ceiling and the accepted cumulative
-/// high-water mark for `channel_id`.
+/// The gateway's view of a channel: the accepted cumulative high-water mark
+/// and the amount it counts as spent. (The deposit is tracked locally; the
+/// gateway exposes no read-only channel endpoint.)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChannelStatus {
     pub channel_id: String,
-    pub deposit: u128,
     pub accepted_cumulative: u128,
+    pub spent: u128,
 }
 
-/// Fetches the gateway's status for `channel_id` (GET
-/// `{mpp}/session/:network/channels/:id`).
+/// Fetches the gateway's view of the channel and reads the `Payment-Receipt`
+/// header.
+///
+/// **This costs one request unit.** The gateway prices every `/session/:network`
+/// POST as a chargeable request and computes the available balance as the *new*
+/// spend a voucher authorizes, so re-presenting the current high-water voucher
+/// authorizes zero and is always refused with `insufficient-balance` — however
+/// much deposit remains. The voucher therefore advances by `per_call`, exactly
+/// like a session RPC call, and the caller must persist the new
+/// `cumulative_spent` on success.
+///
+/// Returns [`SdkError::PaymentUnsupported`] before any network I/O when the
+/// channel has no room left for the probe.
 pub async fn status(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
     query_network: &str,
-    channel_id: &str,
+    channel: &ChannelState,
 ) -> Result<ChannelStatus, SdkError> {
-    let base = session_base(payment, query_network);
-    let url = format!("{base}/channels/{channel_id}");
-    let resp = client.get(&url).send().await.map_err(SdkError::Http)?;
-    let http_status = resp.status();
-    let body = resp.text().await.map_err(SdkError::Http)?;
-    if !http_status.is_success() {
-        return Err(SdkError::Api {
-            status: http_status,
-            body,
+    let probe_cumulative = channel.cumulative_spent.saturating_add(channel.per_call);
+    if probe_cumulative > channel.deposit {
+        return Err(SdkError::PaymentUnsupported {
+            offered: format!(
+                "the channel has no room for a status probe (it costs {} of the {} remaining); \
+                 top up first",
+                channel.per_call,
+                channel.deposit.saturating_sub(channel.cumulative_spent),
+            ),
         });
     }
-    #[derive(Deserialize)]
-    struct StatusBody {
-        deposit: String,
-        #[serde(rename = "acceptedCumulative")]
-        accepted_cumulative: String,
-    }
-    let parsed: StatusBody =
-        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
+    let payer = payment.signer.address()?;
+    let signature = payment.signer.sign_session_voucher(
+        &channel.channel_id,
+        probe_cumulative,
+        channel.chain_id,
+        &channel.escrow_contract,
+    )?;
+    let challenge = probe_session_challenge(client, payment, query_network).await?;
+    let payload = serde_json::json!({
+        "action": "voucher",
+        "channelId": channel.channel_id,
+        "cumulativeAmount": probe_cumulative.to_string(),
+        "signature": signature,
+    });
+    let resp = post_session_credential(client, payment, query_network, &challenge, &payer, payload)
+        .await?;
+
+    let receipt_b64 = resp
+        .headers()
+        .get("payment-receipt")
+        .and_then(|v| v.to_str().ok())
+        .map(String::from)
+        .ok_or_else(|| {
+            SdkError::Config("the gateway's response carried no Payment-Receipt header".into())
+        })?;
+    let receipt = super::decode_b64url_json(&receipt_b64)
+        .map_err(|_| SdkError::Config("the gateway's Payment-Receipt did not decode".into()))?;
+    let accepted = require_str(&receipt, "acceptedCumulative")?;
+    let spent = require_str(&receipt, "spent")?;
     Ok(ChannelStatus {
-        channel_id: channel_id.to_string(),
-        deposit: parse_u128(&parsed.deposit)?,
-        accepted_cumulative: parse_u128(&parsed.accepted_cumulative)?,
+        channel_id: channel.channel_id.clone(),
+        accepted_cumulative: parse_u128(&accepted)?,
+        spent: parse_u128(&spent)?,
     })
 }
 
@@ -316,7 +316,6 @@ pub async fn voucher_call(
     new_cumulative: u128,
     body: &Value,
 ) -> Result<String, SdkError> {
-    assert_uint96(new_cumulative, "cumulativeAmount")?;
     if new_cumulative > channel.deposit {
         return Err(SdkError::PaymentUnsupported {
             offered: format!(
@@ -330,7 +329,7 @@ pub async fn voucher_call(
         &channel.channel_id,
         new_cumulative,
         channel.chain_id,
-        TIP20_CHANNEL_ESCROW,
+        &channel.escrow_contract,
     )?;
     // A voucher credential needs the challenge it answers; the gateway echoes it
     // on the 402. Probe once (free) to obtain the current session challenge.
@@ -338,9 +337,6 @@ pub async fn voucher_call(
     let payload = serde_json::json!({
         "action": "voucher",
         "channelId": channel.channel_id,
-        "descriptor": descriptor_json(
-            &payer, &channel.payee, &channel.token, &channel.salt, &channel.expiring_nonce_hash,
-        ),
         "cumulativeAmount": new_cumulative.to_string(),
         "signature": signature,
     });
@@ -412,11 +408,22 @@ async fn probe_session_challenge(
         .ok_or_else(|| SdkError::PaymentUnsupported {
             offered: "session 402 without a WWW-Authenticate header".into(),
         })?;
-    parse_session_challenge(&header)
+    parse_session_challenge(
+        &header,
+        super::caip2_or_bare_chain_id(&payment.pay_network)?,
+    )
 }
 
-// Parse the FIRST tempo/session challenge from the WWW-Authenticate header.
-fn parse_session_challenge(header: &str) -> Result<SessionChallenge, SdkError> {
+// Parse the tempo/session challenge for `want_chain_id` from the
+// WWW-Authenticate header.
+//
+// The gateway offers SEVERAL session challenges on one 402 — different chains
+// (Tempo testnet and mainnet) and different currencies, each with its own
+// escrow contract. Taking the first would depend on the gateway's ordering and
+// could open a channel on mainnet for a testnet request, so the offer is
+// matched on `methodDetails.chainId` against the caller's resolved pay network.
+fn parse_session_challenge(header: &str, want_chain_id: u64) -> Result<SessionChallenge, SdkError> {
+    let mut offered: Vec<String> = Vec::new();
     for part in split_payment_challenges(header) {
         let get = |k: &str| extract_quoted(&part, k).unwrap_or_default();
         if get("method") != "tempo" || get("intent") != "session" {
@@ -427,7 +434,7 @@ fn parse_session_challenge(header: &str) -> Result<SessionChallenge, SdkError> {
             super::decode_b64url_json(&request_b64).map_err(|_| SdkError::PaymentUnsupported {
                 offered: "session challenge has an undecodable request".into(),
             })?;
-        return Ok(SessionChallenge {
+        let challenge = SessionChallenge {
             id: get("id"),
             realm: get("realm"),
             intent: "session".into(),
@@ -435,10 +442,22 @@ fn parse_session_challenge(header: &str) -> Result<SessionChallenge, SdkError> {
             expires: get("expires"),
             request_b64,
             request,
-        });
+        };
+        match challenge_chain_id(&challenge) {
+            Ok(chain_id) if chain_id == want_chain_id => return Ok(challenge),
+            Ok(chain_id) => offered.push(format!("eip155:{chain_id}")),
+            Err(_) => offered.push("a challenge with no chainId".into()),
+        }
     }
     Err(SdkError::PaymentUnsupported {
-        offered: "no tempo/session challenge offered".into(),
+        offered: if offered.is_empty() {
+            "no tempo/session challenge offered".into()
+        } else {
+            format!(
+                "no tempo/session challenge for eip155:{want_chain_id} (offered: {})",
+                offered.join(", ")
+            )
+        },
     })
 }
 
@@ -469,8 +488,10 @@ fn build_credential(
 }
 
 // POST a channel-management credential to the session endpoint and require a
-// 2xx. Management POSTs settle nothing off the caller's per-call amount (they
-// commit deposits / close), so a non-2xx is a plain Api refusal.
+// 2xx, returning the response (its `Payment-Receipt` header carries the
+// gateway's channel view). Management POSTs settle nothing off the caller's
+// per-call amount (they commit deposits / close), so a non-2xx is a plain Api
+// refusal.
 async fn post_session_credential(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
@@ -478,7 +499,7 @@ async fn post_session_credential(
     challenge: &SessionChallenge,
     payer: &str,
     payload: Value,
-) -> Result<(), SdkError> {
+) -> Result<reqwest::Response, SdkError> {
     let chain_id = challenge_chain_id(challenge)?;
     let credential = build_credential(challenge, payer, chain_id, &payload);
     let base = session_base(payment, query_network);
@@ -497,25 +518,7 @@ async fn post_session_credential(
             body,
         });
     }
-    Ok(())
-}
-
-fn descriptor_json(
-    payer: &str,
-    payee: &str,
-    token: &str,
-    salt: &str,
-    expiring_nonce_hash: &str,
-) -> Value {
-    serde_json::json!({
-        "payer": payer,
-        "payee": payee,
-        "operator": ZERO_ADDRESS,
-        "token": token,
-        "salt": salt,
-        "authorizedSigner": ZERO_ADDRESS,
-        "expiringNonceHash": expiring_nonce_hash,
-    })
+    Ok(resp)
 }
 
 // ── small parse helpers ──────────────────────────────────────────────────────
@@ -540,6 +543,20 @@ fn challenge_chain_id(challenge: &SessionChallenge) -> Result<u64, SdkError> {
         .and_then(Value::as_u64)
         .or_else(|| challenge.request.get("chainId").and_then(Value::as_u64))
         .ok_or_else(|| SdkError::Config("session challenge missing chainId".into()))
+}
+
+// The escrow contract the gateway expects deposits in. Its absence means the
+// gateway is not offering a contract-backed session — a protocol mismatch, not
+// a malformed response, so it maps to PaymentUnsupported.
+fn challenge_escrow_contract(challenge: &SessionChallenge) -> Result<String, SdkError> {
+    challenge
+        .request
+        .pointer("/methodDetails/escrowContract")
+        .and_then(Value::as_str)
+        .map(String::from)
+        .ok_or_else(|| SdkError::PaymentUnsupported {
+            offered: "the session challenge named no escrowContract".into(),
+        })
 }
 
 fn parse_u128(s: &str) -> Result<u128, SdkError> {
@@ -575,10 +592,9 @@ mod tests {
             channel_id: format!("0x{}", "11".repeat(32)),
             token: "0x20c0000000000000000000000000000000000000".into(),
             payee: "0xfd24114c3981aba78ae2441991b1bdb89329c556".into(),
-            operator: ZERO_ADDRESS.into(),
             salt: format!("0x{}", "22".repeat(32)),
-            authorized_signer: ZERO_ADDRESS.into(),
-            expiring_nonce_hash: format!("0x{}", "33".repeat(32)),
+            authorized_signer: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266".into(),
+            escrow_contract: "0x33b901018174DDabE4841042ab76ba85D4e24f25".into(),
             deposit: 100_000,
             cumulative_spent: 500,
             per_call: 500,
@@ -586,30 +602,83 @@ mod tests {
         }
     }
 
+    // One `Payment` challenge entry, as it appears in a WWW-Authenticate header.
+    fn session_offer(id: &str, chain_id: u64, escrow: &str) -> String {
+        let request = super::super::base64_url_nopad(
+            serde_json::to_vec(&serde_json::json!({
+                "amount": "10",
+                "currency": "0x20c0000000000000000000000000000000000000",
+                "recipient": "0xfd24114c3981aba78ae2441991b1bdb89329c556",
+                "methodDetails": { "chainId": chain_id, "escrowContract": escrow }
+            }))
+            .unwrap(),
+        );
+        format!(
+            "Payment id=\"{id}\", realm=\"mpp.quicknode.com\", method=\"tempo\", \
+             intent=\"session\", description=\"d\", expires=\"2099-01-01T00:00:00Z\", \
+             request=\"{request}\""
+        )
+    }
+
+    // The live gateway offers several session challenges on one 402 — testnet
+    // and mainnet, each with its own escrow. The parser must match on chainId,
+    // not take the first: picking by position would open a mainnet channel for
+    // a testnet request if the gateway ever reorders the menu.
     #[test]
-    fn assert_uint96_rejects_over_ceiling() {
-        assert!(assert_uint96((1u128 << 96) - 1, "x").is_ok());
-        assert!(assert_uint96(1u128 << 96, "x").is_err());
+    fn parse_session_challenge_selects_the_offer_for_the_pay_chain() {
+        let header = format!(
+            "Payment id=\"c0\", realm=\"mpp.quicknode.com\", method=\"tempo\", \
+             intent=\"charge\", description=\"d\", expires=\"2099-01-01T00:00:00Z\", \
+             request=\"ey000\", {}, {}",
+            session_offer(
+                "mainnet",
+                4217,
+                "0x33b901018174DDabE4841042ab76ba85D4e24f25"
+            ),
+            session_offer(
+                "testnet",
+                42431,
+                "0xe1c4d3dce17bc111181ddf716f75bae49e61a336"
+            ),
+        );
+
+        // Testnet is offered SECOND: a first-match parser would pick mainnet.
+        let parsed = parse_session_challenge(&header, 42431).unwrap();
+        assert_eq!(parsed.id, "testnet");
+        assert_eq!(challenge_chain_id(&parsed).unwrap(), 42431);
+        assert_eq!(
+            challenge_escrow_contract(&parsed).unwrap(),
+            "0xe1c4d3dce17bc111181ddf716f75bae49e61a336"
+        );
+
+        // The same header resolves mainnet when that is what was asked for.
+        let parsed = parse_session_challenge(&header, 4217).unwrap();
+        assert_eq!(parsed.id, "mainnet");
+        assert_eq!(
+            challenge_escrow_contract(&parsed).unwrap(),
+            "0x33b901018174DDabE4841042ab76ba85D4e24f25"
+        );
     }
 
     #[test]
-    fn descriptor_json_has_all_seven_fields() {
-        let d = descriptor_json("0xpayer", "0xpayee", "0xtoken", "0xsalt", "0xhash");
-        for k in [
-            "payer",
-            "payee",
-            "operator",
-            "token",
-            "salt",
-            "authorizedSigner",
-            "expiringNonceHash",
-        ] {
-            assert!(d.get(k).is_some(), "missing {k}");
-        }
+    fn session_challenge_for_an_unoffered_chain_names_what_was_offered() {
+        let header = session_offer(
+            "mainnet",
+            4217,
+            "0x33b901018174DDabE4841042ab76ba85D4e24f25",
+        );
+        let Err(err) = parse_session_challenge(&header, 42431) else {
+            panic!("a challenge for an unoffered chain must not resolve");
+        };
+        assert!(
+            matches!(&err, SdkError::PaymentUnsupported { offered }
+                if offered.contains("eip155:42431") && offered.contains("eip155:4217")),
+            "unexpected error: {err:?}"
+        );
     }
 
     #[test]
-    fn parse_session_challenge_selects_tempo_session() {
+    fn challenge_without_escrow_contract_is_unsupported() {
         let request = super::super::base64_url_nopad(
             serde_json::to_vec(&serde_json::json!({
                 "amount": "500",
@@ -620,22 +689,13 @@ mod tests {
             .unwrap(),
         );
         let header = format!(
-            "Payment id=\"c1\", realm=\"mpp.quicknode.com\", method=\"tempo\", intent=\"charge\", description=\"d\", expires=\"2099-01-01T00:00:00Z\", request=\"ey000\", Payment id=\"c2\", realm=\"mpp.quicknode.com\", method=\"tempo\", intent=\"session\", description=\"d\", expires=\"2099-01-01T00:00:00Z\", request=\"{request}\""
+            "Payment id=\"c1\", realm=\"mpp.quicknode.com\", method=\"tempo\", intent=\"session\", description=\"d\", expires=\"2099-01-01T00:00:00Z\", request=\"{request}\""
         );
-        let parsed = parse_session_challenge(&header).unwrap();
-        assert_eq!(parsed.intent, "session");
-        assert_eq!(parsed.id, "c2");
-        assert_eq!(challenge_chain_id(&parsed).unwrap(), 42431);
-        assert_eq!(require_amount(&parsed.request).unwrap(), 500);
-    }
-
-    #[test]
-    fn channel_descriptor_round_trips_the_payer() {
-        let ch = sample_channel();
-        let d = ch.descriptor("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
-        assert_eq!(d.payer, "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
-        assert_eq!(d.token, ch.token);
-        assert_eq!(d.expiring_nonce_hash, ch.expiring_nonce_hash);
+        let parsed = parse_session_challenge(&header, 42431).unwrap();
+        let err = challenge_escrow_contract(&parsed).unwrap_err();
+        assert!(
+            matches!(err, SdkError::PaymentUnsupported { offered } if offered.contains("escrowContract"))
+        );
     }
 
     #[tokio::test]

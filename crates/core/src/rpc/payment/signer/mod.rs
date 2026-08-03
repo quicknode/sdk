@@ -212,11 +212,12 @@ impl Signer {
         }
     }
 
-    /// Sign a TIP-1034 MPP session voucher (`Voucher(bytes32 channelId,uint96
-    /// cumulativeAmount)`) against the TIP-20 Channel Reserve EIP-712 domain,
-    /// returning the `0x`-prefixed 65-byte `r||s||v` hex. For a secp256k1 payer
-    /// the on-wire TIP-1020 SignatureEnvelope is the raw 65 bytes (no type
-    /// prefix), so this hex IS the envelope. `escrow` is the verifying contract.
+    /// Sign an MPP session voucher (`Voucher(bytes32 channelId,uint128
+    /// cumulativeAmount)`) against the legacy escrow contract's EIP-712 domain
+    /// ("Tempo Stream Channel"), returning the `0x`-prefixed 65-byte `r||s||v`
+    /// hex. For a secp256k1 payer the on-wire SignatureEnvelope is the raw 65
+    /// bytes (no type prefix), so this hex IS the envelope. `escrow` is the
+    /// verifying contract, from the session challenge's `methodDetails`.
     pub fn sign_session_voucher(
         &self,
         channel_id: &str,
@@ -231,9 +232,9 @@ impl Signer {
     }
 }
 
-// TIP-20 Channel Reserve voucher EIP-712 digest:
-// keccak256(0x1901 || domainSeparator || voucherHash), matching the on-chain
-// precompile's getVoucherDigest and ox/tempo Channel.getVoucherSignPayload.
+// Legacy escrow voucher EIP-712 digest:
+// keccak256(0x1901 || domainSeparator || voucherHash), matching the escrow
+// contract's DOMAIN_SEPARATOR/VOUCHER_TYPEHASH (mppx legacy Voucher.ts).
 #[cfg(feature = "payments")]
 fn session_voucher_digest(
     channel_id: &str,
@@ -247,14 +248,14 @@ fn session_voucher_digest(
         b"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
     let mut sep = Vec::with_capacity(160);
     sep.extend_from_slice(&secp::keccak256(domain_type));
-    sep.extend_from_slice(&secp::keccak256(b"TIP20 Channel Reserve"));
+    sep.extend_from_slice(&secp::keccak256(b"Tempo Stream Channel"));
     sep.extend_from_slice(&secp::keccak256(b"1"));
     sep.extend_from_slice(&u256_be(chain_id as u128));
     sep.extend_from_slice(&address_word(escrow)?);
     let domain_separator = secp::keccak256(&sep);
 
     // voucherHash = keccak(voucherTypehash || channelId || cumulativeAmount)
-    let voucher_type = b"Voucher(bytes32 channelId,uint96 cumulativeAmount)";
+    let voucher_type = b"Voucher(bytes32 channelId,uint128 cumulativeAmount)";
     let channel = bytes32_word(channel_id)?;
     let mut vh = Vec::with_capacity(96);
     vh.extend_from_slice(&secp::keccak256(voucher_type));
@@ -548,22 +549,39 @@ mod tests {
 
     #[test]
     fn session_voucher_digest_reproduces_reference_vector() {
-        // Known-good digest computed offline with viem over the TIP-20 Channel
-        // Reserve EIP-712 domain + Voucher type (see mppx/ox Channel encoder).
+        // Known-good digest computed offline with viem's hashTypedData over the
+        // legacy escrow EIP-712 domain ("Tempo Stream Channel") + Voucher type.
         // Reproducing it byte-for-byte proves the voucher construction matches
-        // the on-chain precompile's getVoucherDigest.
+        // the reference client (mppx tempo/legacy/session Voucher).
         const CHANNEL_ID: &str =
-            "0x1111111111111111111111111111111111111111111111111111111111111111";
-        const ESCROW: &str = "0x4d50500000000000000000000000000000000000";
-        const EXPECTED: &str = "0x770fb9481d6b3c4a03639f4389e6b361c77557331871ad3d41dc8e456760375f";
-        let digest = session_voucher_digest(CHANNEL_ID, 1000, 42431, ESCROW).unwrap();
+            "0xfb56137dcb0089f01877bcdb72d5e028ef04aec578fb00a642f65ee293c73dec";
+        const ESCROW: &str = "0x33b901018174DDabE4841042ab76ba85D4e24f25";
+        const EXPECTED: &str = "0xac624e7cd65dbba54630326d204807b64c2666a9c07b19bffd86f7b7b1e27d17";
+        let digest = session_voucher_digest(CHANNEL_ID, 10, 42431, ESCROW).unwrap();
         assert_eq!(format!("0x{}", hex::encode(digest)), EXPECTED);
+    }
+
+    #[test]
+    fn session_voucher_signature_reproduces_reference_vector() {
+        // Same vector, signed with the publicly-known throwaway anvil key #0:
+        // must match viem's signTypedData bytes exactly (r||s||v, v = 27/28).
+        const CHANNEL_ID: &str =
+            "0xfb56137dcb0089f01877bcdb72d5e028ef04aec578fb00a642f65ee293c73dec";
+        const ESCROW: &str = "0x33b901018174DDabE4841042ab76ba85D4e24f25";
+        const EXPECTED_SIG: &str = "0x44bb3c206a8cbabadced98ad8f87d6191d7ab81577efe41830acdd77f8a981020791643240da6648fbe09ba1e7707bff5727f05e4d82b004b427652dd594e1fe1b";
+        let signer = Signer::Tempo(SecretString::new(
+            "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80".to_string(),
+        ));
+        let sig = signer
+            .sign_session_voucher(CHANNEL_ID, 10, 42431, ESCROW)
+            .unwrap();
+        assert_eq!(sig, EXPECTED_SIG);
     }
 
     #[test]
     fn session_voucher_digest_is_domain_and_amount_bound() {
         let ch = "0x1111111111111111111111111111111111111111111111111111111111111111";
-        let escrow = "0x4d50500000000000000000000000000000000000";
+        let escrow = "0x33b901018174DDabE4841042ab76ba85D4e24f25";
         let base = session_voucher_digest(ch, 1000, 42431, escrow).unwrap();
         // Changing the cumulative amount changes the digest.
         assert_ne!(
@@ -572,5 +590,16 @@ mod tests {
         );
         // Changing the chain id changes the digest.
         assert_ne!(base, session_voucher_digest(ch, 1000, 1, escrow).unwrap());
+        // Changing the verifying contract changes the digest.
+        assert_ne!(
+            base,
+            session_voucher_digest(
+                ch,
+                1000,
+                42431,
+                "0x4d50500000000000000000000000000000000000"
+            )
+            .unwrap()
+        );
     }
 }

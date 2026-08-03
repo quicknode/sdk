@@ -487,22 +487,17 @@ impl RpcApiClient {
         payment::session::close(self.config.rpc_http_client(), &resolved, network, channel).await
     }
 
-    /// Fetches the gateway's status for a channel — the recovery path when local
-    /// channel state is lost.
+    /// Fetches the gateway's view of the channel (accepted cumulative + spent)
+    /// by re-presenting the current high-water voucher — an idempotent replay
+    /// the gateway answers without advancing state. Free.
     #[cfg(feature = "payments-tempo")]
     pub async fn mpp_status(
         &self,
         network: &str,
-        channel_id: &str,
+        channel: &payment::session::ChannelState,
     ) -> Result<payment::session::ChannelStatus, SdkError> {
         let resolved = self.resolve_payment()?;
-        payment::session::status(
-            self.config.rpc_http_client(),
-            &resolved,
-            network,
-            channel_id,
-        )
-        .await
+        payment::session::status(self.config.rpc_http_client(), &resolved, network, channel).await
     }
 
     /// Makes one MPP session-lane JSON-RPC call, authorizing it with a

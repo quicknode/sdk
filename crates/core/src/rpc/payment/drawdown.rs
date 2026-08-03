@@ -311,10 +311,13 @@ pub async fn buy_credits(
         return credits(client, payment, session).await;
     }
 
-    // 2. Settle the largest offered tier (the credit block) with the shared
-    //    x402 signer. Pre-payment parse failures stay PaymentUnsupported.
+    // 2. Settle the credit-drawdown tier (identified by its `extra.name`, not
+    //    by amount — it is typically the cheapest entry on the menu). Refuses
+    //    rather than falling back to a per-request offer, which would settle a
+    //    far larger amount than the caller asked for. Pre-payment failures stay
+    //    PaymentUnsupported: nothing was signed.
     let challenge_body = first.text().await.map_err(SdkError::Http)?;
-    let authorized = super::authorize_x402_largest(client, payment, &challenge_body).await?;
+    let authorized = super::authorize_x402_credit(client, payment, &challenge_body).await?;
     let header = authorized
         .x402_header()
         .ok_or_else(|| SdkError::Config("credit purchase produced no x402 credential".into()))?;
@@ -471,9 +474,8 @@ mod tests {
     use super::*;
     use secrecy::SecretString;
     use serde_json::json;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use wiremock::matchers::{body_partial_json, header, method, path};
-    use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     // anvil key #0 (public throwaway, never funded).
     const EVM_KEY: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -734,54 +736,108 @@ mod tests {
         assert_eq!(receipt.account_id, "eip155:84532:0xabc");
     }
 
-    // A two-tier 402 menu: a per-request offer and the larger credit-drawdown
-    // offer. buy_credits must pick the LARGER (credit) tier.
-    fn two_tier_offer() -> Value {
+    // The live gateway's 402 menu: two per-request USDC tiers plus the
+    // credit-drawdown tier, which is the CHEAPEST entry and carries the Circle
+    // Gateway batched `extra` (its own verifyingContract, not the asset).
+    fn gateway_menu() -> Value {
+        let mut credit = x402_credit_offer("100")
+            .pointer("/accepts/0")
+            .cloned()
+            .unwrap();
+        credit["maxTimeoutSeconds"] = json!(604_900);
+        credit["extra"] = json!({
+            "name": "GatewayWalletBatched",
+            "version": "1",
+            "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+        });
         json!({
             "x402Version": 2,
             "accepts": [
-                x402_credit_offer("1000").pointer("/accepts/0").cloned().unwrap(),
                 x402_credit_offer("1000000").pointer("/accepts/0").cloned().unwrap(),
+                x402_credit_offer("1000").pointer("/accepts/0").cloned().unwrap(),
+                credit,
             ]
         })
     }
 
+    // The credit tier uses a signing construction the per-request lane does not
+    // have. Refusing is the point: falling back to a per-request offer would
+    // settle 1000000 base units when the caller asked for a 100-unit credit
+    // block, and the gateway rejects the wrong-scheme signature anyway.
     #[tokio::test]
-    async fn buy_credits_settles_the_largest_offer_then_reads_balance() {
+    async fn buy_credits_refuses_the_batched_scheme_and_settles_nothing() {
         let server = MockServer::start().await;
-        // POST /base-sepolia: first (unpaid) -> 402 two-tier menu; the paid
-        // resend (with PAYMENT-SIGNATURE) -> 200 RPC result. GET /credits then
-        // reports the funded balance.
-        struct Seq {
-            offer: Value,
-            calls: AtomicUsize,
-        }
-        impl Respond for Seq {
-            fn respond(&self, req: &Request) -> ResponseTemplate {
-                let n = self.calls.fetch_add(1, Ordering::SeqCst);
-                let has_sig = req.headers.contains_key("payment-signature");
-                if n == 0 && !has_sig {
-                    ResponseTemplate::new(402).set_body_json(self.offer.clone())
-                } else {
-                    ResponseTemplate::new(200).set_body_json(json!({
-                        "jsonrpc": "2.0", "id": 1, "result": "0x1"
-                    }))
-                }
-            }
-        }
+        // Exactly one POST: the offer probe. Nothing is ever signed or resent.
         Mock::given(method("POST"))
             .and(path("/base-sepolia"))
-            .respond_with(Seq {
-                offer: two_tier_offer(),
-                calls: AtomicUsize::new(0),
-            })
-            .expect(2)
+            .respond_with(ResponseTemplate::new(402).set_body_json(gateway_menu()))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let client = reqwest::Client::new();
+        let err = buy_credits(&client, &payment, &session, "base-sepolia")
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, SdkError::PaymentUnsupported { offered }
+                if offered.contains("GatewayWalletBatched")),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    // A menu with no credit tier at all: still a refusal, and still nothing
+    // signed — never a silent fallback onto a per-request offer.
+    #[tokio::test]
+    async fn buy_credits_without_a_credit_offer_settles_nothing() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/base-sepolia"))
+            .respond_with(ResponseTemplate::new(402).set_body_json(x402_credit_offer("1000")))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let client = reqwest::Client::new();
+        let err = buy_credits(&client, &payment, &session, "base-sepolia")
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, SdkError::PaymentUnsupported { offered }
+                if offered.contains("no credit-drawdown offer")),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    // A non-402 first response means credits are already available: the probe
+    // RPC ran, so report the balance without buying anything.
+    #[tokio::test]
+    async fn buy_credits_with_existing_credits_reads_the_balance() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/base-sepolia"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "jsonrpc": "2.0", "id": 1, "result": "0x1"
+            })))
+            .expect(1)
             .mount(&server)
             .await;
         Mock::given(method("GET"))
             .and(path("/credits"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "accountId": "eip155:84532:0xabc", "credits": 1_000_095u64
+                "accountId": "eip155:84532:0xabc", "credits": 42u64
             })))
             .mount(&server)
             .await;
@@ -796,56 +852,6 @@ mod tests {
         let bal = buy_credits(&client, &payment, &session, "base-sepolia")
             .await
             .unwrap();
-        assert_eq!(bal.credits, 1_000_095);
-    }
-
-    #[tokio::test]
-    async fn buy_credits_over_max_amount_is_unsupported_and_settles_nothing() {
-        let server = MockServer::start().await;
-        // The only offer exceeds max_amount -> nothing signed, PaymentUnsupported.
-        Mock::given(method("POST"))
-            .and(path("/base-sepolia"))
-            .respond_with(ResponseTemplate::new(402).set_body_json(x402_credit_offer("99999999")))
-            .expect(1)
-            .mount(&server)
-            .await;
-
-        let mut payment = evm_payment(&server.uri());
-        payment.max_amount = 1000;
-        let session = GatewaySession {
-            token: "jwt-abc".into(),
-            exp_unix: now_unix() as i64 + 3600,
-            account_id: "a".into(),
-        };
-        let client = reqwest::Client::new();
-        let err = buy_credits(&client, &payment, &session, "base-sepolia")
-            .await
-            .unwrap_err();
-        assert!(
-            matches!(&err, SdkError::PaymentUnsupported { offered } if offered.contains("exceeds max_amount"))
-        );
-    }
-
-    #[tokio::test]
-    async fn buy_credits_second_402_is_rejection() {
-        let server = MockServer::start().await;
-        // Every POST 402s -> the paid resend also 402s -> rejection.
-        Mock::given(method("POST"))
-            .and(path("/base-sepolia"))
-            .respond_with(ResponseTemplate::new(402).set_body_json(x402_credit_offer("1000")))
-            .mount(&server)
-            .await;
-
-        let payment = evm_payment(&server.uri());
-        let session = GatewaySession {
-            token: "jwt-abc".into(),
-            exp_unix: now_unix() as i64 + 3600,
-            account_id: "a".into(),
-        };
-        let client = reqwest::Client::new();
-        let err = buy_credits(&client, &payment, &session, "base-sepolia")
-            .await
-            .unwrap_err();
-        assert!(matches!(err, SdkError::PaymentRejected { status, .. } if status == 402));
+        assert_eq!(bal.credits, 42);
     }
 }
