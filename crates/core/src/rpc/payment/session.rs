@@ -874,13 +874,9 @@ mod tests {
         // base_url points at a closed port: reaching the network would error
         // differently, so this also proves the guard runs before I/O.
         let payment = tempo_payment("http://127.0.0.1:1");
-        let err = open(
-            &reqwest::Client::new(),
-            &payment,
-            payment.max_amount + 1,
-        )
-        .await
-        .unwrap_err();
+        let err = open(&reqwest::Client::new(), &payment, payment.max_amount + 1)
+            .await
+            .unwrap_err();
         assert!(
             matches!(err, SdkError::PaymentUnsupported { offered } if offered.contains("exceeds max_amount"))
         );
@@ -966,14 +962,9 @@ mod tests {
 
         let payment = tempo_payment(&server.uri());
         let ch = sample_channel();
-        let after = top_up(
-            &reqwest::Client::new(),
-            &payment,
-            &ch,
-            50_000,
-        )
-        .await
-        .unwrap();
+        let after = top_up(&reqwest::Client::new(), &payment, &ch, 50_000)
+            .await
+            .unwrap();
 
         assert_eq!(after.deposit, ch.deposit + 50_000);
         // Top-up moves deposit only; the spend high-water mark is untouched.
@@ -990,14 +981,9 @@ mod tests {
             .await;
 
         let payment = tempo_payment(&server.uri());
-        let err = top_up(
-            &reqwest::Client::new(),
-            &payment,
-            &sample_channel(),
-            50_000,
-        )
-        .await
-        .unwrap_err();
+        let err = top_up(&reqwest::Client::new(), &payment, &sample_channel(), 50_000)
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { status, .. } if status == 402));
     }
 
@@ -1008,13 +994,9 @@ mod tests {
         credential_mock(rpc_ok()).expect(1).mount(&server).await;
 
         let payment = tempo_payment(&server.uri());
-        close(
-            &reqwest::Client::new(),
-            &payment,
-            &sample_channel(),
-        )
-        .await
-        .unwrap();
+        close(&reqwest::Client::new(), &payment, &sample_channel())
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -1026,13 +1008,9 @@ mod tests {
             .await;
 
         let payment = tempo_payment(&server.uri());
-        let err = close(
-            &reqwest::Client::new(),
-            &payment,
-            &sample_channel(),
-        )
-        .await
-        .unwrap_err();
+        let err = close(&reqwest::Client::new(), &payment, &sample_channel())
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Api { status, .. } if status == 409));
     }
 
@@ -1080,13 +1058,9 @@ mod tests {
         credential_mock(rpc_ok()).mount(&server).await;
 
         let payment = tempo_payment(&server.uri());
-        let err = status(
-            &reqwest::Client::new(),
-            &payment,
-            &sample_channel(),
-        )
-        .await
-        .unwrap_err();
+        let err = status(&reqwest::Client::new(), &payment, &sample_channel())
+            .await
+            .unwrap_err();
         assert!(matches!(err, SdkError::Config(m) if m.contains("no Payment-Receipt")));
     }
 

@@ -6,6 +6,11 @@ Reads the key from QN_PAYMENT_KEY — never hard-code it.
 
 Run (x402/EVM on Base Sepolia testnet):
     QN_PAYMENT_KEY=0x<throwaway-key> python examples/rpc_payment.py
+
+Run the x402 drawdown lane (authenticate once, then 1 credit per call):
+    QN_PAYMENT_KEY=0x<key> QN_PAYMENT_LANE=drawdown python examples/rpc_payment.py
+
+With no QN_PAYMENT_KEY set, only the no-funds selfcheck runs.
 """
 
 import asyncio
@@ -20,6 +25,8 @@ from quicknode_sdk import (
     PaymentError,
     PaymentIndeterminateError,
     PaymentRejectedError,
+    PaymentUnsupportedError,
+    generate_payment_wallet,
 )
 
 
@@ -47,7 +54,95 @@ async def selfcheck() -> None:
         raise SystemExit("expected a ConfigError (payment lane requires network)")
     except ConfigError as e:
         assert "requires" in str(e), str(e)
-    print("selfcheck OK: payment error classes + network-required ConfigError")
+
+    # Wallet generation is offline: no gateway, no funds. The key is returned
+    # exactly once — persist it here or it is gone.
+    wallet = generate_payment_wallet("evm")
+    assert wallet["address"].startswith("0x") and len(wallet["address"]) == 42
+    assert wallet["chain"] == "evm"
+    assert isinstance(wallet["key"], str)
+    try:
+        generate_payment_wallet("dogecoin")
+        raise SystemExit("expected a ConfigError for an unknown chain")
+    except ConfigError:
+        pass
+
+    # Base-unit amounts cross as decimal STRINGS, because a u128 has no
+    # lossless int conversion. A non-integer must be refused, not coerced.
+    try:
+        await qn.rpc.mpp_open("12.5")
+        raise SystemExit("expected a ConfigError for a non-integer deposit")
+    except ConfigError as e:
+        assert "decimal base-unit" in str(e), str(e)
+
+    # A channel with no room left refuses the status probe before any network
+    # I/O, because the probe itself costs one request unit.
+    full_channel = {
+        "channel_id": "0x" + "11" * 32,
+        "token": "0x20c0000000000000000000000000000000000000",
+        "payee": "0xfd24114c3981aba78ae2441991b1bdb89329c556",
+        "salt": "0x" + "22" * 32,
+        "authorized_signer": wallet["address"],
+        "escrow_contract": "0x33b901018174DDabE4841042ab76ba85D4e24f25",
+        "deposit": "1000",
+        "cumulative_spent": "1000",
+        "per_call": "500",
+        "chain_id": 42431,
+    }
+    try:
+        await qn.rpc.mpp_status(full_channel)
+        raise SystemExit("expected a PaymentUnsupportedError (no room to probe)")
+    except PaymentUnsupportedError as e:
+        assert "no room" in str(e), str(e)
+
+    print("selfcheck OK: error classes, wallet generation, u128 string amounts")
+
+
+async def drawdown_demo(key: str) -> None:
+    """The x402 drawdown lane: authenticate once, then draw 1 credit per call.
+
+    Cheaper per call than the per-request lane (one signature buys a block of
+    credits), and the session JWT is free to mint — so a host can re-auth
+    transparently. Persist the session dict between runs.
+    """
+    qn = QuicknodeSdk(
+        SdkFullConfig(
+            api_key=None,
+            rpc=RpcConfig(
+                payment=PaymentConfig(
+                    scheme="x402",
+                    key=key,
+                    pay_network="eip155:84532",
+                    asset="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+                    max_amount="10000",
+                )
+            ),
+        )
+    )
+
+    # Derived offline from the key — no network round trip. Use it to key a
+    # per-wallet session cache.
+    print("payment wallet:", qn.rpc.payment_address())
+
+    session = await qn.rpc.gateway_authenticate()
+    print("session account:", session["account_id"], "expires:", session["exp_unix"])
+
+    balance = await qn.rpc.gateway_credits(session)
+    print("credits:", balance["credits"])
+
+    if balance["credits"] == 0:
+        # Testnet faucet: allowed once per account, and it returns the funding
+        # transaction — NOT a balance. Read the balance separately afterwards.
+        try:
+            drip = await qn.rpc.gateway_drip(session)
+            print("faucet tx:", drip["transaction_hash"])
+        except PaymentRejectedError as e:
+            print(f"faucet refused ({e.status}):", e.body)
+
+    result = await qn.rpc.gateway_drawdown_call(
+        "eth_blockNumber", session, "base-sepolia"
+    )
+    print("drawdown eth_blockNumber =>", result)
 
 
 async def main() -> None:
@@ -56,6 +151,11 @@ async def main() -> None:
     key = os.environ.get("QN_PAYMENT_KEY")
     if not key:
         print("set QN_PAYMENT_KEY to a throwaway key to run the live payment call")
+        return
+
+    # QN_PAYMENT_LANE=drawdown runs the credit lane instead of per-request.
+    if os.environ.get("QN_PAYMENT_LANE") == "drawdown":
+        await drawdown_demo(key)
         return
 
     # A keyless SDK: the payment lane needs no account API key. Do NOT log the

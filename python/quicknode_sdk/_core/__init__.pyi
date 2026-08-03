@@ -226,6 +226,7 @@ __all__ = [
     "XrplWalletFilterByListArgs",
     "XrplWalletFilterByListTemplate",
     "XrplWalletFilterTemplate",
+    "generate_payment_wallet",
 ]
 
 @typing.final
@@ -5578,6 +5579,79 @@ class RpcApiClient:
         no token has been minted or seeded yet. Hosts use this to persist the
         token between processes.
         """
+    def payment_address(self) -> builtins.str:
+        r"""
+        The configured payment wallet's on-chain address (EVM/Tempo `0x…` hex,
+        Solana base58), derived offline from the key with no network round trip.
+        """
+    def gateway_authenticate(self) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Authenticates against the x402 gateway with a SIWX message and returns
+        the session as a dict `{token, exp_unix, account_id}`. Free — no funds
+        move. Persist the dict and pass it back to the `gateway_*` methods.
+        """
+    def gateway_credits(self, session: typing.Any) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Reads the account's current x402 credit balance. Returns a dict
+        `{account_id, credits}`. `session` is a dict from `gateway_authenticate`.
+        """
+    def gateway_buy_credits(self, session: typing.Any, network: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Buys a block of credits, settling the gateway's offer with the same
+        signer construction as the per-request lane. Returns the post-purchase
+        balance dict `{account_id, credits}`. Single-attempt: a paid lane never
+        blind-retries.
+        """
+    def gateway_drip(self, session: typing.Any) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Requests testnet tokens from the x402 faucet. Returns the funding
+        transaction as a dict `{account_id, transaction_hash}` — NOT a balance;
+        call `gateway_credits` afterwards for that. Allowed once per account.
+        """
+    def gateway_drawdown_call(self, method: builtins.str, session: typing.Any, network: builtins.str, params: typing.Optional[typing.Any] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Makes one x402 drawdown JSON-RPC call with the session as a Bearer
+        token, drawing 1 credit on success. Returns the unwrapped JSON-RPC
+        `result`. Single-attempt; re-authenticate on a 401/403 `ApiError`.
+        """
+    def mpp_open(self, deposit: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Opens an MPP payment channel by depositing `deposit` base units (a
+        decimal string) into the escrow. Returns the channel state dict — persist
+        it; the gateway has no read-only channel endpoint, so a lost record means
+        opening a new channel. Moves real funds; single-attempt.
+        
+        Takes no network: the channel is scoped by the configured pay network and
+        asset, so one channel funds calls to every supported network.
+        """
+    def mpp_top_up(self, channel: typing.Any, additional_deposit: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Adds `additional_deposit` base units (a decimal string) to an open
+        channel. Returns the updated channel state dict. Moves real funds;
+        single-attempt.
+        """
+    def mpp_close(self, channel: typing.Any) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Cooperatively closes a channel: settles the final cumulative spend
+        on-chain and refunds the unused deposit. Single-attempt.
+        """
+    def mpp_status(self, channel: typing.Any) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Fetches the gateway's view of the channel as a dict `{channel_id,
+        accepted_cumulative, spent}` (amounts are decimal strings).
+        
+        **This costs one request unit** and advances the voucher by `per_call`,
+        exactly like a session call — persist the advanced `cumulative_spent`.
+        Raises `PaymentUnsupportedError` before any network I/O when the channel
+        has no room left for the probe.
+        """
+    def mpp_session_call(self, method: builtins.str, network: builtins.str, channel: typing.Any, new_cumulative: builtins.str, params: typing.Optional[typing.Any] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Makes one MPP session-lane JSON-RPC call, authorizing it with a
+        cumulative voucher for `new_cumulative` (a decimal string: the running
+        total AFTER this call). Returns the unwrapped JSON-RPC `result`.
+        Single-attempt; advance the persisted `cumulative_spent` on success.
+        """
 
 @typing.final
 class RpcConfig:
@@ -7694,4 +7768,15 @@ class XrplWalletFilterTemplate:
         XRPL wallet addresses to match against.
         """
     def __new__(cls, wallets: typing.Sequence[builtins.str]) -> XrplWalletFilterTemplate: ...
+
+def generate_payment_wallet(chain: builtins.str) -> typing.Any:
+    r"""
+    Generates a fresh payment keypair for `chain` (`"evm"`, `"svm"`, or
+    `"tempo"`). Returns a dict `{address, chain, key}` where `key` is the raw
+    private key in the format the `key_file` config reads.
+    
+    The key is returned exactly once, at generation: nothing in the SDK stores or
+    re-derives it, so persist it before discarding the dict. Randomness comes
+    from the OS CSPRNG.
+    """
 
