@@ -78,6 +78,10 @@ There are two ways to configure the SDK.
 // Node.js
 import { QuicknodeSdk } from "quicknode-sdk";
 const qn = new QuicknodeSdk({ apiKey: "your-key", http: { timeoutSecs: 30 } });
+
+// apiKey is optional: the crypto-micropayment lane pays per request instead, so
+// omitting it builds a usable SDK. Every other client still needs one, and
+// fromEnv() always requires QN_SDK__API_KEY.
 ```
 
 ### Option B — Load from environment (`from_env()`)
@@ -1781,6 +1785,86 @@ const qn = new QuicknodeSdk({
 const { result, paymentReceipt } = await qn.rpc.callWithReceipt("eth_blockNumber", [], "base-sepolia");
 console.log(result, paymentReceipt);
 ```
+
+### Wallet generation
+
+`generatePaymentWallet("evm")` creates a fresh keypair offline — no network call, no funds — for
+`"evm"`, `"svm"`, or `"tempo"`. The private key is returned **exactly once**, at
+generation; nothing in the SDK stores or re-derives it, so persist it immediately.
+
+```typescript
+import { generatePaymentWallet } from "@quicknode/sdk";
+
+const wallet = generatePaymentWallet("evm");
+console.log("fund this address:", wallet.address);
+// wallet.key is returned exactly once — persist it now.
+```
+
+### Drawdown lane (buy credits, then draw one per call)
+
+Cheaper per call than paying per request: one signature buys a block of credits, then
+each call draws a single credit. The session is free to mint, so a host can
+re-authenticate transparently. Persist it between processes.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `paymentAddress()` | free, offline | the wallet address derived from the key |
+| `gatewayAuthenticate()` | free | `GatewaySession { token, expUnix, accountId }` |
+| `gatewayCredits(session)` | free | `CreditBalance { accountId, credits }` |
+| `gatewayBuyCredits(session, network)` | **moves funds** | the post-purchase balance |
+| `gatewayDrip(session)` | free (testnet) | `DripReceipt { accountId, transactionHash }` |
+| `gatewayDrawdownCall(method, session, network, params?)` | 1 credit | the JSON-RPC `result` |
+
+```typescript
+const session = await qn.rpc.gatewayAuthenticate();
+const balance = await qn.rpc.gatewayCredits(session);
+console.log("credits:", balance.credits);
+const result = await qn.rpc.gatewayDrawdownCall("eth_blockNumber", session, "base-sepolia");
+```
+
+`gatewayDrip` returns the **funding transaction, not a balance** — call `gatewayCredits`
+afterwards to read the new balance. A `token_expired` surfaces as an `ApiError` with
+status 401/403; re-authenticate and retry that call.
+
+### MPP channel lane (deposit once, then vouchers)
+
+Open a payment channel by depositing into the escrow, then authorize each call with a
+cumulative voucher — one `ecrecover` server-side, no on-chain transaction per call.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `mppOpen(deposit)` | **moves funds** | `ChannelState` — persist it |
+| `mppTopUp(channel, additionalDeposit)` | **moves funds** | the updated channel state |
+| `mppStatus(channel)` | **1 request unit** | `ChannelStatus { channelId, acceptedCumulative, spent }` |
+| `mppSessionCall(method, network, channel, newCumulative, params?)` | 1 request unit | the JSON-RPC `result` |
+| `mppClose(channel)` | settles on-chain | nothing — refunds the unused deposit |
+
+```typescript
+const channel = await qn.rpc.mppOpen("1000000");   // persist this object
+const newTotal = (BigInt(channel.cumulativeSpent) + BigInt(channel.perCall)).toString();
+const result = await qn.rpc.mppSessionCall(
+  "eth_blockNumber", "base-sepolia", channel, newTotal,
+);
+// On success, store newTotal as the channel's cumulativeSpent.
+```
+
+**Things to know:**
+
+- **Persist the channel state.** The gateway exposes no read-only channel endpoint, so a
+  lost local record means opening (and funding) a new channel.
+- **`mppStatus` is not free.** The gateway prices every session POST as a chargeable
+  request and computes the balance from the *new* spend a voucher authorizes, so the
+  probe advances `cumulativeSpent` by `perCall` exactly like a call. Re-persist the
+  advanced total. It raises `PaymentUnsupportedError` before any network I/O when the
+  channel has no room left for the probe.
+- **The lifecycle takes no query network.** A channel is scoped by the configured pay
+  network and asset, so one channel funds calls to every supported network. Only
+  `mppSessionCall` takes a network, because it routes an RPC method.
+- **Amounts are decimal strings, not numbers.** They are `u128` in the core; a JS `number` is an f64 that loses precision above 2^53, so pass and store them as strings.
+- **Advance `cumulativeSpent` only after a success.** A voucher authorizes the running total
+  *after* the call; re-presenting the current high-water mark authorizes zero and is
+  always refused with `insufficient-balance`.
+
 
 
 ## Error Handling

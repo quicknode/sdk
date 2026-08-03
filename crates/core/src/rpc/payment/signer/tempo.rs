@@ -38,11 +38,9 @@ const DEFAULT_MAX_FEE_PER_GAS: u128 = 10_000_000_000; // 10 gwei
 const DEFAULT_MAX_PRIORITY_FEE_PER_GAS: u128 = 2_000_000_000; // 2 gwei
 
 // Gas cap for escrow channel txs: the sponsor policy maximum. These carry two
-// calls (a token `approve` plus the escrow `open`/`topUp`), and a traced live
-// `open` on Tempo testnet cost ~1.28M gas on top of a ~260k `approve` — a
-// 1.5M budget left the open frame ~78k short and it ran out of gas. The
-// sponsor pays the fee, the reference client budgets even higher via RPC
-// estimation, and 2M × the 10 gwei fee cap stays well under the sponsor
+// calls (a token `approve` plus the escrow `open`/`topUp`), which together need
+// well over 1.5M gas — a smaller budget runs the open frame out of gas. The
+// sponsor pays the fee, and 2M × the 10 gwei fee cap stays under the sponsor
 // policy's total-fee ceiling.
 const ESCROW_GAS_LIMIT: u64 = 2_000_000;
 

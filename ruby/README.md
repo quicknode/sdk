@@ -76,6 +76,10 @@ There are two ways to configure the SDK.
 
 ```ruby
 qn = QuicknodeSdk::SDK.from_config(api_key: "your-key")
+
+# api_key is optional: the crypto-micropayment lane pays per request instead, so
+# api_key: nil builds a usable SDK. Every other client still needs one, and
+# from_env always requires QN_SDK__API_KEY.
 ```
 
 ### Option B — Load from environment (`from_env()`)
@@ -1783,6 +1787,87 @@ sdk = QuicknodeSdk::SDK.from_config(
 resp = sdk.rpc.call_with_receipt(method: "eth_blockNumber", params: [], network: "base-sepolia")
 puts resp["result"]
 ```
+
+### Wallet generation
+
+`QuicknodeSdk.generate_payment_wallet(chain: "evm")` creates a fresh keypair offline — no network call, no funds — for
+`"evm"`, `"svm"`, or `"tempo"`. The private key is returned **exactly once**, at
+generation; nothing in the SDK stores or re-derives it, so persist it immediately.
+
+```ruby
+wallet = QuicknodeSdk.generate_payment_wallet(chain: "evm")
+puts "fund this address: #{wallet[:address]}"
+File.write("payment.key", wallet[:key])  # returned exactly once
+```
+
+### Drawdown lane (buy credits, then draw one per call)
+
+Cheaper per call than paying per request: one signature buys a block of credits, then
+each call draws a single credit. The session is free to mint, so a host can
+re-authenticate transparently. Persist it between processes.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `payment_address` | free, offline | the wallet address derived from the key |
+| `gateway_authenticate` | free | a Hash `{token:, exp_unix:, account_id:}` |
+| `gateway_credits(session:)` | free | a Hash `{account_id:, credits:}` |
+| `gateway_buy_credits(session:, network:)` | **moves funds** | the post-purchase balance |
+| `gateway_drip(session:)` | free (testnet) | a Hash `{account_id:, transaction_hash:}` |
+| `gateway_drawdown_call(method:, session:, network:, params:)` | 1 credit | the JSON-RPC `result` |
+
+```ruby
+session = sdk.rpc.gateway_authenticate
+balance = sdk.rpc.gateway_credits(session: session)
+puts "credits: #{balance[:credits]}"
+result = sdk.rpc.gateway_drawdown_call(
+  method: "eth_blockNumber", session: session, network: "base-sepolia"
+)
+```
+
+`gateway_drip` returns the **funding transaction, not a balance** — call `gateway_credits`
+afterwards to read the new balance. A `token_expired` surfaces as an `ApiError` with
+status 401/403; re-authenticate and retry that call.
+
+### MPP channel lane (deposit once, then vouchers)
+
+Open a payment channel by depositing into the escrow, then authorize each call with a
+cumulative voucher — one `ecrecover` server-side, no on-chain transaction per call.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `mpp_open(deposit:)` | **moves funds** | the channel state Hash |
+| `mpp_top_up(channel:, additional_deposit:)` | **moves funds** | the updated channel state |
+| `mpp_status(channel:)` | **1 request unit** | a Hash `{channel_id:, accepted_cumulative:, spent:}` |
+| `mpp_session_call(method:, network:, channel:, new_cumulative:, params:)` | 1 request unit | the JSON-RPC `result` |
+| `mpp_close(channel:)` | settles on-chain | nothing — refunds the unused deposit |
+
+```ruby
+channel = sdk.rpc.mpp_open(deposit: "1000000")    # persist this Hash
+new_total = (channel[:cumulative_spent].to_i + channel[:per_call].to_i).to_s
+result = sdk.rpc.mpp_session_call(
+  method: "eth_blockNumber", network: "base-sepolia",
+  channel: channel, new_cumulative: new_total
+)
+# On success, store new_total as the channel's cumulative_spent.
+```
+
+**Things to know:**
+
+- **Persist the channel state.** The gateway exposes no read-only channel endpoint, so a
+  lost local record means opening (and funding) a new channel.
+- **`mpp_status` is not free.** The gateway prices every session POST as a chargeable
+  request and computes the balance from the *new* spend a voucher authorizes, so the
+  probe advances `cumulative_spent` by `per_call` exactly like a call. Re-persist the
+  advanced total. It raises `PaymentUnsupportedError` before any network I/O when the
+  channel has no room left for the probe.
+- **The lifecycle takes no query network.** A channel is scoped by the configured pay
+  network and asset, so one channel funds calls to every supported network. Only
+  `mpp_session_call` takes a network, because it routes an RPC method.
+- **Amounts are decimal strings, not numbers.** They are `u128` in the core; magnus has no `u128` conversion, so pass and store them as Strings.
+- **Advance `cumulative_spent` only after a success.** A voucher authorizes the running total
+  *after* the call; re-presenting the current high-water mark authorizes zero and is
+  always refused with `insufficient-balance`.
+
 
 
 ## Error Handling

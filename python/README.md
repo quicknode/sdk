@@ -82,6 +82,10 @@ There are two ways to configure the SDK.
 # Python
 from quicknode_sdk import QuicknodeSdk, SdkFullConfig, HttpConfig
 qn = QuicknodeSdk(SdkFullConfig(api_key="your-key", http=HttpConfig(timeout_secs=30)))
+
+# api_key is optional: the crypto-micropayment lane pays per request instead, so
+# api_key=None builds a usable SDK. Every other client still needs one, and
+# from_env() always requires QN_SDK__API_KEY.
 ```
 
 ### Option B — Load from environment (`from_env()`)
@@ -1774,6 +1778,86 @@ qn = QuicknodeSdk(SdkFullConfig(api_key=None, rpc=RpcConfig(payment=PaymentConfi
 resp = await qn.rpc.call_with_receipt("eth_blockNumber", [], "base-sepolia")
 print(resp["result"], resp["payment_receipt"])
 ```
+
+### Wallet generation
+
+`generate_payment_wallet("evm")` creates a fresh keypair offline — no network call, no funds — for
+`"evm"`, `"svm"`, or `"tempo"`. The private key is returned **exactly once**, at
+generation; nothing in the SDK stores or re-derives it, so persist it immediately.
+
+```python
+from quicknode_sdk import generate_payment_wallet
+
+wallet = generate_payment_wallet("evm")
+print("fund this address:", wallet["address"])
+open("payment.key", "w").write(wallet["key"])  # returned exactly once
+```
+
+### Drawdown lane (buy credits, then draw one per call)
+
+Cheaper per call than paying per request: one signature buys a block of credits, then
+each call draws a single credit. The session is free to mint, so a host can
+re-authenticate transparently. Persist it between processes.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `payment_address()` | free, offline | the wallet address derived from the key |
+| `gateway_authenticate()` | free | a dict `{token, exp_unix, account_id}` |
+| `gateway_credits(session)` | free | a dict `{account_id, credits}` |
+| `gateway_buy_credits(session, network)` | **moves funds** | the post-purchase balance |
+| `gateway_drip(session)` | free (testnet) | a dict `{account_id, transaction_hash}` |
+| `gateway_drawdown_call(method, session, network, params=None)` | 1 credit | the JSON-RPC `result` |
+
+```python
+session = await qn.rpc.gateway_authenticate()
+balance = await qn.rpc.gateway_credits(session)
+print("credits:", balance["credits"])
+result = await qn.rpc.gateway_drawdown_call("eth_blockNumber", session, "base-sepolia")
+```
+
+`gateway_drip` returns the **funding transaction, not a balance** — call `gateway_credits`
+afterwards to read the new balance. A `token_expired` surfaces as an `ApiError` with
+status 401/403; re-authenticate and retry that call.
+
+### MPP channel lane (deposit once, then vouchers)
+
+Open a payment channel by depositing into the escrow, then authorize each call with a
+cumulative voucher — one `ecrecover` server-side, no on-chain transaction per call.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `mpp_open(deposit)` | **moves funds** | the channel state dict |
+| `mpp_top_up(channel, additional_deposit)` | **moves funds** | the updated channel state |
+| `mpp_status(channel)` | **1 request unit** | a dict `{channel_id, accepted_cumulative, spent}` |
+| `mpp_session_call(method, network, channel, new_cumulative, params=None)` | 1 request unit | the JSON-RPC `result` |
+| `mpp_close(channel)` | settles on-chain | nothing — refunds the unused deposit |
+
+```python
+channel = await qn.rpc.mpp_open("1000000")        # persist this dict
+new_total = str(int(channel["cumulative_spent"]) + int(channel["per_call"]))
+result = await qn.rpc.mpp_session_call(
+    "eth_blockNumber", "base-sepolia", channel, new_total
+)
+# On success, store new_total as the channel's cumulative_spent.
+```
+
+**Things to know:**
+
+- **Persist the channel state.** The gateway exposes no read-only channel endpoint, so a
+  lost local record means opening (and funding) a new channel.
+- **`mpp_status` is not free.** The gateway prices every session POST as a chargeable
+  request and computes the balance from the *new* spend a voucher authorizes, so the
+  probe advances `cumulative_spent` by `per_call` exactly like a call. Re-persist the
+  advanced total. It raises `PaymentUnsupportedError` before any network I/O when the
+  channel has no room left for the probe.
+- **The lifecycle takes no query network.** A channel is scoped by the configured pay
+  network and asset, so one channel funds calls to every supported network. Only
+  `mpp_session_call` takes a network, because it routes an RPC method.
+- **Amounts are decimal strings, not numbers.** They are `u128` in the core; a Python int has no lossless `u128` conversion, so pass and store them as strings.
+- **Advance `cumulative_spent` only after a success.** A voucher authorizes the running total
+  *after* the call; re-presenting the current high-water mark authorizes zero and is
+  always refused with `insufficient-balance`.
+
 
 
 ## Error Handling
