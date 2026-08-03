@@ -324,6 +324,15 @@ pub async fn buy_credits(
 
     // 3. Paid resend — exactly once, same indeterminate-outcome handling as the
     //    per-request driver.
+    //
+    //    Unreachable today: `authorize_x402_credit` always returns
+    //    PaymentUnsupported because the GatewayWalletBatched construction the
+    //    credit tier requires is not implemented yet, so step 2 above always
+    //    returns early. Kept (rather than deleted) so the paid lane's
+    //    single-attempt contract stays encoded next to the request it guards —
+    //    it becomes live as soon as that construction lands. It has no test for
+    //    the same reason; the equivalent logic in the per-request driver is
+    //    covered by `lost_response_after_payment_is_indeterminate`.
     let paid = match client
         .post(&url)
         .bearer_auth(&session.token)
@@ -530,6 +539,32 @@ mod tests {
              Nonce: abc12345\n\
              Issued At: 2026-07-17T12:00:00Z";
         assert_eq!(msg, expected);
+    }
+
+    // The byte-exact test above supplies `issued_at` directly, so it cannot
+    // catch the format the gateway actually receives — that comes from
+    // `rfc3339_now()`. The gateway's format validation rejects whole-second
+    // precision, so assert the millisecond `.000Z` suffix at the source and in
+    // the assembled message.
+    #[test]
+    fn issued_at_carries_millisecond_precision() {
+        let iso = rfc3339_now();
+        assert!(iso.ends_with(".000Z"), "issued_at was {iso}");
+        assert_eq!(
+            iso.len(),
+            24,
+            "expected YYYY-MM-DDTHH:MM:SS.000Z, got {iso}"
+        );
+
+        let msg = siwe_message(
+            "x402.quicknode.com",
+            EVM_ADDR,
+            84532,
+            "abc12345",
+            &iso,
+            SIWX_STATEMENT,
+        );
+        assert!(msg.ends_with(&format!("Issued At: {iso}")));
     }
 
     #[test]

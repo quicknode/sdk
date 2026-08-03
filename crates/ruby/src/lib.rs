@@ -77,9 +77,11 @@ fn extract_payment_config(opts: &RHash) -> Result<Option<core::PaymentConfig>, E
     let Some(rpc_val) = opts.get(r.to_symbol("rpc")) else {
         return Ok(None);
     };
-    let Some(rpc) = RHash::from_value(rpc_val) else {
-        return Ok(None);
-    };
+    // A present-but-wrong-typed `rpc` / `rpc.payment` is a caller mistake, not
+    // an absent payment lane: fail loudly rather than silently ignoring the
+    // config (matching the `rpc.payment` Hash check below).
+    let rpc = RHash::from_value(rpc_val)
+        .ok_or_else(|| Error::new(r.exception_arg_error(), "rpc must be a Hash"))?;
     let Some(payment_val) = rpc.get(r.to_symbol("payment")) else {
         return Ok(None);
     };

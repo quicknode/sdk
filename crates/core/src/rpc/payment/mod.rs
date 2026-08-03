@@ -524,7 +524,13 @@ fn authorize_x402_evm(
             }
         }
     });
-    let header = base64_std(serde_json::to_vec(&envelope).unwrap_or_default());
+    // Never fall back to an empty credential: sending zero bytes turns a local
+    // serialization bug into an opaque gateway rejection.
+    let header = base64_std(serde_json::to_vec(&envelope).map_err(|e| {
+        SdkError::Config(format!(
+            "could not serialize the x402 payment credential: {e}"
+        ))
+    })?);
     Ok(Authorized::X402 { header })
 }
 
@@ -598,7 +604,13 @@ async fn authorize_x402_svm(
         "accepted": entry,
         "payload": base64_std(tx),
     });
-    let header = base64_std(serde_json::to_vec(&envelope).unwrap_or_default());
+    // Never fall back to an empty credential: sending zero bytes turns a local
+    // serialization bug into an opaque gateway rejection.
+    let header = base64_std(serde_json::to_vec(&envelope).map_err(|e| {
+        SdkError::Config(format!(
+            "could not serialize the x402 payment credential: {e}"
+        ))
+    })?);
     Ok(Authorized::X402 { header })
 }
 
@@ -723,7 +735,14 @@ fn build_mpp_credential(
     }
 
     // validBefore = min(now+25s, challenge expiry) — TIP-1009 expiring nonce.
-    let expiry = parse_iso_unix(&challenge.expires).unwrap_or(u64::MAX);
+    // An unparseable expiry is an error, not an unbounded window: falling back
+    // to u64::MAX would sign an authorization that never expires.
+    let expiry = parse_iso_unix(&challenge.expires).ok_or_else(|| {
+        SdkError::Config(format!(
+            "MPP challenge has an unparseable `expires` value: {}",
+            challenge.expires
+        ))
+    })?;
     let valid_before = (now_unix() + 25).min(expiry);
 
     let req = TempoChargeRequest {
@@ -754,7 +773,11 @@ fn build_mpp_credential(
         "payload": { "signature": format!("0x{}", hex::encode(handoff)), "type": "transaction" },
         "source": format!("did:pkh:eip155:{chain_id}:{sender}"),
     });
-    let credential = base64_url_nopad(serde_json::to_vec(&credential_json).unwrap_or_default());
+    let credential = base64_url_nopad(serde_json::to_vec(&credential_json).map_err(|e| {
+        SdkError::Config(format!(
+            "could not serialize the MPP charge credential: {e}"
+        ))
+    })?);
     Ok(Authorized::Mpp { credential })
 }
 
@@ -961,7 +984,7 @@ pub(super) fn now_unix() -> u64 {
 // "2026-07-13T02:05:10.119Z"; we only need whole seconds. Minimal parser to
 // avoid a chrono dependency.
 #[cfg(feature = "payments-tempo")]
-fn parse_iso_unix(iso: &str) -> Option<u64> {
+pub(super) fn parse_iso_unix(iso: &str) -> Option<u64> {
     // Expect YYYY-MM-DDTHH:MM:SS...
     let bytes = iso.as_bytes();
     if bytes.len() < 19 {

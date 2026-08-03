@@ -445,22 +445,24 @@ impl RpcApiClient {
     /// Opens an MPP payment channel by depositing `deposit` base units into the
     /// escrow and returns the new [`payment::session::ChannelState`]. Moves real
     /// funds; single-attempt.
+    ///
+    /// The channel is scoped by the configured pay network and asset, not by any
+    /// queried chain: one open channel funds paid calls to every supported
+    /// network, so this takes no query network.
     #[cfg(feature = "payments-tempo")]
     pub async fn mpp_open(
         &self,
-        network: &str,
         deposit: u128,
     ) -> Result<payment::session::ChannelState, SdkError> {
         let resolved = self.resolve_payment()?;
-        payment::session::open(self.config.rpc_http_client(), &resolved, network, deposit).await
+        payment::session::open(self.config.rpc_http_client(), &resolved, deposit).await
     }
 
     /// Adds `additional_deposit` base units to an open MPP channel. Moves real
-    /// funds; single-attempt.
+    /// funds; single-attempt. Scoped by the configured pay network and asset.
     #[cfg(feature = "payments-tempo")]
     pub async fn mpp_top_up(
         &self,
-        network: &str,
         channel: &payment::session::ChannelState,
         additional_deposit: u128,
     ) -> Result<payment::session::ChannelState, SdkError> {
@@ -468,7 +470,6 @@ impl RpcApiClient {
         payment::session::top_up(
             self.config.rpc_http_client(),
             &resolved,
-            network,
             channel,
             additional_deposit,
         )
@@ -476,28 +477,34 @@ impl RpcApiClient {
     }
 
     /// Cooperatively closes an MPP channel: settles the final cumulative spend
-    /// on-chain and refunds the unused deposit. Single-attempt.
+    /// on-chain and refunds the unused deposit. Single-attempt. Scoped by the
+    /// configured pay network and asset.
     #[cfg(feature = "payments-tempo")]
     pub async fn mpp_close(
         &self,
-        network: &str,
         channel: &payment::session::ChannelState,
     ) -> Result<(), SdkError> {
         let resolved = self.resolve_payment()?;
-        payment::session::close(self.config.rpc_http_client(), &resolved, network, channel).await
+        payment::session::close(self.config.rpc_http_client(), &resolved, channel).await
     }
 
-    /// Fetches the gateway's view of the channel (accepted cumulative + spent)
-    /// by re-presenting the current high-water voucher — an idempotent replay
-    /// the gateway answers without advancing state. Free.
+    /// Fetches the gateway's view of the channel (accepted cumulative + spent).
+    ///
+    /// **This costs one request unit.** The gateway prices every session POST as
+    /// a chargeable request and computes the available balance from the *new*
+    /// spend a voucher authorizes, so the probe advances `cumulative_spent` by
+    /// `per_call` exactly like a session RPC call. The caller must persist the
+    /// returned state on success. Returns [`SdkError::PaymentUnsupported`]
+    /// before any network I/O when the channel has no room left for the probe.
+    ///
+    /// Scoped by the configured pay network and asset; takes no query network.
     #[cfg(feature = "payments-tempo")]
     pub async fn mpp_status(
         &self,
-        network: &str,
         channel: &payment::session::ChannelState,
     ) -> Result<payment::session::ChannelStatus, SdkError> {
         let resolved = self.resolve_payment()?;
-        payment::session::status(self.config.rpc_http_client(), &resolved, network, channel).await
+        payment::session::status(self.config.rpc_http_client(), &resolved, channel).await
     }
 
     /// Makes one MPP session-lane JSON-RPC call, authorizing it with a

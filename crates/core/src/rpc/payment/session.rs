@@ -11,7 +11,10 @@
 //!
 //! Wire protocol (matches the `mppx` reference client's contract-backed
 //! session, `tempo/legacy/session`):
-//! - Endpoints under `{mpp}/session/:network`.
+//! - Endpoints under `{mpp}/session/:network`. The gateway requires the slug to
+//!   name a network it serves, but selects the challenge by the caller's pay
+//!   chain, so the value only matters for `voucher_call` (which routes an RPC
+//!   method). The lifecycle verbs pin `SESSION_ROUTE_NETWORK`.
 //! - Channel lifecycle credentials are a discriminated union on `action`
 //!   (`open`/`topUp`/`voucher`/`close`), each a `Payment <base64url JSON>`
 //!   credential of `{challenge, payload, source}`.
@@ -33,7 +36,32 @@ use serde_json::Value;
 use crate::errors::{HttpKind, SdkError};
 
 use super::signer::tempo::{EscrowAction, TempoEscrowRequest};
-use super::{now_unix, random_nonce, PaymentScheme, ResolvedPayment};
+use super::{now_unix, parse_iso_unix, random_nonce, PaymentScheme, ResolvedPayment};
+
+// The path segment the channel-lifecycle requests route on. The gateway
+// requires `/session/:network` to name a network it serves — an unknown slug
+// 404s — but for open/topUp/close/voucher-status the value has no effect: the
+// challenge it answers with is selected by the caller's pay chain, so every
+// supported slug yields the same escrow, currency, and price. The lifecycle
+// operates on the channel (pay chain + asset), never on a queried chain, so it
+// pins one slug rather than making callers supply an arbitrary one. Only
+// `voucher_call` takes a real query network, because it routes an RPC method.
+const SESSION_ROUTE_NETWORK: &str = "tempo-testnet";
+
+// validBefore for a fee-sponsored escrow tx = min(now+25s, challenge expiry) —
+// the same TIP-1009 expiring-nonce envelope the charge lane uses. Clamping to
+// the challenge matters because the gateway rejects an authorization that
+// outlives the challenge it answers; an unparseable expiry is an error rather
+// than an unbounded window.
+fn session_valid_before(challenge: &SessionChallenge) -> Result<u64, SdkError> {
+    let expiry = parse_iso_unix(&challenge.expires).ok_or_else(|| {
+        SdkError::Config(format!(
+            "MPP session challenge has an unparseable `expires` value: {}",
+            challenge.expires
+        ))
+    })?;
+    Ok((now_unix() + 25).min(expiry))
+}
 
 /// Local state for an open MPP payment channel. The CLI persists this between
 /// runs (like the drawdown session JWT); the gateway has no read-only channel
@@ -90,7 +118,6 @@ struct SessionChallenge {
 pub async fn open(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
-    query_network: &str,
     deposit: u128,
 ) -> Result<ChannelState, SdkError> {
     if deposit > payment.max_amount {
@@ -101,7 +128,7 @@ pub async fn open(
             ),
         });
     }
-    let challenge = probe_session_challenge(client, payment, query_network).await?;
+    let challenge = probe_session_challenge(client, payment).await?;
     let chain_id = challenge_chain_id(&challenge)?;
     let token = require_str(&challenge.request, "currency")?;
     let payee = require_str(&challenge.request, "recipient")?;
@@ -114,7 +141,7 @@ pub async fn open(
     let salt = format!("0x{}", hex::encode(random_nonce()));
     let signed = payment.signer.sign_escrow_tx(&TempoEscrowRequest {
         chain_id,
-        valid_before: now_unix() + 25,
+        valid_before: session_valid_before(&challenge)?,
         escrow_contract: escrow.clone(),
         action: EscrowAction::Open {
             payee: payee.clone(),
@@ -146,7 +173,7 @@ pub async fn open(
         "authorizedSigner": payer,
         "cumulativeAmount": per_unit.to_string(),
     });
-    post_session_credential(client, payment, query_network, &challenge, &payer, payload).await?;
+    post_session_credential(client, payment, &challenge, &payer, payload).await?;
 
     Ok(ChannelState {
         channel_id,
@@ -167,16 +194,15 @@ pub async fn open(
 pub async fn top_up(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
-    query_network: &str,
     channel: &ChannelState,
     additional_deposit: u128,
 ) -> Result<ChannelState, SdkError> {
     let payer = payment.signer.address()?;
-    let challenge = probe_session_challenge(client, payment, query_network).await?;
+    let challenge = probe_session_challenge(client, payment).await?;
 
     let signed = payment.signer.sign_escrow_tx(&TempoEscrowRequest {
         chain_id: channel.chain_id,
-        valid_before: now_unix() + 25,
+        valid_before: session_valid_before(&challenge)?,
         escrow_contract: channel.escrow_contract.clone(),
         action: EscrowAction::TopUp {
             channel_id: channel.channel_id.clone(),
@@ -191,7 +217,7 @@ pub async fn top_up(
         "transaction": format!("0x{}", hex::encode(&signed.transaction)),
         "additionalDeposit": additional_deposit.to_string(),
     });
-    post_session_credential(client, payment, query_network, &challenge, &payer, payload).await?;
+    post_session_credential(client, payment, &challenge, &payer, payload).await?;
 
     let mut updated = channel.clone();
     updated.deposit = channel.deposit.saturating_add(additional_deposit);
@@ -204,11 +230,10 @@ pub async fn top_up(
 pub async fn close(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
-    query_network: &str,
     channel: &ChannelState,
 ) -> Result<(), SdkError> {
     let payer = payment.signer.address()?;
-    let challenge = probe_session_challenge(client, payment, query_network).await?;
+    let challenge = probe_session_challenge(client, payment).await?;
     let signature = payment.signer.sign_session_voucher(
         &channel.channel_id,
         channel.cumulative_spent,
@@ -221,7 +246,7 @@ pub async fn close(
         "cumulativeAmount": channel.cumulative_spent.to_string(),
         "signature": signature,
     });
-    post_session_credential(client, payment, query_network, &challenge, &payer, payload).await?;
+    post_session_credential(client, payment, &challenge, &payer, payload).await?;
     Ok(())
 }
 
@@ -251,7 +276,6 @@ pub struct ChannelStatus {
 pub async fn status(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
-    query_network: &str,
     channel: &ChannelState,
 ) -> Result<ChannelStatus, SdkError> {
     let probe_cumulative = channel.cumulative_spent.saturating_add(channel.per_call);
@@ -272,15 +296,14 @@ pub async fn status(
         channel.chain_id,
         &channel.escrow_contract,
     )?;
-    let challenge = probe_session_challenge(client, payment, query_network).await?;
+    let challenge = probe_session_challenge(client, payment).await?;
     let payload = serde_json::json!({
         "action": "voucher",
         "channelId": channel.channel_id,
         "cumulativeAmount": probe_cumulative.to_string(),
         "signature": signature,
     });
-    let resp = post_session_credential(client, payment, query_network, &challenge, &payer, payload)
-        .await?;
+    let resp = post_session_credential(client, payment, &challenge, &payer, payload).await?;
 
     let receipt_b64 = resp
         .headers()
@@ -332,15 +355,18 @@ pub async fn voucher_call(
         &channel.escrow_contract,
     )?;
     // A voucher credential needs the challenge it answers; the gateway echoes it
-    // on the 402. Probe once (free) to obtain the current session challenge.
-    let challenge = probe_session_challenge(client, payment, query_network).await?;
+    // on the 402. Probe once (free) to obtain the current session challenge. The
+    // probe uses the pinned lifecycle route, not `query_network`: the challenge
+    // is selected by the pay chain and is identical on every served slug, while
+    // the paid POST below must go to the network the caller is querying.
+    let challenge = probe_session_challenge(client, payment).await?;
     let payload = serde_json::json!({
         "action": "voucher",
         "channelId": channel.channel_id,
         "cumulativeAmount": new_cumulative.to_string(),
         "signature": signature,
     });
-    let credential = build_credential(&challenge, &payer, channel.chain_id, &payload);
+    let credential = build_credential(&challenge, &payer, channel.chain_id, &payload)?;
 
     let base = session_base(payment, query_network);
     let paid = match client
@@ -383,15 +409,26 @@ fn session_base(payment: &ResolvedPayment, query_network: &str) -> String {
 async fn probe_session_challenge(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
-    query_network: &str,
 ) -> Result<SessionChallenge, SdkError> {
-    let base = session_base(payment, query_network);
+    let base = session_base(payment, SESSION_ROUTE_NETWORK);
     let resp = client
         .post(&base)
         .json(&serde_json::json!({ "jsonrpc": "2.0", "id": 1, "method": "eth_chainId", "params": [] }))
         .send()
         .await
         .map_err(SdkError::Http)?;
+    // A 404 means the pinned route slug is no longer one the gateway serves —
+    // an SDK-side fix, not a payment problem. Name it so the cause is obvious
+    // rather than reading as an outage.
+    if resp.status().as_u16() == 404 {
+        return Err(SdkError::PaymentUnsupported {
+            offered: format!(
+                "the gateway does not serve the channel-lifecycle route \
+                 (/session/{SESSION_ROUTE_NETWORK} returned 404); the SDK's pinned \
+                 route network needs updating to one the gateway lists"
+            ),
+        });
+    }
     if resp.status().as_u16() != 402 {
         return Err(SdkError::PaymentUnsupported {
             offered: format!(
@@ -470,7 +507,7 @@ fn build_credential(
     payer: &str,
     chain_id: u64,
     payload: &Value,
-) -> String {
+) -> Result<String, SdkError> {
     let credential = serde_json::json!({
         "challenge": {
             "id": challenge.id,
@@ -484,7 +521,15 @@ fn build_credential(
         "payload": payload,
         "source": format!("did:pkh:eip155:{chain_id}:{payer}"),
     });
-    super::base64_url_nopad(serde_json::to_vec(&credential).unwrap_or_default())
+    // Never fall back to an empty credential: sending zero bytes turns a local
+    // serialization bug into an opaque gateway rejection.
+    Ok(super::base64_url_nopad(
+        serde_json::to_vec(&credential).map_err(|e| {
+            SdkError::Config(format!(
+                "could not serialize the MPP session credential: {e}"
+            ))
+        })?,
+    ))
 }
 
 // POST a channel-management credential to the session endpoint and require a
@@ -495,14 +540,13 @@ fn build_credential(
 async fn post_session_credential(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
-    query_network: &str,
     challenge: &SessionChallenge,
     payer: &str,
     payload: Value,
 ) -> Result<reqwest::Response, SdkError> {
     let chain_id = challenge_chain_id(challenge)?;
-    let credential = build_credential(challenge, payer, chain_id, &payload);
-    let base = session_base(payment, query_network);
+    let credential = build_credential(challenge, payer, chain_id, &payload)?;
+    let base = session_base(payment, SESSION_ROUTE_NETWORK);
     let resp = client
         .post(&base)
         .header("Authorization", format!("Payment {credential}"))
@@ -572,8 +616,11 @@ use super::{extract_quoted, split_payment_challenges};
 mod tests {
     use super::*;
     use secrecy::SecretString;
+    use wiremock::matchers::{header_exists, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     const EVM_KEY: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+    const EVM_ADDR_LOWER: &str = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
 
     fn tempo_payment(base: &str) -> ResolvedPayment {
         ResolvedPayment {
@@ -717,5 +764,390 @@ mod tests {
         assert!(
             matches!(err, SdkError::PaymentUnsupported { offered } if offered.contains("exceeds channel deposit"))
         );
+    }
+
+    // A near-term challenge expiry must cap validBefore: the gateway's fee
+    // sponsor refuses an escrow authorization that outlives the challenge it
+    // answers, so `open`/`top_up` cannot just use now+25s unconditionally.
+    #[test]
+    fn valid_before_is_clamped_to_a_near_term_challenge_expiry() {
+        // A fixed past timestamp is always nearer than now+25s, so the clamp
+        // must return exactly it. Using a literal keeps the test independent of
+        // any unix→ISO formatting helper.
+        const EXPIRES: &str = "2026-07-17T12:00:00Z";
+        let mut parsed = parse_session_challenge(
+            &session_offer("c1", 42431, "0x33b901018174DDabE4841042ab76ba85D4e24f25"),
+            42431,
+        )
+        .unwrap();
+        parsed.expires = EXPIRES.into();
+        assert_eq!(
+            session_valid_before(&parsed).unwrap(),
+            parse_iso_unix(EXPIRES).unwrap()
+        );
+    }
+
+    // A far-future expiry leaves the now+25s envelope in force.
+    #[test]
+    fn valid_before_uses_the_25s_envelope_when_the_challenge_outlives_it() {
+        let parsed = parse_session_challenge(
+            &session_offer("c1", 42431, "0x33b901018174DDabE4841042ab76ba85D4e24f25"),
+            42431,
+        )
+        .unwrap();
+        assert_eq!(session_valid_before(&parsed).unwrap(), now_unix() + 25);
+    }
+
+    // ── wiremock lifecycle tests ─────────────────────────────────────────────
+    //
+    // Every session operation is two POSTs to the same `/session/:network` URL:
+    // an unauthenticated probe the gateway answers with a 402 + WWW-Authenticate
+    // menu, then the credential POST. Both mocks therefore match the same method
+    // and path and are told apart by the Authorization header alone — the probe
+    // requires its absence, the credential its presence. Without the negative
+    // matcher the probe mock (registered first) also answers the credential POST
+    // and every lifecycle call fails with a bare 402.
+
+    const ESCROW: &str = "0x33b901018174DDabE4841042ab76ba85D4e24f25";
+
+    // The 402 challenge menu the probe receives.
+    fn probe_mock(chain_id: u64) -> Mock {
+        Mock::given(method("POST"))
+            .and(path("/session/tempo-testnet"))
+            // wiremock 0.6 has no `not` combinator; `Match` is implemented for
+            // closures, so the negative check goes inline.
+            .and(|req: &wiremock::Request| !req.headers.contains_key("authorization"))
+            .respond_with(
+                ResponseTemplate::new(402)
+                    .insert_header("www-authenticate", session_offer("c1", chain_id, ESCROW)),
+            )
+    }
+
+    // A base64url `Payment-Receipt` header, as the gateway emits it.
+    fn receipt_header(accepted: &str, spent: &str) -> String {
+        super::super::base64_url_nopad(
+            serde_json::to_vec(&serde_json::json!({
+                "acceptedCumulative": accepted,
+                "spent": spent,
+            }))
+            .unwrap(),
+        )
+    }
+
+    // The credential POST: matched on the Authorization header the probe lacks.
+    fn credential_mock(resp: ResponseTemplate) -> Mock {
+        Mock::given(method("POST"))
+            .and(path("/session/tempo-testnet"))
+            .and(header_exists("authorization"))
+            .respond_with(resp)
+    }
+
+    fn rpc_ok() -> ResponseTemplate {
+        ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "jsonrpc": "2.0", "id": 1, "result": "0xa5bf"
+        }))
+    }
+
+    #[tokio::test]
+    async fn open_deposits_and_returns_the_new_channel() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(rpc_ok()).expect(1).mount(&server).await;
+
+        let payment = tempo_payment(&server.uri());
+        let ch = open(&reqwest::Client::new(), &payment, 100_000)
+            .await
+            .unwrap();
+
+        assert_eq!(ch.chain_id, 42431);
+        assert_eq!(ch.escrow_contract, ESCROW);
+        assert_eq!(ch.deposit, 100_000);
+        // The opening voucher authorizes the first per-call unit (amount "10").
+        assert_eq!(ch.per_call, 10);
+        assert_eq!(ch.cumulative_spent, 10);
+        assert!(ch.channel_id.starts_with("0x"));
+        assert_eq!(ch.authorized_signer.to_lowercase(), EVM_ADDR_LOWER);
+    }
+
+    #[tokio::test]
+    async fn open_above_max_amount_is_refused_before_any_request() {
+        // base_url points at a closed port: reaching the network would error
+        // differently, so this also proves the guard runs before I/O.
+        let payment = tempo_payment("http://127.0.0.1:1");
+        let err = open(
+            &reqwest::Client::new(),
+            &payment,
+            payment.max_amount + 1,
+        )
+        .await
+        .unwrap_err();
+        assert!(
+            matches!(err, SdkError::PaymentUnsupported { offered } if offered.contains("exceeds max_amount"))
+        );
+    }
+
+    #[tokio::test]
+    async fn open_surfaces_a_gateway_refusal_as_api() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(
+            ResponseTemplate::new(400)
+                .set_body_string("transaction does not contain a valid escrow open call"),
+        )
+        .mount(&server)
+        .await;
+
+        let payment = tempo_payment(&server.uri());
+        let err = open(&reqwest::Client::new(), &payment, 100_000)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SdkError::Api { status, .. } if status == 400));
+    }
+
+    // A 402 offering only another chain must not open a channel on it.
+    #[tokio::test]
+    async fn open_for_an_unoffered_chain_is_unsupported() {
+        let server = MockServer::start().await;
+        probe_mock(1).mount(&server).await;
+
+        let payment = tempo_payment(&server.uri());
+        let err = open(&reqwest::Client::new(), &payment, 100_000)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SdkError::PaymentUnsupported { .. }));
+    }
+
+    // A non-402 probe response means the endpoint is not offering a session.
+    #[tokio::test]
+    async fn open_without_a_402_challenge_is_unsupported() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/session/tempo-testnet"))
+            .respond_with(rpc_ok())
+            .mount(&server)
+            .await;
+
+        let payment = tempo_payment(&server.uri());
+        let err = open(&reqwest::Client::new(), &payment, 100_000)
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(err, SdkError::PaymentUnsupported { offered } if offered.contains("did not return a 402"))
+        );
+    }
+
+    // A 404 means the pinned lifecycle route is no longer served: that is an SDK
+    // fix, not a payment problem, so it must not read as a generic refusal.
+    #[tokio::test]
+    async fn a_404_on_the_lifecycle_route_names_the_pinned_network() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path(format!("/session/{SESSION_ROUTE_NETWORK}")))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let payment = tempo_payment(&server.uri());
+        let err = open(&reqwest::Client::new(), &payment, 100_000)
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(err, SdkError::PaymentUnsupported { offered }
+                if offered.contains(SESSION_ROUTE_NETWORK) && offered.contains("404")),
+            "a 404 should name the pinned route network"
+        );
+    }
+
+    #[tokio::test]
+    async fn top_up_adds_to_the_local_deposit() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(rpc_ok()).expect(1).mount(&server).await;
+
+        let payment = tempo_payment(&server.uri());
+        let ch = sample_channel();
+        let after = top_up(
+            &reqwest::Client::new(),
+            &payment,
+            &ch,
+            50_000,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(after.deposit, ch.deposit + 50_000);
+        // Top-up moves deposit only; the spend high-water mark is untouched.
+        assert_eq!(after.cumulative_spent, ch.cumulative_spent);
+        assert_eq!(after.channel_id, ch.channel_id);
+    }
+
+    #[tokio::test]
+    async fn top_up_surfaces_a_gateway_refusal_as_api() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(ResponseTemplate::new(402).set_body_string("insufficient-balance"))
+            .mount(&server)
+            .await;
+
+        let payment = tempo_payment(&server.uri());
+        let err = top_up(
+            &reqwest::Client::new(),
+            &payment,
+            &sample_channel(),
+            50_000,
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(err, SdkError::Api { status, .. } if status == 402));
+    }
+
+    #[tokio::test]
+    async fn close_settles_the_final_cumulative() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(rpc_ok()).expect(1).mount(&server).await;
+
+        let payment = tempo_payment(&server.uri());
+        close(
+            &reqwest::Client::new(),
+            &payment,
+            &sample_channel(),
+        )
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn close_surfaces_a_gateway_refusal_as_api() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(ResponseTemplate::new(409).set_body_string("channel already closed"))
+            .mount(&server)
+            .await;
+
+        let payment = tempo_payment(&server.uri());
+        let err = close(
+            &reqwest::Client::new(),
+            &payment,
+            &sample_channel(),
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(err, SdkError::Api { status, .. } if status == 409));
+    }
+
+    #[tokio::test]
+    async fn status_reads_the_gateways_channel_view_from_the_receipt() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(
+            rpc_ok().insert_header("payment-receipt", receipt_header("1000", "1000").as_str()),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+        let payment = tempo_payment(&server.uri());
+        let ch = sample_channel();
+        let st = status(&reqwest::Client::new(), &payment, &ch)
+            .await
+            .unwrap();
+
+        assert_eq!(st.channel_id, ch.channel_id);
+        assert_eq!(st.accepted_cumulative, 1000);
+        assert_eq!(st.spent, 1000);
+    }
+
+    // The status probe costs one request unit, so it must refuse before any I/O
+    // when the channel has no room left for it.
+    #[tokio::test]
+    async fn status_without_room_for_the_probe_is_refused_before_any_request() {
+        let payment = tempo_payment("http://127.0.0.1:1");
+        let mut ch = sample_channel();
+        ch.cumulative_spent = ch.deposit;
+        let err = status(&reqwest::Client::new(), &payment, &ch)
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(err, SdkError::PaymentUnsupported { offered } if offered.contains("no room for a status probe"))
+        );
+    }
+
+    #[tokio::test]
+    async fn status_without_a_receipt_header_is_a_config_error() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(rpc_ok()).mount(&server).await;
+
+        let payment = tempo_payment(&server.uri());
+        let err = status(
+            &reqwest::Client::new(),
+            &payment,
+            &sample_channel(),
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(err, SdkError::Config(m) if m.contains("no Payment-Receipt")));
+    }
+
+    #[tokio::test]
+    async fn voucher_call_returns_the_rpc_envelope() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(rpc_ok()).expect(1).mount(&server).await;
+
+        let payment = tempo_payment(&server.uri());
+        let ch = sample_channel();
+        let body = serde_json::json!({ "jsonrpc": "2.0", "id": 1, "method": "eth_chainId" });
+        let out = voucher_call(
+            &reqwest::Client::new(),
+            &payment,
+            "tempo-testnet",
+            &ch,
+            ch.cumulative_spent + ch.per_call,
+            &body,
+        )
+        .await
+        .unwrap();
+        assert!(out.contains("0xa5bf"));
+    }
+
+    #[tokio::test]
+    async fn voucher_call_refusal_surfaces_the_gateway_status() {
+        let server = MockServer::start().await;
+        probe_mock(42431).mount(&server).await;
+        credential_mock(ResponseTemplate::new(402).set_body_string("insufficient-balance"))
+            .mount(&server)
+            .await;
+
+        let payment = tempo_payment(&server.uri());
+        let ch = sample_channel();
+        let body = serde_json::json!({ "jsonrpc": "2.0", "id": 1, "method": "eth_chainId" });
+        let err = voucher_call(
+            &reqwest::Client::new(),
+            &payment,
+            "tempo-testnet",
+            &ch,
+            ch.cumulative_spent + ch.per_call,
+            &body,
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            SdkError::Api { .. } | SdkError::PaymentRejected { .. }
+        ));
+    }
+
+    #[test]
+    fn unparseable_challenge_expiry_is_an_error_not_an_unbounded_window() {
+        let mut parsed = parse_session_challenge(
+            &session_offer("c1", 42431, "0x33b901018174DDabE4841042ab76ba85D4e24f25"),
+            42431,
+        )
+        .unwrap();
+        parsed.expires = "not-a-timestamp".into();
+        let err = session_valid_before(&parsed).unwrap_err();
+        assert!(matches!(err, SdkError::Config(m) if m.contains("unparseable")));
     }
 }
