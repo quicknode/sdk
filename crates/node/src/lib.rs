@@ -1564,7 +1564,7 @@ impl RpcApiClient {
             .call_with_receipt(&method, params, network, endpoint_url)
             .await
             .map_err(errors::map_sdk_err)?;
-        // RpcCallResponse holds a serde_json::Value; build the JS object here.
+        // Convert the core response to the JS shape.
         Ok(serde_json::json!({
             "result": resp.result,
             "paymentReceipt": resp.payment_receipt.map(|r| serde_json::json!({
@@ -1599,16 +1599,8 @@ impl RpcApiClient {
         self.inner.current_token()
     }
 
-    // ── Payment lanes ──────────────────────────────────────────────
-    //
-    // Base-unit amounts cross this boundary as decimal STRINGS. They are `u128`
-    // in the core, and a JS `number` is an f64 that silently loses precision
-    // above 2^53 — a string is the only shape that cannot corrupt a large
-    // deposit. (napi BigInt would also work but forces `1n` literals on every
-    // caller for amounts that are usually small.)
-    //
-    // Session/channel state crosses as a plain object so a host can persist it
-    // verbatim (JSON.stringify) and hand it straight back.
+    // Payment amounts use decimal strings because u128 exceeds JS number
+    // precision. Session and channel state uses plain objects for persistence.
 
     /// The configured payment wallet's on-chain address (EVM/Tempo `0x…` hex,
     /// Solana base58), derived offline from the key with no network round trip.
@@ -1789,20 +1781,14 @@ impl RpcApiClient {
     }
 }
 
-// ── Payment-lane FFI helpers ───────────────────────────────────
-//
-// The payment types cannot be `#[napi(object)]`: `ChainKind`/`PaymentScheme` are
-// bare Rust enums, `GeneratedWallet` holds a `SecretString`, and `ChannelState`
-// holds `u128` fields. They therefore cross as plain JS objects, matching how
-// the rest of this client already returns JSON-RPC data.
+// Payment types cross as plain objects because they contain enums, secrets, or
+// u128 fields that napi cannot expose directly.
 
 fn config_err(message: String) -> Error {
     errors::map_sdk_err(core::errors::SdkError::Config(message))
 }
 
-// Base-unit amounts are `u128` in the core. A JS number is an f64 and loses
-// precision above 2^53, so they cross as decimal strings; rejecting a bad one
-// here keeps a typo from silently authorizing the wrong amount.
+// Keep u128 amounts as decimal strings to avoid JS precision loss.
 fn parse_base_units(raw: &str, field: &str) -> Result<u128> {
     raw.trim().parse::<u128>().map_err(|_| {
         config_err(format!(
@@ -1819,8 +1805,7 @@ fn gateway_session_json(session: &core::GatewaySession) -> serde_json::Value {
     })
 }
 
-// The JS object uses camelCase, so this reads the camelCase keys it emitted
-// rather than going through GatewaySession's snake_case serde impl.
+// Read the camelCase keys emitted by gateway_session_json.
 fn parse_gateway_session(v: &serde_json::Value) -> Result<core::GatewaySession> {
     let token = v
         .get("token")
@@ -1856,8 +1841,7 @@ fn channel_state_json(channel: &core::ChannelState) -> serde_json::Value {
     })
 }
 
-// Accepts the decimal strings `channel_state_json` emits and the numbers a
-// hand-built object may carry.
+// Accept strings from channel_state_json and numeric hand-built values.
 fn channel_amount(v: &serde_json::Value, field: &str) -> Result<u128> {
     match v
         .get(field)
@@ -1910,7 +1894,7 @@ fn parse_channel_state(v: &serde_json::Value) -> Result<core::ChannelState> {
 /// The key is returned exactly once, at generation: nothing in the SDK stores or
 /// re-derives it, so persist it before discarding the object. Randomness comes
 /// from the OS CSPRNG.
-// `chain` is owned because napi cannot bind a &str parameter.
+// napi requires an owned string here.
 #[allow(clippy::needless_pass_by_value)]
 #[napi]
 pub fn generate_payment_wallet(chain: String) -> Result<serde_json::Value> {

@@ -40,8 +40,7 @@ pub enum Signer {
     Tempo(SecretString),
 }
 
-// Never print the key. A leaked private key is catastrophic; the SDK's own
-// Debug output, error context, and panics must all render `[redacted]`.
+// Never expose the private key in SDK output.
 impl std::fmt::Debug for Signer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let variant = match self {
@@ -86,12 +85,11 @@ mod secp {
             .map_err(|_| SdkError::Config("payment key is not a valid secp256k1 key".into()))
     }
 
-    // 20-byte EVM address (keccak of the uncompressed pubkey, last 20 bytes),
-    // lowercase hex with `0x`.
+    // EVM address: last 20 bytes of keccak(uncompressed public key).
     pub(super) fn evm_address(key: &SigningKey) -> String {
         let verifying = key.verifying_key();
         let point = verifying.to_sec1_point(false);
-        // Skip the 0x04 prefix byte of the uncompressed point.
+        // Skip the uncompressed-point prefix.
         let hash = Keccak256::digest(&point.as_bytes()[1..]);
         format!("0x{}", hex::encode(&hash[12..]))
     }
@@ -100,10 +98,7 @@ mod secp {
         Keccak256::digest(bytes).into()
     }
 
-    // Generate a fresh secp256k1 key, returned as `0x`-prefixed hex (the form
-    // `signing_key` reads). Randomness comes from `rand::thread_rng` (the OS
-    // CSPRNG), matching the nonce generator used elsewhere in this module;
-    // rejection-samples until the bytes are a valid non-zero scalar.
+    // Generate an OS-random secp256k1 key in the format signing_key accepts.
     pub(super) fn generate_key() -> String {
         use rand::RngCore;
         loop {
@@ -115,16 +110,14 @@ mod secp {
         }
     }
 
-    // EIP-191 personal_sign digest: keccak256("\x19Ethereum Signed Message:\n"
-    // || len(message) || message). Used for SIWE (EIP-4361) auth signatures.
+    // EIP-191 digest used for SIWE signatures.
     pub(super) fn personal_sign_digest(message: &[u8]) -> [u8; 32] {
         let mut prefixed = format!("\x19Ethereum Signed Message:\n{}", message.len()).into_bytes();
         prefixed.extend_from_slice(message);
         keccak256(&prefixed)
     }
 
-    // Sign a 32-byte prehash, returning 65 bytes r||s||v where v is 27/28
-    // (the encoding both ox and viem emit for EIP-712 sigs and Tempo handoffs).
+    // Sign a prehash as r||s||v with v = 27 or 28.
     pub(super) fn sign_prehash_65(key: &SigningKey, prehash: &[u8; 32]) -> [u8; 65] {
         let (sig, recid) = key.sign_prehash_recoverable(prehash);
         let r = sig.r().to_bytes();
@@ -232,9 +225,7 @@ impl Signer {
     }
 }
 
-// Legacy escrow voucher EIP-712 digest:
-// keccak256(0x1901 || domainSeparator || voucherHash), matching the escrow
-// contract's DOMAIN_SEPARATOR/VOUCHER_TYPEHASH.
+// Build the legacy escrow voucher EIP-712 digest.
 #[cfg(feature = "payments")]
 fn session_voucher_digest(
     channel_id: &str,
@@ -242,8 +233,7 @@ fn session_voucher_digest(
     chain_id: u64,
     escrow: &str,
 ) -> Result<[u8; 32], SdkError> {
-    // domainSeparator = keccak(domainTypehash || nameHash || versionHash
-    //                          || chainId || verifyingContract)
+    // Build the escrow domain separator.
     let domain_type =
         b"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
     let mut sep = Vec::with_capacity(160);
@@ -254,7 +244,7 @@ fn session_voucher_digest(
     sep.extend_from_slice(&address_word(escrow)?);
     let domain_separator = secp::keccak256(&sep);
 
-    // voucherHash = keccak(voucherTypehash || channelId || cumulativeAmount)
+    // Build the voucher hash.
     let voucher_type = b"Voucher(bytes32 channelId,uint128 cumulativeAmount)";
     let channel = bytes32_word(channel_id)?;
     let mut vh = Vec::with_capacity(96);
@@ -427,10 +417,7 @@ pub use svm::SvmTransferRequest;
 mod tests {
     use super::*;
 
-    // Known-good EIP-712 vector from a publicly-known throwaway key (anvil test
-    // key #0, never funded) — no real wallet's credentials enter the repo. The
-    // expected signature below was produced offline with viem's `signTypedData`
-    // over the exact domain/message in `eip712_reproduces_known_good_vector`.
+    // Offline EIP-712 vector from an unfunded test key.
     const THROWAWAY_KEY: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const THROWAWAY_ADDR: &str = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
 
@@ -448,8 +435,7 @@ mod tests {
         assert!(!rendered.contains(THROWAWAY_KEY));
     }
 
-    // Generated keys must round-trip: the raw key parses back through the same
-    // signer construction, and re-deriving its address matches the reported one.
+    // Generated keys must round-trip and preserve their address.
     #[test]
     fn generated_evm_wallet_round_trips() {
         let w = generate_payment_wallet(ChainKind::Evm).unwrap();
@@ -481,7 +467,7 @@ mod tests {
         assert_eq!(bs58::decode(&w.address).into_vec().unwrap().len(), 32);
     }
 
-    // Two generations must not collide (sanity check the RNG is actually random).
+    // Generated keys should differ.
     #[test]
     fn generated_wallets_are_unique() {
         let a = generate_payment_wallet(ChainKind::Evm).unwrap();
@@ -491,10 +477,7 @@ mod tests {
 
     #[test]
     fn eip712_digest_is_deterministic_and_domain_bound() {
-        // The digest must change when any domain/message field changes, and be
-        // stable for identical inputs — locks that the EIP-712 encoding is
-        // domain-bound. Byte-level acceptance is covered by the known-good
-        // vector test below.
+        // The digest is stable for identical inputs and domain-bound.
         let domain = Eip712Domain {
             name: "USDC".into(),
             version: "2".into(),
@@ -523,10 +506,7 @@ mod tests {
 
     #[test]
     fn eip712_reproduces_known_good_vector() {
-        // Known-good signature produced by viem's `signTypedData` over the
-        // exact domain/message below, using the throwaway anvil key #0 (never
-        // funded). Reproducing it byte-for-byte proves the x402/EVM EIP-712
-        // construction matches the reference wallet libraries.
+        // Match the offline viem signature vector.
         const EXPECTED_SIG: &str = "0xc3a69d1a9043a75d840f66ccc9a95cdbc690bdd669424f00ba955ee7bcdb4a1e3293d7ab2e9663fc3486215be0cbb3da6c3cdcb71cf811b8b612c004014f0ba71b";
         let signer = Signer::Evm(SecretString::new(THROWAWAY_KEY.to_string()));
         let domain = Eip712Domain {
@@ -549,10 +529,7 @@ mod tests {
 
     #[test]
     fn session_voucher_digest_reproduces_reference_vector() {
-        // Known-good digest computed offline with viem's hashTypedData over the
-        // legacy escrow EIP-712 domain ("Tempo Stream Channel") + Voucher type.
-        // Reproducing it byte-for-byte proves the voucher construction matches
-        // what the escrow contract verifies.
+        // Match the legacy escrow voucher digest vector.
         const CHANNEL_ID: &str =
             "0xfb56137dcb0089f01877bcdb72d5e028ef04aec578fb00a642f65ee293c73dec";
         const ESCROW: &str = "0x33b901018174DDabE4841042ab76ba85D4e24f25";
@@ -563,8 +540,7 @@ mod tests {
 
     #[test]
     fn session_voucher_signature_reproduces_reference_vector() {
-        // Same vector, signed with the publicly-known throwaway anvil key #0:
-        // must match viem's signTypedData bytes exactly (r||s||v, v = 27/28).
+        // Match the legacy escrow signature vector.
         const CHANNEL_ID: &str =
             "0xfb56137dcb0089f01877bcdb72d5e028ef04aec578fb00a642f65ee293c73dec";
         const ESCROW: &str = "0x33b901018174DDabE4841042ab76ba85D4e24f25";

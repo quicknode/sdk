@@ -137,11 +137,8 @@ impl ResolvedPayment {
             ))
         })?;
 
-        // Resolve the Solana RPC source for x402/Solana payment-build reads. The
-        // caller's explicit override wins; otherwise fall back to a public
-        // Solana RPC matching the pay cluster. (The tooling-endpoint step is
-        // wired by RpcApiClient, which has the network map; this default is the
-        // last resort — the READMEs push the explicit override at any volume.)
+        // Prefer the explicit Solana RPC; the caller may replace this default
+        // with the tooling endpoint in RpcApiClient.
         let svm_rpc_url = if matches!(signer.kind(), signer::ChainKind::Svm) {
             Some(
                 config
@@ -165,16 +162,12 @@ impl ResolvedPayment {
     }
 }
 
-// Solana CAIP-2 ids are `solana:<genesis-hash-prefix>`. Devnet's genesis hash
-// begins `EtWTRAB…`; the literal string "devnet" never appears in a CAIP-2 id,
-// so both the RPC default and the tooling-key resolution must key off this
-// prefix (not `contains("devnet")`). Returns true for the devnet cluster.
+// CAIP-2 Solana ids use the genesis-hash prefix, not a "devnet" label.
 pub(crate) fn solana_pay_network_is_devnet(pay_network: &str) -> bool {
     pay_network.contains("EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
 }
 
-// Public Solana RPC default matching the pay cluster. Rate-limits aggressively;
-// callers at any volume should set an explicit `svm_rpc_url`.
+// Public fallback RPC for the selected Solana cluster.
 fn default_solana_rpc(pay_network: &str) -> &'static str {
     if solana_pay_network_is_devnet(pay_network) {
         "https://api.devnet.solana.com"
@@ -209,8 +202,7 @@ pub async fn pay_and_call(
         .host_base(payment.base_url_override.as_deref());
     let url = format!("{}/{}", base.trim_end_matches('/'), query_network);
 
-    // 1. Unpaid probe. A transport error here is a plain Http error — no
-    //    payment exists yet.
+    // Unpaid probe: transport errors are ordinary HTTP errors.
     let first = client
         .post(&url)
         .json(body)
@@ -219,14 +211,13 @@ pub async fn pay_and_call(
         .map_err(SdkError::Http)?;
     let status = first.status().as_u16();
 
-    // A non-402 first response means the gateway did not demand payment (or
-    // errored). Pass it back to the caller's JSON-RPC parser via the text.
+    // Pass non-402 responses to the JSON-RPC parser unchanged.
     if status != 402 {
         let text = first.text().await.map_err(SdkError::Http)?;
         return Ok((text, None));
     }
 
-    // 2. Parse the challenge and build a credential for the matching entry.
+    // Parse the challenge and build a matching credential.
     let www_authenticate = first
         .headers()
         .get("www-authenticate")
@@ -244,10 +235,8 @@ pub async fn pay_and_call(
         }
     };
 
-    // 3. Paid resend — exactly once. Transport errors here are classified so a
-    //    lost response after the bytes may have reached the gateway surfaces as
-    //    PaymentIndeterminate (do not blind-retry), while a refused connection
-    //    (nothing sent) stays a plain retryable Http error.
+    // Resend once. A lost response is indeterminate; a refused connection is
+    // safe to retry.
     let mut req = client.post(&url).json(body);
     req = match &authorized {
         Authorized::X402 { header } => req.header("PAYMENT-SIGNATURE", header),
@@ -268,12 +257,8 @@ pub async fn pay_and_call(
     };
     let paid_status = paid.status().as_u16();
 
-    // Any non-2xx on the paid resend is terminal: the payment credential was
-    // submitted and the gateway did not accept it. This covers a second 402
-    // (rejected credential) AND a 5xx/other settlement failure — both must
-    // surface as PaymentRejected so the caller keeps the "payment was
-    // submitted" signal, rather than the 5xx body falling through to a Decode
-    // error on a non-JSON-RPC response.
+    // Any non-2xx after payment is terminal and keeps the payment outcome
+    // visible to the caller.
     if !(200..300).contains(&paid_status) {
         let body = paid.text().await.unwrap_or_default();
         return Err(SdkError::PaymentRejected {
@@ -282,14 +267,14 @@ pub async fn pay_and_call(
         });
     }
 
-    // Capture the MPP receipt before consuming the body.
+    // Read the receipt before consuming the body.
     let receipt = paid
         .headers()
         .get("payment-receipt")
         .and_then(|v| v.to_str().ok())
         .and_then(parse_receipt);
 
-    // Reading the body can itself fail on a lost connection after headers.
+    // Body-read failures after payment are indeterminate unless unconnected.
     let text = match paid.text().await {
         Ok(t) => t,
         Err(e) => {
@@ -332,9 +317,7 @@ pub(super) async fn authorize_x402(
     payment: &ResolvedPayment,
     challenge_body: &str,
 ) -> Result<Authorized, SdkError> {
-    // Pre-payment: nothing has been signed or sent yet, so an unreadable menu
-    // is "no usable offer" (PaymentUnsupported), never a Decode — paid-lane
-    // callers treat Decode as a post-payment failure whose outcome is unknown.
+    // Before payment, an unreadable menu is an unsupported offer.
     let parsed: X402Body =
         serde_json::from_str(challenge_body).map_err(|source| SdkError::PaymentUnsupported {
             offered: format!("an unparseable x402 challenge (invalid JSON: {source})"),
@@ -390,8 +373,7 @@ pub(super) async fn authorize_x402_credit(
     })
 }
 
-// Select an accepts[] entry (the cheapest match) and authorize it with the
-// chain-appropriate signer.
+// Select the cheapest matching entry and authorize it.
 async fn authorize_x402_entry(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
@@ -400,8 +382,7 @@ async fn authorize_x402_entry(
     let mut skipped: Vec<String> = Vec::new();
     let chosen = select_x402_entry(payment, &parsed.accepts, &mut skipped);
     let Some(entry) = chosen else {
-        // Lead with the one lever the caller can pull. The full menu follows,
-        // but a 20-entry dump should not bury the actionable sentence.
+        // Lead with the setting the caller can change.
         let offered = match cheapest_over_ceiling(payment, &parsed.accepts) {
             Some(cheapest) => format!(
                 "every offer for {}/{} is above max_amount {}; the cheapest is \
@@ -428,21 +409,11 @@ async fn authorize_x402_entry(
     }
 }
 
-// Circle Gateway batched-transfer scheme, advertised as `extra.name`. Its
-// EIP-712 domain separator is `extra.verifyingContract` rather than the asset,
-// so it needs a signing construction the per-request lane does not have.
+// Batched transfers use a different EIP-712 domain than per-request payments.
 const GATEWAY_BATCHED: &str = "GatewayWalletBatched";
 
-// Select an accepts[] entry that matches {pay_network, asset}, has a supported
-// `extra` shape, and whose amount is a non-negative integer ≤ max_amount.
-//
-// Returns the CHEAPEST such entry — the per-request tier. Menu order carries no
-// meaning: a gateway may advertise tiers in any order, and where a network
-// distinguishes its tiers only by amount (no `extra.name`), taking the first
-// match can land on a tier this lane cannot pay. Picking the cheapest also
-// makes `max_amount` a true ceiling rather than a tier selector.
-//
-// Records skip reasons for the PaymentUnsupported message.
+// Select the cheapest supported integer amount for the requested network and
+// asset. Record skipped entries for PaymentUnsupported.
 fn select_x402_entry(
     payment: &ResolvedPayment,
     accepts: &[Value],
@@ -455,14 +426,12 @@ fn select_x402_entry(
         if network != payment.pay_network || !asset.eq_ignore_ascii_case(&payment.asset) {
             continue;
         }
-        // Skip Circle Gateway nanopayment (GatewayWalletBatched): its
-        // verifyingContract is a separate field, not the asset — a different
-        // signing construction, deferred from v1.
+        // This scheme uses a different signer and is not supported here.
         if entry.pointer("/extra/name").and_then(Value::as_str) == Some(GATEWAY_BATCHED) {
             skipped.push(format!("{network}/{asset}: {GATEWAY_BATCHED} (deferred)"));
             continue;
         }
-        // Amount must be an integer base-unit string ≤ max_amount.
+        // Amounts must be integer base-unit strings within the ceiling.
         let amount_str = entry.get("amount").and_then(Value::as_str).unwrap_or("");
         match amount_str.parse::<u128>() {
             Ok(amount) if amount <= payment.max_amount => {
@@ -531,7 +500,7 @@ fn authorize_x402_evm(
     };
     let sig = payment.signer.sign_eip712(&domain, &message)?;
 
-    // Envelope: {x402Version, accepted:<entry>, payload:{signature, authorization}}
+    // x402 envelope: accepted entry plus signature and authorization.
     let envelope = serde_json::json!({
         "x402Version": x402_version,
         "accepted": entry,
@@ -547,8 +516,7 @@ fn authorize_x402_evm(
             }
         }
     });
-    // Never fall back to an empty credential: sending zero bytes turns a local
-    // serialization bug into an opaque gateway rejection.
+    // Do not turn serialization failure into an empty credential.
     let header = base64_std(serde_json::to_vec(&envelope).map_err(|e| {
         SdkError::Config(format!(
             "could not serialize the x402 payment credential: {e}"
@@ -574,10 +542,7 @@ async fn authorize_x402_svm(
         .pointer("/extra/feePayer")
         .and_then(Value::as_str)
         .ok_or_else(|| SdkError::Config("x402 Solana entry missing extra.feePayer".into()))?;
-    // The menu selector admits amounts as u128, but SPL TransferChecked encodes
-    // the amount as a u64 (the Solana token-program ABI ceiling). Parse as u128
-    // and narrow explicitly so an over-u64 amount surfaces as a clear overflow
-    // error rather than being conflated with a missing/malformed field.
+    // The selector uses u128, but SPL TransferChecked uses u64.
     let amount_str = entry
         .get("amount")
         .and_then(Value::as_str)
@@ -592,23 +557,19 @@ async fn authorize_x402_svm(
                 "x402 Solana amount {amount_str:?} is not a valid u64 base-unit integer"
             ))
         })?;
-    // The gateway 402s keyless sub-reads, so the mint and the recent blockhash
-    // come from a plain Solana RPC (resolved source: override → tooling →
-    // public default).
+    // Read the mint and blockhash from a plain Solana RPC; the gateway rejects
+    // these keyless sub-reads.
     let rpc_url = payment
         .svm_rpc_url
         .as_deref()
         .ok_or_else(|| SdkError::Config("x402/Solana requires a resolved Solana RPC URL".into()))?;
 
-    // Read decimals and the owning token program off the mint itself rather
-    // than trusting the challenge: `extra.decimals` is optional (and absent on
-    // the live menu), and a wrong value silently transfers the wrong amount,
-    // since TransferChecked validates decimals against the mint on-chain.
+    // Read decimals and the token program from the mint. TransferChecked
+    // validates both on-chain.
     let mint = fetch_mint_metadata(client, rpc_url, &payment.asset).await?;
     let recent_blockhash = fetch_latest_blockhash(client, rpc_url).await?;
 
-    // The memo carries the payment's replay-protection nonce. Honour a
-    // seller-supplied `extra.memo`; otherwise mint a random one.
+    // Preserve a seller memo when present; otherwise generate a nonce.
     let memo = match entry.pointer("/extra/memo").and_then(Value::as_str) {
         Some(seller_memo) => seller_memo.to_string(),
         None => random_memo_nonce(),
@@ -626,16 +587,13 @@ async fn authorize_x402_svm(
     };
     let tx = payment.signer.sign_svm_transfer(&req)?;
 
-    // Envelope: {x402Version, accepted:<entry>, payload:{transaction:<base64>}}.
-    // `payload` is an object, not a bare string — the x402 v2 payload schema
-    // requires a record, and a string is rejected before verification.
+    // x402 v2 requires the transaction inside a payload object.
     let envelope = serde_json::json!({
         "x402Version": x402_version,
         "accepted": entry,
         "payload": { "transaction": base64_std(tx) },
     });
-    // Never fall back to an empty credential: sending zero bytes turns a local
-    // serialization bug into an opaque gateway rejection.
+    // Do not turn serialization failure into an empty credential.
     let header = base64_std(serde_json::to_vec(&envelope).map_err(|e| {
         SdkError::Config(format!(
             "could not serialize the x402 payment credential: {e}"
@@ -660,9 +618,7 @@ async fn fetch_latest_blockhash(
         .await
         .map_err(SdkError::Http)?;
     let text = resp.text().await.map_err(SdkError::Http)?;
-    // Also pre-payment (the blockhash goes into a transaction that has not
-    // been signed yet): a bad RPC response is a Config-class failure, not a
-    // Decode.
+    // This read happens before signing, so malformed data is a config error.
     let parsed: Value = serde_json::from_str(&text).map_err(|source| {
         SdkError::Config(format!(
             "could not parse the Solana RPC response as JSON: {source}"
@@ -705,7 +661,7 @@ async fn fetch_mint_metadata(
         .await
         .map_err(SdkError::Http)?;
     let text = resp.text().await.map_err(SdkError::Http)?;
-    // Pre-payment, like the blockhash read: a bad RPC response is Config-class.
+    // This read happens before signing, so malformed data is a config error.
     let parsed: Value = serde_json::from_str(&text).map_err(|source| {
         SdkError::Config(format!(
             "could not parse the Solana RPC response as JSON: {source}"
@@ -767,7 +723,7 @@ fn authorize_mpp(
     let challenges = parse_mpp_challenges(www_authenticate);
     let target_chain = caip2_or_bare_chain_id(&payment.pay_network)?;
 
-    // Find the tempo challenge for our chain id.
+    // Select the Tempo challenge for this chain.
     let mut skipped = Vec::new();
     for challenge in &challenges {
         if challenge.method != "tempo" {
@@ -832,9 +788,7 @@ fn build_mpp_credential(
         });
     }
 
-    // validBefore = min(now+25s, challenge expiry) — TIP-1009 expiring nonce.
-    // An unparseable expiry is an error, not an unbounded window: falling back
-    // to u64::MAX would sign an authorization that never expires.
+    // Bound validBefore by both the local window and challenge expiry.
     let expiry = parse_iso_unix(&challenge.expires).ok_or_else(|| {
         SdkError::Config(format!(
             "MPP challenge has an unparseable `expires` value: {}",
@@ -982,8 +936,7 @@ fn base64_std(bytes: Vec<u8>) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
-// Only the MPP/Tempo credential builder uses this in non-test code; the
-// receipt-parse test exercises it regardless of features.
+// Used by the MPP credential builder and receipt tests.
 #[cfg_attr(not(feature = "payments-tempo"), allow(dead_code))]
 pub(super) fn base64_url_nopad(bytes: Vec<u8>) -> String {
     use base64::Engine;
@@ -1002,9 +955,7 @@ fn caip2_evm_chain_id(pay_network: &str) -> Result<u64, SdkError> {
         })
 }
 
-// Accept either an eip155 CAIP-2 id or a bare numeric chain id (MPP/Tempo
-// selectors are sometimes stated as the bare Tempo chain id). Only the MPP
-// path uses this in non-test code.
+// Accept CAIP-2 or bare numeric chain ids.
 #[cfg_attr(not(feature = "payments-tempo"), allow(dead_code))]
 fn caip2_or_bare_chain_id(pay_network: &str) -> Result<u64, SdkError> {
     if let Some(rest) = pay_network.strip_prefix("eip155:") {
@@ -1019,10 +970,7 @@ fn caip2_or_bare_chain_id(pay_network: &str) -> Result<u64, SdkError> {
     })
 }
 
-// When every candidate for the requested network+asset was rejected only for
-// exceeding max_amount, the caller's ceiling is the single thing to change —
-// so name the cheapest offer outright rather than leaving them to read it off
-// the menu.
+// Name the cheapest offer when only max_amount blocked selection.
 fn cheapest_over_ceiling(payment: &ResolvedPayment, accepts: &[Value]) -> Option<u128> {
     let mut cheapest: Option<u128> = None;
     for entry in accepts {
@@ -1068,9 +1016,7 @@ fn describe_offered(accepts: &[Value], skipped: &[String]) -> String {
     }
 }
 
-// Append a clock-skew hint when a Tempo credential's window has already passed
-// at response time — a skewed local clock (>~25s behind) signs already-expired
-// credentials and every call ends in PaymentRejected.
+// Add a hint when clock skew likely expired a Tempo credential.
 fn enrich_rejection(payment: &ResolvedPayment, body: String) -> String {
     let out = reduce_rejection_body(body);
     if payment.signer.kind() == signer::ChainKind::Tempo {
@@ -1107,9 +1053,7 @@ pub(super) fn now_unix() -> u64 {
         .map_or(0, |d| d.as_secs())
 }
 
-// Parse an ISO-8601 timestamp to unix seconds. The challenge uses
-// "2026-07-13T02:05:10.119Z"; we only need whole seconds. Minimal parser to
-// avoid a chrono dependency.
+// Parse an ISO-8601 timestamp to unix seconds without adding chrono.
 #[cfg(feature = "payments-tempo")]
 pub(super) fn parse_iso_unix(iso: &str) -> Option<u64> {
     // Expect YYYY-MM-DDTHH:MM:SS...
@@ -1232,11 +1176,7 @@ mod tests {
         assert_eq!(receipt.reference, "0xabc");
     }
 
-    // ── Driver wiremock tests ────────────────────────────────────────────────
-    //
-    // These exercise the 402 loop end-to-end against a mock gateway. Signing
-    // correctness is covered byte-for-byte by the signer unit tests; here we
-    // assert the parse → select → authorize → resend → capture flow.
+    // Wiremock tests cover the 402 parse, selection, signing, and resend flow.
     use secrecy::SecretString;
     use serde_json::json;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1278,8 +1218,7 @@ mod tests {
     #[tokio::test]
     async fn x402_evm_happy_path() {
         let server = MockServer::start().await;
-        // First (unpaid) POST -> 402 with a menu; the paid POST carries a
-        // PAYMENT-SIGNATURE header and gets a 200 result.
+        // Unpaid POST gets 402; the signed resend gets 200.
         struct Seq {
             calls: AtomicUsize,
         }
@@ -1327,7 +1266,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        // max_amount below the only offered entry.
+        // Ceiling is below the only offer.
         let payment = evm_payment(&server.uri(), 1000);
         let client = reqwest::Client::new();
         let err = pay_and_call(&client, &payment, "base-sepolia", &rpc_body())
@@ -1341,7 +1280,7 @@ mod tests {
     #[tokio::test]
     async fn gateway_wallet_batched_is_skipped() {
         let server = MockServer::start().await;
-        // Only a GatewayWalletBatched entry is offered -> nothing to sign.
+        // Batched offer cannot be signed here.
         Mock::given(method("POST"))
             .respond_with(ResponseTemplate::new(402).set_body_json(json!({
                 "x402Version": 2,
@@ -1384,8 +1323,7 @@ mod tests {
     #[tokio::test]
     async fn huge_amount_over_u64_compares_correctly() {
         let server = MockServer::start().await;
-        // An 18-decimal asset amount that overflows u64 but fits u128, below a
-        // large max_amount -> must be selectable (proves u128 comparison).
+        // This amount exceeds u64 but fits u128 and the configured ceiling.
         let huge = "20000000000000000000"; // 2e19 > u64::MAX (~1.8e19)
         struct Seq {
             calls: AtomicUsize,
@@ -1424,7 +1362,7 @@ mod tests {
     #[tokio::test]
     async fn second_402_is_terminal_rejection() {
         let server = MockServer::start().await;
-        // Every POST returns 402 -> the paid resend also 402s -> PaymentRejected.
+        // A second 402 is PaymentRejected.
         Mock::given(method("POST"))
             .respond_with(ResponseTemplate::new(402).set_body_json(json!({
                 "x402Version": 2,
@@ -1444,8 +1382,7 @@ mod tests {
     #[tokio::test]
     async fn malformed_challenge_menu_is_unsupported_not_decode() {
         let server = MockServer::start().await;
-        // The 402 challenge body is not JSON. Nothing has been signed, so this
-        // must surface as PaymentUnsupported (nothing charged), never Decode.
+        // An invalid pre-payment menu is PaymentUnsupported.
         Mock::given(method("POST"))
             .respond_with(ResponseTemplate::new(402).set_body_string("<html>menu?</html>"))
             .expect(1)
@@ -1465,9 +1402,7 @@ mod tests {
 
     #[tokio::test]
     async fn gateway_5xx_on_paid_resend_is_rejection_not_decode() {
-        // The unpaid probe 402s; the paid resend returns a 500 with a non-JSON
-        // body. This must surface as PaymentRejected (payment was submitted),
-        // NOT fall through to a Decode error.
+        // A paid 500 remains PaymentRejected, not Decode.
         let server = MockServer::start().await;
         struct Seq {
             calls: AtomicUsize,
@@ -1505,8 +1440,7 @@ mod tests {
 
     #[tokio::test]
     async fn paid_resend_sends_exactly_one_credential() {
-        // Assert the paid resend carries PAYMENT-SIGNATURE and the flow stops
-        // after one resend (mock counts total POSTs = 2).
+        // The signed request is sent exactly once.
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(header_exists("payment-signature"))
@@ -1534,8 +1468,7 @@ mod tests {
 
     #[tokio::test]
     async fn lost_response_after_payment_is_indeterminate() {
-        // The paid resend times out (mock delays past the client timeout) AFTER
-        // the request was sent -> PaymentIndeterminate (do not blind-retry).
+        // A timeout after sending is PaymentIndeterminate.
         let server = MockServer::start().await;
         struct Seq {
             calls: AtomicUsize,
@@ -1549,8 +1482,7 @@ mod tests {
                         "accepts": [ x402_accepts_entry("1000", "USDC") ]
                     }))
                 } else {
-                    // Delay well past the client timeout to simulate a lost
-                    // response after the paid bytes were sent.
+                    // Simulate a lost response after payment.
                     ResponseTemplate::new(200)
                         .set_delay(std::time::Duration::from_secs(30))
                         .set_body_json(json!({ "jsonrpc": "2.0", "id": 1, "result": "0xlate" }))
@@ -1582,7 +1514,7 @@ mod tests {
     #[tokio::test]
     async fn mpp_happy_path_captures_receipt() {
         let server = MockServer::start().await;
-        // The tempo challenge request (base64url JSON) for chain 42431.
+        // Tempo challenge for chain 42431.
         let request = base64_url_nopad(
             serde_json::to_vec(&json!({
                 "amount": "1000",
@@ -1651,9 +1583,7 @@ mod tests {
         assert_eq!(receipt.reference, "0xdeadbeef");
     }
 
-    // The menu selector compares amounts as u128, but SPL TransferChecked can
-    // only encode a u64. An amount the selector admits but that overflows u64
-    // must fail with a clear overflow message, not a vague "missing amount".
+    // The selector accepts u128, but SPL TransferChecked encodes u64.
     #[cfg(feature = "payments-svm")]
     #[tokio::test]
     async fn x402_svm_amount_over_u64_is_clear_error() {
@@ -1676,8 +1606,7 @@ mod tests {
             svm_rpc_url: Some("http://127.0.0.1:1".into()),
         };
         let client = reqwest::Client::new();
-        // The amount check runs before any Solana RPC read, so the unreachable
-        // svm_rpc_url is never contacted.
+        // Reject before reading the Solana RPC.
         let Err(err) = authorize_x402_svm(&client, &payment, &2, &entry).await else {
             unreachable!("over-u64 amount must be rejected");
         };
@@ -1688,10 +1617,7 @@ mod tests {
         );
     }
 
-    // Solana's menu distinguishes its tiers only by amount — no `extra.name` on
-    // either entry — and advertises the dearer one FIRST. Taking the first match
-    // lands on a tier the per-request lane cannot pay, so selection must pick
-    // the cheapest that fits the ceiling regardless of menu order.
+    // Solana tiers have no name and may be out of price order.
     fn solana_menu() -> Vec<Value> {
         let offer = |amount: &str| {
             json!({
@@ -1734,7 +1660,7 @@ mod tests {
 
     #[test]
     fn select_skips_offers_over_the_ceiling() {
-        // A ceiling between the two tiers admits only the cheaper one.
+        // Only the cheaper tier fits.
         let payment = solana_payment(2_000);
         let mut skipped = Vec::new();
         let chosen = select_x402_entry(&payment, &solana_menu(), &mut skipped)
@@ -1747,8 +1673,7 @@ mod tests {
         );
     }
 
-    // When the ceiling is under every offer, the caller's one lever is
-    // max_amount — so the error names the cheapest price outright.
+    // The error should name the cheapest blocked offer.
     #[test]
     fn ceiling_under_every_offer_names_the_cheapest() {
         let payment = solana_payment(100);

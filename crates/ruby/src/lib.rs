@@ -68,18 +68,13 @@ fn hash_require_string(h: &RHash, key: &str) -> Result<String, Error> {
     })
 }
 
-// Pull the payment lane out of `config[:rpc][:payment]`. RpcConfig.payment is
-// serde-skipped (never env-derived), so serde_magnus won't populate it — this
-// builds the PaymentConfig from the hash so Ruby callers can set it
-// programmatically. Returns None when no rpc.payment sub-hash is present.
+// Extract rpc.payment manually because the field is serde-skipped.
 fn extract_payment_config(opts: &RHash) -> Result<Option<core::PaymentConfig>, Error> {
     let r = ruby();
     let Some(rpc_val) = opts.get(r.to_symbol("rpc")) else {
         return Ok(None);
     };
-    // A present-but-wrong-typed `rpc` / `rpc.payment` is a caller mistake, not
-    // an absent payment lane: fail loudly rather than silently ignoring the
-    // config (matching the `rpc.payment` Hash check below).
+    // Reject present values with the wrong type instead of ignoring them.
     let rpc = RHash::from_value(rpc_val)
         .ok_or_else(|| Error::new(r.exception_arg_error(), "rpc must be a Hash"))?;
     let Some(payment_val) = rpc.get(r.to_symbol("payment")) else {
@@ -321,10 +316,7 @@ impl QuicknodeSdk {
             serde_magnus::deserialize(&ruby(), opts).map_err(|e| {
                 Error::new(ruby().exception_arg_error(), format!("invalid config: {e}"))
             })?;
-        // RpcConfig.payment is `#[serde(skip)]` (so it can never be populated
-        // from the environment), which also means serde_magnus won't pick it up
-        // from the config hash. Extract it manually and attach it here so Ruby
-        // callers can configure the payment lane programmatically.
+        // Attach the serde-skipped payment config after deserialization.
         if let Some(payment) = extract_payment_config(&opts)? {
             config.rpc.get_or_insert_with(Default::default).payment = Some(payment);
         }
@@ -1983,8 +1975,7 @@ impl RpcApiClient {
         let resp = runtime()
             .block_on(client.call_with_receipt(&method, params, network, endpoint_url))
             .map_err(map_err)?;
-        // Build a JSON value at the boundary (RpcCallResponse holds a
-        // serde_json::Value) and hand it to Ruby as an IndifferentHash.
+        // Convert the core response to the Ruby hash shape.
         let json = serde_json::json!({
             "result": resp.result,
             "payment_receipt": resp.payment_receipt.map(|rc| serde_json::json!({
@@ -2016,23 +2007,15 @@ impl RpcApiClient {
         to_ruby(self.inner.current_token())
     }
 
-    // ── Payment lanes ──────────────────────────────────────────────
-    //
-    // Base-unit amounts cross this boundary as decimal STRINGS. They are `u128`
-    // in the core; Ruby Integers are arbitrary-precision but magnus offers no
-    // u128 conversion, so a string is the only shape that cannot truncate a
-    // large deposit. Session/channel state crosses as a Hash so a host can
-    // persist it verbatim and hand it back.
+    // Payment amounts use decimal strings because magnus cannot convert u128.
+    // Session and channel state uses hashes for persistence.
 
-    // payment_address — the configured payment wallet's on-chain address
-    // (EVM/Tempo 0x hex, Solana base58), derived offline with no network call.
+    // payment_address — derive the configured wallet address locally.
     fn payment_address(&self) -> Result<String, Error> {
         self.inner.payment_address().map_err(map_err)
     }
 
-    // gateway_authenticate — SIWX auth against the x402 gateway. Returns a Hash
-    // {token:, exp_unix:, account_id:}. Free: no funds move. Persist it and
-    // pass it back to the gateway_* methods.
+    // gateway_authenticate — authenticate and return a session hash.
     fn gateway_authenticate(&self) -> Result<magnus::Value, Error> {
         let client = self.inner.clone();
         let session = runtime()
@@ -2041,8 +2024,7 @@ impl RpcApiClient {
         to_ruby(gateway_session_json(&session))
     }
 
-    // gateway_credits(session:) — read the account's x402 credit balance.
-    // Returns {account_id:, credits:}.
+    // gateway_credits(session:) — read the account credit balance.
     fn gateway_credits(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["session"])?;
         let session = require_gateway_session(&opts)?;
@@ -2055,9 +2037,7 @@ impl RpcApiClient {
         }))
     }
 
-    // gateway_buy_credits(session:, network:) — buy a block of credits by
-    // settling the gateway's offer. Returns the post-purchase balance
-    // {account_id:, credits:}. Single-attempt: a paid lane never blind-retries.
+    // gateway_buy_credits(session:, network:) — settle a credit offer once.
     fn gateway_buy_credits(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["session", "network"])?;
         let session = require_gateway_session(&opts)?;
@@ -2071,9 +2051,7 @@ impl RpcApiClient {
         }))
     }
 
-    // gateway_drip(session:) — request testnet tokens from the faucet. Returns
-    // the funding transaction {account_id:, transaction_hash:} — NOT a balance;
-    // call gateway_credits afterwards. Allowed once per account.
+    // gateway_drip(session:) — request testnet funds; returns the tx hash.
     fn gateway_drip(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["session"])?;
         let session = require_gateway_session(&opts)?;
@@ -2087,10 +2065,7 @@ impl RpcApiClient {
         }))
     }
 
-    // gateway_drawdown_call(method:, session:, network:, params:) — one x402
-    // drawdown JSON-RPC call with the session as a Bearer token, drawing 1
-    // credit on success. Returns the unwrapped JSON-RPC result. Single-attempt;
-    // re-authenticate on a 401/403 ApiError.
+    // gateway_drawdown_call(...) — spend one credit with the session token.
     fn gateway_drawdown_call(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["method", "session", "network", "params"])?;
         let method = hash_require_string(&opts, "method")?;
@@ -2104,13 +2079,7 @@ impl RpcApiClient {
         to_ruby(result)
     }
 
-    // mpp_open(deposit:) — open an MPP payment channel by depositing `deposit`
-    // base units (a decimal string) into the escrow. Returns the channel state
-    // Hash — persist it; the gateway has no read-only channel endpoint, so a
-    // lost record means opening a new channel. Moves real funds.
-    //
-    // Takes no network: the channel is scoped by the configured pay network and
-    // asset, so one channel funds calls to every supported network.
+    // mpp_open(deposit:) — deposit into escrow and return channel state.
     fn mpp_open(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["deposit"])?;
         let deposit = parse_base_units(&hash_require_string(&opts, "deposit")?, "deposit")?;
@@ -2121,9 +2090,7 @@ impl RpcApiClient {
         to_ruby(channel_state_json(&channel))
     }
 
-    // mpp_top_up(channel:, additional_deposit:) — add base units (a decimal
-    // string) to an open channel. Returns the updated channel state Hash.
-    // Moves real funds; single-attempt.
+    // mpp_top_up(...) — add funds to an open channel.
     fn mpp_top_up(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["channel", "additional_deposit"])?;
         let channel = require_channel_state(&opts)?;
@@ -2138,8 +2105,7 @@ impl RpcApiClient {
         to_ruby(channel_state_json(&updated))
     }
 
-    // mpp_close(channel:) — cooperatively close a channel: settle the final
-    // cumulative spend on-chain and refund the unused deposit. Single-attempt.
+    // mpp_close(channel:) — settle the final spend and refund the remainder.
     fn mpp_close(&self, opts: RHash) -> Result<(), Error> {
         validate_keys(&opts, &["channel"])?;
         let channel = require_channel_state(&opts)?;
@@ -2149,14 +2115,8 @@ impl RpcApiClient {
             .map_err(map_err)
     }
 
-    // mpp_status(channel:) — the gateway's view of the channel, as
-    // {channel_id:, accepted_cumulative:, spent:} (amounts are decimal
-    // strings).
-    //
-    // This COSTS ONE REQUEST UNIT and advances the voucher by per_call, exactly
-    // like a session call — persist the advanced cumulative_spent. Raises
-    // PaymentUnsupportedError before any network I/O when the channel has no
-    // room left for the probe.
+    // mpp_status(channel:) — read channel state; costs one request unit and
+    // advances cumulative_spent by per_call.
     fn mpp_status(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["channel"])?;
         let channel = require_channel_state(&opts)?;
@@ -2171,11 +2131,7 @@ impl RpcApiClient {
         }))
     }
 
-    // mpp_session_call(method:, network:, channel:, new_cumulative:, params:) —
-    // one MPP session-lane JSON-RPC call, authorized with a cumulative voucher
-    // for new_cumulative (a decimal string: the running total AFTER this call).
-    // Returns the unwrapped JSON-RPC result. Single-attempt; advance the
-    // persisted cumulative_spent on success.
+    // mpp_session_call(...) — authorize one call with a cumulative voucher.
     fn mpp_session_call(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
@@ -2197,19 +2153,14 @@ impl RpcApiClient {
     }
 }
 
-// ── Payment-lane helpers ────────────────────────────────────────────────────
-//
-// The payment types are handed to Ruby as plain Hashes: ChainKind and
-// PaymentScheme are bare Rust enums, GeneratedWallet holds a SecretString, and
-// ChannelState holds u128 fields, so none can be wrapped directly.
+// Payment types cross as hashes because they contain enums, secrets, or u128
+// fields that magnus cannot wrap directly.
 
 fn arg_err(message: String) -> Error {
     Error::new(ruby().exception_arg_error(), message)
 }
 
-// Base-unit amounts are u128 in the core with no magnus conversion, so they
-// cross as decimal strings. Rejecting a bad one here keeps a typo from
-// silently authorizing the wrong amount.
+// Keep u128 amounts as decimal strings and reject malformed values.
 fn parse_base_units(raw: &str, field: &str) -> Result<u128, Error> {
     raw.trim().parse::<u128>().map_err(|_| {
         arg_err(format!(
@@ -2263,8 +2214,7 @@ fn channel_state_json(channel: &core::ChannelState) -> serde_json::Value {
     })
 }
 
-// Accepts the decimal Strings channel_state_json emits and the Integers a
-// hand-built Hash may carry.
+// Accept strings from channel_state_json and integer hash values.
 fn channel_amount(h: &RHash, field: &str) -> Result<u128, Error> {
     let r = ruby();
     let value = h
@@ -2273,8 +2223,7 @@ fn channel_amount(h: &RHash, field: &str) -> Result<u128, Error> {
     if let Some(s) = magnus::RString::from_value(value) {
         return parse_base_units(&s.to_string()?, field);
     }
-    // Integer path: go via the decimal rendering so a value beyond i64 (which a
-    // Ruby Integer can hold, but TryConvert to i64 cannot) still parses.
+    // Render integers as decimal strings to preserve values beyond i64.
     let as_string: String = value.to_r_string()?.to_string()?;
     parse_base_units(&as_string, field)
 }
@@ -2301,13 +2250,7 @@ fn require_channel_state(opts: &RHash) -> Result<core::ChannelState, Error> {
     })
 }
 
-// generate_payment_wallet(chain:) — generate a fresh payment keypair for
-// "evm", "svm", or "tempo". Returns {address:, chain:, key:} where key is the
-// raw private key in the format the payment config's key: accepts.
-//
-// The key is returned exactly once, at generation: nothing in the SDK stores or
-// re-derives it, so persist it before discarding the Hash. Randomness comes
-// from the OS CSPRNG.
+// generate_payment_wallet(chain:) — generate a keypair offline.
 fn generate_payment_wallet(opts: RHash) -> Result<magnus::Value, Error> {
     validate_keys(&opts, &["chain"])?;
     let chain = hash_require_string(&opts, "chain")?;

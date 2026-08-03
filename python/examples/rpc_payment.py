@@ -55,8 +55,7 @@ async def selfcheck() -> None:
     except ConfigError as e:
         assert "requires" in str(e), str(e)
 
-    # Wallet generation is offline: no gateway, no funds. The key is returned
-    # exactly once — persist it here or it is gone.
+    # Wallet generation is offline; persist the returned key.
     wallet = generate_payment_wallet("evm")
     assert wallet["address"].startswith("0x") and len(wallet["address"]) == 42
     assert wallet["chain"] == "evm"
@@ -67,16 +66,14 @@ async def selfcheck() -> None:
     except ConfigError:
         pass
 
-    # Base-unit amounts cross as decimal STRINGS, because a u128 has no
-    # lossless int conversion. A non-integer must be refused, not coerced.
+    # Amounts are decimal strings; reject non-integers.
     try:
         await qn.rpc.mpp_open("12.5")
         raise SystemExit("expected a ConfigError for a non-integer deposit")
     except ConfigError as e:
         assert "decimal base-unit" in str(e), str(e)
 
-    # A channel with no room left refuses the status probe before any network
-    # I/O, because the probe itself costs one request unit.
+    # A full channel rejects the status probe before network I/O.
     full_channel = {
         "channel_id": "0x" + "11" * 32,
         "token": "0x20c0000000000000000000000000000000000000",
@@ -120,8 +117,7 @@ async def drawdown_demo(key: str) -> None:
         )
     )
 
-    # Derived offline from the key — no network round trip. Use it to key a
-    # per-wallet session cache.
+    # Derived locally; use it to key a session cache.
     print("payment wallet:", qn.rpc.payment_address())
 
     session = await qn.rpc.gateway_authenticate()
@@ -131,8 +127,7 @@ async def drawdown_demo(key: str) -> None:
     print("credits:", balance["credits"])
 
     if balance["credits"] == 0:
-        # Testnet faucet: allowed once per account, and it returns the funding
-        # transaction — NOT a balance. Read the balance separately afterwards.
+        # The faucet returns a funding transaction, not a balance.
         try:
             drip = await qn.rpc.gateway_drip(session)
             print("faucet tx:", drip["transaction_hash"])
@@ -158,8 +153,7 @@ async def main() -> None:
         await drawdown_demo(key)
         return
 
-    # A keyless SDK: the payment lane needs no account API key. Do NOT log the
-    # config object — the `key` field is readable.
+    # Keyless SDK. Do not log this config; it contains the private key.
     config = SdkFullConfig(
         api_key=None,
         rpc=RpcConfig(
@@ -169,29 +163,25 @@ async def main() -> None:
                 # Base Sepolia testnet USDC (x402/EVM).
                 pay_network="eip155:84532",
                 asset="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                # Spend ceiling in base units of the asset (required).
+                # Spend ceiling in asset base units.
                 max_amount="10000",
-                # For x402/Solana at any volume, set svm_rpc_url to your own
-                # Solana RPC — the public default rate-limits aggressively.
+                # Set svm_rpc_url for x402/Solana at volume.
             )
         ),
     )
     qn = QuicknodeSdk(config)
 
     try:
-        # `network` is the QUERY chain (gateway path slug), independent of the
-        # pay network. The SDK runs the 402 -> sign -> resend handshake.
+        # Query network is independent of the payment network.
         resp = await qn.rpc.call_with_receipt(
             "eth_blockNumber", [], "base-sepolia"
         )
         print("paid eth_blockNumber =>", resp["result"])
-        # payment_receipt is set on the MPP lane (reference = settlement tx
-        # hash), None for x402.
+        # x402 does not return a settlement receipt.
         if resp["payment_receipt"]:
             print("settlement reference:", resp["payment_receipt"]["reference"])
     except PaymentIndeterminateError as e:
-        # The paid request was sent but the response was lost — you may already
-        # have been charged. Do NOT blindly retry.
+        # The request may have settled. Do not retry blindly.
         print("payment indeterminate — do not retry:", e)
     except PaymentRejectedError as e:
         print(f"payment rejected ({e.status}):", e.body)

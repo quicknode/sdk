@@ -30,18 +30,12 @@ const TRANSFER_WITH_MEMO_SELECTOR: [u8; 4] = [0x95, 0x77, 0x7d, 0x59];
 // ERC-20/TIP-20 approve(address,uint256) selector.
 const APPROVE_SELECTOR: [u8; 4] = [0x09, 0x5e, 0xa7, 0xb3];
 
-// Generous fixed gas/fee caps. Under `feePayer:true` the gateway sponsors the
-// fee, so the sender's caps cost it nothing and only need to exceed inclusion
-// cost — no fee/gas RPC estimation is required.
+// Fixed caps; the gateway sponsors the fee.
 const DEFAULT_GAS_LIMIT: u64 = 150_000;
 const DEFAULT_MAX_FEE_PER_GAS: u128 = 10_000_000_000; // 10 gwei
 const DEFAULT_MAX_PRIORITY_FEE_PER_GAS: u128 = 2_000_000_000; // 2 gwei
 
-// Gas cap for escrow channel txs: the sponsor policy maximum. These carry two
-// calls (a token `approve` plus the escrow `open`/`topUp`), which together need
-// well over 1.5M gas — a smaller budget runs the open frame out of gas. The
-// sponsor pays the fee, and 2M × the 10 gwei fee cap stays under the sponsor
-// policy's total-fee ceiling.
+// Escrow open/topUp use two calls and require the sponsor's 2M gas cap.
 const ESCROW_GAS_LIMIT: u64 = 2_000_000;
 
 /// Inputs for one MPP/Tempo charge, derived from the decoded challenge.
@@ -106,8 +100,7 @@ impl Signer {
             access_list: Default::default(),
             nonce_key: U256::MAX, // TEMPO_EXPIRING_NONCE_KEY (TIP-1009)
             nonce: 0,
-            // Presence of a fee-payer signature drives the 0x00 placeholder +
-            // feeToken skip in encode_for_signing; the value is not encoded.
+            // A fee-payer signature selects the placeholder signing format.
             fee_payer_signature: Some(Signature::new(U256::from(1), U256::from(1), false)),
             valid_before: Some(valid_before),
             valid_after: None,
@@ -115,14 +108,10 @@ impl Signer {
             tempo_authorization_list: vec![],
         };
 
-        // 1. Sender preimage (0x76, fee-payer placeholder, feeToken skipped).
+        // Sign the sender preimage, then build the 0x78 handoff.
         let sign_hash = tx.signature_hash();
         let sig65 = secp::sign_prehash_65(&key, &sign_hash.0);
 
-        // 2. Fee-payer handoff envelope (0x78): the same fields with the sender
-        //    address in the fee-payer slot and the sender sig appended.
-        //    `tempo-primitives` has no public serializer for this exact form, so
-        //    it is assembled field-by-field with alloy-rlp (see encode_handoff).
         Ok(encode_handoff(
             req.chain_id,
             max_prio,
@@ -206,7 +195,7 @@ impl Signer {
             &sig65,
         );
 
-        // channelId is only defined for open; a top-up references an existing one.
+        // Only open derives a channelId.
         let channel_id = match &req.action {
             EscrowAction::Open {
                 payee,
@@ -276,7 +265,7 @@ pub struct TempoEscrowSigned {
 }
 
 impl EscrowAction {
-    // The channel token: the target of the paired `approve` call.
+    // Token targeted by the paired approve call.
     fn token(&self) -> &str {
         match self {
             EscrowAction::Open { token, .. } => token,
@@ -284,7 +273,7 @@ impl EscrowAction {
         }
     }
 
-    // The deposit moved by this action: the amount the `approve` must cover.
+    // Amount covered by approve.
     fn amount(&self) -> u128 {
         match self {
             EscrowAction::Open { deposit, .. } => *deposit,
@@ -294,8 +283,7 @@ impl EscrowAction {
         }
     }
 
-    // ABI-encode the escrow contract calldata (selector ++ head words). All
-    // args are static, so head-only encoding matches abi.encode exactly.
+    // ABI-encode static arguments as selector plus head words.
     fn calldata(&self) -> Result<Vec<u8>, SdkError> {
         match self {
             EscrowAction::Open {
@@ -346,8 +334,7 @@ fn fn_selector(signature: &[u8]) -> [u8; 4] {
     [h[0], h[1], h[2], h[3]]
 }
 
-// A uint value as a 32-byte left-padded EVM word (uint128/uint256 encode
-// identically for values that fit in 128 bits).
+// Encode a u128 as a left-padded EVM word.
 fn u128_word(value: u128) -> [u8; 32] {
     let mut word = [0u8; 32];
     word[16..].copy_from_slice(&value.to_be_bytes());
@@ -370,10 +357,7 @@ fn bytes32(hex_str: &str) -> Result<[u8; 32], SdkError> {
     Ok(word)
 }
 
-// channelId = keccak256(abi.encode(payer, payee, token, salt,
-//   authorizedSigner, escrowContract, uint256 chainId)) — all static words.
-// Mirrors the escrow contract's computeChannelId; the gateway re-derives this
-// from the open calldata and requires a match.
+// Match the escrow contract's channelId derivation.
 fn compute_channel_id(
     payer: &str,
     payee: &str,
@@ -416,8 +400,7 @@ fn transfer_with_memo_calldata(req: &TempoChargeRequest) -> Result<Vec<u8>, SdkE
     Ok(data)
 }
 
-// Attribution memo (bytes32), the layout the gateway parses to credit the call:
-//   keccak("mpp")[0..4] ++ 0x01 ++ keccak(realm)[0..10] ++ zeros[10] ++ keccak(challengeId)[0..7]
+// Build the gateway attribution memo.
 fn attribution_memo(realm: &str, challenge_id: &str) -> [u8; 32] {
     let mut memo = [0u8; 32];
     let mpp = keccak(b"mpp");
@@ -425,7 +408,7 @@ fn attribution_memo(realm: &str, challenge_id: &str) -> [u8; 32] {
     memo[4] = 0x01;
     let realm_hash = keccak(realm.as_bytes());
     memo[5..15].copy_from_slice(&realm_hash[0..10]);
-    // bytes 15..25 stay zero (no clientId).
+    // Bytes 15..25 are reserved for clientId.
     let challenge_hash = keccak(challenge_id.as_bytes());
     memo[25..32].copy_from_slice(&challenge_hash[0..7]);
     memo
@@ -435,9 +418,7 @@ fn keccak(bytes: &[u8]) -> [u8; 32] {
     Keccak256::digest(bytes).into()
 }
 
-// 0x78 || rlp([chainId, maxPrioFee, maxFee, gas, calls, accessList, nonceKey,
-//              nonce, validBefore, validAfter='', feeToken='', senderAddr,
-//              authList=[], senderSig(65B)]).
+// Encode the 0x78 fee-payer handoff fields.
 #[allow(clippy::too_many_arguments)]
 fn encode_handoff<A: Encodable>(
     chain_id: u64,
@@ -477,9 +458,7 @@ fn encode_handoff<A: Encodable>(
     out
 }
 
-// RLP-encode the calls as a list: header(list, sum of encoded lengths) ++ each
-// Call. Done explicitly rather than relying on a slice `Encodable` blanket so
-// the encoding is independent of alloy-rlp's slice-impl surface.
+// RLP-encode calls explicitly to avoid relying on slice Encodable impls.
 fn encode_calls(calls: &[Call], out: &mut Vec<u8>) {
     let mut inner = Vec::new();
     for call in calls {
@@ -498,21 +477,13 @@ fn encode_calls(calls: &[Call], out: &mut Vec<u8>) {
 mod tests {
     use super::*;
 
-    // Reference vector generated offline by the `ox/tempo` encoder with the
-    // publicly-known throwaway anvil key #0 (never funded) and fixed
-    // validBefore/gas/fee inputs. Reproducing the 0x78 handoff bytes exactly
-    // proves the MPP/Tempo construction matches the reference encoder.
+    // Offline reference vector for the 0x78 handoff.
     const KEY: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
     const EXPECTED_HANDOFF: &str = "78f9011382a5bf830f4240843b9aca0083019a28f87ef87c9420c000000000000000000000000000000000000080b86495777d59000000000000000000000000fd24114c3981aba78ae2441991b1bdb89329c55600000000000000000000000000000000000000000000000000000000000003e8ef1ed712013846ebb93fa448b84b800000000000000000000060f498736fd943c0a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80846a543ee5808094f39fd6e51aad88f6f4ce6ab8827279cfffb92266c0b841ca92118d9f7da00c84c2445bd3ee164cef9f60742771ca8a1700f15357f1437122ff663f076b0a54bbbfc614fb28f6c8e69a29735ad555ca71c25a889180e0c01c";
 
-    // Reconstruct the exact calldata the vector used: transferWithMemo to
-    // 0xfd24…c556, amount 1000, memo ef1e…d943.
+    // Reconstruct the vector's calldata.
     fn vector_request() -> TempoChargeRequest {
-        // The vector's memo was computed from specific realm/challenge inputs;
-        // to reproduce the exact bytes we bypass the memo builder by encoding
-        // calldata directly in this test via a crafted request is not possible
-        // (memo is derived). Instead we assert the handoff for the known memo
-        // by constructing calldata to match. See below.
+        // The vector uses a fixed memo, so build its calldata directly.
         TempoChargeRequest {
             chain_id: 42431,
             currency: "0x20c0000000000000000000000000000000000000".into(),
@@ -527,13 +498,12 @@ mod tests {
         }
     }
 
-    // The vector's memo bytes (ef1e…d943) — fixed by the captured challenge.
+    // Fixed memo from the reference vector.
     const VECTOR_MEMO: &str = "ef1ed712013846ebb93fa448b84b800000000000000000000060f498736fd943";
 
     #[test]
     fn handoff_reproduces_stage1a_vector() {
-        // Build calldata with the vector's exact memo (the builder is exercised
-        // separately below); this isolates the tx-encoding + signing path.
+        // Isolate handoff encoding and signing from memo generation.
         let key = secp::signing_key(KEY).unwrap();
         let sender: Address = secp::evm_address(&key).parse().unwrap();
         let token: Address = "0x20c0000000000000000000000000000000000000"
@@ -588,18 +558,14 @@ mod tests {
 
     #[test]
     fn attribution_memo_layout() {
-        // Prefix + version byte are fixed regardless of inputs.
+        // Prefix and version are fixed.
         let memo = attribution_memo("mpp.quicknode.com", "challenge-1");
         assert_eq!(memo[4], 0x01);
-        // bytes 15..25 are the zero clientId gap.
+        // Bytes 15..25 are the reserved clientId gap.
         assert_eq!(&memo[15..25], &[0u8; 10]);
     }
 
-    // Legacy contract-backed session vectors, generated offline with viem's
-    // encodeFunctionData/encodeAbiParameters: anvil key #0 as payer, payee
-    // 0xfd24…c556, token 0x20c0…0000, salt 0x22…22, authorizedSigner = payer,
-    // escrow 0x33b9…4f25, chainId 42431. Reproducing them byte-for-byte proves
-    // the ABI encodings match what the escrow contract expects.
+    // Offline legacy escrow vectors for ABI and channelId encoding.
     const V_PAYER: &str = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
     const V_PAYEE: &str = "0xfd24114c3981aba78ae2441991b1bdb89329c556";
     const V_TOKEN: &str = "0x20c0000000000000000000000000000000000000";

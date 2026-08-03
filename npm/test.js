@@ -2,13 +2,13 @@ const assert = require("node:assert");
 const sdk = require("./sdk.js");
 
 async function main() {
-  // Payment-lane error classes are exported and form the expected hierarchy.
+  // Payment errors preserve the expected hierarchy.
   assert(sdk.PaymentError.prototype instanceof sdk.QuicknodeError);
   assert(sdk.PaymentUnsupportedError.prototype instanceof sdk.PaymentError);
   assert(sdk.PaymentRejectedError.prototype instanceof sdk.PaymentError);
   assert(sdk.PaymentIndeterminateError.prototype instanceof sdk.PaymentError);
 
-  // A keyless SDK with a payment lane constructs without an API key.
+  // Payment configuration does not require an API key.
   const qn = new sdk.QuicknodeSdk({
     rpc: {
       payment: {
@@ -22,13 +22,13 @@ async function main() {
   });
   assert(typeof qn.rpc.callWithReceipt === "function");
 
-  // The payment lane requires a `network`; omitting it is a ConfigError.
+  // network is required for payment calls.
   await assert.rejects(
     () => qn.rpc.call("eth_blockNumber", []),
     (e) => e instanceof sdk.ConfigError && /requires `network`/.test(e.message),
   );
 
-  // The whole channel/drawdown surface is reachable from JS.
+  // Verify the payment methods are exposed.
   for (const m of [
     "paymentAddress", "gatewayAuthenticate", "gatewayCredits", "gatewayBuyCredits",
     "gatewayDrip", "gatewayDrawdownCall", "mppOpen", "mppTopUp", "mppClose",
@@ -43,21 +43,19 @@ async function main() {
   assert.equal(wallet.chain, "evm");
   assert.equal(typeof wallet.key, "string");
 
-  // Module-level functions are not covered by wrapClient, so their errors must
-  // be translated explicitly — a bare napi Error here means that regressed.
+  // Module-level errors must be mapped to typed errors.
   assert.throws(
     () => sdk.generatePaymentWallet("dogecoin"),
     (e) => e instanceof sdk.ConfigError,
   );
 
-  // Base-unit amounts are decimal strings because u128 exceeds a JS number.
-  // A non-integer must be refused rather than coerced.
+  // Reject non-integer base-unit amounts.
   await assert.rejects(
     () => qn.rpc.mppOpen("12.5"),
     (e) => e instanceof sdk.ConfigError && /decimal base-unit/.test(e.message),
   );
 
-  // A malformed channel object names the field that is wrong.
+  // Malformed channel objects report the missing field.
   await assert.rejects(
     () => qn.rpc.mppStatus({ channelId: "0xabc" }),
     (e) => e instanceof sdk.ConfigError && /missing token/.test(e.message),

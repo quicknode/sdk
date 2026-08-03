@@ -2595,8 +2595,7 @@ impl RpcApiClient {
                 .call_with_receipt(&method, params_value, network, endpoint_url)
                 .await
                 .map_err(errors::map_sdk_err)?;
-            // Build a plain dict at the FFI boundary: RpcCallResponse holds a
-            // serde_json::Value, which cannot be a pyclass field.
+            // Convert the core response to a plain Python dict.
             let json = serde_json::json!({
                 "result": resp.result,
                 "payment_receipt": resp.payment_receipt.map(|r| serde_json::json!({
@@ -2635,15 +2634,8 @@ impl RpcApiClient {
         self.inner.current_token()
     }
 
-    // ── Payment lanes ──────────────────────────────────────────────
-    //
-    // Base-unit amounts cross this boundary as decimal STRINGS. They are `u128`
-    // in the core and Python ints are arbitrary-precision, but PyO3 has no
-    // lossless u128 conversion, so a string is the only shape that cannot
-    // silently truncate a large deposit or cumulative total.
-    //
-    // Session/channel state crosses as a dict: both types are Serialize +
-    // Deserialize, so a host can persist the dict verbatim and hand it back.
+    // Payment amounts use decimal strings because PyO3 cannot convert u128.
+    // Session and channel state uses dicts for persistence.
 
     /// The configured payment wallet's on-chain address (EVM/Tempo `0x…` hex,
     /// Solana base58), derived offline from the key with no network round trip.
@@ -2905,17 +2897,10 @@ impl RpcApiClient {
     }
 }
 
-// ── Payment-lane FFI helpers ───────────────────────────────────
-//
-// The payment types cannot be `#[pyclass]`: `ChainKind`/`PaymentScheme` are bare
-// Rust enums, `GeneratedWallet` holds a `SecretString`, and `ChannelState` holds
-// `u128` fields. They therefore cross as plain dicts, matching how the rest of
-// this client already returns JSON-RPC data.
+// Payment types cross as dicts because they contain enums, secrets, or u128
+// fields that PyO3 cannot expose directly.
 
-// Base-unit amounts are `u128` in the core but have no lossless PyO3
-// conversion, so they cross as decimal strings. Rejecting a bad string here
-// (rather than saturating) keeps a typo from silently authorizing the wrong
-// amount.
+// Keep u128 amounts as decimal strings and reject malformed values.
 fn config_err(message: String) -> PyErr {
     errors::map_sdk_err(core::errors::SdkError::Config(message))
 }
@@ -2969,10 +2954,7 @@ fn channel_state_json(channel: &core::ChannelState) -> serde_json::Value {
     })
 }
 
-// Read one base-unit field from a channel dict. `channel_state_json` emits these
-// as strings (a Python int large enough for u128 has no lossless serde path), so
-// a plain `from_value` would reject its own output. Ints are accepted too, since
-// a hand-built or JSON-loaded dict may carry either.
+// Accept string output and integer input for channel amounts.
 fn channel_amount(obj: &serde_json::Value, field: &str) -> PyResult<u128> {
     let raw = obj
         .get(field)

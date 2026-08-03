@@ -19,16 +19,14 @@ import {
 
 const key = process.env.QN_PAYMENT_KEY;
 if (!key) {
-  // Wallet generation is offline: no gateway, no funds. The key is returned
-  // exactly once — persist it here or it is gone.
+  // Wallet generation is offline; persist the key returned here.
   const wallet = generatePaymentWallet("evm");
   console.log("generated a throwaway wallet:", wallet.address);
   console.log("fund it, then re-run with QN_PAYMENT_KEY set to its key");
   process.exit(0);
 }
 
-// A keyless SDK: the payment lane needs no account API key. Do NOT log the
-// config object — the `key` field is readable.
+// Keyless SDK. Do not log this config; it contains the private key.
 const qn = new QuicknodeSdk({
   rpc: {
     payment: {
@@ -37,20 +35,16 @@ const qn = new QuicknodeSdk({
       // Base Sepolia testnet USDC (x402/EVM).
       payNetwork: "eip155:84532",
       asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      // Spend ceiling in base units of the asset (required).
+      // Spend ceiling in asset base units.
       maxAmount: "10000",
-      // For x402/Solana at any volume, set svmRpcUrl to your own Solana RPC —
-      // the public default rate-limits aggressively.
+      // Set svmRpcUrl for x402/Solana at volume.
     },
   },
 });
 
-// The x402 drawdown lane: authenticate once, then draw 1 credit per call.
-// Cheaper per call than the per-request lane, and the session JWT is free to
-// mint. Persist the session object between runs.
+// Drawdown lane: authenticate once, then spend one credit per call.
 async function drawdownDemo() {
-  // Derived offline from the key — no network round trip. Use it to key a
-  // per-wallet session cache.
+  // Derived locally; use it to key a session cache.
   console.log("payment wallet:", qn.rpc.paymentAddress());
 
   const session = await qn.rpc.gatewayAuthenticate();
@@ -60,8 +54,7 @@ async function drawdownDemo() {
   console.log("credits:", balance.credits);
 
   if (balance.credits === 0) {
-    // Testnet faucet: allowed once per account, and it returns the funding
-    // transaction — NOT a balance. Read the balance separately afterwards.
+    // The faucet returns a funding transaction, not a balance.
     try {
       const drip = await qn.rpc.gatewayDrip(session);
       console.log("faucet tx:", drip.transactionHash);
@@ -86,21 +79,18 @@ async function main() {
     return;
   }
   try {
-    // `network` is the QUERY chain (gateway path slug), independent of the pay
-    // network. The SDK runs the 402 -> sign -> resend handshake.
+    // Query network is independent of the payment network.
     const { result, paymentReceipt } = await qn.rpc.callWithReceipt(
       "eth_blockNumber",
       [],
       "base-sepolia",
     );
     console.log("paid eth_blockNumber =>", result);
-    // paymentReceipt is set on the MPP lane (reference = settlement tx hash),
-    // null for x402.
+    // x402 does not return a settlement receipt.
     if (paymentReceipt) console.log("settlement reference:", paymentReceipt.reference);
   } catch (e) {
     if (e instanceof PaymentIndeterminateError) {
-      // The paid request was sent but the response was lost — you may already
-      // have been charged. Do NOT blindly retry.
+      // The request may have settled. Do not retry blindly.
       console.error("payment indeterminate — do not retry:", e.message);
     } else if (e instanceof PaymentRejectedError) {
       console.error(`payment rejected (${e.status}):`, e.body);

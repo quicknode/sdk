@@ -48,7 +48,7 @@ pub struct GatewaySession {
     pub account_id: String,
 }
 
-// Never print the JWT: it is a live credential.
+// Never print the live JWT.
 impl std::fmt::Debug for GatewaySession {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GatewaySession")
@@ -92,8 +92,7 @@ pub struct CreditBalance {
     pub credits: u64,
 }
 
-// The exact SIWX statement the gateway requires, verbatim — the /auth endpoint
-// rejects any other text as `invalid_statement`.
+// The /auth endpoint requires this statement verbatim.
 const SIWX_STATEMENT: &str =
     "I accept the Quicknode Terms of Service: https://www.quicknode.com/terms";
 
@@ -108,19 +107,12 @@ pub async fn authenticate(
     payment: &ResolvedPayment,
 ) -> Result<GatewaySession, SdkError> {
     let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
-    // The SIWE `address` line must be EIP-55 checksummed: the gateway recovers
-    // the signer and compares it case-sensitively to the address in the message.
-    // The signer derives a lowercase address, so checksum it here.
+    // SIWE compares the recovered address case-sensitively.
     let address = to_checksum_address(&payment.signer.address()?);
-    // EIP-4361's `Chain ID` field is the decimal EIP-155 chain id, NOT the
-    // CAIP-2 string: the gateway matches it numerically (a CAIP-2 value like
-    // "eip155:84532" is rejected as unsupported_chain). Derive it from the
-    // eip155 pay_network prefix.
+    // SIWE requires the decimal EIP-155 id, not the CAIP-2 string.
     let chain_id = eip155_chain_id(&payment.pay_network)?;
 
-    // Build and sign the SIWE message. The domain/uri and statement are fixed
-    // by the gateway; the nonce is a fresh random hex (≥8 chars) and issuedAt
-    // is the current time (the gateway enforces a 5-minute freshness window).
+    // Build the gateway's fixed SIWE message with a fresh nonce and timestamp.
     let host = host_only(base);
     let nonce = hex::encode(&random_nonce()[..8]);
     let issued_at = rfc3339_now();
@@ -283,19 +275,15 @@ pub async fn buy_credits(
 ) -> Result<CreditBalance, SdkError> {
     use crate::errors::HttpKind;
 
-    // Credits are purchased by settling the credit-drawdown offer on a
-    // network-scoped RPC request (there is no dedicated /credits POST): the
-    // gateway 402s a keyed request with an `accepts` menu, and the highest-tier
-    // offer is the credit block. The 200 body is the RPC result (credits are
-    // funded as a side effect), so the new balance is read via GET /credits.
+    // Credit purchases use a network-scoped RPC request; the balance is read
+    // separately from GET /credits.
     let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
     let url = format!("{}/{}", base.trim_end_matches('/'), query_network);
     let rpc_body = serde_json::json!({
         "jsonrpc": "2.0", "id": 1, "method": "eth_chainId", "params": []
     });
 
-    // 1. Offer probe with the Bearer JWT. A non-402 means credits are already
-    //    available (the RPC ran) — nothing to buy; report the current balance.
+    // Probe the offer. A non-402 means no purchase is needed.
     let first = client
         .post(&url)
         .bearer_auth(&session.token)
@@ -312,20 +300,14 @@ pub async fn buy_credits(
         return credits(client, payment, session).await;
     }
 
-    // 2. Settle the credit-drawdown tier (identified by its `extra.name`, not
-    //    by amount — it is typically the cheapest entry on the menu). Refuses
-    //    rather than falling back to a per-request offer, which would settle a
-    //    far larger amount than the caller asked for. Pre-payment failures stay
-    //    PaymentUnsupported: nothing was signed.
+    // Select and settle only the credit tier; never fall back to per-request.
     let challenge_body = first.text().await.map_err(SdkError::Http)?;
     let authorized = super::authorize_x402_credit(client, payment, &challenge_body).await?;
     let header = authorized
         .x402_header()
         .ok_or_else(|| SdkError::Config("credit purchase produced no x402 credential".into()))?;
 
-    // 3. Paid resend — exactly once, same indeterminate-outcome handling as the
-    //    per-request driver. A lost response here means the credit purchase may
-    //    have settled, so it is indeterminate and never blind-retried.
+    // Resend once. A lost response makes the purchase indeterminate.
     let paid = match client
         .post(&url)
         .bearer_auth(&session.token)
@@ -351,8 +333,7 @@ pub async fn buy_credits(
             body,
         });
     }
-    // Drain the (RPC-result) body so the connection completes, then read the
-    // freshly-funded balance from GET /credits.
+    // Drain the response, then read the funded balance.
     let _ = paid.text().await;
     credits(client, payment, session).await
 }
@@ -371,9 +352,7 @@ pub(super) fn siwe_message(
     issued_at: &str,
     statement: &str,
 ) -> String {
-    // EIP-4361 field order is fixed. `Version` is always 1; `Chain ID` is the
-    // decimal EIP-155 chain id (the gateway matches it numerically). `URI` is
-    // https://<host>.
+    // EIP-4361 field order and the decimal chain id are fixed.
     format!(
         "{host} wants you to sign in with your Ethereum account:\n\
          {address}\n\
@@ -388,9 +367,7 @@ pub(super) fn siwe_message(
     )
 }
 
-// EIP-55 mixed-case checksum of a `0x`-hex EVM address: uppercase each hex
-// digit whose corresponding nibble in keccak256(lowercase-addr-without-0x) is
-// >= 8. SIWE requires the checksummed form in the `address` line.
+// Apply the EIP-55 checksum required by SIWE.
 fn to_checksum_address(addr: &str) -> String {
     use sha3::{Digest, Keccak256};
     let lower = addr.strip_prefix("0x").unwrap_or(addr).to_lowercase();
@@ -417,9 +394,7 @@ fn to_checksum_address(addr: &str) -> String {
     out
 }
 
-// Parse the decimal EIP-155 chain id from an `eip155:<n>` CAIP-2 pay network,
-// for the SIWE `Chain ID` field. x402 drawdown is EVM-only; a non-eip155 (e.g.
-// solana:) pay network is an unsupported config here.
+// Parse the EIP-155 id required by SIWE.
 fn eip155_chain_id(pay_network: &str) -> Result<u64, SdkError> {
     pay_network
         .strip_prefix("eip155:")
@@ -431,9 +406,7 @@ fn eip155_chain_id(pay_network: &str) -> Result<u64, SdkError> {
         })
 }
 
-// Strip the scheme (and any trailing slash) from a gateway base URL, leaving
-// the host[:port] the SIWE domain/uri fields use. A base_url_override for the
-// wiremock harness is http://127.0.0.1:PORT, which reduces to 127.0.0.1:PORT.
+// Return the gateway host used by SIWE domain and URI fields.
 fn host_only(base: &str) -> String {
     base.trim_end_matches('/')
         .trim_start_matches("https://")
@@ -441,18 +414,14 @@ fn host_only(base: &str) -> String {
         .to_string()
 }
 
-// Current time as an RFC-3339 UTC timestamp to whole seconds, e.g.
-// "2026-07-17T12:00:00Z". Hand-rolled to avoid a date crate, mirroring the
-// parse side in admin::parse_rfc3339_to_unix (civil-from-days, Hinnant).
+// Build an RFC-3339 UTC timestamp without adding a date dependency.
 fn rfc3339_now() -> String {
     let secs = now_unix() as i64;
     let days = secs.div_euclid(86_400);
     let rem = secs.rem_euclid(86_400);
     let (hour, min, sec) = (rem / 3600, (rem % 3600) / 60, rem % 60);
     let (year, month, day) = civil_from_days(days);
-    // Millisecond precision (.000) matches the canonical EIP-4361 `Issued At`
-    // the reference SIWE libraries emit; whole-second precision can trip the
-    // gateway's format validation.
+    // SIWE expects millisecond precision.
     format!("{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{sec:02}.000Z")
 }
 
@@ -534,11 +503,7 @@ mod tests {
         assert_eq!(msg, expected);
     }
 
-    // The byte-exact test above supplies `issued_at` directly, so it cannot
-    // catch the format the gateway actually receives — that comes from
-    // `rfc3339_now()`. The gateway's format validation rejects whole-second
-    // precision, so assert the millisecond `.000Z` suffix at the source and in
-    // the assembled message.
+    // Verify the generated timestamp uses the gateway's millisecond format.
     #[test]
     fn issued_at_carries_millisecond_precision() {
         let iso = rfc3339_now();
@@ -562,8 +527,7 @@ mod tests {
 
     #[test]
     fn rfc3339_now_round_trips_through_the_parser() {
-        // The timestamp we emit must parse back to (approximately) the same
-        // unix time the parser reads — locks the civil-from-days math.
+        // Generated timestamps must round-trip through the parser.
         let iso = rfc3339_now();
         let back = parse_rfc3339_to_unix(&iso).unwrap();
         let now = now_unix() as i64;
@@ -572,8 +536,7 @@ mod tests {
 
     #[test]
     fn checksum_address_matches_eip55() {
-        // Known-good EIP-55 checksum (anvil key #0's address), matching the
-        // reference SIWE libraries' output.
+        // Known-good EIP-55 checksum.
         assert_eq!(
             to_checksum_address("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"),
             "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
@@ -764,9 +727,7 @@ mod tests {
         assert_eq!(receipt.account_id, "eip155:84532:0xabc");
     }
 
-    // The live gateway's 402 menu: two per-request USDC tiers plus the
-    // credit-drawdown tier, which is the CHEAPEST entry and carries the Circle
-    // Gateway batched `extra` (its own verifyingContract, not the asset).
+    // Menu with per-request and batched credit tiers.
     fn gateway_menu() -> Value {
         let mut credit = x402_credit_offer("100")
             .pointer("/accepts/0")
@@ -788,14 +749,11 @@ mod tests {
         })
     }
 
-    // The credit tier uses a signing construction the per-request lane does not
-    // have. Refusing is the point: falling back to a per-request offer would
-    // settle 1000000 base units when the caller asked for a 100-unit credit
-    // block, and the gateway rejects the wrong-scheme signature anyway.
+    // Refuse the unsupported credit signer; do not fall back to per-request.
     #[tokio::test]
     async fn buy_credits_refuses_the_batched_scheme_and_settles_nothing() {
         let server = MockServer::start().await;
-        // Exactly one POST: the offer probe. Nothing is ever signed or resent.
+        // Only the offer probe should be sent.
         Mock::given(method("POST"))
             .and(path("/base-sepolia"))
             .respond_with(ResponseTemplate::new(402).set_body_json(gateway_menu()))
@@ -820,8 +778,7 @@ mod tests {
         );
     }
 
-    // A menu with no credit tier at all: still a refusal, and still nothing
-    // signed — never a silent fallback onto a per-request offer.
+    // No credit tier means refusal, not per-request fallback.
     #[tokio::test]
     async fn buy_credits_without_a_credit_offer_settles_nothing() {
         let server = MockServer::start().await;
@@ -849,8 +806,7 @@ mod tests {
         );
     }
 
-    // A non-402 first response means credits are already available: the probe
-    // RPC ran, so report the balance without buying anything.
+    // A non-402 probe means no purchase is needed.
     #[tokio::test]
     async fn buy_credits_with_existing_credits_reads_the_balance() {
         let server = MockServer::start().await;

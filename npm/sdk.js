@@ -78,9 +78,7 @@ class TemplateArgs {
   }
 }
 
-// Module-level napi functions are not covered by `wrapClient` (which proxies
-// client instances), so their tagged errors must be translated here or callers
-// see a bare napi Error instead of a typed ConfigError.
+// Translate module-level napi errors; wrapClient only handles clients.
 function generatePaymentWallet(chain) {
   try {
     return _index.generatePaymentWallet(chain);
