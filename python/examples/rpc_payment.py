@@ -98,7 +98,8 @@ async def selfcheck() -> None:
 async def drawdown_demo(key: str) -> None:
     """The x402 drawdown lane: authenticate once, then draw 1 credit per call.
 
-    Cheaper per call than the per-request lane (one signature buys a block of
+    Cheaper per call than the per-request lane (one SIWE or SIWS signature buys
+    a block of
     credits), and the session JWT is free to mint — so a host can re-auth
     transparently. Persist the session dict between runs.
     """

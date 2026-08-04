@@ -205,6 +205,22 @@ impl Signer {
         }
     }
 
+    /// Sign a Sign-In-With-Solana (CAIP-122) message with Ed25519 and return
+    /// the Base58 signature. Solana only; EVM signers use [`Self::sign_siwe`].
+    pub fn sign_siws(&self, _message: &str) -> Result<String, SdkError> {
+        match self {
+            #[cfg(feature = "payments-svm")]
+            Signer::Svm(_) => svm::sign_siws(self, _message),
+            Signer::Evm(_) | Signer::Tempo(_) => Err(SdkError::Config(
+                "SIWS signing requires an SVM signer".into(),
+            )),
+            #[cfg(not(feature = "payments-svm"))]
+            Signer::Svm(_) => Err(SdkError::Config(
+                "SIWS signing requires the `payments-svm` feature".into(),
+            )),
+        }
+    }
+
     /// Sign an MPP session voucher (`Voucher(bytes32 channelId,uint128
     /// cumulativeAmount)`) against the legacy escrow contract's EIP-712 domain
     /// ("Tempo Stream Channel"), returning the `0x`-prefixed 65-byte `r||s||v`

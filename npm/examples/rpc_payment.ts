@@ -9,6 +9,8 @@
 //
 // Run the x402 drawdown lane (authenticate once, then 1 credit per call):
 //   QN_PAYMENT_KEY=0x<key> QN_PAYMENT_LANE=drawdown npx tsx examples/rpc_payment.ts
+// Solana drawdown uses a base58 key and a solana:<genesis-hash> pay network;
+// the SDK authenticates with SIWS and signs the credit offer with x402/Solana.
 
 import {
   QuicknodeSdk,

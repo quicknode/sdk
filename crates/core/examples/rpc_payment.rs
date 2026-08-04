@@ -9,6 +9,9 @@
 //!   QN_PAYMENT_KEY=0x<throwaway-key> \
 //!     cargo run --example rpc_payment -p quicknode-sdk \
 //!     --features rust,payments,payments-svm,payments-tempo
+//!
+//! For Solana drawdown, use a base58 Solana key, a `solana:<genesis-hash>`
+//! pay network, and the Solana USDC mint; authentication uses SIWS.
 
 use quicknode_sdk::{PaymentConfig, QuicknodeSdk, RpcConfig, SdkFullConfig};
 
