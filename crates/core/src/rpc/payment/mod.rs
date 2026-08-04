@@ -327,18 +327,11 @@ pub(super) async fn authorize_x402(
 }
 
 /// Like [`authorize_x402`], but selects the credit-drawdown offer rather than
-/// the per-request one. The credit tier is identified by its `extra.name`
-/// (`GatewayWalletBatched`) and its long `maxTimeoutSeconds`, NOT by amount —
-/// it is typically the *cheapest* entry on the menu, so picking by size would
-/// select a per-request offer and sign the wrong scheme against it.
-///
-/// Signing a Circle Gateway batched transfer is a different construction from
-/// the EIP-3009 `TransferWithAuthorization` used by the per-request lane: its
-/// EIP-712 domain separator is `extra.verifyingContract`, not the asset. When the
-/// credit tier cannot be signed, refuse — never fall back to a per-request offer,
-/// which would settle a far larger amount than the caller asked for.
+/// the per-request one. The credit tier is the largest regular x402 offer in
+/// the menu. `GatewayWalletBatched` is the separate Circle nanopayment tier,
+/// not a credit offer, and requires a different funding model.
 pub(super) async fn authorize_x402_credit(
-    _client: &reqwest::Client,
+    client: &reqwest::Client,
     payment: &ResolvedPayment,
     challenge_body: &str,
 ) -> Result<Authorized, SdkError> {
@@ -347,30 +340,29 @@ pub(super) async fn authorize_x402_credit(
             offered: format!("an unparseable x402 challenge (invalid JSON: {source})"),
         })?;
 
-    let credit_offered = parsed.accepts.iter().any(|entry| {
-        let network = entry.get("network").and_then(Value::as_str).unwrap_or("");
-        let asset = entry.get("asset").and_then(Value::as_str).unwrap_or("");
-        network == payment.pay_network
-            && asset.eq_ignore_ascii_case(&payment.asset)
-            && entry.pointer("/extra/name").and_then(Value::as_str) == Some(GATEWAY_BATCHED)
-    });
-
-    Err(SdkError::PaymentUnsupported {
-        offered: if credit_offered {
-            format!(
-                "the credit-drawdown offer uses the {GATEWAY_BATCHED} scheme, which this \
-                 version cannot sign. Pay per request instead: call rpc.call rather than \
-                 buying credits."
-            )
-        } else {
-            format!(
+    let mut skipped = Vec::new();
+    let (entry, largest_offer) = select_x402_credit_entry(payment, &parsed.accepts, &mut skipped);
+    let Some(entry) = entry else {
+        let offered = match largest_offer {
+            Some(amount) => format!(
+                "the credit-drawdown offer for {}/{} is {amount} base units, above \
+                 max_amount {}; raise max_amount to at least {amount}. Full menu: {}",
+                payment.pay_network,
+                payment.asset,
+                payment.max_amount,
+                describe_offered(&parsed.accepts, &skipped)
+            ),
+            None => format!(
                 "no credit-drawdown offer for {}/{}. {}",
                 payment.pay_network,
                 payment.asset,
-                describe_offered(&parsed.accepts, &[])
-            )
-        },
-    })
+                describe_offered(&parsed.accepts, &skipped)
+            ),
+        };
+        return Err(SdkError::PaymentUnsupported { offered });
+    };
+
+    authorize_x402_selected(client, payment, &parsed.x402_version, &entry).await
 }
 
 // Select the cheapest matching entry and authorize it.
@@ -398,18 +390,25 @@ async fn authorize_x402_entry(
         return Err(SdkError::PaymentUnsupported { offered });
     };
 
+    authorize_x402_selected(client, payment, &parsed.x402_version, &entry).await
+}
+
+async fn authorize_x402_selected(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+    x402_version: &u32,
+    entry: &Value,
+) -> Result<Authorized, SdkError> {
     match payment.signer.kind() {
-        signer::ChainKind::Evm => authorize_x402_evm(payment, &parsed.x402_version, &entry),
-        signer::ChainKind::Svm => {
-            authorize_x402_svm(client, payment, &parsed.x402_version, &entry).await
-        }
+        signer::ChainKind::Evm => authorize_x402_evm(payment, x402_version, entry),
+        signer::ChainKind::Svm => authorize_x402_svm(client, payment, x402_version, entry).await,
         signer::ChainKind::Tempo => Err(SdkError::PaymentUnsupported {
             offered: "a Tempo signer cannot pay an x402 challenge (use the MPP scheme)".into(),
         }),
     }
 }
 
-// Batched transfers use a different EIP-712 domain than per-request payments.
+// Circle nanopayments use a different EIP-712 domain than regular x402 offers.
 const GATEWAY_BATCHED: &str = "GatewayWalletBatched";
 
 // Select the cheapest supported integer amount for the requested network and
@@ -426,9 +425,11 @@ fn select_x402_entry(
         if network != payment.pay_network || !asset.eq_ignore_ascii_case(&payment.asset) {
             continue;
         }
-        // This scheme uses a different signer and is not supported here.
+        // Nanopayments use Circle Gateway funding, not the regular x402 signer.
         if entry.pointer("/extra/name").and_then(Value::as_str) == Some(GATEWAY_BATCHED) {
-            skipped.push(format!("{network}/{asset}: {GATEWAY_BATCHED} (deferred)"));
+            skipped.push(format!(
+                "{network}/{asset}: {GATEWAY_BATCHED} (nanopayment)"
+            ));
             continue;
         }
         // Amounts must be integer base-unit strings within the ceiling.
@@ -449,6 +450,56 @@ fn select_x402_entry(
         }
     }
     best.map(|(_, entry)| entry.clone())
+}
+
+// Select the largest regular tier for a credit purchase. A credit purchase
+// must not silently downgrade to a per-request payment when its tier is too
+// expensive, so the largest advertised tier is checked against the ceiling
+// before any smaller tier can be selected.
+fn select_x402_credit_entry(
+    payment: &ResolvedPayment,
+    accepts: &[Value],
+    skipped: &mut Vec<String>,
+) -> (Option<Value>, Option<u128>) {
+    let mut candidates: Vec<(u128, &Value)> = Vec::new();
+    for entry in accepts {
+        let network = entry.get("network").and_then(Value::as_str).unwrap_or("");
+        let asset = entry.get("asset").and_then(Value::as_str).unwrap_or("");
+        if network != payment.pay_network || !asset.eq_ignore_ascii_case(&payment.asset) {
+            continue;
+        }
+        if entry.pointer("/extra/name").and_then(Value::as_str) == Some(GATEWAY_BATCHED) {
+            skipped.push(format!(
+                "{network}/{asset}: {GATEWAY_BATCHED} (nanopayment)"
+            ));
+            continue;
+        }
+        let amount_str = entry.get("amount").and_then(Value::as_str).unwrap_or("");
+        match amount_str.parse::<u128>() {
+            Ok(amount) => candidates.push((amount, entry)),
+            Err(_) => skipped.push(format!(
+                "{network}/{asset}: amount {amount_str:?} is not an integer"
+            )),
+        }
+    }
+
+    // A single regular offer is not enough to identify the credit tier. The
+    // gateway's tiered menu includes both credit and per-request offers.
+    if candidates.len() < 2 {
+        return (None, None);
+    }
+
+    let Some((amount, entry)) = candidates.into_iter().max_by_key(|(amount, _)| *amount) else {
+        return (None, None);
+    };
+    if amount > payment.max_amount {
+        skipped.push(format!(
+            "{}/{}: credit amount {amount} exceeds max_amount {}",
+            payment.pay_network, payment.asset, payment.max_amount
+        ));
+        return (None, Some(amount));
+    }
+    (Some(entry.clone()), Some(amount))
 }
 
 fn authorize_x402_evm(

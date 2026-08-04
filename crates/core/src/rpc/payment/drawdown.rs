@@ -445,8 +445,9 @@ mod tests {
     use super::*;
     use secrecy::SecretString;
     use serde_json::json;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use wiremock::matchers::{body_partial_json, header, method, path};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
+    use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
 
     // anvil key #0 (public throwaway, never funded).
     const EVM_KEY: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -727,14 +728,14 @@ mod tests {
         assert_eq!(receipt.account_id, "eip155:84532:0xabc");
     }
 
-    // Menu with per-request and batched credit tiers.
+    // Menu with credit, per-request, and nanopayment tiers.
     fn gateway_menu() -> Value {
-        let mut credit = x402_credit_offer("100")
+        let mut nanopayment = x402_credit_offer("100")
             .pointer("/accepts/0")
             .cloned()
             .unwrap();
-        credit["maxTimeoutSeconds"] = json!(604_900);
-        credit["extra"] = json!({
+        nanopayment["maxTimeoutSeconds"] = json!(604_900);
+        nanopayment["extra"] = json!({
             "name": "GatewayWalletBatched",
             "version": "1",
             "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
@@ -744,19 +745,58 @@ mod tests {
             "accepts": [
                 x402_credit_offer("1000000").pointer("/accepts/0").cloned().unwrap(),
                 x402_credit_offer("1000").pointer("/accepts/0").cloned().unwrap(),
-                credit,
+                nanopayment,
             ]
         })
     }
 
-    // Refuse the unsupported credit signer; do not fall back to per-request.
+    // Select and settle the regular credit tier; do not fall back to the
+    // cheaper per-request or nanopayment tiers.
     #[tokio::test]
-    async fn buy_credits_refuses_the_batched_scheme_and_settles_nothing() {
+    async fn buy_credits_settles_the_regular_credit_tier() {
         let server = MockServer::start().await;
-        // Only the offer probe should be sent.
+        struct BuySeq {
+            calls: AtomicUsize,
+        }
+        impl Respond for BuySeq {
+            fn respond(&self, req: &Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n == 0 && !req.headers.contains_key("payment-signature") {
+                    ResponseTemplate::new(402).set_body_json(gateway_menu())
+                } else {
+                    use base64::Engine;
+                    let header = req
+                        .headers
+                        .get("payment-signature")
+                        .expect("paid resend must include a payment signature")
+                        .to_str()
+                        .unwrap();
+                    let envelope: Value = serde_json::from_slice(
+                        &base64::engine::general_purpose::STANDARD
+                            .decode(header)
+                            .unwrap(),
+                    )
+                    .unwrap();
+                    assert_eq!(envelope["accepted"]["amount"], "1000000");
+                    ResponseTemplate::new(200).set_body_json(json!({
+                        "jsonrpc": "2.0", "id": 1, "result": "0x1"
+                    }))
+                }
+            }
+        }
         Mock::given(method("POST"))
             .and(path("/base-sepolia"))
-            .respond_with(ResponseTemplate::new(402).set_body_json(gateway_menu()))
+            .respond_with(BuySeq {
+                calls: AtomicUsize::new(0),
+            })
+            .expect(2)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/credits"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "accountId": "eip155:84532:0xabc", "credits": 100_000u64
+            })))
             .expect(1)
             .mount(&server)
             .await;
@@ -768,12 +808,36 @@ mod tests {
             account_id: "a".into(),
         };
         let client = reqwest::Client::new();
+        let balance = buy_credits(&client, &payment, &session, "base-sepolia")
+            .await
+            .unwrap();
+        assert_eq!(balance.credits, 100_000);
+    }
+
+    #[tokio::test]
+    async fn buy_credits_does_not_downgrade_when_credit_tier_exceeds_ceiling() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/base-sepolia"))
+            .respond_with(ResponseTemplate::new(402).set_body_json(gateway_menu()))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let mut payment = evm_payment(&server.uri());
+        payment.max_amount = 1_000;
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let client = reqwest::Client::new();
         let err = buy_credits(&client, &payment, &session, "base-sepolia")
             .await
             .unwrap_err();
         assert!(
             matches!(&err, SdkError::PaymentUnsupported { offered }
-                if offered.contains("GatewayWalletBatched")),
+                if offered.contains("above max_amount 1000")),
             "unexpected error: {err:?}"
         );
     }
