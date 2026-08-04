@@ -194,6 +194,13 @@ impl Signer {
     }
 }
 
+/// Sign a CAIP-122 SIWS message and return the Base58 Ed25519 signature.
+pub(super) fn sign_siws(signer: &Signer, message: &str) -> Result<String, SdkError> {
+    let key = svm_signing_key(signer)?;
+    let signature = key.sign(message.as_bytes());
+    Ok(bs58::encode(signature.to_bytes()).into_string())
+}
+
 /// A v0 message's account-permission counts.
 struct MessageHeader {
     num_required_signatures: u8,

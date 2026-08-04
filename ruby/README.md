@@ -1830,7 +1830,7 @@ File.write("payment.key", wallet[:key])  # returned exactly once
 
 ### x402 credit drawdown (authenticate once, then draw one credit per call)
 
-Cheaper per call than paying per request: one SIWE signature mints a session JWT, then
+Cheaper per call than paying per request: one SIWE or SIWS signature mints a session JWT, then
 each call draws a single credit from the account balance instead of signing a fresh
 settlement. Minting the session is free and moves no funds, so a host can re-authenticate
 transparently. Persist it between processes.
@@ -1838,7 +1838,9 @@ transparently. Persist it between processes.
 Fund the payment wallet out of band — the testnet faucet below, or by sending funds to
 `payment_address` directly. Credits are provisioned against the account gateway-side.
 
-EVM signers only: SIWE is an EIP-4361 construction, so an x402/Solana key errors here.
+EVM payment networks use SIWE. Solana payment networks use SIWS with an Ed25519
+signature encoded as Base58. Solana wallets must be funded out of band; the faucet
+is available for Base Sepolia only.
 
 | Method | Cost | Returns |
 |---|---|---|

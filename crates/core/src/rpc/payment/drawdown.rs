@@ -7,13 +7,13 @@
 //! response — no per-call signing.
 //!
 //! The flow:
-//! 1. [`authenticate`] — build a SIWE (EIP-4361) message, sign it with the
+//! 1. [`authenticate`] — build a SIWE or SIWS message, sign it with the
 //!    payment key, POST `/auth`, and cache the returned [`GatewaySession`].
 //! 2. [`drawdown_call`] — POST `/:network` with the Bearer JWT; returns the raw
 //!    JSON-RPC envelope text.
 //! 3. [`credits`] — GET `/credits` with the Bearer JWT → the current balance.
-//! 4. [`drip`] — POST `/drip` (testnet faucet, once per account) — funds the
-//!    wallet, not the credit ledger.
+//! 4. [`drip`] — POST `/drip` (Base Sepolia faucet, once per account) — funds
+//!    the wallet, not the credit ledger.
 //!
 //! [`buy_credits`] settles a credit block by signing the gateway's credit-tier
 //! offer. It is reachable only where that offer's construction is signable; see
@@ -100,31 +100,52 @@ const SIWX_STATEMENT: &str =
 /// returns a cached [`GatewaySession`]. Free — no funds move — so a caller may
 /// (re)auth transparently on a missing/expired session without user consent.
 ///
-/// EVM signers only (SIWE). An SVM signer errors — SIWS is a separate
-/// construction.
+/// Selects SIWE for EVM payment networks and SIWS for Solana payment networks.
 pub async fn authenticate(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
 ) -> Result<GatewaySession, SdkError> {
     let base = super::PaymentScheme::X402.host_base(payment.base_url_override.as_deref());
-    // SIWE compares the recovered address case-sensitively.
-    let address = to_checksum_address(&payment.signer.address()?);
-    // SIWE requires the decimal EIP-155 id, not the CAIP-2 string.
-    let chain_id = eip155_chain_id(&payment.pay_network)?;
-
-    // Build the gateway's fixed SIWE message with a fresh nonce and timestamp.
+    let address = payment.signer.address()?;
     let host = host_only(base);
     let nonce = hex::encode(&random_nonce()[..8]);
     let issued_at = rfc3339_now();
-    let message = siwe_message(
-        &host,
-        &address,
-        chain_id,
-        &nonce,
-        &issued_at,
-        SIWX_STATEMENT,
-    );
-    let signature = payment.signer.sign_siwe(&message)?;
+    let (message, signature) = match payment.signer.kind() {
+        super::signer::ChainKind::Svm => {
+            let chain_id = solana_chain_id(&payment.pay_network)?;
+            let message = siws_message(
+                &host,
+                &address,
+                chain_id,
+                &nonce,
+                &issued_at,
+                SIWX_STATEMENT,
+            );
+            let signature = payment.signer.sign_siws(&message)?;
+            (message, signature)
+        }
+        super::signer::ChainKind::Evm => {
+            // SIWE compares the recovered address case-sensitively and uses
+            // the decimal EIP-155 id rather than the CAIP-2 string.
+            let address = to_checksum_address(&address);
+            let chain_id = eip155_chain_id(&payment.pay_network)?;
+            let message = siwe_message(
+                &host,
+                &address,
+                chain_id,
+                &nonce,
+                &issued_at,
+                SIWX_STATEMENT,
+            );
+            let signature = payment.signer.sign_siwe(&message)?;
+            (message, signature)
+        }
+        super::signer::ChainKind::Tempo => {
+            return Err(SdkError::Config(
+                "x402 drawdown requires an EVM or Solana signer".into(),
+            ));
+        }
+    };
 
     let url = format!("{}/auth", base.trim_end_matches('/'));
     let resp = client
@@ -224,7 +245,7 @@ pub struct DripReceipt {
 
 /// Requests testnet tokens from the faucet (POST `/drip`, Bearer JWT). The
 /// gateway allows this once per account on Base Sepolia and returns the funding
-/// transaction (NOT a balance).
+/// transaction (NOT a balance). Solana wallets must be funded out of band.
 pub async fn drip(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
@@ -367,6 +388,29 @@ pub(super) fn siwe_message(
     )
 }
 
+/// Build the CAIP-122 Sign-In-With-Solana message expected by the gateway.
+pub(super) fn siws_message(
+    host: &str,
+    address: &str,
+    chain_id: &str,
+    nonce: &str,
+    issued_at: &str,
+    statement: &str,
+) -> String {
+    format!(
+        "{host} wants you to sign in with your Solana account:\n\
+         {address}\n\
+         \n\
+         {statement}\n\
+         \n\
+         URI: https://{host}\n\
+         Version: 1\n\
+         Chain ID: {chain_id}\n\
+         Nonce: {nonce}\n\
+         Issued At: {issued_at}"
+    )
+}
+
 // Apply the EIP-55 checksum required by SIWE.
 fn to_checksum_address(addr: &str) -> String {
     use sha3::{Digest, Keccak256};
@@ -402,6 +446,18 @@ fn eip155_chain_id(pay_network: &str) -> Result<u64, SdkError> {
         .ok_or_else(|| {
             SdkError::Config(format!(
                 "x402 drawdown requires an eip155 pay network (e.g. eip155:84532), got {pay_network:?}"
+            ))
+    })
+}
+
+// SIWS displays the Solana genesis hash without the CAIP-2 namespace prefix.
+fn solana_chain_id(pay_network: &str) -> Result<&str, SdkError> {
+    pay_network
+        .strip_prefix("solana:")
+        .filter(|chain_id| !chain_id.is_empty())
+        .ok_or_else(|| {
+            SdkError::Config(format!(
+                "x402 Solana drawdown requires a solana pay network, got {pay_network:?}"
             ))
         })
 }
@@ -466,6 +522,28 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "payments-svm")]
+    fn svm_payment(base: &str) -> ResolvedPayment {
+        use ed25519_dalek::SigningKey;
+
+        let seed = [7u8; 32];
+        let signing_key = SigningKey::from_bytes(&seed);
+        let mut secret = Vec::with_capacity(64);
+        secret.extend_from_slice(&seed);
+        secret.extend_from_slice(&signing_key.verifying_key().to_bytes());
+        ResolvedPayment {
+            scheme: super::super::PaymentScheme::X402,
+            signer: super::super::signer::Signer::Svm(SecretString::new(
+                bs58::encode(secret).into_string(),
+            )),
+            pay_network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1".into(),
+            asset: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU".into(),
+            max_amount: 10_000_000,
+            base_url_override: Some(base.to_string()),
+            svm_rpc_url: None,
+        }
+    }
+
     fn x402_credit_offer(amount: &str) -> Value {
         json!({
             "x402Version": 2,
@@ -499,6 +577,30 @@ mod tests {
              URI: https://x402.quicknode.com\n\
              Version: 1\n\
              Chain ID: 84532\n\
+             Nonce: abc12345\n\
+             Issued At: 2026-07-17T12:00:00Z";
+        assert_eq!(msg, expected);
+    }
+
+    #[cfg(feature = "payments-svm")]
+    #[test]
+    fn siws_message_is_byte_exact() {
+        let msg = siws_message(
+            "x402.quicknode.com",
+            "11111111111111111111111111111111",
+            "EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+            "abc12345",
+            "2026-07-17T12:00:00Z",
+            SIWX_STATEMENT,
+        );
+        let expected = "x402.quicknode.com wants you to sign in with your Solana account:\n\
+             11111111111111111111111111111111\n\
+             \n\
+             I accept the Quicknode Terms of Service: https://www.quicknode.com/terms\n\
+             \n\
+             URI: https://x402.quicknode.com\n\
+             Version: 1\n\
+             Chain ID: EtWTRABZaYq6iMfeYKouRu166VU2xqa1\n\
              Nonce: abc12345\n\
              Issued At: 2026-07-17T12:00:00Z";
         assert_eq!(msg, expected);
@@ -607,6 +709,50 @@ mod tests {
         assert_eq!(session.token, "jwt-abc");
         assert!(session.account_id.contains("0xf39fd6e5"));
         assert!(session.is_fresh(60));
+    }
+
+    #[cfg(feature = "payments-svm")]
+    #[tokio::test]
+    async fn authenticate_posts_solana_siwx_with_base58_signature() {
+        use ed25519_dalek::{Signature, SigningKey, Verifier};
+
+        struct AuthResponder;
+        impl Respond for AuthResponder {
+            fn respond(&self, req: &Request) -> ResponseTemplate {
+                let body: Value = serde_json::from_slice(&req.body).unwrap();
+                assert_eq!(body["type"], "siwx");
+                let message = body["message"].as_str().unwrap();
+                assert!(message.contains("sign in with your Solana account"));
+                assert!(message.contains("Chain ID: EtWTRABZaYq6iMfeYKouRu166VU2xqa1"));
+
+                let signature = bs58::decode(body["signature"].as_str().unwrap())
+                    .into_vec()
+                    .unwrap();
+                let signature: [u8; 64] = signature.try_into().unwrap();
+                let public_key = SigningKey::from_bytes(&[7u8; 32]).verifying_key();
+                public_key
+                    .verify(message.as_bytes(), &Signature::from_bytes(&signature))
+                    .unwrap();
+
+                ResponseTemplate::new(200).set_body_json(json!({
+                    "token": "jwt-solana",
+                    "expiresAt": "2099-01-01T00:00:00Z",
+                    "accountId": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:11111111111111111111111111111111"
+                }))
+            }
+        }
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/auth"))
+            .respond_with(AuthResponder)
+            .mount(&server)
+            .await;
+
+        let payment = svm_payment(&server.uri());
+        let client = reqwest::Client::new();
+        let session = authenticate(&client, &payment).await.unwrap();
+        assert_eq!(session.token, "jwt-solana");
     }
 
     #[tokio::test]
