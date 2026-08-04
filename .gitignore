@@ -71,3 +71,9 @@ notes.md
 # Ruby native extension (built locally by `just ruby-build`)
 ruby/lib/quicknode_sdk/*.bundle
 ruby/lib/quicknode_sdk/*.so
+
+# Local scratch
+scratch/
+
+# Local working notes
+IMPLEMENTATION_PLAN.md

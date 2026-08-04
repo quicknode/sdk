@@ -68,6 +68,43 @@ fn hash_require_string(h: &RHash, key: &str) -> Result<String, Error> {
     })
 }
 
+// Extract rpc.payment manually because the field is serde-skipped.
+fn extract_payment_config(opts: &RHash) -> Result<Option<core::PaymentConfig>, Error> {
+    let r = ruby();
+    let Some(rpc_val) = opts.get(r.to_symbol("rpc")) else {
+        return Ok(None);
+    };
+    // Reject present values with the wrong type instead of ignoring them.
+    let rpc = RHash::from_value(rpc_val)
+        .ok_or_else(|| Error::new(r.exception_arg_error(), "rpc must be a Hash"))?;
+    let Some(payment_val) = rpc.get(r.to_symbol("payment")) else {
+        return Ok(None);
+    };
+    let payment = RHash::from_value(payment_val)
+        .ok_or_else(|| Error::new(r.exception_arg_error(), "rpc.payment must be a Hash"))?;
+    validate_keys(
+        &payment,
+        &[
+            "scheme",
+            "key",
+            "pay_network",
+            "asset",
+            "max_amount",
+            "svm_rpc_url",
+            "base_url_override",
+        ],
+    )?;
+    Ok(Some(core::PaymentConfig {
+        scheme: hash_require_string(&payment, "scheme")?,
+        key: hash_require_string(&payment, "key")?,
+        pay_network: hash_require_string(&payment, "pay_network")?,
+        asset: hash_require_string(&payment, "asset")?,
+        max_amount: hash_require_string(&payment, "max_amount")?,
+        svm_rpc_url: hash_get_string(&payment, "svm_rpc_url")?,
+        base_url_override: hash_get_string(&payment, "base_url_override")?,
+    }))
+}
+
 fn hash_get_i64(h: &RHash, key: &str) -> Result<Option<i64>, Error> {
     let r = ruby();
     match h.get(r.to_symbol(key)) {
@@ -275,10 +312,14 @@ impl QuicknodeSdk {
                 "api_key", "http", "admin", "streams", "webhooks", "kvstore", "sql", "rpc",
             ],
         )?;
-        let config: core::SdkFullConfig =
+        let mut config: core::SdkFullConfig =
             serde_magnus::deserialize(&ruby(), opts).map_err(|e| {
                 Error::new(ruby().exception_arg_error(), format!("invalid config: {e}"))
             })?;
+        // Attach the serde-skipped payment config after deserialization.
+        if let Some(payment) = extract_payment_config(&opts)? {
+            config.rpc.get_or_insert_with(Default::default).payment = Some(payment);
+        }
         core::QuicknodeSdk::new_with_client_info(&config, Some(ruby_client_info()))
             .map(|inner| Self { inner })
             .map_err(map_err)
@@ -1916,6 +1957,37 @@ impl RpcApiClient {
             .and_then(to_ruby)
     }
 
+    // call_with_receipt(method:, params:, network:, endpoint_url:) — like call
+    // but also returns the crypto-micropayment settlement receipt. Returns a
+    // Hash {"result" => ..., "payment_receipt" => {..}|nil}. payment_receipt is
+    // present only on the MPP payment lane; nil for x402 and non-payment lanes.
+    fn call_with_receipt(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["method", "params", "network", "endpoint_url"])?;
+        let method = hash_require_string(&opts, "method")?;
+        let network = hash_get_string(&opts, "network")?;
+        let endpoint_url = hash_get_string(&opts, "endpoint_url")?;
+        let r = ruby();
+        let params: Option<serde_json::Value> = match opts.get(r.to_symbol("params")) {
+            Some(v) if !v.is_nil() => Some(serde_magnus::deserialize(&r, v)?),
+            _ => None,
+        };
+        let client = self.inner.clone();
+        let resp = runtime()
+            .block_on(client.call_with_receipt(&method, params, network, endpoint_url))
+            .map_err(map_err)?;
+        // Convert the core response to the Ruby hash shape.
+        let json = serde_json::json!({
+            "result": resp.result,
+            "payment_receipt": resp.payment_receipt.map(|rc| serde_json::json!({
+                "method": rc.method,
+                "status": rc.status,
+                "timestamp": rc.timestamp,
+                "reference": rc.reference,
+            })),
+        });
+        to_ruby(json)
+    }
+
     // set_networks(networks:) — seed the per-network URL map (key -> http_url)
     // for multichain routing, from get_endpoint_urls(...)["multichain_urls"].
     fn set_networks(&self, opts: RHash) -> Result<(), Error> {
@@ -1934,6 +2006,275 @@ impl RpcApiClient {
     fn current_token(&self) -> Result<magnus::Value, Error> {
         to_ruby(self.inner.current_token())
     }
+
+    // Payment amounts use decimal strings because magnus cannot convert u128.
+    // Session and channel state uses hashes for persistence.
+
+    // payment_address — derive the configured wallet address locally.
+    fn payment_address(&self) -> Result<String, Error> {
+        self.inner.payment_address().map_err(map_err)
+    }
+
+    // gateway_authenticate — authenticate and return a session hash.
+    fn gateway_authenticate(&self) -> Result<magnus::Value, Error> {
+        let client = self.inner.clone();
+        let session = runtime()
+            .block_on(client.gateway_authenticate())
+            .map_err(map_err)?;
+        to_ruby(gateway_session_json(&session))
+    }
+
+    // gateway_credits(session:) — read the account credit balance.
+    fn gateway_credits(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["session"])?;
+        let session = require_gateway_session(&opts)?;
+        let client = self.inner.clone();
+        let bal = runtime()
+            .block_on(client.gateway_credits(&session))
+            .map_err(map_err)?;
+        to_ruby(serde_json::json!({
+            "account_id": bal.account_id, "credits": bal.credits
+        }))
+    }
+
+    // gateway_buy_credits(session:, network:) — settle a credit offer once.
+    fn gateway_buy_credits(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["session", "network"])?;
+        let session = require_gateway_session(&opts)?;
+        let network = hash_require_string(&opts, "network")?;
+        let client = self.inner.clone();
+        let bal = runtime()
+            .block_on(client.gateway_buy_credits(&session, &network))
+            .map_err(map_err)?;
+        to_ruby(serde_json::json!({
+            "account_id": bal.account_id, "credits": bal.credits
+        }))
+    }
+
+    // gateway_drip(session:) — request testnet funds; returns the tx hash.
+    fn gateway_drip(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["session"])?;
+        let session = require_gateway_session(&opts)?;
+        let client = self.inner.clone();
+        let receipt = runtime()
+            .block_on(client.gateway_drip(&session))
+            .map_err(map_err)?;
+        to_ruby(serde_json::json!({
+            "account_id": receipt.account_id,
+            "transaction_hash": receipt.transaction_hash,
+        }))
+    }
+
+    // gateway_drawdown_call(...) — spend one credit with the session token.
+    fn gateway_drawdown_call(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["method", "session", "network", "params"])?;
+        let method = hash_require_string(&opts, "method")?;
+        let session = require_gateway_session(&opts)?;
+        let network = hash_require_string(&opts, "network")?;
+        let params = hash_get_json(&opts, "params")?;
+        let client = self.inner.clone();
+        let result = runtime()
+            .block_on(client.gateway_drawdown_call(&method, params, &network, &session))
+            .map_err(map_err)?;
+        to_ruby(result)
+    }
+
+    // mpp_open(deposit:) — deposit into escrow and return channel state.
+    fn mpp_open(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["deposit"])?;
+        let deposit = parse_base_units(&hash_require_string(&opts, "deposit")?, "deposit")?;
+        let client = self.inner.clone();
+        let channel = runtime()
+            .block_on(client.mpp_open(deposit))
+            .map_err(map_err)?;
+        to_ruby(channel_state_json(&channel))
+    }
+
+    // mpp_top_up(...) — add funds to an open channel.
+    fn mpp_top_up(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["channel", "additional_deposit"])?;
+        let channel = require_channel_state(&opts)?;
+        let extra = parse_base_units(
+            &hash_require_string(&opts, "additional_deposit")?,
+            "additional_deposit",
+        )?;
+        let client = self.inner.clone();
+        let updated = runtime()
+            .block_on(client.mpp_top_up(&channel, extra))
+            .map_err(map_err)?;
+        to_ruby(channel_state_json(&updated))
+    }
+
+    // mpp_close(channel:) — settle the final spend and refund the remainder.
+    fn mpp_close(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["channel"])?;
+        let channel = require_channel_state(&opts)?;
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.mpp_close(&channel))
+            .map_err(map_err)
+    }
+
+    // mpp_status(channel:) — read channel state; costs one request unit and
+    // advances cumulative_spent by per_call.
+    fn mpp_status(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["channel"])?;
+        let channel = require_channel_state(&opts)?;
+        let client = self.inner.clone();
+        let st = runtime()
+            .block_on(client.mpp_status(&channel))
+            .map_err(map_err)?;
+        to_ruby(serde_json::json!({
+            "channel_id": st.channel_id,
+            "accepted_cumulative": st.accepted_cumulative.to_string(),
+            "spent": st.spent.to_string(),
+        }))
+    }
+
+    // mpp_session_call(...) — authorize one call with a cumulative voucher.
+    fn mpp_session_call(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(
+            &opts,
+            &["method", "network", "channel", "new_cumulative", "params"],
+        )?;
+        let method = hash_require_string(&opts, "method")?;
+        let network = hash_require_string(&opts, "network")?;
+        let channel = require_channel_state(&opts)?;
+        let new_cumulative = parse_base_units(
+            &hash_require_string(&opts, "new_cumulative")?,
+            "new_cumulative",
+        )?;
+        let params = hash_get_json(&opts, "params")?;
+        let client = self.inner.clone();
+        let result = runtime()
+            .block_on(client.mpp_session_call(&method, params, &network, &channel, new_cumulative))
+            .map_err(map_err)?;
+        to_ruby(result)
+    }
+}
+
+// Payment types cross as hashes because they contain enums, secrets, or u128
+// fields that magnus cannot wrap directly.
+
+fn arg_err(message: String) -> Error {
+    Error::new(ruby().exception_arg_error(), message)
+}
+
+// Keep u128 amounts as decimal strings and reject malformed values.
+fn parse_base_units(raw: &str, field: &str) -> Result<u128, Error> {
+    raw.trim().parse::<u128>().map_err(|_| {
+        arg_err(format!(
+            "{field} must be a decimal base-unit amount as a String, got {raw:?}"
+        ))
+    })
+}
+
+fn hash_get_json(h: &RHash, key: &str) -> Result<Option<serde_json::Value>, Error> {
+    let r = ruby();
+    match h.get(r.to_symbol(key)) {
+        Some(v) if !v.is_nil() => Ok(Some(serde_magnus::deserialize(&r, v)?)),
+        _ => Ok(None),
+    }
+}
+
+fn gateway_session_json(session: &core::GatewaySession) -> serde_json::Value {
+    serde_json::json!({
+        "token": session.token,
+        "exp_unix": session.exp_unix,
+        "account_id": session.account_id,
+    })
+}
+
+fn require_gateway_session(opts: &RHash) -> Result<core::GatewaySession, Error> {
+    let r = ruby();
+    let value = opts
+        .get(r.to_symbol("session"))
+        .ok_or_else(|| arg_err("missing keyword: session".to_string()))?;
+    let h = RHash::from_value(value)
+        .ok_or_else(|| arg_err("session must be a Hash from gateway_authenticate".to_string()))?;
+    Ok(core::GatewaySession {
+        token: hash_require_string(&h, "token")?,
+        exp_unix: hash_require_i64(&h, "exp_unix")?,
+        account_id: hash_require_string(&h, "account_id")?,
+    })
+}
+
+fn channel_state_json(channel: &core::ChannelState) -> serde_json::Value {
+    serde_json::json!({
+        "channel_id": channel.channel_id,
+        "token": channel.token,
+        "payee": channel.payee,
+        "salt": channel.salt,
+        "authorized_signer": channel.authorized_signer,
+        "escrow_contract": channel.escrow_contract,
+        "deposit": channel.deposit.to_string(),
+        "cumulative_spent": channel.cumulative_spent.to_string(),
+        "per_call": channel.per_call.to_string(),
+        "chain_id": channel.chain_id,
+    })
+}
+
+// Accept strings from channel_state_json and integer hash values.
+fn channel_amount(h: &RHash, field: &str) -> Result<u128, Error> {
+    let r = ruby();
+    let value = h
+        .get(r.to_symbol(field))
+        .ok_or_else(|| arg_err(format!("channel is missing {field}")))?;
+    if let Some(s) = magnus::RString::from_value(value) {
+        return parse_base_units(&s.to_string()?, field);
+    }
+    // Render integers as decimal strings to preserve values beyond i64.
+    let as_string: String = value.to_r_string()?.to_string()?;
+    parse_base_units(&as_string, field)
+}
+
+fn require_channel_state(opts: &RHash) -> Result<core::ChannelState, Error> {
+    let r = ruby();
+    let value = opts
+        .get(r.to_symbol("channel"))
+        .ok_or_else(|| arg_err("missing keyword: channel".to_string()))?;
+    let h = RHash::from_value(value)
+        .ok_or_else(|| arg_err("channel must be a Hash from mpp_open/mpp_top_up".to_string()))?;
+    Ok(core::ChannelState {
+        channel_id: hash_require_string(&h, "channel_id")?,
+        token: hash_require_string(&h, "token")?,
+        payee: hash_require_string(&h, "payee")?,
+        salt: hash_require_string(&h, "salt")?,
+        authorized_signer: hash_require_string(&h, "authorized_signer")?,
+        escrow_contract: hash_require_string(&h, "escrow_contract")?,
+        deposit: channel_amount(&h, "deposit")?,
+        cumulative_spent: channel_amount(&h, "cumulative_spent")?,
+        per_call: channel_amount(&h, "per_call")?,
+        chain_id: u64::try_from(hash_require_i64(&h, "chain_id")?)
+            .map_err(|_| arg_err("channel chain_id must be non-negative".to_string()))?,
+    })
+}
+
+// generate_payment_wallet(chain:) — generate a keypair offline.
+fn generate_payment_wallet(opts: RHash) -> Result<magnus::Value, Error> {
+    validate_keys(&opts, &["chain"])?;
+    let chain = hash_require_string(&opts, "chain")?;
+    let kind = match chain.to_ascii_lowercase().as_str() {
+        "evm" => core::ChainKind::Evm,
+        "svm" | "solana" => core::ChainKind::Svm,
+        "tempo" => core::ChainKind::Tempo,
+        other => {
+            return Err(arg_err(format!(
+                "unknown payment chain {other:?} (expected \"evm\", \"svm\", or \"tempo\")"
+            )))
+        }
+    };
+    let wallet = core::generate_payment_wallet(kind).map_err(map_err)?;
+    let chain_label = match wallet.chain {
+        core::ChainKind::Evm => "evm",
+        core::ChainKind::Svm => "svm",
+        core::ChainKind::Tempo => "tempo",
+    };
+    to_ruby(serde_json::json!({
+        "address": wallet.address,
+        "chain": chain_label,
+        "key": wallet.into_key(),
+    }))
 }
 
 // ── Extension init ──────────────────────────────────────────────────────────
@@ -2273,12 +2614,48 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     // ── Rpc ───────────────────────────────────────────────────
     let rpc = native.define_class("Rpc", ruby.class_object())?;
     rpc.define_method("call", method!(RpcApiClient::call, 1))?;
+    rpc.define_method(
+        "call_with_receipt",
+        method!(RpcApiClient::call_with_receipt, 1),
+    )?;
     rpc.define_method("set_networks", method!(RpcApiClient::set_networks, 1))?;
     rpc.define_method(
         "clear_cached_token",
         method!(RpcApiClient::clear_cached_token, 0),
     )?;
     rpc.define_method("current_token", method!(RpcApiClient::current_token, 0))?;
+    rpc.define_method("payment_address", method!(RpcApiClient::payment_address, 0))?;
+    rpc.define_method(
+        "gateway_authenticate",
+        method!(RpcApiClient::gateway_authenticate, 0),
+    )?;
+    rpc.define_method("gateway_credits", method!(RpcApiClient::gateway_credits, 1))?;
+    rpc.define_method(
+        "gateway_buy_credits",
+        method!(RpcApiClient::gateway_buy_credits, 1),
+    )?;
+    rpc.define_method("gateway_drip", method!(RpcApiClient::gateway_drip, 1))?;
+    rpc.define_method(
+        "gateway_drawdown_call",
+        method!(RpcApiClient::gateway_drawdown_call, 1),
+    )?;
+    rpc.define_method("mpp_open", method!(RpcApiClient::mpp_open, 1))?;
+    rpc.define_method("mpp_top_up", method!(RpcApiClient::mpp_top_up, 1))?;
+    rpc.define_method("mpp_close", method!(RpcApiClient::mpp_close, 1))?;
+    rpc.define_method("mpp_status", method!(RpcApiClient::mpp_status, 1))?;
+    rpc.define_method(
+        "mpp_session_call",
+        method!(RpcApiClient::mpp_session_call, 1),
+    )?;
+
+    // Wallet generation is a module function, not a client method: it needs no
+    // configured SDK and makes no network call. It goes on Native so the
+    // pure-Ruby wrapper in lib/quicknode_sdk.rb can wrap the result in an
+    // IndifferentHash, matching every client response.
+    native.define_singleton_method(
+        "generate_payment_wallet",
+        function!(generate_payment_wallet, 1),
+    )?;
 
     Ok(())
 }

@@ -11,8 +11,12 @@ This is one of four language bindings published from the same Rust core. See the
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+  - [Option A — Pass config directly](#option-a--pass-config-directly)
+  - [Option B — Load from environment (`from_env()`)](#option-b--load-from-environment-from_env)
+  - [Custom headers and `User-Agent`](#custom-headers-and-user-agent)
 - [Platform Support](#platform-support)
 - [API Reference](#api-reference)
+  - [Language conventions](#language-conventions)
   - [Admin Client](#admin-client)
     - [Endpoints](#endpoints)
     - [Endpoint Tags](#endpoint-tags)
@@ -48,6 +52,12 @@ This is one of four language bindings published from the same Rust core. See the
     - [Sets](#sets)
     - [Lists](#lists)
   - [SQL Client](#sql-client)
+  - [RPC & Tooling Access](#rpc--tooling-access)
+- [Crypto-micropayment lane (`rpc.call`)](#crypto-micropayment-lane-rpccall)
+  - [Wallet generation](#wallet-generation)
+  - [x402 credit drawdown (authenticate once, then draw one credit per call)](#x402-credit-drawdown-authenticate-once-then-draw-one-credit-per-call)
+    - [Testnet faucet](#testnet-faucet)
+  - [MPP payment channel (deposit once, then vouchers)](#mpp-payment-channel-deposit-once-then-vouchers)
 - [Error Handling](#error-handling)
 - [License](#license)
 
@@ -82,6 +92,10 @@ There are two ways to configure the SDK.
 # Python
 from quicknode_sdk import QuicknodeSdk, SdkFullConfig, HttpConfig
 qn = QuicknodeSdk(SdkFullConfig(api_key="your-key", http=HttpConfig(timeout_secs=30)))
+
+# api_key is optional: the crypto-micropayment lane pays per request instead, so
+# api_key=None builds a usable SDK. Every other client still needs one, and
+# from_env() always requires QN_SDK__API_KEY.
 ```
 
 ### Option B — Load from environment (`from_env()`)
@@ -1723,6 +1737,166 @@ construction; `refresh_margin_secs` (default 60) tunes how early the token is
 refreshed. Set `RpcConfig(endpoint_url=...)` to route every call to a custom
 HTTP URL by default (no JWT minted); a per-call `endpoint_url` overrides it.
 
+## Crypto-micropayment lane (`rpc.call`)
+
+Pay per RPC request with a stablecoin instead of a provisioned account + API key,
+against Quicknode's `x402.quicknode.com` and `mpp.quicknode.com` gateways. Configure
+it by setting `payment` on the RPC config; the SDK runs the `402` → sign → resend
+handshake for you. An API key is **not** required for this lane — build a keyless SDK.
+
+There are four payment paths. Two pay per request; two amortize one signature over many
+calls.
+
+| Path | Entry point | Gateway | Signs |
+|---|---|---|---|
+| Per-request x402 | `call` / `call_with_receipt` with `scheme="x402"` | x402 | once per call |
+| Per-request MPP charge | `call` / `call_with_receipt` with `scheme="mpp"` | mpp | once per call |
+| [x402 credit drawdown](#x402-credit-drawdown-authenticate-once-then-draw-one-credit-per-call) | `gateway_authenticate` → `gateway_drawdown_call` | x402 | once per session |
+| [MPP payment channel](#mpp-payment-channel-deposit-once-then-vouchers) | `mpp_open` → `mpp_session_call` | mpp | once per channel |
+
+The signer construction is derived from the scheme and pay network, never stated directly:
+**x402/EVM** signs an EIP-712 `TransferWithAuthorization`, **x402/Solana** an SPL
+`TransferChecked` in a v0 tx (the gateway sponsors gas), and **MPP/Tempo** a native Tempo
+transaction.
+
+`scheme` selects the gateway for `call` only. The `gateway_*` drawdown methods always use
+the x402 gateway and the `mpp_*` channel methods always use the MPP gateway, whatever
+`scheme` is set to.
+
+`PaymentConfig` fields:
+
+| Field | Meaning |
+|---|---|
+| `scheme` | `"x402"` (pay-per-request) or `"mpp"` (MPP charge; `"mpp-charge"` is accepted too) |
+| `key` | raw private key — EVM/Tempo: hex; Solana: base58 64-byte secret |
+| `pay_network` | CAIP-2 pay network, e.g. `eip155:84532`, `solana:5eykt4…` |
+| `asset` | token address/mint to pay in (matches the offered menu entry) |
+| `max_amount` | **required** spend ceiling in integer base units of `asset` |
+| `svm_rpc_url` | optional Solana RPC for x402/Solana payment-build reads (mint + blockhash) |
+| `base_url_override` | optional gateway base (testing) |
+
+`network` on the call is the **query** chain (gateway path slug), independent of the
+pay network. Use `call_with_receipt` to also get the settlement receipt (`reference` =
+settlement tx hash) — populated on the MPP lane, `null`/`None`/`nil` for x402.
+
+**Things to know:**
+
+- **Do not log your own `PaymentConfig`** — the `key` field is readable. The SDK
+  never prints it in its own errors/`Debug`, but a plain `print(config)` will show it.
+- **`max_amount` is integer base units of the selected asset.** The SDK skips any offered
+  entry above it and refuses to sign one — a guard against an overcharging gateway.
+- **`PaymentIndeterminateError` means the paid request was sent but the response was lost.**
+  You MAY have been charged — do **not** blindly retry.
+- **x402/Solana: one payment per call.** Building a payment reads the mint and a recent
+  blockhash from a Solana RPC. The default is a public RPC that **rate-limits
+  aggressively** — set `svm_rpc_url` to your own endpoint at any volume.
+
+```python
+import os
+from quicknode_sdk import QuicknodeSdk, SdkFullConfig, RpcConfig, PaymentConfig
+
+qn = QuicknodeSdk(SdkFullConfig(api_key=None, rpc=RpcConfig(payment=PaymentConfig(
+    scheme="x402",
+    key=os.environ["QN_PAYMENT_KEY"],
+    pay_network="eip155:84532",
+    asset="0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    max_amount="10000",
+))))
+resp = await qn.rpc.call_with_receipt("eth_blockNumber", [], "base-sepolia")
+print(resp["result"], resp["payment_receipt"])
+```
+
+### Wallet generation
+
+`generate_payment_wallet("evm")` creates a fresh keypair offline — no network call, no funds — for
+`"evm"`, `"svm"`, or `"tempo"`. The private key is returned **exactly once**, at
+generation; nothing in the SDK stores or re-derives it, so persist it immediately.
+
+```python
+from quicknode_sdk import generate_payment_wallet
+
+wallet = generate_payment_wallet("evm")
+print("fund this address:", wallet["address"])
+open("payment.key", "w").write(wallet["key"])  # returned exactly once
+```
+
+### x402 credit drawdown (authenticate once, then draw one credit per call)
+
+Cheaper per call than paying per request: one SIWE signature mints a session JWT, then
+each call draws a single credit from the account balance instead of signing a fresh
+settlement. Minting the session is free and moves no funds, so a host can re-authenticate
+transparently. Persist it between processes.
+
+Fund the payment wallet out of band — the testnet faucet below, or by sending funds to
+`payment_address()` directly. Credits are provisioned against the account gateway-side.
+
+EVM signers only: SIWE is an EIP-4361 construction, so an x402/Solana key errors here.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `payment_address()` | free, offline | the wallet address derived from the key |
+| `gateway_authenticate()` | free | a dict `{token, exp_unix, account_id}` |
+| `gateway_credits(session)` | free | a dict `{account_id, credits}` |
+| `gateway_drip(session)` | free (testnet) | a dict `{account_id, transaction_hash}` |
+| `gateway_drawdown_call(method, session, network, params=None)` | 1 credit | the JSON-RPC `result` |
+
+```python
+session = await qn.rpc.gateway_authenticate()
+balance = await qn.rpc.gateway_credits(session)
+print("credits:", balance["credits"])
+result = await qn.rpc.gateway_drawdown_call("eth_blockNumber", session, "base-sepolia")
+```
+
+A `token_expired` surfaces as an `ApiError` with status 401/403; re-authenticate and retry
+that call.
+
+#### Testnet faucet
+
+`gateway_drip` requests testnet tokens for the payment **wallet** on Base Sepolia. The
+gateway allows one drip per account, and it returns the on-chain funding transaction hash
+— not a credit balance.
+
+### MPP payment channel (deposit once, then vouchers)
+
+Open a payment channel by depositing into the escrow, then authorize each call with a
+cumulative voucher — one `ecrecover` server-side, no on-chain transaction per call.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `mpp_open(deposit)` | **moves funds** | the channel state dict |
+| `mpp_top_up(channel, additional_deposit)` | **moves funds** | the updated channel state |
+| `mpp_status(channel)` | **1 request unit** | a dict `{channel_id, accepted_cumulative, spent}` |
+| `mpp_session_call(method, network, channel, new_cumulative, params=None)` | 1 request unit | the JSON-RPC `result` |
+| `mpp_close(channel)` | settles on-chain | nothing — refunds the unused deposit |
+
+```python
+channel = await qn.rpc.mpp_open("1000000")        # persist this dict
+new_total = str(int(channel["cumulative_spent"]) + int(channel["per_call"]))
+result = await qn.rpc.mpp_session_call(
+    "eth_blockNumber", "base-sepolia", channel, new_total
+)
+# On success, store new_total as the channel's cumulative_spent.
+```
+
+**Things to know:**
+
+- **Persist the channel state.** The gateway exposes no read-only channel endpoint, so a
+  lost local record means opening (and funding) a new channel.
+- **`mpp_status` is not free.** The gateway prices every session POST as a chargeable
+  request and computes the balance from the *new* spend a voucher authorizes, so the
+  probe advances `cumulative_spent` by `per_call` exactly like a call. Re-persist the
+  advanced total. It raises `PaymentUnsupportedError` before any network I/O when the
+  channel has no room left for the probe.
+- **The lifecycle takes no query network.** A channel is scoped by the configured pay
+  network and asset, so one channel funds calls to every supported network. Only
+  `mpp_session_call` takes a network, because it routes an RPC method.
+- **Amounts are decimal strings, not numbers.** They are `u128` in the core; a Python int has no lossless `u128` conversion, so pass and store them as strings.
+- **Advance `cumulative_spent` only after a success.** A voucher authorizes the running total
+  *after* the call; re-presenting the current high-water mark authorizes zero and is
+  always refused with `insufficient-balance`.
+
+
+
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
@@ -1739,8 +1913,12 @@ subclass to branch on transport vs. API semantics.
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
 | `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
+| `PaymentError`       | base class for the crypto-micropayment lane                 | —                    |
+| `PaymentUnsupportedError` | no offered payment option matched your selector (or all were over `max_amount`/unsupported) | — |
+| `PaymentRejectedError` | the gateway rejected a signed payment (terminal, one resend only) | `status`, `body` |
+| `PaymentIndeterminateError` | paid request sent but response lost — MAY have been charged; do NOT blindly retry | — |
 
-Class names: Importable from `quicknode_sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`, `RpcError`.
+Class names: Importable from `quicknode_sdk`: `QuicknodeError`, `ConfigError`, `HttpError`, `TimeoutError`, `ConnectionError`, `ApiError`, `DecodeError`, `RpcError`, `PaymentError`, `PaymentUnsupportedError`, `PaymentRejectedError`, `PaymentIndeterminateError`.
 
 ```python
 # Python

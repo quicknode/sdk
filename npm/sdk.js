@@ -78,10 +78,20 @@ class TemplateArgs {
   }
 }
 
+// Translate module-level napi errors; wrapClient only handles clients.
+function generatePaymentWallet(chain) {
+  try {
+    return _index.generatePaymentWallet(chain);
+  } catch (e) {
+    throw errors.fromNapiError(e);
+  }
+}
+
 module.exports = {
   ..._index,
   QuicknodeSdk,
   TemplateArgs,
+  generatePaymentWallet,
   QuicknodeError: errors.QuicknodeError,
   ConfigError: errors.ConfigError,
   HttpError: errors.HttpError,
@@ -90,4 +100,8 @@ module.exports = {
   ApiError: errors.ApiError,
   DecodeError: errors.DecodeError,
   RpcError: errors.RpcError,
+  PaymentError: errors.PaymentError,
+  PaymentUnsupportedError: errors.PaymentUnsupportedError,
+  PaymentRejectedError: errors.PaymentRejectedError,
+  PaymentIndeterminateError: errors.PaymentIndeterminateError,
 };

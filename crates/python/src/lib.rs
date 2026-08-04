@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use pyo3_stub_gen::{
     define_stub_info_gatherer,
-    derive::{gen_stub_pyclass, gen_stub_pymethods},
+    derive::{gen_stub_pyclass, gen_stub_pyfunction, gen_stub_pymethods},
 };
 use quicknode_sdk as core;
 
@@ -2568,6 +2568,51 @@ impl RpcApiClient {
         })
     }
 
+    /// Like `call`, but also returns the crypto-micropayment settlement
+    /// receipt. Returns a dict `{"result": <json>, "payment_receipt": <dict|None>}`.
+    /// `payment_receipt` is a dict `{method, status, timestamp, reference}` on
+    /// the MPP payment lane and `None` for x402 and every non-payment lane
+    /// (where this behaves exactly like `call`).
+    #[pyo3(signature = (method, params=None, network=None, endpoint_url=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn call_with_receipt<'py>(
+        &self,
+        py: Python<'py>,
+        method: String,
+        params: Option<Bound<'py, PyAny>>,
+        network: Option<String>,
+        endpoint_url: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params_value = match params {
+            Some(obj) => Some(pythonize::depythonize(&obj).map_err(errors::map_pythonize_err)?),
+            None => None,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let resp = client
+                .call_with_receipt(&method, params_value, network, endpoint_url)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            // Convert the core response to a plain Python dict.
+            let json = serde_json::json!({
+                "result": resp.result,
+                "payment_receipt": resp.payment_receipt.map(|r| serde_json::json!({
+                    "method": r.method,
+                    "status": r.status,
+                    "timestamp": r.timestamp,
+                    "reference": r.reference,
+                })),
+            });
+            Python::attach(|py| {
+                pythonize::pythonize(py, &json)
+                    .map(pyo3::Bound::unbind)
+                    .map_err(errors::map_pythonize_err)
+            })
+        })
+    }
+
     /// Seeds the per-network URL map for multichain routing (network key ->
     /// full http_url), typically built from
     /// `admin.get_endpoint_urls(...).multichain_urls`.
@@ -2588,6 +2633,407 @@ impl RpcApiClient {
     fn current_token(&self) -> Option<core::CachedToken> {
         self.inner.current_token()
     }
+
+    // Payment amounts use decimal strings because PyO3 cannot convert u128.
+    // Session and channel state uses dicts for persistence.
+
+    /// The configured payment wallet's on-chain address (EVM/Tempo `0x…` hex,
+    /// Solana base58), derived offline from the key with no network round trip.
+    fn payment_address(&self) -> PyResult<String> {
+        self.inner.payment_address().map_err(errors::map_sdk_err)
+    }
+
+    /// Authenticates against the x402 gateway with a SIWX message and returns
+    /// the session as a dict `{token, exp_unix, account_id}`. Free — no funds
+    /// move. Persist the dict and pass it back to the `gateway_*` methods.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn gateway_authenticate<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let session = client
+                .gateway_authenticate()
+                .await
+                .map_err(errors::map_sdk_err)?;
+            json_to_py(&gateway_session_json(&session))
+        })
+    }
+
+    /// Reads the account's current x402 credit balance. Returns a dict
+    /// `{account_id, credits}`. `session` is a dict from `gateway_authenticate`.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn gateway_credits<'py>(
+        &self,
+        py: Python<'py>,
+        session: &Bound<'py, PyAny>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let session = depythonize_session(session)?;
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let bal = client
+                .gateway_credits(&session)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            json_to_py(&serde_json::json!({
+                "account_id": bal.account_id,
+                "credits": bal.credits,
+            }))
+        })
+    }
+
+    /// Buys a block of credits, settling the gateway's offer with the same
+    /// signer construction as the per-request lane. Returns the post-purchase
+    /// balance dict `{account_id, credits}`. Single-attempt: a paid lane never
+    /// blind-retries.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn gateway_buy_credits<'py>(
+        &self,
+        py: Python<'py>,
+        session: &Bound<'py, PyAny>,
+        network: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let session = depythonize_session(session)?;
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let bal = client
+                .gateway_buy_credits(&session, &network)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            json_to_py(&serde_json::json!({
+                "account_id": bal.account_id,
+                "credits": bal.credits,
+            }))
+        })
+    }
+
+    /// Requests testnet tokens from the x402 faucet. Returns the funding
+    /// transaction as a dict `{account_id, transaction_hash}` — NOT a balance;
+    /// call `gateway_credits` afterwards for that. Allowed once per account.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn gateway_drip<'py>(
+        &self,
+        py: Python<'py>,
+        session: &Bound<'py, PyAny>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let session = depythonize_session(session)?;
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let receipt = client
+                .gateway_drip(&session)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            json_to_py(&serde_json::json!({
+                "account_id": receipt.account_id,
+                "transaction_hash": receipt.transaction_hash,
+            }))
+        })
+    }
+
+    /// Makes one x402 drawdown JSON-RPC call with the session as a Bearer
+    /// token, drawing 1 credit on success. Returns the unwrapped JSON-RPC
+    /// `result`. Single-attempt; re-authenticate on a 401/403 `ApiError`.
+    #[pyo3(signature = (method, session, network, params=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn gateway_drawdown_call<'py>(
+        &self,
+        py: Python<'py>,
+        method: String,
+        session: &Bound<'py, PyAny>,
+        network: String,
+        params: Option<Bound<'py, PyAny>>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let session = depythonize_session(session)?;
+        let params_value = match params {
+            Some(obj) => Some(pythonize::depythonize(&obj).map_err(errors::map_pythonize_err)?),
+            None => None,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let result = client
+                .gateway_drawdown_call(&method, params_value, &network, &session)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            json_to_py(&result)
+        })
+    }
+
+    /// Opens an MPP payment channel by depositing `deposit` base units (a
+    /// decimal string) into the escrow. Returns the channel state dict — persist
+    /// it; the gateway has no read-only channel endpoint, so a lost record means
+    /// opening a new channel. Moves real funds; single-attempt.
+    ///
+    /// Takes no network: the channel is scoped by the configured pay network and
+    /// asset, so one channel funds calls to every supported network.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn mpp_open<'py>(&self, py: Python<'py>, deposit: &str) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let deposit = parse_base_units(deposit, "deposit")?;
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let channel = client
+                .mpp_open(deposit)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            json_to_py(&channel_state_json(&channel))
+        })
+    }
+
+    /// Adds `additional_deposit` base units (a decimal string) to an open
+    /// channel. Returns the updated channel state dict. Moves real funds;
+    /// single-attempt.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn mpp_top_up<'py>(
+        &self,
+        py: Python<'py>,
+        channel: &Bound<'py, PyAny>,
+        additional_deposit: &str,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let channel = depythonize_channel(channel)?;
+        let extra = parse_base_units(additional_deposit, "additional_deposit")?;
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let updated = client
+                .mpp_top_up(&channel, extra)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            json_to_py(&channel_state_json(&updated))
+        })
+    }
+
+    /// Cooperatively closes a channel: settles the final cumulative spend
+    /// on-chain and refunds the unused deposit. Single-attempt.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn mpp_close<'py>(
+        &self,
+        py: Python<'py>,
+        channel: &Bound<'py, PyAny>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let channel = depythonize_channel(channel)?;
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .mpp_close(&channel)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            Python::attach(|py| Ok(py.None()))
+        })
+    }
+
+    /// Fetches the gateway's view of the channel as a dict `{channel_id,
+    /// accepted_cumulative, spent}` (amounts are decimal strings).
+    ///
+    /// **This costs one request unit** and advances the voucher by `per_call`,
+    /// exactly like a session call — persist the advanced `cumulative_spent`.
+    /// Raises `PaymentUnsupportedError` before any network I/O when the channel
+    /// has no room left for the probe.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn mpp_status<'py>(
+        &self,
+        py: Python<'py>,
+        channel: &Bound<'py, PyAny>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let channel = depythonize_channel(channel)?;
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let st = client
+                .mpp_status(&channel)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            json_to_py(&serde_json::json!({
+                "channel_id": st.channel_id,
+                "accepted_cumulative": st.accepted_cumulative.to_string(),
+                "spent": st.spent.to_string(),
+            }))
+        })
+    }
+
+    /// Makes one MPP session-lane JSON-RPC call, authorizing it with a
+    /// cumulative voucher for `new_cumulative` (a decimal string: the running
+    /// total AFTER this call). Returns the unwrapped JSON-RPC `result`.
+    /// Single-attempt; advance the persisted `cumulative_spent` on success.
+    #[pyo3(signature = (method, network, channel, new_cumulative, params=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
+    ))]
+    fn mpp_session_call<'py>(
+        &self,
+        py: Python<'py>,
+        method: String,
+        network: String,
+        channel: &Bound<'py, PyAny>,
+        new_cumulative: &str,
+        params: Option<Bound<'py, PyAny>>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let channel = depythonize_channel(channel)?;
+        let new_cumulative = parse_base_units(new_cumulative, "new_cumulative")?;
+        let params_value = match params {
+            Some(obj) => Some(pythonize::depythonize(&obj).map_err(errors::map_pythonize_err)?),
+            None => None,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let result = client
+                .mpp_session_call(&method, params_value, &network, &channel, new_cumulative)
+                .await
+                .map_err(errors::map_sdk_err)?;
+            json_to_py(&result)
+        })
+    }
+}
+
+// Payment types cross as dicts because they contain enums, secrets, or u128
+// fields that PyO3 cannot expose directly.
+
+// Keep u128 amounts as decimal strings and reject malformed values.
+fn config_err(message: String) -> PyErr {
+    errors::map_sdk_err(core::errors::SdkError::Config(message))
+}
+
+fn parse_base_units(raw: &str, field: &str) -> PyResult<u128> {
+    raw.trim().parse::<u128>().map_err(|_| {
+        config_err(format!(
+            "{field} must be a decimal base-unit amount as a string, got {raw:?}"
+        ))
+    })
+}
+
+fn json_to_py(value: &serde_json::Value) -> PyResult<Py<PyAny>> {
+    Python::attach(|py| {
+        pythonize::pythonize(py, value)
+            .map(pyo3::Bound::unbind)
+            .map_err(errors::map_pythonize_err)
+    })
+}
+
+fn gateway_session_json(session: &core::GatewaySession) -> serde_json::Value {
+    serde_json::json!({
+        "token": session.token,
+        "exp_unix": session.exp_unix,
+        "account_id": session.account_id,
+    })
+}
+
+fn depythonize_session(obj: &Bound<'_, PyAny>) -> PyResult<core::GatewaySession> {
+    let value: serde_json::Value =
+        pythonize::depythonize(obj).map_err(errors::map_pythonize_err)?;
+    serde_json::from_value(value).map_err(|e| {
+        errors::map_sdk_err(core::errors::SdkError::Config(format!(
+            "session must be a dict from gateway_authenticate ({{token, exp_unix, account_id}}): {e}"
+        )))
+    })
+}
+
+fn channel_state_json(channel: &core::ChannelState) -> serde_json::Value {
+    serde_json::json!({
+        "channel_id": channel.channel_id,
+        "token": channel.token,
+        "payee": channel.payee,
+        "salt": channel.salt,
+        "authorized_signer": channel.authorized_signer,
+        "escrow_contract": channel.escrow_contract,
+        "deposit": channel.deposit.to_string(),
+        "cumulative_spent": channel.cumulative_spent.to_string(),
+        "per_call": channel.per_call.to_string(),
+        "chain_id": channel.chain_id,
+    })
+}
+
+// Accept string output and integer input for channel amounts.
+fn channel_amount(obj: &serde_json::Value, field: &str) -> PyResult<u128> {
+    let raw = obj
+        .get(field)
+        .ok_or_else(|| config_err(format!("channel is missing {field}")))?;
+    match raw {
+        serde_json::Value::String(s) => parse_base_units(s, field),
+        serde_json::Value::Number(n) => n
+            .as_u128()
+            .ok_or_else(|| config_err(format!("channel {field} must be a non-negative integer"))),
+        other => Err(config_err(format!(
+            "channel {field} must be a decimal string or integer, got {other}"
+        ))),
+    }
+}
+
+fn channel_str(obj: &serde_json::Value, field: &str) -> PyResult<String> {
+    obj.get(field)
+        .and_then(serde_json::Value::as_str)
+        .map(String::from)
+        .ok_or_else(|| config_err(format!("channel is missing {field}")))
+}
+
+fn depythonize_channel(obj: &Bound<'_, PyAny>) -> PyResult<core::ChannelState> {
+    let v: serde_json::Value = pythonize::depythonize(obj).map_err(errors::map_pythonize_err)?;
+    if !v.is_object() {
+        return Err(config_err(
+            "channel must be a dict from mpp_open/mpp_top_up".to_string(),
+        ));
+    }
+    Ok(core::ChannelState {
+        channel_id: channel_str(&v, "channel_id")?,
+        token: channel_str(&v, "token")?,
+        payee: channel_str(&v, "payee")?,
+        salt: channel_str(&v, "salt")?,
+        authorized_signer: channel_str(&v, "authorized_signer")?,
+        escrow_contract: channel_str(&v, "escrow_contract")?,
+        deposit: channel_amount(&v, "deposit")?,
+        cumulative_spent: channel_amount(&v, "cumulative_spent")?,
+        per_call: channel_amount(&v, "per_call")?,
+        chain_id: v
+            .get("chain_id")
+            .and_then(serde_json::Value::as_u64)
+            .ok_or_else(|| config_err("channel is missing chain_id".to_string()))?,
+    })
+}
+
+/// Generates a fresh payment keypair for `chain` (`"evm"`, `"svm"`, or
+/// `"tempo"`). Returns a dict `{address, chain, key}` where `key` is the raw
+/// private key in the format the payment config's `key` accepts.
+///
+/// The key is returned exactly once, at generation: nothing in the SDK stores or
+/// re-derives it, so persist it before discarding the dict. Randomness comes
+/// from the OS CSPRNG.
+#[gen_stub_pyfunction]
+#[pyfunction]
+fn generate_payment_wallet(chain: &str) -> PyResult<Py<PyAny>> {
+    let kind = match chain.to_ascii_lowercase().as_str() {
+        "evm" => core::ChainKind::Evm,
+        "svm" | "solana" => core::ChainKind::Svm,
+        "tempo" => core::ChainKind::Tempo,
+        other => {
+            return Err(errors::map_sdk_err(core::errors::SdkError::Config(
+                format!(
+                    "unknown payment chain {other:?} (expected \"evm\", \"svm\", or \"tempo\")"
+                ),
+            )))
+        }
+    };
+    let wallet = core::generate_payment_wallet(kind).map_err(errors::map_sdk_err)?;
+    let chain_label = match wallet.chain {
+        core::ChainKind::Evm => "evm",
+        core::ChainKind::Svm => "svm",
+        core::ChainKind::Tempo => "tempo",
+    };
+    json_to_py(&serde_json::json!({
+        "address": wallet.address,
+        "chain": chain_label,
+        "key": wallet.into_key(),
+    }))
 }
 
 // ── Module ─────────────────────────────────────────────────────
@@ -2595,6 +3041,7 @@ impl RpcApiClient {
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     errors::add_to_module(m)?;
+    m.add_function(wrap_pyfunction!(generate_payment_wallet, m)?)?;
     m.add_class::<QuicknodeSdk>()?;
     m.add_class::<AdminApiClient>()?;
     m.add_class::<core::admin::GetEndpointsRequest>()?;
@@ -2679,6 +3126,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::AccountSubscription>()?;
     m.add_class::<core::admin::AccountInfo>()?;
     m.add_class::<core::admin::AccountInfoResponse>()?;
+    m.add_class::<core::admin::ApiCredit>()?;
+    m.add_class::<core::admin::GetApiCreditsResponse>()?;
     m.add_class::<core::admin::InvoiceLine>()?;
     m.add_class::<core::admin::Invoice>()?;
     m.add_class::<core::admin::ListInvoicesData>()?;
@@ -2737,6 +3186,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::KvStoreConfig>()?;
     m.add_class::<core::SqlConfig>()?;
     m.add_class::<core::RpcConfig>()?;
+    m.add_class::<core::PaymentConfig>()?;
     m.add_class::<core::CachedToken>()?;
     m.add_class::<core::SdkFullConfig>()?;
     m.add_class::<RpcApiClient>()?;

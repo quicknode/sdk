@@ -592,3 +592,4 @@ module.exports.RpcApiClient = nativeBinding.RpcApiClient
 module.exports.SqlApiClient = nativeBinding.SqlApiClient
 module.exports.StreamsApiClient = nativeBinding.StreamsApiClient
 module.exports.WebhooksApiClient = nativeBinding.WebhooksApiClient
+module.exports.generatePaymentWallet = nativeBinding.generatePaymentWallet

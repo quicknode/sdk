@@ -1,6 +1,11 @@
 module QuicknodeSdk
   def self.wrap: (untyped v) -> untyped
 
+  # Generates a fresh payment keypair for "evm", "svm", or "tempo". Offline: no
+  # network call. Returns {address:, chain:, key:} — `key` is the raw private
+  # key, returned exactly once at generation.
+  def self.generate_payment_wallet: (chain: String) -> untyped
+
   class Error < StandardError
   end
 
@@ -29,6 +34,35 @@ module QuicknodeSdk
     attr_reader code: Integer
     attr_reader message: String
   end
+
+  # Payment-lane errors. PaymentIndeterminateError means the paid request was
+  # sent but its response was lost — do not retry (may have been charged).
+  class PaymentError < Error
+  end
+
+  class PaymentUnsupportedError < PaymentError
+  end
+
+  class PaymentRejectedError < PaymentError
+    attr_reader status: Integer
+    attr_reader body: String
+  end
+
+  class PaymentIndeterminateError < PaymentError
+  end
+
+  # The `rpc: {payment: {...}}` sub-hash accepted by SDK.from_config. An alias
+  # rather than a class because the config crosses the boundary as a plain
+  # Hash, not a wrapper object.
+  type payment_config = {
+    scheme: String,
+    key: String,
+    pay_network: String,
+    asset: String,
+    max_amount: String,
+    ?svm_rpc_url: String,
+    ?base_url_override: String
+  }
 
   class SDK
     def self.from_env: () -> SDK
@@ -183,8 +217,25 @@ module QuicknodeSdk
     def initialize: (untyped native) -> void
 
     def call: (method: String, ?params: untyped, ?network: String, ?endpoint_url: String) -> untyped
+    def call_with_receipt: (method: String, ?params: untyped, ?network: String, ?endpoint_url: String) -> untyped
     def set_networks: (networks: Hash[String, String]) -> void
     def clear_cached_token: () -> void
     def current_token: () -> untyped
+
+    # Payment lanes. Base-unit amounts are decimal Strings, not Integers: they
+    # are u128 in the core and magnus has no u128 conversion. `session` and
+    # `channel` are the Hashes returned by gateway_authenticate and
+    # mpp_open/mpp_top_up — persist them and hand them straight back.
+    def payment_address: () -> String
+    def gateway_authenticate: () -> untyped
+    def gateway_credits: (session: untyped) -> untyped
+    def gateway_buy_credits: (session: untyped, network: String) -> untyped
+    def gateway_drip: (session: untyped) -> untyped
+    def gateway_drawdown_call: (method: String, session: untyped, network: String, ?params: untyped) -> untyped
+    def mpp_open: (deposit: String) -> untyped
+    def mpp_top_up: (channel: untyped, additional_deposit: String) -> untyped
+    def mpp_close: (channel: untyped) -> void
+    def mpp_status: (channel: untyped) -> untyped
+    def mpp_session_call: (method: String, network: String, channel: untyped, new_cumulative: String, ?params: untyped) -> untyped
   end
 end

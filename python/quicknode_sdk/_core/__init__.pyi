@@ -150,6 +150,7 @@ __all__ = [
     "PageInfo",
     "Pagination",
     "Payment",
+    "PaymentConfig",
     "PostgresAttributes",
     "QueryResponse",
     "QueryStatistics",
@@ -225,6 +226,7 @@ __all__ = [
     "XrplWalletFilterByListArgs",
     "XrplWalletFilterByListTemplate",
     "XrplWalletFilterTemplate",
+    "generate_payment_wallet",
 ]
 
 @typing.final
@@ -5060,6 +5062,112 @@ class Payment:
         """
 
 @typing.final
+class PaymentConfig:
+    r"""
+    Binding-facing crypto-micropayment configuration. **Plain data** — all
+    fields are strings so this can be a `napi(object)` / `pyclass` / Ruby hash;
+    it is converted to the internal `enum Signer` + resolved config at the Rust
+    boundary. The private `key` field stays readable to the caller, but the
+    SDK's own `Debug` redacts it (below) so an SDK log line or panic can't leak
+    it.
+    
+    **Do not log your own `PaymentConfig`** — `println!("{config:?}")` on the
+    derived-Debug *binding* object (napi/pyclass/hash) still shows the raw key.
+    Only the SDK's internal rendering is redacted.
+    """
+    @property
+    def scheme(self) -> builtins.str:
+        r"""
+        Payment protocol: `"x402"` (pay-per-request) or `"mpp"` (MPP charge).
+        """
+    @scheme.setter
+    def scheme(self, value: builtins.str) -> None:
+        r"""
+        Payment protocol: `"x402"` (pay-per-request) or `"mpp"` (MPP charge).
+        """
+    @property
+    def key(self) -> builtins.str:
+        r"""
+        Raw private key. EVM/Tempo: hex (with or without `0x`). Solana: base58
+        64-byte secret key.
+        """
+    @key.setter
+    def key(self, value: builtins.str) -> None:
+        r"""
+        Raw private key. EVM/Tempo: hex (with or without `0x`). Solana: base58
+        64-byte secret key.
+        """
+    @property
+    def pay_network(self) -> builtins.str:
+        r"""
+        CAIP-2 pay network selector, e.g. `"eip155:84532"` (x402/EVM),
+        `"solana:5eykt4…"` (x402/Solana), or `"eip155:42431"` (MPP/Tempo).
+        """
+    @pay_network.setter
+    def pay_network(self, value: builtins.str) -> None:
+        r"""
+        CAIP-2 pay network selector, e.g. `"eip155:84532"` (x402/EVM),
+        `"solana:5eykt4…"` (x402/Solana), or `"eip155:42431"` (MPP/Tempo).
+        """
+    @property
+    def asset(self) -> builtins.str:
+        r"""
+        Asset (token) address/mint to pay in. Matches the offered menu entry's
+        `asset`. EVM: token contract hex. Solana: mint base58.
+        """
+    @asset.setter
+    def asset(self, value: builtins.str) -> None:
+        r"""
+        Asset (token) address/mint to pay in. Matches the offered menu entry's
+        `asset`. EVM: token contract hex. Solana: mint base58.
+        """
+    @property
+    def max_amount(self) -> builtins.str:
+        r"""
+        Spend ceiling in base units of `asset` (integer string). **Required.**
+        The selector skips any offered entry above this, and the driver refuses
+        to sign one — guarding against a buggy/hostile gateway overcharging a
+        custodied key.
+        """
+    @max_amount.setter
+    def max_amount(self, value: builtins.str) -> None:
+        r"""
+        Spend ceiling in base units of `asset` (integer string). **Required.**
+        The selector skips any offered entry above this, and the driver refuses
+        to sign one — guarding against a buggy/hostile gateway overcharging a
+        custodied key.
+        """
+    @property
+    def svm_rpc_url(self) -> typing.Optional[builtins.str]:
+        r"""
+        Explicit Solana RPC URL for x402/Solana payment-build reads: the mint
+        (for its decimals and owning token program) and a recent blockhash, so
+        two reads per payment. Optional; when unset the SDK falls back to a
+        public Solana RPC matching the pay cluster. **Set this at any real
+        volume** — the public default rate-limits aggressively.
+        """
+    @svm_rpc_url.setter
+    def svm_rpc_url(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Explicit Solana RPC URL for x402/Solana payment-build reads: the mint
+        (for its decimals and owning token program) and a recent blockhash, so
+        two reads per payment. Optional; when unset the SDK falls back to a
+        public Solana RPC matching the pay cluster. **Set this at any real
+        volume** — the public default rate-limits aggressively.
+        """
+    @property
+    def base_url_override(self) -> typing.Optional[builtins.str]:
+        r"""
+        Test-only gateway base override (points the lane at a mock gateway).
+        """
+    @base_url_override.setter
+    def base_url_override(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Test-only gateway base override (points the lane at a mock gateway).
+        """
+    def __new__(cls, scheme: builtins.str, key: builtins.str, pay_network: builtins.str, asset: builtins.str, max_amount: builtins.str, svm_rpc_url: typing.Optional[builtins.str] = None, base_url_override: typing.Optional[builtins.str] = None) -> PaymentConfig: ...
+
+@typing.final
 class PostgresAttributes:
     r"""
     Configuration for delivering stream batches to a PostgreSQL database.
@@ -5448,6 +5556,14 @@ class RpcApiClient:
         mutually exclusive). Returns the JSON-RPC `result`; a JSON-RPC error is
         raised as `RpcError`.
         """
+    def call_with_receipt(self, method: builtins.str, params: typing.Optional[typing.Any] = None, network: typing.Optional[builtins.str] = None, endpoint_url: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Like `call`, but also returns the crypto-micropayment settlement
+        receipt. Returns a dict `{"result": <json>, "payment_receipt": <dict|None>}`.
+        `payment_receipt` is a dict `{method, status, timestamp, reference}` on
+        the MPP payment lane and `None` for x402 and every non-payment lane
+        (where this behaves exactly like `call`).
+        """
     def set_networks(self, networks: typing.Mapping[builtins.str, builtins.str]) -> None:
         r"""
         Seeds the per-network URL map for multichain routing (network key ->
@@ -5464,6 +5580,79 @@ class RpcApiClient:
         Returns a snapshot of the currently cached session token, or `None` if
         no token has been minted or seeded yet. Hosts use this to persist the
         token between processes.
+        """
+    def payment_address(self) -> builtins.str:
+        r"""
+        The configured payment wallet's on-chain address (EVM/Tempo `0x…` hex,
+        Solana base58), derived offline from the key with no network round trip.
+        """
+    def gateway_authenticate(self) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Authenticates against the x402 gateway with a SIWX message and returns
+        the session as a dict `{token, exp_unix, account_id}`. Free — no funds
+        move. Persist the dict and pass it back to the `gateway_*` methods.
+        """
+    def gateway_credits(self, session: typing.Any) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Reads the account's current x402 credit balance. Returns a dict
+        `{account_id, credits}`. `session` is a dict from `gateway_authenticate`.
+        """
+    def gateway_buy_credits(self, session: typing.Any, network: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Buys a block of credits, settling the gateway's offer with the same
+        signer construction as the per-request lane. Returns the post-purchase
+        balance dict `{account_id, credits}`. Single-attempt: a paid lane never
+        blind-retries.
+        """
+    def gateway_drip(self, session: typing.Any) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Requests testnet tokens from the x402 faucet. Returns the funding
+        transaction as a dict `{account_id, transaction_hash}` — NOT a balance;
+        call `gateway_credits` afterwards for that. Allowed once per account.
+        """
+    def gateway_drawdown_call(self, method: builtins.str, session: typing.Any, network: builtins.str, params: typing.Optional[typing.Any] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Makes one x402 drawdown JSON-RPC call with the session as a Bearer
+        token, drawing 1 credit on success. Returns the unwrapped JSON-RPC
+        `result`. Single-attempt; re-authenticate on a 401/403 `ApiError`.
+        """
+    def mpp_open(self, deposit: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Opens an MPP payment channel by depositing `deposit` base units (a
+        decimal string) into the escrow. Returns the channel state dict — persist
+        it; the gateway has no read-only channel endpoint, so a lost record means
+        opening a new channel. Moves real funds; single-attempt.
+        
+        Takes no network: the channel is scoped by the configured pay network and
+        asset, so one channel funds calls to every supported network.
+        """
+    def mpp_top_up(self, channel: typing.Any, additional_deposit: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Adds `additional_deposit` base units (a decimal string) to an open
+        channel. Returns the updated channel state dict. Moves real funds;
+        single-attempt.
+        """
+    def mpp_close(self, channel: typing.Any) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Cooperatively closes a channel: settles the final cumulative spend
+        on-chain and refunds the unused deposit. Single-attempt.
+        """
+    def mpp_status(self, channel: typing.Any) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Fetches the gateway's view of the channel as a dict `{channel_id,
+        accepted_cumulative, spent}` (amounts are decimal strings).
+        
+        **This costs one request unit** and advances the voucher by `per_call`,
+        exactly like a session call — persist the advanced `cumulative_spent`.
+        Raises `PaymentUnsupportedError` before any network I/O when the channel
+        has no room left for the probe.
+        """
+    def mpp_session_call(self, method: builtins.str, network: builtins.str, channel: typing.Any, new_cumulative: builtins.str, params: typing.Optional[typing.Any] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
+        r"""
+        Makes one MPP session-lane JSON-RPC call, authorizing it with a
+        cumulative voucher for `new_cumulative` (a decimal string: the running
+        total AFTER this call). Returns the unwrapped JSON-RPC `result`.
+        Single-attempt; advance the persisted `cumulative_spent` on success.
         """
 
 @typing.final
@@ -5534,7 +5723,35 @@ class RpcConfig:
         a `network` resolves the target URL here. Optional; the default-network
         call path needs no map.
         """
-    def __new__(cls, endpoint_url: typing.Optional[builtins.str] = None, seed: typing.Optional[CachedToken] = None, refresh_margin_secs: typing.Optional[builtins.int] = None, networks: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None) -> RpcConfig: ...
+    @property
+    def payment(self) -> typing.Optional[PaymentConfig]:
+        r"""
+        Crypto-micropayment lane. When set, `rpc.call` pays per request with a
+        stablecoin against Quicknode's x402/MPP gateways instead of using the
+        account API key + session JWT. `#[serde(skip)]` so `from_env` can never
+        populate it — an env-derived private key is exactly what we don't want;
+        callers must pass this programmatically. The field is always present
+        (plain data), but the payment lane is only wired into `rpc.call` when a
+        crypto feature (`payments`/`payments-svm`/`payments-tempo`) is enabled;
+        built without any of them, a set `payment` is ignored and `rpc.call`
+        keeps its normal tooling-JWT behavior. The precompiled Python/Node/Ruby
+        packages always ship with the payment features on.
+        """
+    @payment.setter
+    def payment(self, value: typing.Optional[PaymentConfig]) -> None:
+        r"""
+        Crypto-micropayment lane. When set, `rpc.call` pays per request with a
+        stablecoin against Quicknode's x402/MPP gateways instead of using the
+        account API key + session JWT. `#[serde(skip)]` so `from_env` can never
+        populate it — an env-derived private key is exactly what we don't want;
+        callers must pass this programmatically. The field is always present
+        (plain data), but the payment lane is only wired into `rpc.call` when a
+        crypto feature (`payments`/`payments-svm`/`payments-tempo`) is enabled;
+        built without any of them, a set `payment` is ignored and `rpc.call`
+        keeps its normal tooling-JWT behavior. The precompiled Python/Node/Ruby
+        packages always ship with the payment features on.
+        """
+    def __new__(cls, endpoint_url: typing.Optional[builtins.str] = None, seed: typing.Optional[CachedToken] = None, refresh_margin_secs: typing.Optional[builtins.int] = None, networks: typing.Optional[typing.Mapping[builtins.str, builtins.str]] = None, payment: typing.Optional[PaymentConfig] = None) -> RpcConfig: ...
 
 @typing.final
 class S3Attributes:
@@ -5646,9 +5863,29 @@ class S3Attributes:
 @typing.final
 class SdkFullConfig:
     @property
-    def api_key(self) -> builtins.str: ...
+    def api_key(self) -> typing.Optional[builtins.str]:
+        r"""
+        Account API key. **Optional** so a keyless SDK can be built for the
+        crypto-micropayment lane (`rpc.call` with `RpcConfig.payment`). When
+        absent, no `x-api-key` header is installed: the payment lane works, while
+        the keyed surfaces (admin/streams/webhooks/kvstore/sql and tooling-JWT
+        `rpc.call`) send un-authenticated requests and the gateway rejects them
+        (surfacing as an `ApiError`, typically 401). `from_env` still requires
+        the key (validated in `from_config`) — only programmatic construction
+        may omit it.
+        """
     @api_key.setter
-    def api_key(self, value: builtins.str) -> None: ...
+    def api_key(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Account API key. **Optional** so a keyless SDK can be built for the
+        crypto-micropayment lane (`rpc.call` with `RpcConfig.payment`). When
+        absent, no `x-api-key` header is installed: the payment lane works, while
+        the keyed surfaces (admin/streams/webhooks/kvstore/sql and tooling-JWT
+        `rpc.call`) send un-authenticated requests and the gateway rejects them
+        (surfacing as an `ApiError`, typically 401). `from_env` still requires
+        the key (validated in `from_config`) — only programmatic construction
+        may omit it.
+        """
     @property
     def http(self) -> typing.Optional[HttpConfig]: ...
     @http.setter
@@ -5677,7 +5914,7 @@ class SdkFullConfig:
     def rpc(self) -> typing.Optional[RpcConfig]: ...
     @rpc.setter
     def rpc(self, value: typing.Optional[RpcConfig]) -> None: ...
-    def __new__(cls, api_key: builtins.str, http: typing.Optional[HttpConfig] = None, admin: typing.Optional[AdminConfig] = None, streams: typing.Optional[StreamsConfig] = None, webhooks: typing.Optional[WebhooksConfig] = None, kvstore: typing.Optional[KvStoreConfig] = None, sql: typing.Optional[SqlConfig] = None, rpc: typing.Optional[RpcConfig] = None) -> SdkFullConfig: ...
+    def __new__(cls, api_key: typing.Optional[builtins.str] = None, http: typing.Optional[HttpConfig] = None, admin: typing.Optional[AdminConfig] = None, streams: typing.Optional[StreamsConfig] = None, webhooks: typing.Optional[WebhooksConfig] = None, kvstore: typing.Optional[KvStoreConfig] = None, sql: typing.Optional[SqlConfig] = None, rpc: typing.Optional[RpcConfig] = None) -> SdkFullConfig: ...
 
 @typing.final
 class SecurityOption:
@@ -7533,4 +7770,15 @@ class XrplWalletFilterTemplate:
         XRPL wallet addresses to match against.
         """
     def __new__(cls, wallets: typing.Sequence[builtins.str]) -> XrplWalletFilterTemplate: ...
+
+def generate_payment_wallet(chain: builtins.str) -> typing.Any:
+    r"""
+    Generates a fresh payment keypair for `chain` (`"evm"`, `"svm"`, or
+    `"tempo"`). Returns a dict `{address, chain, key}` where `key` is the raw
+    private key in the format the payment config's `key` accepts.
+    
+    The key is returned exactly once, at generation: nothing in the SDK stores or
+    re-derives it, so persist it before discarding the dict. Randomness comes
+    from the OS CSPRNG.
+    """
 

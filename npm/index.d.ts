@@ -1367,6 +1367,55 @@ export interface Payment {
   marketplaceAmount?: string
 }
 
+/**
+ * Binding-facing crypto-micropayment configuration. **Plain data** — all
+ * fields are strings so this can be a `napi(object)` / `pyclass` / Ruby hash;
+ * it is converted to the internal `enum Signer` + resolved config at the Rust
+ * boundary. The private `key` field stays readable to the caller, but the
+ * SDK's own `Debug` redacts it (below) so an SDK log line or panic can't leak
+ * it.
+ *
+ * **Do not log your own `PaymentConfig`** — `println!("{config:?}")` on the
+ * derived-Debug *binding* object (napi/pyclass/hash) still shows the raw key.
+ * Only the SDK's internal rendering is redacted.
+ */
+export interface PaymentConfig {
+  /** Payment protocol: `"x402"` (pay-per-request) or `"mpp"` (MPP charge). */
+  scheme: string
+  /**
+   * Raw private key. EVM/Tempo: hex (with or without `0x`). Solana: base58
+   * 64-byte secret key.
+   */
+  key: string
+  /**
+   * CAIP-2 pay network selector, e.g. `"eip155:84532"` (x402/EVM),
+   * `"solana:5eykt4…"` (x402/Solana), or `"eip155:42431"` (MPP/Tempo).
+   */
+  payNetwork: string
+  /**
+   * Asset (token) address/mint to pay in. Matches the offered menu entry's
+   * `asset`. EVM: token contract hex. Solana: mint base58.
+   */
+  asset: string
+  /**
+   * Spend ceiling in base units of `asset` (integer string). **Required.**
+   * The selector skips any offered entry above this, and the driver refuses
+   * to sign one — guarding against a buggy/hostile gateway overcharging a
+   * custodied key.
+   */
+  maxAmount: string
+  /**
+   * Explicit Solana RPC URL for x402/Solana payment-build reads: the mint
+   * (for its decimals and owning token program) and a recent blockhash, so
+   * two reads per payment. Optional; when unset the SDK falls back to a
+   * public Solana RPC matching the pay cluster. **Set this at any real
+   * volume** — the public default rate-limits aggressively.
+   */
+  svmRpcUrl?: string
+  /** Test-only gateway base override (points the lane at a mock gateway). */
+  baseUrlOverride?: string
+}
+
 /** Configuration for delivering stream batches to a PostgreSQL database. */
 export interface PostgresAttributes {
   /** Database host. */
@@ -1512,6 +1561,19 @@ export interface RpcConfig {
    * call path needs no map.
    */
   networks?: Record<string, string>
+  /**
+   * Crypto-micropayment lane. When set, `rpc.call` pays per request with a
+   * stablecoin against Quicknode's x402/MPP gateways instead of using the
+   * account API key + session JWT. `#[serde(skip)]` so `from_env` can never
+   * populate it — an env-derived private key is exactly what we don't want;
+   * callers must pass this programmatically. The field is always present
+   * (plain data), but the payment lane is only wired into `rpc.call` when a
+   * crypto feature (`payments`/`payments-svm`/`payments-tempo`) is enabled;
+   * built without any of them, a set `payment` is ignored and `rpc.call`
+   * keeps its normal tooling-JWT behavior. The precompiled Python/Node/Ruby
+   * packages always ship with the payment features on.
+   */
+  payment?: PaymentConfig
 }
 
 /** Configuration for delivering stream batches to an S3-compatible object store. */
@@ -1539,7 +1601,17 @@ export interface S3Attributes {
 }
 
 export interface SdkFullConfig {
-  apiKey: string
+  /**
+   * Account API key. **Optional** so a keyless SDK can be built for the
+   * crypto-micropayment lane (`rpc.call` with `RpcConfig.payment`). When
+   * absent, no `x-api-key` header is installed: the payment lane works, while
+   * the keyed surfaces (admin/streams/webhooks/kvstore/sql and tooling-JWT
+   * `rpc.call`) send un-authenticated requests and the gateway rejects them
+   * (surfacing as an `ApiError`, typically 401). `from_env` still requires
+   * the key (validated in `from_config`) — only programmatic construction
+   * may omit it.
+   */
+  apiKey?: string
   http?: HttpConfig
   admin?: AdminConfig
   streams?: StreamsConfig
@@ -2533,6 +2605,13 @@ export declare class RpcApiClient {
    */
   call(method: string, params?: any | undefined | null, network?: string | undefined | null, endpointUrl?: string | undefined | null): Promise<any>
   /**
+   * Like `call`, but also returns the crypto-micropayment settlement
+   * receipt. Resolves to `{ result, paymentReceipt }` where `paymentReceipt`
+   * is `{ method, status, timestamp, reference }` on the MPP payment lane and
+   * `null` for x402 and every non-payment lane (identical to `call`).
+   */
+  callWithReceipt(method: string, params?: any | undefined | null, network?: string | undefined | null, endpointUrl?: string | undefined | null): Promise<any>
+  /**
    * Seeds the per-network URL map for multichain routing (network key ->
    * full http_url), typically built from
    * `admin.getEndpointUrls(...).multichainUrls`.
@@ -2549,6 +2628,79 @@ export declare class RpcApiClient {
    * token between processes.
    */
   currentToken(): CachedToken | null
+  /**
+   * The configured payment wallet's on-chain address (EVM/Tempo `0x…` hex,
+   * Solana base58), derived offline from the key with no network round trip.
+   */
+  paymentAddress(): string
+  /**
+   * Authenticates against the x402 gateway with a SIWX message and resolves
+   * to `{ token, expUnix, accountId }`. Free — no funds move. Persist the
+   * object and pass it back to the `gateway*` methods.
+   */
+  gatewayAuthenticate(): Promise<any>
+  /**
+   * Reads the account's current x402 credit balance. Resolves to
+   * `{ accountId, credits }`. `session` comes from `gatewayAuthenticate`.
+   */
+  gatewayCredits(session: any): Promise<any>
+  /**
+   * Buys a block of credits, settling the gateway's offer with the same
+   * signer construction as the per-request lane. Resolves to the
+   * post-purchase `{ accountId, credits }`. Single-attempt: a paid lane never
+   * blind-retries.
+   */
+  gatewayBuyCredits(session: any, network: string): Promise<any>
+  /**
+   * Requests testnet tokens from the x402 faucet. Resolves to the funding
+   * transaction `{ accountId, transactionHash }` — NOT a balance; call
+   * `gatewayCredits` afterwards for that. Allowed once per account.
+   */
+  gatewayDrip(session: any): Promise<any>
+  /**
+   * Makes one x402 drawdown JSON-RPC call with the session as a Bearer
+   * token, drawing 1 credit on success. Resolves to the unwrapped JSON-RPC
+   * `result`. Single-attempt; re-authenticate on a 401/403 `ApiError`.
+   */
+  gatewayDrawdownCall(method: string, session: any, network: string, params?: any | undefined | null): Promise<any>
+  /**
+   * Opens an MPP payment channel by depositing `deposit` base units (a
+   * decimal string) into the escrow. Resolves to the channel state — persist
+   * it; the gateway has no read-only channel endpoint, so a lost record means
+   * opening a new channel. Moves real funds; single-attempt.
+   *
+   * Takes no network: the channel is scoped by the configured pay network and
+   * asset, so one channel funds calls to every supported network.
+   */
+  mppOpen(deposit: string): Promise<any>
+  /**
+   * Adds `additionalDeposit` base units (a decimal string) to an open
+   * channel. Resolves to the updated channel state. Moves real funds;
+   * single-attempt.
+   */
+  mppTopUp(channel: any, additionalDeposit: string): Promise<any>
+  /**
+   * Cooperatively closes a channel: settles the final cumulative spend
+   * on-chain and refunds the unused deposit. Single-attempt.
+   */
+  mppClose(channel: any): Promise<void>
+  /**
+   * Fetches the gateway's view of the channel as
+   * `{ channelId, acceptedCumulative, spent }` (amounts are decimal strings).
+   *
+   * **This costs one request unit** and advances the voucher by `perCall`,
+   * exactly like a session call — persist the advanced `cumulativeSpent`.
+   * Rejects with `PaymentUnsupportedError` before any network I/O when the
+   * channel has no room left for the probe.
+   */
+  mppStatus(channel: any): Promise<any>
+  /**
+   * Makes one MPP session-lane JSON-RPC call, authorizing it with a
+   * cumulative voucher for `newCumulative` (a decimal string: the running
+   * total AFTER this call). Resolves to the unwrapped JSON-RPC `result`.
+   * Single-attempt; advance the persisted `cumulativeSpent` on success.
+   */
+  mppSessionCall(method: string, network: string, channel: any, newCumulative: string, params?: any | undefined | null): Promise<any>
 }
 
 export declare class SqlApiClient {
@@ -2743,6 +2895,17 @@ export interface CreateWebhookFromTemplateParamsNode {
   destinationAttributes: WebhookDestinationAttributes
   templateArgs: any
 }
+
+/**
+ * Generates a fresh payment keypair for `chain` (`"evm"`, `"svm"`, or
+ * `"tempo"`). Returns `{ address, chain, key }` where `key` is the raw private
+ * key in the format the `keyFile` config reads.
+ *
+ * The key is returned exactly once, at generation: nothing in the SDK stores or
+ * re-derives it, so persist it before discarding the object. Randomness comes
+ * from the OS CSPRNG.
+ */
+export declare function generatePaymentWallet(chain: string): any
 
 export interface ListStreamsResponseNode {
   data: Array<StreamNode>

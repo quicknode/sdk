@@ -107,12 +107,14 @@ pub struct SomeRequest { ... }
 - `rust` feature — `bon` builder pattern for ergonomic Rust usage
 
 ### Error Handling
-`SdkError` (`crates/core/src/errors.rs`) uses `thiserror` with five variants:
+`SdkError` (`crates/core/src/errors.rs`) uses `thiserror`:
 - `Http` — wraps `reqwest::Error` (further classified via `SdkError::http_kind()` → `HttpKind::{Timeout, Connect, Other}`)
 - `Api` — non-2xx response with status code and raw body
 - `Decode` — JSON parse failure with raw body for debugging
 - `UrlParse` — invalid URL (wraps `url::ParseError`)
 - `Config` — invalid configuration (string message)
+- `Rpc` — JSON-RPC `error` member (code + message)
+- `PaymentUnsupported` / `PaymentRejected` / `PaymentIndeterminate` — crypto-micropayment lane (the `payments*` features; see the payment-lane docs)
 
 Each binding exposes a typed exception hierarchy rooted at a shared base class so callers can `rescue` / `catch` / `except` by category. The mapping is:
 
@@ -124,6 +126,10 @@ Each binding exposes a typed exception hierarchy rooted at a shared base class s
 | `Http` + `HttpKind::Other` | `HttpError` | `HttpError` | `QuicknodeError` |
 | `Api { status, body }` | `ApiError` (with `.status`, `.body`) | `ApiError` (with `.status`, `.body`) | `QuicknodeError` |
 | `Decode { body, .. }` | `DecodeError` (with `.body`) | `DecodeError` (with `.body`) | `QuicknodeError` |
+| `Rpc { code, message }` | `RpcError` (with `.code`, `.message`) | `RpcError` (with `.code`) | `QuicknodeError` |
+| `PaymentUnsupported` | `PaymentUnsupportedError` | `PaymentUnsupportedError` | `PaymentError` |
+| `PaymentRejected { status, body }` | `PaymentRejectedError` (with `.status`, `.body`) | `PaymentRejectedError` (with `.status`, `.body`) | `PaymentError` |
+| `PaymentIndeterminate` | `PaymentIndeterminateError` | `PaymentIndeterminateError` | `PaymentError` |
 
 Each binding owns its mapping in a dedicated `errors.rs` file:
 - **Python** — `crates/python/src/errors.rs` uses `create_exception!` macros; `map_sdk_err` sets `.status` / `.body` attributes via `setattr` on the exception instance. Exceptions are registered on the module in `add_to_module`.
@@ -198,6 +204,7 @@ Core clients are tested using mocked API calls with wiremock. All functions maki
 - Any user-facing change to a method, parameter, return type, error class, or environment variable must be reflected in **all four** per-language READMEs in the same PR. This matches the polyglot consistency rule for `__init__.py`, `sdk.d.ts`, and `quicknode_sdk.rbs` documented in §SDK-Specific Guidelines → Polyglot consistency.
 - The Configuration env-var table and the Error Handling class table are duplicated verbatim across all four per-language READMEs. When one changes, update all four — keep them byte-identical.
 - Per-language READMEs are wired into package metadata (`crates/core/Cargo.toml` `readme`, `pyproject.toml` `readme`, `npm/package.json` `files`, `ruby/quicknode_sdk.gemspec` `s.files`). When adding a new language or moving a README, update the corresponding manifest.
+- Every README has a **manually maintained Table of Contents** — it is NOT auto-generated. When you add, remove, rename, or reorder any `##`/`###`/`####` heading, update that file's TOC in the same PR. The TOC covers every heading below `## Table of Contents`, nested by level, and each anchor must match the GitHub slug of its heading (lowercase, spaces to hyphens, punctuation and backticks dropped, em dashes dropped — so `### Option A — Pass config directly` becomes `#option-a--pass-config-directly` with a double hyphen). Because the per-language READMEs share almost all their headings, a heading change in one usually needs the same TOC change in the other three.
 
 ### Platform support
 

@@ -26,6 +26,7 @@ export const {
   KvStoreApiClient,
   SqlApiClient,
   RpcApiClient,
+  generatePaymentWallet,
   QuicknodeError,
   ConfigError,
   HttpError,
@@ -34,4 +35,8 @@ export const {
   ApiError,
   DecodeError,
   RpcError,
+  PaymentError,
+  PaymentUnsupportedError,
+  PaymentRejectedError,
+  PaymentIndeterminateError,
 } = cjs;

@@ -9,10 +9,15 @@ This is one of four language bindings published from the same Rust core. See the
 ## Table of Contents
 
 - [Installation](#installation)
+  - [Optional features — the crypto-micropayment lane](#optional-features--the-crypto-micropayment-lane)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+  - [Option A — Pass config directly](#option-a--pass-config-directly)
+  - [Option B — Load from environment (`from_env()`)](#option-b--load-from-environment-from_env)
+  - [Custom headers and `User-Agent`](#custom-headers-and-user-agent)
 - [Platform Support](#platform-support)
 - [API Reference](#api-reference)
+  - [Language conventions](#language-conventions)
   - [Admin Client](#admin-client)
     - [Endpoints](#endpoints)
     - [Endpoint Tags](#endpoint-tags)
@@ -48,12 +53,35 @@ This is one of four language bindings published from the same Rust core. See the
     - [Sets](#sets)
     - [Lists](#lists)
   - [SQL Client](#sql-client)
+  - [RPC & Tooling Access](#rpc--tooling-access)
+- [Crypto-micropayment lane (`rpc.call`)](#crypto-micropayment-lane-rpccall)
+  - [Wallet generation](#wallet-generation)
+  - [x402 credit drawdown (authenticate once, then draw one credit per call)](#x402-credit-drawdown-authenticate-once-then-draw-one-credit-per-call)
+    - [Testnet faucet](#testnet-faucet)
+  - [MPP payment channel (deposit once, then vouchers)](#mpp-payment-channel-deposit-once-then-vouchers)
 - [Error Handling](#error-handling)
 - [License](#license)
 
 ## Installation
 
 `cargo add quicknode-sdk`
+
+### Optional features — the crypto-micropayment lane
+
+The pay-per-request `rpc.call` lane is feature-gated so you only pay its
+dependency/build cost when you use it:
+
+- `payments` — x402/EVM (EIP-712).
+- `payments-svm` — adds x402/Solana (ed25519 + hand-rolled SPL).
+- `payments-tempo` — adds MPP/Tempo (native Tempo tx). **Requires Rust ≥ 1.93**
+  (pulls `tempo-primitives`).
+
+```toml
+quicknode-sdk = { version = "0.7", features = ["payments", "payments-svm", "payments-tempo"] }
+```
+
+The Python, Node, and Ruby packages ship precompiled with all payment features
+on, so those consumers get the lane out of the box (and pay its cost regardless).
 
 ## Quick Start
 
@@ -82,6 +110,10 @@ There are two ways to configure the SDK.
 // Rust
 let qn = QuicknodeSdk::new(&SdkFullConfig::builder().api_key("your-key").build())?;
 ```
+
+`api_key` is optional here: the [crypto-micropayment lane](#crypto-micropayment-lane-rpccall)
+pays per request instead, so `SdkFullConfig::keyless()` builds a usable SDK with no key.
+Every other client still needs one. `from_env()` always requires `QN_SDK__API_KEY`.
 
 ### Option B — Load from environment (`from_env()`)
 
@@ -1821,6 +1853,171 @@ A host that persists across processes can snapshot the cached token with
 `RpcConfig { endpoint_url, .. }` to route every call to a custom HTTP URL by
 default (no JWT minted); a per-call `endpoint_url` overrides it.
 
+## Crypto-micropayment lane (`rpc.call`)
+
+Pay per RPC request with a stablecoin instead of a provisioned account + API key,
+against Quicknode's `x402.quicknode.com` and `mpp.quicknode.com` gateways. Configure
+it by setting `payment` on the RPC config; the SDK runs the `402` → sign → resend
+handshake for you. An API key is **not** required for this lane — build a keyless SDK.
+
+There are four payment paths. Two pay per request; two amortize one signature over many
+calls.
+
+| Path | Entry point | Gateway | Signs |
+|---|---|---|---|
+| Per-request x402 | `call` / `call_with_receipt` with `scheme: "x402"` | x402 | once per call |
+| Per-request MPP charge | `call` / `call_with_receipt` with `scheme: "mpp"` | mpp | once per call |
+| [x402 credit drawdown](#x402-credit-drawdown-authenticate-once-then-draw-one-credit-per-call) | `gateway_authenticate` → `gateway_drawdown_call` | x402 | once per session |
+| [MPP payment channel](#mpp-payment-channel-deposit-once-then-vouchers) | `mpp_open` → `mpp_session_call` | mpp | once per channel |
+
+The signer construction is derived from the scheme and pay network, never stated directly:
+**x402/EVM** signs an EIP-712 `TransferWithAuthorization`, **x402/Solana** an SPL
+`TransferChecked` in a v0 tx (the gateway sponsors gas), and **MPP/Tempo** a native Tempo
+transaction.
+
+`scheme` selects the gateway for `call` only. The `gateway_*` drawdown methods always use
+the x402 gateway and the `mpp_*` channel methods always use the MPP gateway, whatever
+`scheme` is set to.
+
+`PaymentConfig` fields:
+
+| Field | Meaning |
+|---|---|
+| `scheme` | `"x402"` (pay-per-request) or `"mpp"` (MPP charge; `"mpp-charge"` is accepted too) |
+| `key` | raw private key — EVM/Tempo: hex; Solana: base58 64-byte secret |
+| `pay_network` | CAIP-2 pay network, e.g. `eip155:84532`, `solana:5eykt4…` |
+| `asset` | token address/mint to pay in (matches the offered menu entry) |
+| `max_amount` | **required** spend ceiling in integer base units of `asset` |
+| `svm_rpc_url` | optional Solana RPC for x402/Solana payment-build reads (mint + blockhash) |
+| `base_url_override` | optional gateway base (testing) |
+
+`network` on the call is the **query** chain (gateway path slug), independent of the
+pay network. Use `call_with_receipt` to also get the settlement receipt (`reference` =
+settlement tx hash) — populated on the MPP lane, `null`/`None`/`nil` for x402.
+
+**Things to know:**
+
+- **Do not log your own `PaymentConfig`** — the `key` field is readable. The SDK
+  never prints it in its own errors/`Debug`, but a plain `{:?}`/`dbg!(config)` will show it.
+- **`max_amount` is integer base units of the selected asset.** The SDK skips any offered
+  entry above it and refuses to sign one — a guard against an overcharging gateway.
+- **`PaymentIndeterminateError` means the paid request was sent but the response was lost.**
+  You MAY have been charged — do **not** blindly retry.
+- **x402/Solana: one payment per call.** Building a payment reads the mint and a recent
+  blockhash from a Solana RPC. The default is a public RPC that **rate-limits
+  aggressively** — set `svm_rpc_url` to your own endpoint at any volume.
+
+```rust
+use quicknode_sdk::{PaymentConfig, QuicknodeSdk, RpcConfig, SdkFullConfig};
+
+let mut config = SdkFullConfig::keyless();
+config.rpc = Some(RpcConfig {
+    payment: Some(PaymentConfig {
+        scheme: "x402".into(),
+        key: std::env::var("QN_PAYMENT_KEY").unwrap(),
+        pay_network: "eip155:84532".into(),
+        asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e".into(),
+        max_amount: "10000".into(),
+        svm_rpc_url: None,
+        base_url_override: None,
+    }),
+    ..Default::default()
+});
+let qn = QuicknodeSdk::new(&config)?;
+let resp = qn.rpc.call_with_receipt("eth_blockNumber", None, Some("base-sepolia".into()), None).await?;
+println!("{}", resp.result);
+```
+
+### Wallet generation
+
+`generate_payment_wallet(chain)` creates a fresh keypair offline — no network call, no
+funds — for `ChainKind::Evm`, `Svm`, or `Tempo`. The private key is returned **exactly
+once**, at generation; nothing in the SDK stores or re-derives it, so persist it before
+dropping the value.
+
+```rust
+use quicknode_sdk::{generate_payment_wallet, ChainKind};
+
+let wallet = generate_payment_wallet(ChainKind::Evm)?;
+println!("fund this address: {}", wallet.address);
+std::fs::write("payment.key", wallet.into_key())?;  // consuming: a deliberate, one-shot read
+```
+
+### x402 credit drawdown (authenticate once, then draw one credit per call)
+
+Cheaper per call than paying per request: one SIWE signature mints a session JWT, then
+each call draws a single credit from the account balance instead of signing a fresh
+settlement. Minting the JWT is free and moves no funds, so a host can re-authenticate
+transparently. Persist the session between processes.
+
+Fund the payment wallet out of band — the testnet faucet below, or by sending funds to
+`payment_address()` directly. Credits are provisioned against the account gateway-side.
+
+EVM signers only: SIWE is an EIP-4361 construction, so an x402/Solana key errors here.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `payment_address()` | free, offline | the wallet address derived from the key |
+| `gateway_authenticate()` | free | `GatewaySession { token, exp_unix, account_id }` |
+| `gateway_credits(session)` | free | `CreditBalance { account_id, credits }` |
+| `gateway_drip(session)` | free (testnet) | `DripReceipt { account_id, transaction_hash }` |
+| `gateway_drawdown_call(method, params, network, session)` | 1 credit | the JSON-RPC `result` |
+
+```rust
+let session = qn.rpc.gateway_authenticate().await?;
+let balance = qn.rpc.gateway_credits(&session).await?;
+println!("credits: {}", balance.credits);
+let result = qn.rpc.gateway_drawdown_call("eth_blockNumber", None, "base-sepolia", &session).await?;
+```
+
+A `token_expired` surfaces as `SdkError::Api` with status 401/403; re-authenticate and
+retry that call.
+
+#### Testnet faucet
+
+`gateway_drip` requests testnet tokens for the payment **wallet** on Base Sepolia. The
+gateway allows one drip per account, and it returns the on-chain funding transaction hash
+— not a credit balance.
+
+### MPP payment channel (deposit once, then vouchers)
+
+Open a payment channel by depositing into the escrow, then authorize each call with a
+cumulative voucher — one `ecrecover` server-side, no on-chain transaction per call.
+Requires the `payments-tempo` feature.
+
+| Method | Cost | Returns |
+|---|---|---|
+| `mpp_open(deposit)` | **moves funds** | `ChannelState` — persist it |
+| `mpp_top_up(channel, additional_deposit)` | **moves funds** | the updated `ChannelState` |
+| `mpp_status(channel)` | **1 request unit** | `ChannelStatus { channel_id, accepted_cumulative, spent }` |
+| `mpp_session_call(method, params, network, channel, new_cumulative)` | 1 request unit | the JSON-RPC `result` |
+| `mpp_close(channel)` | settles on-chain | `()` — refunds the unused deposit |
+
+```rust
+let channel = qn.rpc.mpp_open(1_000_000).await?;         // persist this
+let result = qn.rpc
+    .mpp_session_call("eth_blockNumber", None, "base-sepolia", &channel, channel.cumulative_spent + channel.per_call)
+    .await?;
+// On success, advance and re-persist cumulative_spent by per_call.
+```
+
+**Things to know:**
+
+- **Persist `ChannelState`.** The gateway exposes no read-only channel endpoint, so a
+  lost local record means opening (and funding) a new channel.
+- **`mpp_status` is not free.** The gateway prices every session POST as a chargeable
+  request and computes the balance from the *new* spend a voucher authorizes, so the
+  probe advances `cumulative_spent` by `per_call` exactly like a call. Re-persist the
+  advanced total. It returns `PaymentUnsupported` before any network I/O when the
+  channel has no room left for the probe.
+- **The lifecycle takes no query network.** A channel is scoped by the configured pay
+  network and asset, so one channel funds calls to every supported network. Only
+  `mpp_session_call` takes a `network`, because it routes an RPC method.
+- **Advance `cumulative_spent` only after a success.** A voucher authorizes the running
+  total *after* the call; re-presenting the current high-water mark authorizes zero and
+  is always refused with `insufficient-balance`.
+
+
 ## Error Handling
 
 Every binding exposes a typed exception hierarchy derived from the core `SdkError`
@@ -1837,8 +2034,12 @@ subclass to branch on transport vs. API semantics.
 | `ApiError`           | non-2xx HTTP response                                       | `status`, `body`     |
 | `DecodeError`        | 2xx response but JSON parse failed                          | `body`               |
 | `RpcError`           | JSON-RPC call returned an `error` member                    | `code`, `message`    |
+| `PaymentError`       | base class for the crypto-micropayment lane                 | —                    |
+| `PaymentUnsupportedError` | no offered payment option matched your selector (or all were over `max_amount`/unsupported) | — |
+| `PaymentRejectedError` | the gateway rejected a signed payment (terminal, one resend only) | `status`, `body` |
+| `PaymentIndeterminateError` | paid request sent but response lost — MAY have been charged; do NOT blindly retry | — |
 
-Variants: pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config, Rpc }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`.
+Variants: pattern-match on `SdkError { Http, Api, Decode, UrlParse, Config, Rpc, PaymentUnsupported, PaymentRejected, PaymentIndeterminate }`; use `err.http_kind()` to classify `Http` into `Timeout`, `Connect`, or `Other`. The `Payment*` variants require a `payments*` feature.
 
 ```rust
 // Rust

@@ -16,6 +16,7 @@ import {
   XrplWalletFilterTemplate,
   HyperliquidWalletEventsFilterTemplate,
   StellarWalletTransactionsFilterTemplate,
+  RpcApiClient,
 } from "./index";
 
 // Stream destination attributes (input). The inner key is `attributes` rather
@@ -331,7 +332,96 @@ export type {
   CachedToken,
   ToolingAccessStatus,
   RpcApiClient,
+  // payment lane
+  PaymentConfig,
 } from "./index";
+
+// A settlement receipt for the crypto-micropayment lane. Returned inside
+// `RpcCallResponse.paymentReceipt` by `rpc.callWithReceipt`. `reference` is the
+// settlement transaction hash. Present only on the MPP lane; `null` otherwise.
+export interface PaymentReceipt {
+  method: string;
+  status: string;
+  timestamp: string;
+  reference: string;
+}
+
+// The result of `rpc.callWithReceipt`: the JSON-RPC `result` plus the optional
+// settlement receipt (`null` for x402 and non-payment lanes).
+export interface RpcCallResponse {
+  result: any;
+  paymentReceipt: PaymentReceipt | null;
+}
+
+// ── Payment lanes ──────────────────────────────────────────────
+//
+// Base-unit amounts are `string`, not `number`: they are u128 in the core and a
+// JS number is an f64 that loses precision above 2^53. Pass and store them as
+// decimal strings.
+
+// An x402 gateway session (from `rpc.gatewayAuthenticate`). `token` is a live
+// bearer credential — persist it, but keep it out of logs.
+export interface GatewaySession {
+  token: string;
+  expUnix: number;
+  accountId: string;
+}
+
+// An x402 credit balance (`rpc.gatewayCredits` / `rpc.gatewayBuyCredits`).
+export interface CreditBalance {
+  accountId: string;
+  credits: number;
+}
+
+// The faucet result (`rpc.gatewayDrip`): the on-chain funding transaction, NOT
+// a balance. Call `rpc.gatewayCredits` afterwards to read the new balance.
+export interface DripReceipt {
+  accountId: string;
+  transactionHash: string;
+}
+
+// Local state for an open MPP payment channel (`rpc.mppOpen` /
+// `rpc.mppTopUp`). Persist this verbatim: the gateway has no read-only channel
+// endpoint, so a lost record means opening a new channel.
+export interface ChannelState {
+  channelId: string;
+  token: string;
+  payee: string;
+  salt: string;
+  authorizedSigner: string;
+  escrowContract: string;
+  /** Base units, decimal string. */
+  deposit: string;
+  /** Base units, decimal string. */
+  cumulativeSpent: string;
+  /** The gateway's per-call price, in base units, as a decimal string. */
+  perCall: string;
+  chainId: number;
+}
+
+// The gateway's view of a channel (`rpc.mppStatus`).
+export interface ChannelStatus {
+  channelId: string;
+  /** Base units, decimal string. */
+  acceptedCumulative: string;
+  /** Base units, decimal string. */
+  spent: string;
+}
+
+// A freshly generated payment wallet (`generatePaymentWallet`). `key` is the raw
+// private key, returned exactly once at generation — nothing in the SDK stores
+// or re-derives it, so persist it before discarding the object.
+export interface GeneratedWallet {
+  address: string;
+  chain: "evm" | "svm" | "tempo";
+  key: string;
+}
+
+/**
+ * Generates a fresh payment keypair. Offline: no network call, no funds.
+ * Randomness comes from the OS CSPRNG.
+ */
+export function generatePaymentWallet(chain: "evm" | "svm" | "tempo"): GeneratedWallet;
 
 // const enums must use `export` (not `export type`) so they are usable as values
 export {
@@ -397,6 +487,61 @@ export interface SqlApiClientTyped {
   getSchema(clusterId: string): Promise<ChainSchemaNode>;
 }
 
+// Retypes the payment-lane returns from napi's `any` to the interfaces above.
+// napi emits `any` for every method returning a `serde_json::Value`, so without
+// this the declared payment interfaces would be documentation only and a
+// mistyped field would not be an error. Keep method signatures in sync with the
+// napi-generated RpcApiClient in ./index.d.ts.
+export interface RpcApiClientTyped
+  extends Omit<
+    RpcApiClient,
+    | "callWithReceipt"
+    | "gatewayAuthenticate"
+    | "gatewayCredits"
+    | "gatewayBuyCredits"
+    | "gatewayDrip"
+    | "gatewayDrawdownCall"
+    | "mppOpen"
+    | "mppTopUp"
+    | "mppClose"
+    | "mppStatus"
+    | "mppSessionCall"
+  > {
+  callWithReceipt(
+    method: string,
+    params?: any | undefined | null,
+    network?: string | undefined | null,
+    endpointUrl?: string | undefined | null
+  ): Promise<RpcCallResponse>;
+  gatewayAuthenticate(): Promise<GatewaySession>;
+  gatewayCredits(session: GatewaySession): Promise<CreditBalance>;
+  gatewayBuyCredits(
+    session: GatewaySession,
+    network: string
+  ): Promise<CreditBalance>;
+  gatewayDrip(session: GatewaySession): Promise<DripReceipt>;
+  gatewayDrawdownCall(
+    method: string,
+    session: GatewaySession,
+    network: string,
+    params?: any | undefined | null
+  ): Promise<any>;
+  mppOpen(deposit: string): Promise<ChannelState>;
+  mppTopUp(
+    channel: ChannelState,
+    additionalDeposit: string
+  ): Promise<ChannelState>;
+  mppClose(channel: ChannelState): Promise<void>;
+  mppStatus(channel: ChannelState): Promise<ChannelStatus>;
+  mppSessionCall(
+    method: string,
+    network: string,
+    channel: ChannelState,
+    newCumulative: string,
+    params?: any | undefined | null
+  ): Promise<any>;
+}
+
 export class QuicknodeSdk {
   constructor(config: SdkFullConfig);
   static fromEnv(): QuicknodeSdk;
@@ -405,7 +550,7 @@ export class QuicknodeSdk {
   webhooks: WebhooksApiClientTyped;
   kvstore: _QuicknodeSdk["kvstore"];
   sql: SqlApiClientTyped;
-  rpc: _QuicknodeSdk["rpc"];
+  rpc: RpcApiClientTyped;
 }
 
 // Typed static factory methods producing each discriminated variant of
@@ -459,3 +604,13 @@ export class DecodeError extends QuicknodeError {
 export class RpcError extends QuicknodeError {
   code: number;
 }
+// Payment-lane errors (crypto-micropayment `rpc.call`). Catch PaymentError to
+// handle them all. PaymentIndeterminateError means the paid request was sent
+// but its response was lost — the payment MAY have settled, so do NOT retry.
+export class PaymentError extends QuicknodeError {}
+export class PaymentUnsupportedError extends PaymentError {}
+export class PaymentRejectedError extends PaymentError {
+  status: number;
+  body: string;
+}
+export class PaymentIndeterminateError extends PaymentError {}

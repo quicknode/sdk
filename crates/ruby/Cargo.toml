@@ -14,7 +14,7 @@ name = "quicknode_sdk"
 crate-type = ["cdylib"]
 
 [dependencies]
-quicknode-sdk = { path = "../core", features = ["ruby"] }
+quicknode-sdk = { path = "../core", features = ["ruby", "payments", "payments-svm", "payments-tempo"] }
 magnus = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 serde_json = "1.0"

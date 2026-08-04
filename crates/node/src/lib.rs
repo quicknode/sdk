@@ -1547,6 +1547,35 @@ impl RpcApiClient {
             .map_err(errors::map_sdk_err)
     }
 
+    /// Like `call`, but also returns the crypto-micropayment settlement
+    /// receipt. Resolves to `{ result, paymentReceipt }` where `paymentReceipt`
+    /// is `{ method, status, timestamp, reference }` on the MPP payment lane and
+    /// `null` for x402 and every non-payment lane (identical to `call`).
+    #[napi]
+    pub async fn call_with_receipt(
+        &self,
+        method: String,
+        params: Option<serde_json::Value>,
+        network: Option<String>,
+        endpoint_url: Option<String>,
+    ) -> Result<serde_json::Value> {
+        let resp = self
+            .inner
+            .call_with_receipt(&method, params, network, endpoint_url)
+            .await
+            .map_err(errors::map_sdk_err)?;
+        // Convert the core response to the JS shape.
+        Ok(serde_json::json!({
+            "result": resp.result,
+            "paymentReceipt": resp.payment_receipt.map(|r| serde_json::json!({
+                "method": r.method,
+                "status": r.status,
+                "timestamp": r.timestamp,
+                "reference": r.reference,
+            })),
+        }))
+    }
+
     /// Seeds the per-network URL map for multichain routing (network key ->
     /// full http_url), typically built from
     /// `admin.getEndpointUrls(...).multichainUrls`.
@@ -1569,4 +1598,325 @@ impl RpcApiClient {
     pub fn current_token(&self) -> Option<core::CachedToken> {
         self.inner.current_token()
     }
+
+    // Payment amounts use decimal strings because u128 exceeds JS number
+    // precision. Session and channel state uses plain objects for persistence.
+
+    /// The configured payment wallet's on-chain address (EVM/Tempo `0x…` hex,
+    /// Solana base58), derived offline from the key with no network round trip.
+    #[napi]
+    pub fn payment_address(&self) -> Result<String> {
+        self.inner.payment_address().map_err(errors::map_sdk_err)
+    }
+
+    /// Authenticates against the x402 gateway with a SIWX message and resolves
+    /// to `{ token, expUnix, accountId }`. Free — no funds move. Persist the
+    /// object and pass it back to the `gateway*` methods.
+    #[napi]
+    pub async fn gateway_authenticate(&self) -> Result<serde_json::Value> {
+        let session = self
+            .inner
+            .gateway_authenticate()
+            .await
+            .map_err(errors::map_sdk_err)?;
+        Ok(gateway_session_json(&session))
+    }
+
+    /// Reads the account's current x402 credit balance. Resolves to
+    /// `{ accountId, credits }`. `session` comes from `gatewayAuthenticate`.
+    #[napi]
+    pub async fn gateway_credits(&self, session: serde_json::Value) -> Result<serde_json::Value> {
+        let session = parse_gateway_session(&session)?;
+        let bal = self
+            .inner
+            .gateway_credits(&session)
+            .await
+            .map_err(errors::map_sdk_err)?;
+        Ok(serde_json::json!({ "accountId": bal.account_id, "credits": bal.credits }))
+    }
+
+    /// Buys a block of credits, settling the gateway's offer with the same
+    /// signer construction as the per-request lane. Resolves to the
+    /// post-purchase `{ accountId, credits }`. Single-attempt: a paid lane never
+    /// blind-retries.
+    #[napi]
+    pub async fn gateway_buy_credits(
+        &self,
+        session: serde_json::Value,
+        network: String,
+    ) -> Result<serde_json::Value> {
+        let session = parse_gateway_session(&session)?;
+        let bal = self
+            .inner
+            .gateway_buy_credits(&session, &network)
+            .await
+            .map_err(errors::map_sdk_err)?;
+        Ok(serde_json::json!({ "accountId": bal.account_id, "credits": bal.credits }))
+    }
+
+    /// Requests testnet tokens from the x402 faucet. Resolves to the funding
+    /// transaction `{ accountId, transactionHash }` — NOT a balance; call
+    /// `gatewayCredits` afterwards for that. Allowed once per account.
+    #[napi]
+    pub async fn gateway_drip(&self, session: serde_json::Value) -> Result<serde_json::Value> {
+        let session = parse_gateway_session(&session)?;
+        let receipt = self
+            .inner
+            .gateway_drip(&session)
+            .await
+            .map_err(errors::map_sdk_err)?;
+        Ok(serde_json::json!({
+            "accountId": receipt.account_id,
+            "transactionHash": receipt.transaction_hash,
+        }))
+    }
+
+    /// Makes one x402 drawdown JSON-RPC call with the session as a Bearer
+    /// token, drawing 1 credit on success. Resolves to the unwrapped JSON-RPC
+    /// `result`. Single-attempt; re-authenticate on a 401/403 `ApiError`.
+    #[napi]
+    pub async fn gateway_drawdown_call(
+        &self,
+        method: String,
+        session: serde_json::Value,
+        network: String,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value> {
+        let session = parse_gateway_session(&session)?;
+        self.inner
+            .gateway_drawdown_call(&method, params, &network, &session)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Opens an MPP payment channel by depositing `deposit` base units (a
+    /// decimal string) into the escrow. Resolves to the channel state — persist
+    /// it; the gateway has no read-only channel endpoint, so a lost record means
+    /// opening a new channel. Moves real funds; single-attempt.
+    ///
+    /// Takes no network: the channel is scoped by the configured pay network and
+    /// asset, so one channel funds calls to every supported network.
+    #[napi]
+    pub async fn mpp_open(&self, deposit: String) -> Result<serde_json::Value> {
+        let deposit = parse_base_units(&deposit, "deposit")?;
+        let channel = self
+            .inner
+            .mpp_open(deposit)
+            .await
+            .map_err(errors::map_sdk_err)?;
+        Ok(channel_state_json(&channel))
+    }
+
+    /// Adds `additionalDeposit` base units (a decimal string) to an open
+    /// channel. Resolves to the updated channel state. Moves real funds;
+    /// single-attempt.
+    #[napi]
+    pub async fn mpp_top_up(
+        &self,
+        channel: serde_json::Value,
+        additional_deposit: String,
+    ) -> Result<serde_json::Value> {
+        let channel = parse_channel_state(&channel)?;
+        let extra = parse_base_units(&additional_deposit, "additionalDeposit")?;
+        let updated = self
+            .inner
+            .mpp_top_up(&channel, extra)
+            .await
+            .map_err(errors::map_sdk_err)?;
+        Ok(channel_state_json(&updated))
+    }
+
+    /// Cooperatively closes a channel: settles the final cumulative spend
+    /// on-chain and refunds the unused deposit. Single-attempt.
+    #[napi]
+    pub async fn mpp_close(&self, channel: serde_json::Value) -> Result<()> {
+        let channel = parse_channel_state(&channel)?;
+        self.inner
+            .mpp_close(&channel)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Fetches the gateway's view of the channel as
+    /// `{ channelId, acceptedCumulative, spent }` (amounts are decimal strings).
+    ///
+    /// **This costs one request unit** and advances the voucher by `perCall`,
+    /// exactly like a session call — persist the advanced `cumulativeSpent`.
+    /// Rejects with `PaymentUnsupportedError` before any network I/O when the
+    /// channel has no room left for the probe.
+    #[napi]
+    pub async fn mpp_status(&self, channel: serde_json::Value) -> Result<serde_json::Value> {
+        let channel = parse_channel_state(&channel)?;
+        let st = self
+            .inner
+            .mpp_status(&channel)
+            .await
+            .map_err(errors::map_sdk_err)?;
+        Ok(serde_json::json!({
+            "channelId": st.channel_id,
+            "acceptedCumulative": st.accepted_cumulative.to_string(),
+            "spent": st.spent.to_string(),
+        }))
+    }
+
+    /// Makes one MPP session-lane JSON-RPC call, authorizing it with a
+    /// cumulative voucher for `newCumulative` (a decimal string: the running
+    /// total AFTER this call). Resolves to the unwrapped JSON-RPC `result`.
+    /// Single-attempt; advance the persisted `cumulativeSpent` on success.
+    #[napi]
+    pub async fn mpp_session_call(
+        &self,
+        method: String,
+        network: String,
+        channel: serde_json::Value,
+        new_cumulative: String,
+        params: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value> {
+        let channel = parse_channel_state(&channel)?;
+        let new_cumulative = parse_base_units(&new_cumulative, "newCumulative")?;
+        self.inner
+            .mpp_session_call(&method, params, &network, &channel, new_cumulative)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+}
+
+// Payment types cross as plain objects because they contain enums, secrets, or
+// u128 fields that napi cannot expose directly.
+
+fn config_err(message: String) -> Error {
+    errors::map_sdk_err(core::errors::SdkError::Config(message))
+}
+
+// Keep u128 amounts as decimal strings to avoid JS precision loss.
+fn parse_base_units(raw: &str, field: &str) -> Result<u128> {
+    raw.trim().parse::<u128>().map_err(|_| {
+        config_err(format!(
+            "{field} must be a decimal base-unit amount as a string, got {raw:?}"
+        ))
+    })
+}
+
+fn gateway_session_json(session: &core::GatewaySession) -> serde_json::Value {
+    serde_json::json!({
+        "token": session.token,
+        "expUnix": session.exp_unix,
+        "accountId": session.account_id,
+    })
+}
+
+// Read the camelCase keys emitted by gateway_session_json.
+fn parse_gateway_session(v: &serde_json::Value) -> Result<core::GatewaySession> {
+    let token = v
+        .get("token")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| config_err("session is missing token".into()))?;
+    let exp_unix = v
+        .get("expUnix")
+        .and_then(serde_json::Value::as_i64)
+        .ok_or_else(|| config_err("session is missing expUnix".into()))?;
+    let account_id = v
+        .get("accountId")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| config_err("session is missing accountId".into()))?;
+    Ok(core::GatewaySession {
+        token: token.to_string(),
+        exp_unix,
+        account_id: account_id.to_string(),
+    })
+}
+
+fn channel_state_json(channel: &core::ChannelState) -> serde_json::Value {
+    serde_json::json!({
+        "channelId": channel.channel_id,
+        "token": channel.token,
+        "payee": channel.payee,
+        "salt": channel.salt,
+        "authorizedSigner": channel.authorized_signer,
+        "escrowContract": channel.escrow_contract,
+        "deposit": channel.deposit.to_string(),
+        "cumulativeSpent": channel.cumulative_spent.to_string(),
+        "perCall": channel.per_call.to_string(),
+        "chainId": channel.chain_id,
+    })
+}
+
+// Accept strings from channel_state_json and numeric hand-built values.
+fn channel_amount(v: &serde_json::Value, field: &str) -> Result<u128> {
+    match v
+        .get(field)
+        .ok_or_else(|| config_err(format!("channel is missing {field}")))?
+    {
+        serde_json::Value::String(s) => parse_base_units(s, field),
+        serde_json::Value::Number(n) => n
+            .as_u128()
+            .ok_or_else(|| config_err(format!("channel {field} must be a non-negative integer"))),
+        other => Err(config_err(format!(
+            "channel {field} must be a decimal string or number, got {other}"
+        ))),
+    }
+}
+
+fn channel_str(v: &serde_json::Value, field: &str) -> Result<String> {
+    v.get(field)
+        .and_then(serde_json::Value::as_str)
+        .map(String::from)
+        .ok_or_else(|| config_err(format!("channel is missing {field}")))
+}
+
+fn parse_channel_state(v: &serde_json::Value) -> Result<core::ChannelState> {
+    if !v.is_object() {
+        return Err(config_err(
+            "channel must be an object from mppOpen/mppTopUp".into(),
+        ));
+    }
+    Ok(core::ChannelState {
+        channel_id: channel_str(v, "channelId")?,
+        token: channel_str(v, "token")?,
+        payee: channel_str(v, "payee")?,
+        salt: channel_str(v, "salt")?,
+        authorized_signer: channel_str(v, "authorizedSigner")?,
+        escrow_contract: channel_str(v, "escrowContract")?,
+        deposit: channel_amount(v, "deposit")?,
+        cumulative_spent: channel_amount(v, "cumulativeSpent")?,
+        per_call: channel_amount(v, "perCall")?,
+        chain_id: v
+            .get("chainId")
+            .and_then(serde_json::Value::as_u64)
+            .ok_or_else(|| config_err("channel is missing chainId".into()))?,
+    })
+}
+
+/// Generates a fresh payment keypair for `chain` (`"evm"`, `"svm"`, or
+/// `"tempo"`). Returns `{ address, chain, key }` where `key` is the raw private
+/// key in the format the `keyFile` config reads.
+///
+/// The key is returned exactly once, at generation: nothing in the SDK stores or
+/// re-derives it, so persist it before discarding the object. Randomness comes
+/// from the OS CSPRNG.
+// napi requires an owned string here.
+#[allow(clippy::needless_pass_by_value)]
+#[napi]
+pub fn generate_payment_wallet(chain: String) -> Result<serde_json::Value> {
+    let kind = match chain.to_ascii_lowercase().as_str() {
+        "evm" => core::ChainKind::Evm,
+        "svm" | "solana" => core::ChainKind::Svm,
+        "tempo" => core::ChainKind::Tempo,
+        other => {
+            return Err(config_err(format!(
+                "unknown payment chain {other:?} (expected \"evm\", \"svm\", or \"tempo\")"
+            )))
+        }
+    };
+    let wallet = core::generate_payment_wallet(kind).map_err(errors::map_sdk_err)?;
+    let chain_label = match wallet.chain {
+        core::ChainKind::Evm => "evm",
+        core::ChainKind::Svm => "svm",
+        core::ChainKind::Tempo => "tempo",
+    };
+    Ok(serde_json::json!({
+        "address": wallet.address,
+        "chain": chain_label,
+        "key": wallet.into_key(),
+    }))
 }

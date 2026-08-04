@@ -19,6 +19,22 @@ ruby = ["magnus"]
 rust = ["bon"]
 extension-module = ["pyo3/extension-module"]
 
+# Crypto-micropayment lanes for rpc.call. Layered so a crates.io consumer can
+# opt into only the pay-chains it needs; wheels/npm/gems ship features-on, so
+# "zero cost when off" is true only for the crate itself.
+# payments       = x402/EVM (EIP-712 TransferWithAuthorization).
+# payments-svm   = + x402/Solana (hand-rolled v0 tx: compute budget, SPL
+#                  TransferChecked, memo; ed25519).
+# payments-tempo = + MPP/Tempo (native type-0x76 tx via tempo-primitives).
+payments = ["dep:k256", "dep:sha3", "dep:hex", "dep:base64", "dep:rand"]
+payments-svm = ["payments", "dep:ed25519-dalek", "dep:bs58", "dep:sha2"]
+# tempo-primitives MUST stay default-features=false: its defaults pull revm +
+# aws-lc-rs (C/cmake) which break cross+zig at glibc-2.17/musl. The base64 dep
+# is force-included with the `alloc` feature to work around an upstream no_std
+# feature-unification bug (tempo-primitives no-default-features won't compile
+# without base64/alloc present in the tree).
+payments-tempo = ["payments", "dep:tempo-primitives", "dep:alloy-primitives", "dep:alloy-consensus", "dep:alloy-rlp"]
+
 [dependencies]
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -38,6 +54,27 @@ secrecy = "0.8"
 # rpc client without pulling in the tokio runtime. The async runtime itself is
 # supplied by the caller (bindings or the user's own runtime).
 tokio = { version = "1", default-features = false, features = ["sync"] }
+
+# ── Payment lane crypto (feature-gated) ──────────────────────────────────────
+# secp256k1 signing for EIP-712 (x402/EVM) and Tempo (MPP). k256 0.14's
+# sign_prehash_recoverable returns the tuple directly (no Result).
+k256 = { version = "0.14", optional = true }
+sha3 = { version = "0.10", optional = true } # keccak256 for EIP-712 + Tempo memo
+hex = { version = "0.4", optional = true }
+rand = { version = "0.8", optional = true } # random EIP-3009 nonce
+# base64 is also force-enabled with `alloc` to unify features for
+# tempo-primitives' no_std build (see the payments-tempo feature comment).
+base64 = { version = "0.22", optional = true, features = ["alloc"] }
+# x402/Solana: ed25519 signing + base58 addresses + sha256 for PDA/ATA derivation.
+ed25519-dalek = { version = "2", optional = true }
+bs58 = { version = "0.5", optional = true }
+sha2 = { version = "0.10", optional = true }
+# MPP/Tempo native type-0x76 tx. default-features=false is REQUIRED (see feature
+# comment). alloy-* pinned to the versions tempo-primitives 1.8.1 builds against.
+tempo-primitives = { version = "1.8.1", optional = true, default-features = false }
+alloy-primitives = { version = "1.6", optional = true }
+alloy-consensus = { version = "2.1", optional = true }
+alloy-rlp = { version = "0.3", optional = true }
 
 [[example]]
 name = "admin"
@@ -62,6 +99,10 @@ required-features = ["rust"]
 [[example]]
 name = "rpc"
 required-features = ["rust"]
+
+[[example]]
+name = "rpc_payment"
+required-features = ["rust", "payments", "payments-svm", "payments-tempo"]
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
