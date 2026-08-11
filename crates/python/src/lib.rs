@@ -2712,8 +2712,8 @@ impl RpcApiClient {
     }
 
     /// Requests testnet tokens from the x402 faucet. Returns the funding
-    /// transaction as a dict `{account_id, transaction_hash}` — NOT a balance;
-    /// call `gateway_credits` afterwards for that. Allowed once per account.
+    /// transfer metadata as a dict. Circle-backed responses contain
+    /// `transfer_id`; direct transfers contain `transaction_hash`.
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, typing.Any]"
     ))]
@@ -2731,6 +2731,10 @@ impl RpcApiClient {
                 .map_err(errors::map_sdk_err)?;
             json_to_py(&serde_json::json!({
                 "account_id": receipt.account_id,
+                "wallet_address": receipt.wallet_address,
+                "network": receipt.network,
+                "transfer_id": receipt.transfer_id,
+                "amount_usdc": receipt.amount_usdc,
                 "transaction_hash": receipt.transaction_hash,
             }))
         })

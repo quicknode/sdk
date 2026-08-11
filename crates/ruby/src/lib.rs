@@ -2051,7 +2051,7 @@ impl RpcApiClient {
         }))
     }
 
-    // gateway_drip(session:) — request testnet funds; returns the tx hash.
+    // gateway_drip(session:) — request testnet funds; returns transfer metadata.
     fn gateway_drip(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["session"])?;
         let session = require_gateway_session(&opts)?;
@@ -2061,6 +2061,10 @@ impl RpcApiClient {
             .map_err(map_err)?;
         to_ruby(serde_json::json!({
             "account_id": receipt.account_id,
+            "wallet_address": receipt.wallet_address,
+            "network": receipt.network,
+            "transfer_id": receipt.transfer_id,
+            "amount_usdc": receipt.amount_usdc,
             "transaction_hash": receipt.transaction_hash,
         }))
     }

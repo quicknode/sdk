@@ -233,19 +233,22 @@ pub async fn credits(
     })
 }
 
-/// The faucet drip result: the on-chain funding transaction. The gateway's
-/// `/drip` returns the settlement tx, not a credit balance — call [`credits`]
-/// afterwards to read the updated balance.
+/// The faucet drip result. Circle Gateway-backed networks return a transfer ID
+/// because settlement is asynchronous. Direct-transfer networks return the
+/// transaction hash instead.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DripReceipt {
     pub account_id: String,
-    /// The faucet funding transaction hash.
-    pub transaction_hash: String,
+    pub wallet_address: Option<String>,
+    pub network: Option<String>,
+    pub transfer_id: Option<String>,
+    pub amount_usdc: Option<String>,
+    pub transaction_hash: Option<String>,
 }
 
 /// Requests testnet tokens from the faucet (POST `/drip`, Bearer JWT). The
-/// gateway allows this once per account on Base Sepolia and returns the funding
-/// transaction (NOT a balance). Solana wallets must be funded out of band.
+/// gateway allows this once per wallet and network per month. The response is
+/// not a balance; call [`credits`] afterwards to read the credit balance.
 pub async fn drip(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
@@ -268,13 +271,24 @@ pub async fn drip(
     struct DripBody {
         #[serde(rename = "accountId")]
         account_id: String,
+        #[serde(rename = "walletAddress")]
+        wallet_address: Option<String>,
+        network: Option<String>,
+        #[serde(rename = "transferId")]
+        transfer_id: Option<String>,
+        #[serde(rename = "amountUsdc")]
+        amount_usdc: Option<String>,
         #[serde(rename = "transactionHash")]
-        transaction_hash: String,
+        transaction_hash: Option<String>,
     }
     let parsed: DripBody =
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })?;
     Ok(DripReceipt {
         account_id: parsed.account_id,
+        wallet_address: parsed.wallet_address,
+        network: parsed.network,
+        transfer_id: parsed.transfer_id,
+        amount_usdc: parsed.amount_usdc,
         transaction_hash: parsed.transaction_hash,
     })
 }
@@ -850,7 +864,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn drip_returns_the_funding_transaction() {
+    async fn drip_returns_a_direct_transfer_transaction() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/drip"))
@@ -870,8 +884,38 @@ mod tests {
         };
         let client = reqwest::Client::new();
         let receipt = drip(&client, &payment, &session).await.unwrap();
-        assert_eq!(receipt.transaction_hash, "0xfeed");
+        assert_eq!(receipt.transaction_hash.as_deref(), Some("0xfeed"));
+        assert_eq!(receipt.transfer_id, None);
         assert_eq!(receipt.account_id, "eip155:84532:0xabc");
+    }
+
+    #[tokio::test]
+    async fn drip_returns_a_circle_transfer_id() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/drip"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "accountId": "eip155:84532:0xabc",
+                "walletAddress": "0xabc",
+                "network": "eip155:84532",
+                "transferId": "transfer-1",
+                "amountUsdc": "10"
+            })))
+            .mount(&server)
+            .await;
+
+        let payment = evm_payment(&server.uri());
+        let session = GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: now_unix() as i64 + 3600,
+            account_id: "a".into(),
+        };
+        let receipt = drip(&reqwest::Client::new(), &payment, &session)
+            .await
+            .unwrap();
+        assert_eq!(receipt.transfer_id.as_deref(), Some("transfer-1"));
+        assert_eq!(receipt.amount_usdc.as_deref(), Some("10"));
+        assert_eq!(receipt.transaction_hash, None);
     }
 
     // Menu with credit, per-request, and nanopayment tiers.
