@@ -1,6 +1,6 @@
 {
   "name": "@quicknode/sdk",
-  "version": "3.8.1",
+  "version": "3.8.2",
   "description": "Quicknode SDK",
   "repository": {
     "type": "git",
