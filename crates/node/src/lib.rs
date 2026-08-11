@@ -1655,8 +1655,9 @@ impl RpcApiClient {
     }
 
     /// Requests testnet tokens from the x402 faucet. Resolves to the funding
-    /// transaction `{ accountId, transactionHash }` — NOT a balance; call
-    /// `gatewayCredits` afterwards for that. Allowed once per account.
+    /// transfer metadata containing either `transferId` or `transactionHash`.
+    /// The former is asynchronous Circle settlement; the latter is a direct
+    /// on-chain transfer. This is not a balance; call `gatewayCredits` for that.
     #[napi]
     pub async fn gateway_drip(&self, session: serde_json::Value) -> Result<serde_json::Value> {
         let session = parse_gateway_session(&session)?;
@@ -1667,6 +1668,10 @@ impl RpcApiClient {
             .map_err(errors::map_sdk_err)?;
         Ok(serde_json::json!({
             "accountId": receipt.account_id,
+            "walletAddress": receipt.wallet_address,
+            "network": receipt.network,
+            "transferId": receipt.transfer_id,
+            "amountUsdc": receipt.amount_usdc,
             "transactionHash": receipt.transaction_hash,
         }))
     }

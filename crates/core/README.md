@@ -1954,15 +1954,14 @@ Fund the payment wallet out of band — the testnet faucet below, or by sending 
 `payment_address()` directly. Credits are provisioned against the account gateway-side.
 
 EVM payment networks use SIWE. Solana payment networks use SIWS with an Ed25519
-signature encoded as Base58. Solana wallets must be funded out of band; the faucet
-is available for Base Sepolia only.
+signature encoded as Base58.
 
 | Method | Cost | Returns |
 |---|---|---|
 | `payment_address()` | free, offline | the wallet address derived from the key |
 | `gateway_authenticate()` | free | `GatewaySession { token, exp_unix, account_id }` |
 | `gateway_credits(session)` | free | `CreditBalance { account_id, credits }` |
-| `gateway_drip(session)` | free (testnet) | `DripReceipt { account_id, transaction_hash }` |
+| `gateway_drip(session)` | free (testnet) | `DripReceipt` with `transfer_id` or `transaction_hash` |
 | `gateway_drawdown_call(method, params, network, session)` | 1 credit | the JSON-RPC `result` |
 
 ```rust
@@ -1977,9 +1976,10 @@ retry that call.
 
 #### Testnet faucet
 
-`gateway_drip` requests testnet tokens for the payment **wallet** on Base Sepolia. The
-gateway allows one drip per account, and it returns the on-chain funding transaction hash
-— not a credit balance.
+`gateway_drip` requests testnet tokens for the payment **wallet**. Circle Gateway-backed
+networks return `transfer_id` because settlement is asynchronous. Direct-transfer
+networks such as Arc Testnet return `transaction_hash`. The response is not a credit
+balance; call `gateway_credits` separately.
 
 ### MPP payment channel (deposit once, then vouchers)
 
