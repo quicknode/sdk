@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use crate::{config::SqlConfig, errors::SdkError, SdkConfig};
 
 const SQL_BASE_URL: &str = "https://api.quicknode.com/sql/rest/v1/";
-/// Public catalog + x402 drawdown SQL host. Discovery always uses this
-/// prefix (or a `--base-url` remap). The account host above stays on `query`.
+/// Public catalog + x402 drawdown SQL host. Callers that want this prefix set
+/// it on [`SqlConfig::base_url`]; the account host above is the default.
 pub const X402_SQL_BASE_URL: &str = "https://x402.quicknode.com/sql/rest/v1/";
 
 // ── Resolved config ────────────────────────────────────────────────────────
@@ -352,16 +352,20 @@ impl SqlApiClient {
 
     /// Executes a SQL query on the MPP session route
     /// (`POST {mpp}/session/sql/rest/v1/query`) with a cumulative voucher.
-    /// The increment is the SQL challenge `amount` (observed 100), not
+    /// The increment is the SQL challenge `amount`, not
     /// [`crate::rpc::payment::session::ChannelState::per_call`]. A 402
     /// insufficient-balance is terminal — this method does not sign a smaller
-    /// increment. Persist [`MppQueryResult::accepted_cumulative`] after 200.
+    /// increment.
+    ///
+    /// Advances `channel.cumulative_spent` whenever the voucher reached the
+    /// gateway, errors included. Persist `channel` on every outcome, not only
+    /// after a 200, or a later query re-signs a cumulative the gateway refuses.
     #[cfg(feature = "payments-tempo")]
     pub async fn query_with_mpp_session(
         &self,
         params: &QueryParams,
         payment: &crate::config::PaymentConfig,
-        channel: &crate::rpc::payment::session::ChannelState,
+        channel: &mut crate::rpc::payment::session::ChannelState,
     ) -> Result<MppQueryResult, SdkError> {
         let resolved = crate::rpc::payment::ResolvedPayment::from_config(payment)?;
         let body = serde_json::to_value(params).map_err(|e| {
@@ -809,17 +813,15 @@ mod tests {
             .await;
 
         let sdk = make_sdk(format!("{}/", server.uri()));
+        let mut channel = sample_channel();
         let result = sdk
             .sql
-            .query_with_mpp_session(
-                &query_params(),
-                &tempo_payment(&server.uri()),
-                &sample_channel(),
-            )
+            .query_with_mpp_session(&query_params(), &tempo_payment(&server.uri()), &mut channel)
             .await
             .unwrap();
         assert_eq!(result.query.credits, 117);
         assert_eq!(result.accepted_cumulative, 110);
+        assert_eq!(channel.cumulative_spent, 110);
     }
 
     #[cfg(feature = "payments-tempo")]
@@ -856,13 +858,10 @@ mod tests {
             .await;
 
         let sdk = make_sdk(format!("{}/", server.uri()));
+        let mut channel = sample_channel();
         let err = sdk
             .sql
-            .query_with_mpp_session(
-                &query_params(),
-                &tempo_payment(&server.uri()),
-                &sample_channel(),
-            )
+            .query_with_mpp_session(&query_params(), &tempo_payment(&server.uri()), &mut channel)
             .await
             .unwrap_err();
         assert!(
@@ -870,5 +869,77 @@ mod tests {
                 if status.as_u16() == 402 && body.contains("Insufficient")),
             "unexpected error: {err:?}"
         );
+        // Advances despite the failure: no receipt, so the signed value stands.
+        assert_eq!(channel.cumulative_spent, 110);
+    }
+
+    #[cfg(feature = "payments-tempo")]
+    #[tokio::test]
+    async fn query_with_mpp_session_advances_channel_from_receipt_on_error() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use wiremock::{Request, Respond};
+
+        struct ChallengeThenServerError {
+            calls: AtomicUsize,
+        }
+        impl Respond for ChallengeThenServerError {
+            fn respond(&self, req: &Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n == 0 && !req.headers.contains_key("authorization") {
+                    return ResponseTemplate::new(402)
+                        .insert_header("www-authenticate", sql_session_offer("100"));
+                }
+                // Voucher banked, query body failed.
+                ResponseTemplate::new(500)
+                    .insert_header("payment-receipt", receipt_header("110").as_str())
+                    .set_body_string("query engine unavailable")
+            }
+        }
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/session/sql/rest/v1/query"))
+            .respond_with(ChallengeThenServerError {
+                calls: AtomicUsize::new(0),
+            })
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let mut channel = sample_channel();
+        let err = sdk
+            .sql
+            .query_with_mpp_session(&query_params(), &tempo_payment(&server.uri()), &mut channel)
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, SdkError::Api { status, .. } if status.as_u16() == 500),
+            "unexpected error: {err:?}"
+        );
+        assert_eq!(channel.cumulative_spent, 110);
+    }
+
+    #[cfg(feature = "payments-tempo")]
+    #[tokio::test]
+    async fn query_with_mpp_session_leaves_channel_alone_when_never_sent() {
+        // Nothing listening: the probe cannot connect, so no voucher is signed.
+        let sdk = make_sdk("http://127.0.0.1:1/".to_string());
+        let mut channel = sample_channel();
+        let before = channel.cumulative_spent;
+        let err = sdk
+            .sql
+            .query_with_mpp_session(
+                &query_params(),
+                &tempo_payment("http://127.0.0.1:1"),
+                &mut channel,
+            )
+            .await
+            .unwrap_err();
+        assert!(
+            !matches!(err, SdkError::PaymentIndeterminate),
+            "a failed probe must not read as an indeterminate payment: {err:?}"
+        );
+        assert_eq!(channel.cumulative_spent, before);
     }
 }

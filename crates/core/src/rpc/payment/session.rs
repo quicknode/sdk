@@ -376,18 +376,22 @@ pub async fn voucher_call(
 }
 
 /// Session route for SQL Explorer. Distinct from [`SESSION_ROUTE_NETWORK`]:
-/// the SQL 402 challenge prices a query at `amount` (observed 100), not the
-/// RPC `per_call` unit (observed 10).
+/// the SQL 402 challenge prices a query at its own `amount`, not the RPC
+/// `per_call` unit.
 const SQL_SESSION_ROUTE: &str = "sql/rest/v1/query";
 
 /// Makes one MPP-session SQL query. The voucher increment is the SQL
 /// challenge `amount`, not [`ChannelState::per_call`]. Returns the response
 /// body and `acceptedCumulative` from the receipt (or the signed cumulative
 /// if the receipt omits it). A 402 insufficient-balance is terminal.
+///
+/// Advances `channel.cumulative_spent` whenever the voucher reached the
+/// gateway, errors included: a re-signed stale cumulative is refused, so
+/// trailing the gateway strands the channel while leading it recovers.
 pub async fn sql_voucher_call(
     client: &reqwest::Client,
     payment: &ResolvedPayment,
-    channel: &ChannelState,
+    channel: &mut ChannelState,
     body: &Value,
 ) -> Result<(String, u128), SdkError> {
     let challenge = probe_sql_session_challenge(client, payment, body).await?;
@@ -429,12 +433,19 @@ pub async fn sql_voucher_call(
         Err(e) => {
             let err = SdkError::Http(e);
             return Err(match err.http_kind() {
+                // A connect failure never put the voucher on the wire.
                 Some(HttpKind::Connect) => err,
-                _ => SdkError::PaymentIndeterminate,
+                // Otherwise it may have landed; assume it did.
+                _ => {
+                    channel.cumulative_spent = new_cumulative;
+                    SdkError::PaymentIndeterminate
+                }
             });
         }
     };
 
+    // Parse before `text()` consumes the response; a failed body can still bank
+    // the voucher.
     let receipt_cumulative = paid
         .headers()
         .get("payment-receipt")
@@ -447,6 +458,9 @@ pub async fn sql_voucher_call(
         })
         .and_then(|s| s.parse::<u128>().ok());
 
+    let accepted = receipt_cumulative.unwrap_or(new_cumulative);
+    channel.cumulative_spent = accepted;
+
     let paid_status = paid.status();
     let text = paid.text().await.map_err(SdkError::Http)?;
     if !paid_status.is_success() {
@@ -455,7 +469,7 @@ pub async fn sql_voucher_call(
             body: text,
         });
     }
-    Ok((text, receipt_cumulative.unwrap_or(new_cumulative)))
+    Ok((text, accepted))
 }
 
 // Probe the SQL session route for the 402 challenge. The SQL amount is
