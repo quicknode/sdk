@@ -26,9 +26,11 @@ pub use rpc::{
 };
 #[cfg(feature = "payments-tempo")]
 pub use rpc::{ChannelState, ChannelStatus};
+#[cfg(feature = "payments-tempo")]
+pub use sql::MppQueryResult;
 pub use sql::{
     ChainSchema, ColumnMeta, ColumnSchema, QueryParams, QueryResponse, QueryStatistics,
-    SqlApiClient, TableSchema,
+    SqlApiClient, SqlCluster, TableSchema, X402_SQL_BASE_URL,
 };
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};

@@ -1756,11 +1756,26 @@ qn.kvstore.delete_list("my-list").await?;
 
 ### SQL Client
 
-Accessed as `qn.sql`. Runs SQL queries against indexed blockchain data and fetches the database schema. Backed by `https://api.quicknode.com/sql/rest/v1/`.
+Accessed as `qn.sql`. Runs SQL queries against indexed blockchain data and fetches the database schema.
+
+- Account host (API key): `https://api.quicknode.com/sql/rest/v1/` — `query` and `get_schema`.
+- Public catalog / x402 drawdown: `https://x402.quicknode.com/sql/rest/v1/` — `list_clusters`, `get_schema`, `query_with_session`. Use a keyless client so no `x-api-key` is sent.
+- MPP session: `POST https://mpp.quicknode.com/session/sql/rest/v1/query` — `query_with_mpp_session`.
+
+##### `list_clusters`
+
+Lists clusters from the public catalog (`GET clusters`). Unauthenticated.
+
+**Returns**: `Vec<SqlCluster>` — each with `id` and `display_name`.
+
+```rust
+// Rust
+let clusters = qn.sql.list_clusters().await?;
+```
 
 ##### `query`
 
-Executes a SQL query against a cluster and returns the result set. Paginate by writing `LIMIT`/`OFFSET` into the SQL.
+Executes a SQL query against a cluster on the account host and returns the result set. Paginate by writing `LIMIT`/`OFFSET` into the SQL.
 
 **Parameters**: `QueryParams` with `query` (String, required) and `cluster_id` (String, required).
 
@@ -1776,6 +1791,29 @@ let resp = qn
     })
     .await?;
 println!("{} rows, {:?}", resp.rows, resp.data.first());
+```
+
+##### `query_with_session`
+
+Executes a SQL query on the x402 drawdown host with a SIWX `GatewaySession` JWT. Single attempt. A 402 `requires_payment` is `SdkError::Api` — this method never signs a per-request payment. Requires the `payments` feature.
+
+```rust
+// Rust
+let session = qn.rpc.gateway_authenticate().await?;
+let resp = qn.sql.query_with_session(&params, &session).await?;
+```
+
+##### `query_with_mpp_session`
+
+Executes a SQL query on the MPP session route with a cumulative voucher. The increment is the SQL challenge `amount` (not `ChannelState.per_call`). A 402 insufficient-balance is terminal. Persist `accepted_cumulative` after 200; do not advance the channel by `query.credits`. Requires the `payments-tempo` feature.
+
+```rust
+// Rust
+let result = qn
+    .sql
+    .query_with_mpp_session(&params, &payment, &channel)
+    .await?;
+channel.cumulative_spent = result.accepted_cumulative;
 ```
 
 ##### `get_schema`
