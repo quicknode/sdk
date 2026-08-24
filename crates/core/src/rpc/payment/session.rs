@@ -375,6 +375,147 @@ pub async fn voucher_call(
     Ok(text)
 }
 
+/// Session route for SQL Explorer. Distinct from [`SESSION_ROUTE_NETWORK`]:
+/// the SQL 402 challenge prices a query at its own `amount`, not the RPC
+/// `per_call` unit.
+const SQL_SESSION_ROUTE: &str = "sql/rest/v1/query";
+
+/// Makes one MPP-session SQL query. The voucher increment is the SQL
+/// challenge `amount`, not [`ChannelState::per_call`]. Returns the response
+/// body and `acceptedCumulative` from the receipt (or the signed cumulative
+/// if the receipt omits it). A 402 insufficient-balance is terminal.
+///
+/// Advances `channel.cumulative_spent` whenever the voucher reached the
+/// gateway, errors included: a re-signed stale cumulative is refused, so
+/// trailing the gateway strands the channel while leading it recovers.
+pub async fn sql_voucher_call(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+    channel: &mut ChannelState,
+    body: &Value,
+) -> Result<(String, u128), SdkError> {
+    let challenge = probe_sql_session_challenge(client, payment, body).await?;
+    let increment = require_amount(&challenge.request)?;
+    let new_cumulative = channel.cumulative_spent.saturating_add(increment);
+    if new_cumulative > channel.deposit {
+        return Err(SdkError::PaymentUnsupported {
+            offered: format!(
+                "voucher cumulative {new_cumulative} exceeds channel deposit {}; top up first",
+                channel.deposit
+            ),
+        });
+    }
+
+    let payer = payment.signer.address()?;
+    let signature = payment.signer.sign_session_voucher(
+        &channel.channel_id,
+        new_cumulative,
+        channel.chain_id,
+        &channel.escrow_contract,
+    )?;
+    let payload = serde_json::json!({
+        "action": "voucher",
+        "channelId": channel.channel_id,
+        "cumulativeAmount": new_cumulative.to_string(),
+        "signature": signature,
+    });
+    let credential = build_credential(&challenge, &payer, channel.chain_id, &payload)?;
+
+    let url = session_base(payment, SQL_SESSION_ROUTE);
+    let paid = match client
+        .post(&url)
+        .header("Authorization", format!("Payment {credential}"))
+        .json(body)
+        .send()
+        .await
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            let err = SdkError::Http(e);
+            return Err(match err.http_kind() {
+                // A connect failure never put the voucher on the wire.
+                Some(HttpKind::Connect) => err,
+                // Otherwise it may have landed; assume it did.
+                _ => {
+                    channel.cumulative_spent = new_cumulative;
+                    SdkError::PaymentIndeterminate
+                }
+            });
+        }
+    };
+
+    // Parse before `text()` consumes the response; a failed body can still bank
+    // the voucher.
+    let receipt_cumulative = paid
+        .headers()
+        .get("payment-receipt")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|h| super::decode_b64url_json(h).ok())
+        .and_then(|v| {
+            v.get("acceptedCumulative")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        })
+        .and_then(|s| s.parse::<u128>().ok());
+
+    let accepted = receipt_cumulative.unwrap_or(new_cumulative);
+    channel.cumulative_spent = accepted;
+
+    let paid_status = paid.status();
+    let text = paid.text().await.map_err(SdkError::Http)?;
+    if !paid_status.is_success() {
+        return Err(SdkError::Api {
+            status: paid_status,
+            body: text,
+        });
+    }
+    Ok((text, accepted))
+}
+
+// Probe the SQL session route for the 402 challenge. The SQL amount is
+// not the RPC lifecycle amount, so this must not reuse the pinned
+// [`SESSION_ROUTE_NETWORK`] probe.
+async fn probe_sql_session_challenge(
+    client: &reqwest::Client,
+    payment: &ResolvedPayment,
+    body: &Value,
+) -> Result<SessionChallenge, SdkError> {
+    let url = session_base(payment, SQL_SESSION_ROUTE);
+    let resp = client
+        .post(&url)
+        .json(body)
+        .send()
+        .await
+        .map_err(SdkError::Http)?;
+    if resp.status().as_u16() == 404 {
+        return Err(SdkError::PaymentUnsupported {
+            offered: "the gateway does not serve the SQL session route \
+                 (/session/sql/rest/v1/query returned 404)"
+                .into(),
+        });
+    }
+    if resp.status().as_u16() != 402 {
+        return Err(SdkError::PaymentUnsupported {
+            offered: format!(
+                "the SQL session endpoint did not return a 402 challenge (status {})",
+                resp.status().as_u16()
+            ),
+        });
+    }
+    let header = resp
+        .headers()
+        .get("www-authenticate")
+        .and_then(|v| v.to_str().ok())
+        .map(String::from)
+        .ok_or_else(|| SdkError::PaymentUnsupported {
+            offered: "SQL session 402 without a WWW-Authenticate header".into(),
+        })?;
+    parse_session_challenge(
+        &header,
+        super::caip2_or_bare_chain_id(&payment.pay_network)?,
+    )
+}
+
 // ── HTTP + credential helpers ────────────────────────────────────────────────
 
 fn session_base(payment: &ResolvedPayment, query_network: &str) -> String {

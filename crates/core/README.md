@@ -53,6 +53,9 @@ This is one of four language bindings published from the same Rust core. See the
     - [Sets](#sets)
     - [Lists](#lists)
   - [SQL Client](#sql-client)
+    - [`list_clusters`](#list_clusters)
+    - [`query_with_session`](#query_with_session)
+    - [`query_with_mpp_session`](#query_with_mpp_session)
   - [RPC & Tooling Access](#rpc--tooling-access)
 - [Crypto-micropayment lane (`rpc.call`)](#crypto-micropayment-lane-rpccall)
   - [Wallet generation](#wallet-generation)
@@ -1756,11 +1759,26 @@ qn.kvstore.delete_list("my-list").await?;
 
 ### SQL Client
 
-Accessed as `qn.sql`. Runs SQL queries against indexed blockchain data and fetches the database schema. Backed by `https://api.quicknode.com/sql/rest/v1/`.
+Accessed as `qn.sql`. Runs SQL queries against indexed blockchain data and fetches the database schema.
+
+- Account host (API key): `https://api.quicknode.com/sql/rest/v1/` — `query` and `get_schema`.
+- Public catalog / x402 drawdown: `https://x402.quicknode.com/sql/rest/v1/` — `list_clusters` and `query_with_session`. Use a keyless client so no `x-api-key` is sent.
+- MPP session: `POST https://mpp.quicknode.com/session/sql/rest/v1/query` — `query_with_mpp_session`.
+
+##### `list_clusters`
+
+Lists clusters from the public catalog (`GET clusters`). Unauthenticated.
+
+**Returns**: `Vec<SqlCluster>` — each with `id` and `display_name`.
+
+```rust
+// Rust
+let clusters = qn.sql.list_clusters().await?;
+```
 
 ##### `query`
 
-Executes a SQL query against a cluster and returns the result set. Paginate by writing `LIMIT`/`OFFSET` into the SQL.
+Executes a SQL query against a cluster on the account host and returns the result set. Paginate by writing `LIMIT`/`OFFSET` into the SQL.
 
 **Parameters**: `QueryParams` with `query` (String, required) and `cluster_id` (String, required).
 
@@ -1778,9 +1796,35 @@ let resp = qn
 println!("{} rows, {:?}", resp.rows, resp.data.first());
 ```
 
+##### `query_with_session`
+
+Executes a SQL query on the x402 drawdown host with a SIWX `GatewaySession` JWT. Single attempt. A 402 `requires_payment` is `SdkError::Api` — this method never signs a per-request payment. Requires the `payments` feature.
+
+```rust
+// Rust
+let session = qn.rpc.gateway_authenticate().await?;
+let resp = qn.sql.query_with_session(&params, &session).await?;
+```
+
+##### `query_with_mpp_session`
+
+Executes a SQL query on the MPP session route with a cumulative voucher. The increment is the SQL challenge `amount` (not `ChannelState.per_call`). A 402 insufficient-balance is terminal.
+
+Takes `&mut ChannelState` and advances `cumulative_spent` whenever the voucher reached the gateway — including on a non-2xx body and on a lost response. Persist the channel on every outcome, not only after a 200: the gateway refuses a re-signed stale cumulative, so a channel left behind the gateway cannot be used again. Requires the `payments-tempo` feature.
+
+```rust
+// Rust
+let result = qn
+    .sql
+    .query_with_mpp_session(&params, &payment, &mut channel)
+    .await;
+save_channel(&channel)?; // persist first — the voucher may have settled
+let result = result?;
+```
+
 ##### `get_schema`
 
-Fetches the database schema for a cluster: table names, columns, types, sort keys, and partition strategies.
+Fetches the database schema for a cluster: table names, columns, types, sort keys, and partition strategies. Reads the configured SQL base URL and sends the API key.
 
 **Parameters**: `cluster_id` (`&str`, required).
 
