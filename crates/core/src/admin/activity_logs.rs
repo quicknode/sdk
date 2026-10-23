@@ -257,7 +257,7 @@ impl AdminApiClient {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::{ListActivityLogsRequest, ListActivityLogsResponse};
     use crate::{errors::SdkError, AdminConfig, QuicknodeSdk, SdkFullConfig};

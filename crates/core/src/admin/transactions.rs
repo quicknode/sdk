@@ -291,7 +291,7 @@ fn transactions_query(params: &ListTransactionsRequest) -> Vec<(&'static str, St
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::{GetTransactionRequest, ListTransactionsRequest};
     use crate::{errors::SdkError, AdminConfig, QuicknodeSdk, SdkFullConfig};
