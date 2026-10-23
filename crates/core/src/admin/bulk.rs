@@ -31,6 +31,8 @@ pub struct BulkOperationResult {
     pub id: String,
     /// Whether the operation succeeded for this endpoint.
     pub success: bool,
+    /// Per-endpoint failure reason; absent on successful rows.
+    pub error: Option<String>,
 }
 
 /// Summary data for a `bulk_update_endpoint_status` response.

@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetEndpointsRequest {
-    /// Maximum number of endpoints returned.
+    /// Maximum number of endpoints returned, capped at 100.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
     /// Starting index into the result set.
@@ -45,10 +45,10 @@ pub struct GetEndpointsRequest {
     /// When true, return only flat-rate endpoints.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_flat_rate: Option<bool>,
-    /// Filter results by associated tag ids.
+    /// Filter by tag IDs; cannot be combined with nonempty tag_labels.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag_ids: Option<Vec<i32>>,
-    /// Filter results by associated tag labels.
+    /// Filter by tag labels; cannot be combined with nonempty tag_ids.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag_labels: Option<Vec<String>>,
 }
@@ -98,7 +98,7 @@ pub struct Endpoint {
     pub status: String,
     /// Blockchain the endpoint serves (e.g. `ethereum`).
     pub chain: String,
-    /// Specific network within the chain (e.g. `mainnet`).
+    /// Specific network within the chain (e.g. `mainnet`); required for creation.
     pub network: String,
     /// Whether the endpoint is dedicated.
     pub is_dedicated: bool,
@@ -135,17 +135,15 @@ pub struct EndpointTag {
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CreateEndpointRequest {
-    /// Blockchain the endpoint should serve (e.g. `ethereum`).
+    /// Blockchain the endpoint should serve (e.g. `ethereum`); required by the API.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub chain: Option<String>,
-    /// Specific network within the chain (e.g. `mainnet`).
+    /// Specific network within the chain (e.g. `mainnet`); required for creation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<String>,
 }
 
 /// Response from `create_endpoint`.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateEndpointResponse {
@@ -156,8 +154,6 @@ pub struct CreateEndpointResponse {
 }
 
 /// Full representation of a single endpoint, including its security and rate limits.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SingleEndpoint {
@@ -208,8 +204,6 @@ pub struct EndpointRateLimits {
 /// Security configuration for an endpoint — the aggregate of tokens, JWTs,
 /// referrers, domain masks, IPs, and request filters plus their enabled
 /// toggles.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointSecurity {
@@ -225,6 +219,8 @@ pub struct EndpointSecurity {
     pub domain_masks: Option<Vec<EndpointDomainMask>>,
     /// Whitelisted IP addresses.
     pub ips: Option<Vec<EndpointIp>>,
+    /// Blocked IP addresses or CIDR ranges.
+    pub blocked_ips: Option<Vec<EndpointIp>>,
     /// Request (method) filters.
     pub request_filters: Option<Vec<EndpointRequestFilter>>,
 }
@@ -237,6 +233,13 @@ pub struct EndpointSecurity {
 pub struct EndpointSecurityOptions {
     /// Whether token authentication is enforced.
     pub tokens: Option<bool>,
+    /// Whether HSTS is enabled.
+    pub hsts: Option<bool>,
+    /// Whether CORS is enabled.
+    pub cors: Option<bool>,
+    /// Whether response logging is enabled.
+    #[serde(rename = "responseLogging")]
+    pub response_logging: Option<bool>,
     /// Whether JWT validation is enforced.
     pub jwts: Option<bool>,
     /// Whether domain masking is enabled.
@@ -352,21 +355,22 @@ pub struct EndpointIp {
 }
 
 /// Request (method) filter configured on an endpoint.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointRequestFilter {
     /// Filter identifier.
     pub id: String,
-    /// Whitelisted RPC methods.
+    /// String methods or structured matchers.
     #[serde(default)]
-    pub method: Vec<String>,
+    #[cfg_attr(feature = "node", napi(ts_type = "unknown[]"))]
+    pub method: Vec<serde_json::Value>,
+    /// All top-level pattern keys other than method.
+    #[serde(default)]
+    #[cfg_attr(feature = "node", napi(ts_type = "Record<string, unknown>"))]
+    pub params: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// Response from `show_endpoint`.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShowEndpointResponse {
@@ -383,7 +387,7 @@ pub struct ShowEndpointResponse {
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct UpdateEndpointRequest {
-    /// New human-readable label.
+    /// New human-readable label; required by the API.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
 }
@@ -418,19 +422,72 @@ pub struct UpdateEndpointStatusResponse {
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CreateTagRequest {
-    /// Label for the new tag. Maximum 25 characters.
+    /// Nonblank label, 3 through 25 characters after trimming. The SDK does not trim it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
 }
 
 /// Response from `get_endpoint_security`.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetEndpointSecurityResponse {
     /// The endpoint's security configuration.
     pub data: Option<EndpointSecurity>,
     /// Error message when the request did not succeed.
+    pub error: Option<String>,
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::GetEndpointSecurityResponse;
+
+    #[test]
+    fn structured_request_filter_preserves_snapshot_json() {
+        let fixture = serde_json::json!({"data": {"request_filters": [{
+            "id": "fixture-filter", "method": [{"prefix": "eth_"}],
+            "params": {"jsonrpc": ["2.0"], "anything-but": [null, {"nested": true}]}
+        }]}, "error": null});
+        let response: GetEndpointSecurityResponse =
+            serde_json::from_value(fixture.clone()).unwrap();
+        let decoded = serde_json::to_value(response).unwrap();
+        assert_eq!(
+            decoded["data"]["request_filters"],
+            fixture["data"]["request_filters"]
+        );
+    }
+}
+
+/// Endpoint tag association; id identifies the association, tag_id identifies the tag.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EndpointTagAssociation {
+    pub id: i64,
+    pub tag_id: i64,
+    pub account_id: i64,
+    pub endpoint_id: i64,
+    pub label: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// Tags associated with the endpoint.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateTagData {
+    pub tags: Vec<EndpointTagAssociation>,
+}
+
+/// Response from create_tag_with_response.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateTagResponse {
+    pub data: CreateTagData,
     pub error: Option<String>,
 }

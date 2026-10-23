@@ -1,4 +1,7 @@
 pub mod account;
+pub mod activity_logs;
+#[cfg(test)]
+mod alignment_tests;
 pub mod api_credits;
 pub mod billing;
 pub mod bulk;
@@ -9,10 +12,41 @@ pub mod endpoint_security;
 pub mod endpoint_urls;
 pub mod endpoints;
 pub mod logs;
+pub mod metrics_summaries;
+#[cfg(test)]
+mod mutation_alignment_tests;
 pub mod tags;
 pub mod teams;
 pub mod tooling_access;
+pub mod transactions;
 pub mod usage;
+pub mod usage_summaries;
+
+pub use activity_logs::{
+    ActivityLogActor, ActivityLogEntry, ActivityLogFilterActor, ActivityLogFilterType,
+    ActivityLogFiltersData, ActivityLogPagination, ActivityLogTarget, GetActivityLogResponse,
+    ListActivityLogFiltersResponse, ListActivityLogsRequest, ListActivityLogsResponse,
+};
+pub use metrics_summaries::{
+    ErrorsSummaryData, ErrorsSummaryRow, ErrorsSummaryTotals, GetEndpointErrorsSummaryRequest,
+    GetEndpointErrorsSummaryResponse, GetErrorsSummaryRequest, GetErrorsSummaryResponse,
+    GetTrafficSummaryRequest, GetTrafficSummaryResponse, TrafficSummaryData, TrafficSummaryRow,
+    TrafficSummaryTotals,
+};
+pub use transactions::{
+    GetTransactionRequest, GetTransactionResponse, ListTransactionsRequest,
+    ListTransactionsResponse, TransactionAttempt, TransactionDetail, TransactionLookup,
+    TransactionPayloads, TransactionSummary, TransactionsData,
+};
+pub use usage_summaries::{
+    GetUsageCreditsSummaryRequest, GetUsageCreditsSummaryResponse, GetUsageRpcSummaryRequest,
+    GetUsageRpcSummaryResponse, GetUsageStreamsSummaryRequest, GetUsageStreamsSummaryResponse,
+    GetUsageWebhooksSummaryRequest, GetUsageWebhooksSummaryResponse, UsageCreditsSummaryData,
+    UsageCreditsSummaryRow, UsageCreditsSummaryTotals, UsageRpcSummaryData, UsageRpcSummaryRow,
+    UsageRpcSummaryTotals, UsageStreamsSummaryData, UsageStreamsSummaryRow,
+    UsageStreamsSummaryTotals, UsageWebhooksSummaryData, UsageWebhooksSummaryRow,
+    UsageWebhooksSummaryTotals,
+};
 
 pub use account::{AccountInfo, AccountInfoResponse, AccountSubscription};
 pub use api_credits::{ApiCredit, GetApiCreditsResponse};
@@ -31,24 +65,34 @@ pub use endpoint_metrics::{
     GetEndpointMetricsResponse,
 };
 pub use endpoint_rate_limits::{
-    CreateMethodRateLimitRequest, CreateMethodRateLimitResponse, GetMethodRateLimitsData,
-    GetMethodRateLimitsResponse, GetRateLimitsData, GetRateLimitsResponse, MethodRateLimiter,
-    RateLimitEntry, RateLimitSettings, UpdateMethodRateLimitRequest, UpdateMethodRateLimitResponse,
-    UpdateRateLimitsRequest,
+    CreateMethodRateLimitRequest, CreateMethodRateLimitResponse, EffectiveRateLimits,
+    GetMethodRateLimitsData, GetMethodRateLimitsResponse, GetRateLimitsData, GetRateLimitsResponse,
+    MethodRateLimiter, RateLimitEntry, RateLimitSettings, UpdateMethodRateLimitRequest,
+    UpdateMethodRateLimitResponse, UpdateRateLimitsData, UpdateRateLimitsRequest,
+    UpdateRateLimitsResponse,
 };
 pub use endpoint_security::{
-    CreateDomainMaskRequest, CreateIpRequest, CreateJwtRequest,
-    CreateOrUpdateIpCustomHeaderRequest, CreateOrUpdateIpCustomHeaderResponse,
-    CreateReferrerRequest, CreateRequestFilterData, CreateRequestFilterRequest,
-    CreateRequestFilterResponse, DeleteBoolResponse, GetSecurityOptionsResponse,
-    IpCustomHeaderData, SecurityOption, SecurityOptionsUpdate, UpdateRequestFilterRequest,
-    UpdateSecurityOptionsRequest, UpdateSecurityOptionsResponse,
+    ClientCertificate, ClientCertsData, CreateBlockedIpRequest, CreateBlockedIpResponse,
+    CreateClientCertRequest, CreateClientCertResponse, CreateDomainMaskRequest,
+    CreateDomainMaskResponse, CreateIpRequest, CreateIpResponse, CreateJwtRequest,
+    CreateJwtResponse, CreateOrUpdateIpCustomHeaderRequest, CreateOrUpdateIpCustomHeaderResponse,
+    CreateReferrerRequest, CreateReferrerResponse, CreateRequestFilterData,
+    CreateRequestFilterPatternRequest, CreateRequestFilterRequest, CreateRequestFilterResponse,
+    CreateTokenResponse, CreatedDomainMask, CreatedReferrer, DeleteBoolResponse,
+    DeleteClientCertResponse, GetBlockedIpsResponse, GetClientCertsResponse,
+    GetMethodBlacklistResponse, GetRangeLimitsResponse, GetRequestFiltersResponse,
+    GetSecurityOptionsResponse, IpCustomHeaderData, MethodBlacklistData, RangeLimitsData,
+    RequestFilter, SecurityOption, SecurityOptionsUpdate, UpdateClientCertsRequest,
+    UpdateClientCertsResponse, UpdateMethodBlacklistRequest, UpdateMethodBlacklistResponse,
+    UpdateRangeLimitsRequest, UpdateRangeLimitsResponse, UpdateRequestFilterPatternRequest,
+    UpdateRequestFilterRequest, UpdateSecurityOptionsRequest, UpdateSecurityOptionsResponse,
 };
 pub use endpoint_urls::{EndpointUrl, GetEndpointUrlsData, GetEndpointUrlsResponse};
 pub use endpoints::{
-    CreateEndpointRequest, CreateEndpointResponse, CreateTagRequest, Endpoint, EndpointDomainMask,
-    EndpointIp, EndpointIpCustomHeaderOption, EndpointJwt, EndpointRateLimits, EndpointReferrer,
-    EndpointRequestFilter, EndpointSecurity, EndpointSecurityOptions, EndpointTag, EndpointToken,
+    CreateEndpointRequest, CreateEndpointResponse, CreateTagData, CreateTagRequest,
+    CreateTagResponse, Endpoint, EndpointDomainMask, EndpointIp, EndpointIpCustomHeaderOption,
+    EndpointJwt, EndpointRateLimits, EndpointReferrer, EndpointRequestFilter, EndpointSecurity,
+    EndpointSecurityOptions, EndpointTag, EndpointTagAssociation, EndpointToken,
     GetEndpointSecurityResponse, GetEndpointsRequest, GetEndpointsResponse, Pagination,
     ShowEndpointResponse, SingleEndpoint, UpdateEndpointRequest, UpdateEndpointStatusRequest,
     UpdateEndpointStatusResponse,
@@ -192,8 +236,7 @@ impl AdminApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
-    /// Updates editable fields on an endpoint (e.g. its label). Returns a
-    /// boolean indicating whether the update succeeded.
+    /// Updates the endpoint label, which the API requires. Returns HTTP success.
     pub async fn update_endpoint(
         &self,
         id: &str,
@@ -1887,6 +1930,592 @@ impl AdminApiClient {
         }
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
+
+    /// Creates a custom filter without changing the method whitelist.
+    pub async fn create_request_filter_pattern(
+        &self,
+        id: &str,
+        params: &CreateRequestFilterPatternRequest,
+    ) -> Result<CreateRequestFilterResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/security/request_filters", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Replaces the pattern of an existing custom filter.
+    pub async fn update_request_filter_pattern(
+        &self,
+        id: &str,
+        request_filter_id: &str,
+        params: &UpdateRequestFilterPatternRequest,
+    ) -> Result<(), SdkError> {
+        let url = self.config.admin().base_url.join(&format!(
+            "endpoints/{}/security/request_filters/{}",
+            id, request_filter_id
+        ))?;
+        let resp = self
+            .config
+            .http_client()
+            .put(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        Ok(())
+    }
+
+    /// Lists whitelist and custom filters with their complete patterns.
+    pub async fn get_request_filters(
+        &self,
+        id: &str,
+    ) -> Result<GetRequestFiltersResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/security/request_filters", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Performs the mutation and returns its useful response payload.
+    pub async fn create_token_with_response(
+        &self,
+        id: &str,
+    ) -> Result<CreateTokenResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/security/tokens", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Performs the mutation and returns its useful response payload.
+    pub async fn create_referrer_with_response(
+        &self,
+        id: &str,
+        params: &CreateReferrerRequest,
+    ) -> Result<CreateReferrerResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/security/referrers", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Performs the mutation and returns its useful response payload.
+    pub async fn create_ip_with_response(
+        &self,
+        id: &str,
+        params: &CreateIpRequest,
+    ) -> Result<CreateIpResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/security/ips", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Performs the mutation and returns its useful response payload.
+    pub async fn create_domain_mask_with_response(
+        &self,
+        id: &str,
+        params: &CreateDomainMaskRequest,
+    ) -> Result<CreateDomainMaskResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/security/domain_masks", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Performs the mutation and returns its useful response payload.
+    pub async fn create_jwt_with_response(
+        &self,
+        id: &str,
+        params: &CreateJwtRequest,
+    ) -> Result<CreateJwtResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/security/jwts", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Performs the mutation and returns its useful response payload.
+    pub async fn create_tag_with_response(
+        &self,
+        id: &str,
+        params: &CreateTagRequest,
+    ) -> Result<CreateTagResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/tags", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Performs the mutation and returns its useful response payload.
+    pub async fn update_rate_limits_with_response(
+        &self,
+        id: &str,
+        params: &UpdateRateLimitsRequest,
+    ) -> Result<UpdateRateLimitsResponse, SdkError> {
+        let url = self
+            .config
+            .admin()
+            .base_url
+            .join(&format!("endpoints/{}/rate-limits", id))?;
+        let resp = self
+            .config
+            .http_client()
+            .patch(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Get client certs.
+    pub async fn get_client_certs(&self, id: &str) -> Result<GetClientCertsResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "client_certs"]);
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Create client cert.
+    pub async fn create_client_cert(
+        &self,
+        id: &str,
+        params: &CreateClientCertRequest,
+    ) -> Result<CreateClientCertResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "client_certs"]);
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Update client certs.
+    pub async fn update_client_certs(
+        &self,
+        id: &str,
+        params: &UpdateClientCertsRequest,
+    ) -> Result<UpdateClientCertsResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "client_certs"]);
+        let resp = self
+            .config
+            .http_client()
+            .patch(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Delete client cert.
+    pub async fn delete_client_cert(
+        &self,
+        id: &str,
+        fingerprint: &str,
+    ) -> Result<DeleteClientCertResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "client_certs", fingerprint]);
+        let resp = self
+            .config
+            .http_client()
+            .delete(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Get method blacklist.
+    pub async fn get_method_blacklist(
+        &self,
+        id: &str,
+    ) -> Result<GetMethodBlacklistResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "method_blacklist"]);
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Update method blacklist.
+    pub async fn update_method_blacklist(
+        &self,
+        id: &str,
+        params: &UpdateMethodBlacklistRequest,
+    ) -> Result<UpdateMethodBlacklistResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "method_blacklist"]);
+        let resp = self
+            .config
+            .http_client()
+            .put(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Get range limits.
+    pub async fn get_range_limits(&self, id: &str) -> Result<GetRangeLimitsResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "range_limits"]);
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Update range limits.
+    pub async fn update_range_limits(
+        &self,
+        id: &str,
+        params: &UpdateRangeLimitsRequest,
+    ) -> Result<UpdateRangeLimitsResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "range_limits"]);
+        let resp = self
+            .config
+            .http_client()
+            .put(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Get blocked ips.
+    pub async fn get_blocked_ips(&self, id: &str) -> Result<GetBlockedIpsResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "blocked_ips"]);
+        let resp = self
+            .config
+            .http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Create blocked ip.
+    pub async fn create_blocked_ip(
+        &self,
+        id: &str,
+        params: &CreateBlockedIpRequest,
+    ) -> Result<CreateBlockedIpResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "blocked_ips"]);
+        let resp = self
+            .config
+            .http_client()
+            .post(url)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Delete blocked ip.
+    pub async fn delete_blocked_ip(
+        &self,
+        id: &str,
+        ip_id: &str,
+    ) -> Result<DeleteBoolResponse, SdkError> {
+        let mut url = self.config.admin().base_url.clone();
+        url.path_segments_mut()
+            .map_err(|_| {
+                SdkError::Config("Admin base URL does not support path segments".to_string())
+            })?
+            .pop_if_empty()
+            .extend(["endpoints", id, "security", "blocked_ips", ip_id]);
+        let resp = self
+            .config
+            .http_client()
+            .delete(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
 }
 
 fn endpoints_query(params: &GetEndpointsRequest) -> Vec<(&'static str, String)> {
@@ -2698,6 +3327,7 @@ mod tests {
             interval: "second".to_string(),
             methods: vec!["eth_call".to_string()],
             rate: 10,
+            limit_by_ip: None,
         };
         let resp = sdk
             .admin
@@ -2937,6 +3567,7 @@ mod tests {
         let params = GetEndpointMetricsRequest {
             period: "day".to_string(),
             metric: "credits_over_time".to_string(),
+            percentile: None,
         };
         let resp = sdk
             .admin

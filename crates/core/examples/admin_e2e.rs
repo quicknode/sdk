@@ -260,6 +260,7 @@ async fn main() {
             &GetEndpointMetricsRequest {
                 period: "day".to_string(),
                 metric: "credits_over_time".to_string(),
+                percentile: None,
             },
         )
         .await
@@ -598,6 +599,7 @@ async fn main() {
                 interval: "second".to_string(),
                 methods: vec!["eth_call".to_string()],
                 rate: 5,
+                limit_by_ip: None,
             },
         )
         .await

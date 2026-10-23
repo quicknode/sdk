@@ -27,6 +27,8 @@ pub struct MethodRateLimiter {
     pub status: String,
     /// Creation timestamp.
     pub created: String,
+    /// Whether the method limit applies per client IP.
+    pub limit_by_ip: Option<bool>,
 }
 
 /// Inner data for `get_method_rate_limits`.
@@ -52,7 +54,7 @@ pub struct GetMethodRateLimitsResponse {
     pub error: Option<String>,
 }
 
-/// Parameters for `create_method_rate_limit`.
+/// Parameters for `create_method_rate_limit`. The API requires a positive rate.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
@@ -65,6 +67,9 @@ pub struct CreateMethodRateLimitRequest {
     pub methods: Vec<String>,
     /// Maximum number of calls allowed per interval.
     pub rate: i32,
+    /// Whether the method limit applies per client IP.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_by_ip: Option<bool>,
 }
 
 /// Response from `create_method_rate_limit`.
@@ -79,7 +84,7 @@ pub struct CreateMethodRateLimitResponse {
     pub error: Option<String>,
 }
 
-/// Parameters for `update_method_rate_limit`. Only provided fields are changed.
+/// Parameters for `update_method_rate_limit`. Supply at least one field; false counts. Only provided fields are changed.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
@@ -95,6 +100,9 @@ pub struct UpdateMethodRateLimitRequest {
     /// New rate value.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate: Option<i32>,
+    /// Whether the method limit applies per client IP.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_by_ip: Option<bool>,
 }
 
 /// Response from `update_method_rate_limit`.
@@ -179,5 +187,35 @@ pub struct GetRateLimitsResponse {
     /// Rate-limit rows with their source.
     pub data: Option<GetRateLimitsData>,
     /// Error message when the request did not succeed.
+    pub error: Option<String>,
+}
+
+/// Effective endpoint rate-limit overrides; null means no override.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EffectiveRateLimits {
+    pub rps: Option<i32>,
+    pub rpd: Option<i32>,
+    pub rpm: Option<i32>,
+}
+
+/// Effective rate-limit override payload.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateRateLimitsData {
+    pub limits: EffectiveRateLimits,
+}
+
+/// Response from update_rate_limits_with_response.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateRateLimitsResponse {
+    pub data: UpdateRateLimitsData,
     pub error: Option<String>,
 }

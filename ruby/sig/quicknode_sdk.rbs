@@ -102,7 +102,7 @@ module QuicknodeSdk
     def get_endpoint_logs: (id: String, from_time: String, to_time: String, ?include_details: bool, ?limit: Integer, ?next_at: String) -> untyped
     def get_log_details: (id: String, request_id: String) -> untyped
     def get_security_options: (id: String) -> untyped
-    def update_security_options: (id: String, ?tokens: String, ?referrers: String, ?jwts: String, ?ips: String, ?domain_masks: String, ?hsts: String, ?cors: String, ?request_filters: String, ?ip_custom_header: String) -> untyped
+    def update_security_options: (id: String, ?tokens: String, ?referrers: String, ?jwts: String, ?ips: String, ?domain_masks: String, ?hsts: String, ?cors: String, ?request_filters: String, ?ip_custom_header: String, ?response_logging: String) -> untyped
     def create_token: (id: String) -> void
     def delete_token: (id: String, token_id: String) -> untyped
     def create_referrer: (id: String, referrer: String) -> void
@@ -113,6 +113,39 @@ module QuicknodeSdk
     def delete_domain_mask: (id: String, domain_mask_id: String) -> untyped
     def create_jwt: (id: String, kid: String, public_key: String, name: String) -> void
     def delete_jwt: (id: String, jwt_id: String) -> void
+    def get_request_filters: (id: String) -> untyped
+    def create_request_filter_pattern: (id: String, pattern: Hash[String, untyped]) -> untyped
+    def update_request_filter_pattern: (id: String, request_filter_id: String, pattern: Hash[String, untyped]) -> void
+    def get_client_certs: (id: String) -> untyped
+    def create_client_cert: (id: String, certificate: String) -> untyped
+    def update_client_certs: (id: String, enabled: bool) -> untyped
+    def delete_client_cert: (id: String, fingerprint: String) -> untyped
+    def get_method_blacklist: (id: String) -> untyped
+    def update_method_blacklist: (id: String, methods: Array[String]) -> untyped
+    def get_range_limits: (id: String) -> untyped
+    def update_range_limits: (id: String, limits: Hash[String, Integer]) -> untyped
+    def get_blocked_ips: (id: String) -> untyped
+    def create_blocked_ip: (id: String, ip: String) -> untyped
+    def delete_blocked_ip: (id: String, ip_id: String) -> untyped
+    def list_activity_logs: (?q: String, ?actor: String, ?endpoint_id: String, ?target_type: String, ?from_time: String, ?to_time: String, ?limit: Integer, ?offset: Integer) -> untyped
+    def list_activity_log_filters: () -> untyped
+    def get_activity_log: (id: String) -> untyped
+    def list_transactions: (?last: String, ?from_time: String, ?to_time: String, ?network: String, ?method: String, ?state: String, ?transaction_hash: String, ?cursor: String, ?endpoints: Array[String], ?limit: Integer) -> untyped
+    def get_transaction: (network: String, hash: String, ?include_payloads: bool) -> untyped
+    def get_usage_credits_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer) -> untyped
+    def get_usage_rpc_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?endpoint_names: Array[String], ?chains: Array[String], ?networks: Array[String], ?methods: Array[String], ?tag_ids: Array[String], ?addon_ids: Array[String]) -> untyped
+    def get_usage_streams_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?stream_id: String) -> untyped
+    def get_usage_webhooks_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?webhook_id: String) -> untyped
+    def get_traffic_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?endpoint_names: Array[String], ?chains: Array[String], ?networks: Array[String], ?methods: Array[String], ?tag_ids: Array[String], ?addon_ids: Array[String]) -> untyped
+    def get_errors_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?endpoints: Array[String], ?networks: Array[String], ?methods: Array[String], ?codes: Array[String], ?status_codes: Array[String], ?kind: String) -> untyped
+    def get_endpoint_errors_summary: (id: String, ?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?networks: Array[String], ?methods: Array[String], ?codes: Array[String], ?status_codes: Array[String], ?kind: String) -> untyped
+    def create_token_with_response: (id: String) -> untyped
+    def create_referrer_with_response: (id: String, referrer: String) -> untyped
+    def create_ip_with_response: (id: String, ip: String) -> untyped
+    def create_domain_mask_with_response: (id: String, ?domain_mask: String) -> untyped
+    def create_jwt_with_response: (id: String, kid: String, public_key: String, name: String) -> untyped
+    def create_tag_with_response: (id: String, ?label: String) -> untyped
+    def update_rate_limits_with_response: (id: String, ?rps: Integer, ?rpm: Integer, ?rpd: Integer) -> untyped
     def create_request_filter: (id: String, methods: Array[String]) -> untyped
     def update_request_filter: (id: String, request_filter_id: String, ?methods: Array[String]) -> void
     def delete_request_filter: (id: String, request_filter_id: String) -> void
@@ -121,14 +154,14 @@ module QuicknodeSdk
     def create_or_update_ip_custom_header: (id: String, header_name: String) -> untyped
     def delete_ip_custom_header: (id: String) -> untyped
     def get_method_rate_limits: (id: String) -> untyped
-    def create_method_rate_limit: (id: String, interval: String, methods: Array[String], rate: Integer) -> untyped
-    def update_method_rate_limit: (id: String, method_rate_limit_id: String, ?methods: Array[String], ?status: String, ?rate: Integer) -> untyped
+    def create_method_rate_limit: (id: String, interval: String, methods: Array[String], rate: Integer, ?limit_by_ip: bool) -> untyped
+    def update_method_rate_limit: (id: String, method_rate_limit_id: String, ?methods: Array[String], ?status: String, ?rate: Integer, ?limit_by_ip: bool) -> untyped
     def delete_method_rate_limit: (id: String, method_rate_limit_id: String) -> void
     def update_rate_limits: (id: String, ?rps: Integer, ?rpm: Integer, ?rpd: Integer) -> void
     def get_rate_limits: (id: String) -> untyped
     def delete_rate_limit_override: (id: String, override_id: String) -> void
     def get_endpoint_urls: (id: String) -> untyped
-    def get_endpoint_metrics: (id: String, period: String, metric: String) -> untyped
+    def get_endpoint_metrics: (id: String, period: String, metric: String, ?percentile: Integer) -> untyped
     def get_account_metrics: (period: String, metric: String, ?percentile: String) -> untyped
     def list_chains: () -> untyped
     def account_info: () -> untyped
