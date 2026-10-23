@@ -1,14 +1,23 @@
+use serde_json::json;
+use std::collections::HashMap;
+
 use quicknode_sdk::{
     admin::{
         BulkAddTagRequest, BulkRemoveTagRequest, BulkUpdateEndpointStatusRequest,
-        CreateDomainMaskRequest, CreateEndpointRequest, CreateIpRequest, CreateJwtRequest,
-        CreateMethodRateLimitRequest, CreateOrUpdateIpCustomHeaderRequest, CreateReferrerRequest,
-        CreateRequestFilterRequest, CreateTagRequest, CreateTeamRequest, GetAccountMetricsRequest,
-        GetEndpointLogsRequest, GetEndpointMetricsRequest, GetEndpointsRequest, GetUsageRequest,
-        InviteTeamMemberRequest, RateLimitSettings, RenameTagRequest, SecurityOptionsUpdate,
-        UpdateEndpointRequest, UpdateEndpointStatusRequest, UpdateMethodRateLimitRequest,
-        UpdateRateLimitsRequest, UpdateRequestFilterRequest, UpdateSecurityOptionsRequest,
-        UpdateTeamEndpointsRequest,
+        CreateBlockedIpRequest, CreateClientCertRequest, CreateDomainMaskRequest,
+        CreateEndpointRequest, CreateIpRequest, CreateJwtRequest, CreateMethodRateLimitRequest,
+        CreateOrUpdateIpCustomHeaderRequest, CreateReferrerRequest,
+        CreateRequestFilterPatternRequest, CreateRequestFilterRequest, CreateTagRequest,
+        CreateTeamRequest, GetAccountMetricsRequest, GetEndpointErrorsSummaryRequest,
+        GetEndpointLogsRequest, GetEndpointMetricsRequest, GetEndpointsRequest,
+        GetErrorsSummaryRequest, GetTrafficSummaryRequest, GetTransactionRequest,
+        GetUsageCreditsSummaryRequest, GetUsageRequest, GetUsageRpcSummaryRequest,
+        GetUsageStreamsSummaryRequest, GetUsageWebhooksSummaryRequest, InviteTeamMemberRequest,
+        ListActivityLogsRequest, ListTransactionsRequest, RateLimitSettings, RenameTagRequest,
+        SecurityOptionsUpdate, UpdateEndpointRequest, UpdateEndpointStatusRequest,
+        UpdateMethodBlacklistRequest, UpdateMethodRateLimitRequest, UpdateRangeLimitsRequest,
+        UpdateRateLimitsRequest, UpdateRequestFilterPatternRequest, UpdateRequestFilterRequest,
+        UpdateSecurityOptionsRequest, UpdateTeamEndpointsRequest,
     },
     errors::SdkError,
     AdminConfig, HttpConfig, QuicknodeSdk, SdkFullConfig,
@@ -16,7 +25,7 @@ use quicknode_sdk::{
 
 #[tokio::main]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
-async fn main() {
+async fn main() -> Result<(), SdkError> {
     let config = SdkFullConfig::from_env().expect("Config from env failed");
     let qn = QuicknodeSdk::new(&config).expect("sdk failed to initialize");
 
@@ -52,7 +61,25 @@ async fn main() {
         .get_usage_by_endpoint(&GetUsageRequest::default())
         .await
     {
-        Ok(resp) => println!("get_usage_by_endpoint: {:?}", resp.data),
+        Ok(resp) => {
+            for row in resp.data.expect("usage payload").endpoints {
+                if let Some(value) = row.rpc_credits {
+                    assert!(value >= 0);
+                }
+                if let Some(value) = row.data_credits {
+                    assert!(value >= 0);
+                }
+                if let Some(value) = row.bytes {
+                    assert!(value >= 0);
+                }
+                for method in row.methods_breakdown {
+                    if let Some(value) = method.bytes {
+                        assert!(value >= 0);
+                    }
+                }
+            }
+            println!("get_usage_by_endpoint: fields retained");
+        }
         Err(e) => eprintln!("get_usage_by_endpoint error: {e}"),
     }
 
@@ -61,7 +88,14 @@ async fn main() {
         .get_usage_by_method(&GetUsageRequest::default())
         .await
     {
-        Ok(resp) => println!("get_usage_by_method: {:?}", resp.data),
+        Ok(resp) => {
+            for row in resp.data.expect("usage payload").methods {
+                if let Some(value) = row.bytes {
+                    assert!(value >= 0);
+                }
+            }
+            println!("get_usage_by_method: fields retained");
+        }
         Err(e) => eprintln!("get_usage_by_method error: {e}"),
     }
 
@@ -71,12 +105,38 @@ async fn main() {
         .get_usage_by_chain(&GetUsageRequest::default())
         .await
     {
-        Ok(resp) => println!("get_usage_by_chain: {:?}", resp.data),
+        Ok(resp) => {
+            for row in resp.data.expect("usage payload").chains {
+                if let Some(value) = row.rpc_credits {
+                    assert!(value >= 0);
+                }
+                if let Some(value) = row.data_credits {
+                    assert!(value >= 0);
+                }
+                if let Some(value) = row.bytes {
+                    assert!(value >= 0);
+                }
+            }
+            println!("get_usage_by_chain: fields retained");
+        }
         Err(e) => eprintln!("get_usage_by_chain error: {e}"),
     }
 
     match qn.admin.get_usage_by_tag(&GetUsageRequest::default()).await {
-        Ok(resp) => println!("get_usage_by_tag: {:?}", resp.data),
+        Ok(resp) => {
+            for row in resp.data.expect("usage payload").tags {
+                if let Some(value) = row.rpc_credits {
+                    assert!(value >= 0);
+                }
+                if let Some(value) = row.data_credits {
+                    assert!(value >= 0);
+                }
+                if let Some(value) = row.bytes {
+                    assert!(value >= 0);
+                }
+            }
+            println!("get_usage_by_tag: fields retained");
+        }
         Err(e) => eprintln!("get_usage_by_tag error: {e}"),
     }
 
@@ -145,8 +205,7 @@ async fn main() {
             resp.data.id
         }
         Err(e) => {
-            eprintln!("create_endpoint error: {e}");
-            return;
+            return Err(e);
         }
     };
 
@@ -202,37 +261,47 @@ async fn main() {
 
     // --- Tags ---
 
+    let created_tag_label = format!("sdk-tag-{run_suffix}");
     match qn
         .admin
-        .create_tag(
+        .create_tag_with_response(
             &endpoint_id,
             &CreateTagRequest {
-                label: Some("example-tag".to_string()),
+                label: Some(created_tag_label.clone()),
             },
         )
         .await
     {
-        Ok(()) => println!("create_tag: ok"),
-        Err(e) => eprintln!("create_tag error: {e}"),
-    }
-
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    let tag_id = match qn.admin.show_endpoint(&endpoint_id).await {
-        Ok(resp) => resp
-            .data
-            .and_then(|ep| ep.tags.into_iter().next())
-            .map(|t| t.tag_id.to_string()),
-        Err(e) => {
-            eprintln!("show_endpoint (for tag) error: {e}");
-            None
+        Ok(resp) => {
+            let created_tags: Vec<_> = resp
+                .data
+                .tags
+                .into_iter()
+                .filter(|tag| tag.label == created_tag_label)
+                .collect();
+            assert!(
+                !created_tags.is_empty(),
+                "created tag missing from response"
+            );
+            assert!(
+                created_tags
+                    .iter()
+                    .all(|tag| tag.endpoint_id.to_string() == endpoint_id),
+                "created tag belongs to another endpoint"
+            );
+            for tag in created_tags {
+                qn.admin
+                    .delete_tag(&endpoint_id, &tag.tag_id.to_string())
+                    .await
+                    .expect("detach created tag");
+                qn.admin
+                    .delete_account_tag(i32::try_from(tag.tag_id).expect("tag ID fits API input"))
+                    .await
+                    .expect("delete created account tag");
+            }
+            println!("create_tag_with_response and cleanup: ok");
         }
-    };
-
-    if let Some(tag_id) = tag_id {
-        match qn.admin.delete_tag(&endpoint_id, &tag_id).await {
-            Ok(()) => println!("delete_tag: ok"),
-            Err(e) => eprintln!("delete_tag error: {e}"),
-        }
+        Err(e) => return Err(e),
     }
 
     // --- Logs & metrics ---
@@ -259,8 +328,8 @@ async fn main() {
             &endpoint_id,
             &GetEndpointMetricsRequest {
                 period: "day".to_string(),
-                metric: "credits_over_time".to_string(),
-                percentile: None,
+                metric: "response_time_over_time".to_string(),
+                percentile: Some(95),
             },
         )
         .await
@@ -276,7 +345,7 @@ async fn main() {
                 resp.data.len()
             );
         }
-        Err(e) => eprintln!("get_endpoint_metrics error: {e}"),
+        Err(e) => return Err(e),
     }
 
     // --- Security options ---
@@ -310,36 +379,22 @@ async fn main() {
 
     // --- Token ---
 
-    match qn.admin.create_token(&endpoint_id).await {
-        Ok(()) => println!("create_token: ok"),
-        Err(e) => eprintln!("create_token error: {e}"),
-    }
-
-    let token_id = match qn.admin.show_endpoint(&endpoint_id).await {
-        Ok(resp) => resp
-            .data
-            .and_then(|ep| ep.security)
-            .and_then(|s| s.tokens)
-            .and_then(|tokens| tokens.into_iter().next())
-            .map(|t| t.id),
-        Err(e) => {
-            eprintln!("show_endpoint (for token) error: {e}");
-            None
+    match qn.admin.create_token_with_response(&endpoint_id).await {
+        Ok(resp) => {
+            let deletion = qn.admin.delete_token(&endpoint_id, &resp.data.id).await;
+            assert!(!resp.data.token.is_empty());
+            assert!(!format!("{resp:?}").contains(&resp.data.token));
+            deletion.expect("delete created token");
+            println!("create_token_with_response and cleanup: ok");
         }
-    };
-
-    if let Some(token_id) = token_id {
-        match qn.admin.delete_token(&endpoint_id, &token_id).await {
-            Ok(resp) => println!("delete_token: {:?}", resp.data),
-            Err(e) => eprintln!("delete_token error: {e}"),
-        }
+        Err(e) => return Err(e),
     }
 
     // --- Referrer ---
 
     match qn
         .admin
-        .create_referrer(
+        .create_referrer_with_response(
             &endpoint_id,
             &CreateReferrerRequest {
                 referrer: "https://example.com".to_string(),
@@ -347,36 +402,20 @@ async fn main() {
         )
         .await
     {
-        Ok(()) => println!("create_referrer: ok"),
-        Err(e) => eprintln!("create_referrer error: {e}"),
-    }
-
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    let referrer_id = match qn.admin.show_endpoint(&endpoint_id).await {
-        Ok(resp) => resp
-            .data
-            .and_then(|ep| ep.security)
-            .and_then(|s| s.referrers)
-            .and_then(|rs| rs.into_iter().next())
-            .map(|r| r.id),
-        Err(e) => {
-            eprintln!("show_endpoint (for referrer) error: {e}");
-            None
+        Ok(resp) => {
+            let deletion = qn.admin.delete_referrer(&endpoint_id, &resp.data.id).await;
+            assert_eq!(resp.data.url, "https://example.com");
+            deletion.expect("delete created referrer");
+            println!("create_referrer_with_response and cleanup: ok");
         }
-    };
-
-    if let Some(referrer_id) = referrer_id {
-        match qn.admin.delete_referrer(&endpoint_id, &referrer_id).await {
-            Ok(resp) => println!("delete_referrer: {:?}", resp.data),
-            Err(e) => eprintln!("delete_referrer error: {e}"),
-        }
+        Err(e) => return Err(e),
     }
 
     // --- IP allowlist ---
 
     match qn
         .admin
-        .create_ip(
+        .create_ip_with_response(
             &endpoint_id,
             &CreateIpRequest {
                 ip: "192.0.2.1".to_string(),
@@ -384,37 +423,20 @@ async fn main() {
         )
         .await
     {
-        Ok(()) => println!("create_ip: ok"),
-        Err(e) => eprintln!("create_ip error: {e}"),
-    }
-
-    let ip_id = match qn.admin.show_endpoint(&endpoint_id).await {
-        Ok(resp) => resp
-            .data
-            .and_then(|ep| ep.security)
-            .and_then(|s| s.ips)
-            .and_then(|ips| ips.into_iter().next())
-            .map(|i| i.id),
-        Err(e) => {
-            eprintln!("show_endpoint (for ip) error: {e}");
-            None
+        Ok(resp) => {
+            let deletion = qn.admin.delete_ip(&endpoint_id, &resp.data.id).await;
+            assert_eq!(resp.data.ip, "192.0.2.1");
+            deletion.expect("delete created ip");
+            println!("create_ip_with_response and cleanup: ok");
         }
-    };
-
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
-    if let Some(ip_id) = ip_id {
-        match qn.admin.delete_ip(&endpoint_id, &ip_id).await {
-            Ok(resp) => println!("delete_ip: {:?}", resp.data),
-            Err(e) => eprintln!("delete_ip error: {e}"),
-        }
+        Err(e) => return Err(e),
     }
 
     // --- Domain mask ---
 
     match qn
         .admin
-        .create_domain_mask(
+        .create_domain_mask_with_response(
             &endpoint_id,
             &CreateDomainMaskRequest {
                 domain_mask: Some("example.com".to_string()),
@@ -422,35 +444,23 @@ async fn main() {
         )
         .await
     {
-        Ok(()) => println!("create_domain_mask: ok"),
-        Err(e) => eprintln!("create_domain_mask error: {e}"),
+        Ok(resp) => {
+            let deletion = qn
+                .admin
+                .delete_domain_mask(&endpoint_id, &resp.data.id)
+                .await;
+            assert_eq!(resp.data.domain_mask, "example.com");
+            deletion.expect("delete created domain_mask");
+            println!("create_domain_mask_with_response and cleanup: ok");
+        }
+        Err(e) => return Err(e),
     }
 
-    let mask_id = match qn.admin.show_endpoint(&endpoint_id).await {
-        Ok(resp) => resp
-            .data
-            .and_then(|ep| ep.security)
-            .and_then(|s| s.domain_masks)
-            .and_then(|masks| masks.into_iter().next())
-            .map(|m| m.id),
-        Err(e) => {
-            eprintln!("show_endpoint (for domain_mask) error: {e}");
-            None
-        }
-    };
-
-    if let Some(mask_id) = mask_id {
-        match qn.admin.delete_domain_mask(&endpoint_id, &mask_id).await {
-            Ok(resp) => println!("delete_domain_mask: {:?}", resp.data),
-            Err(e) => eprintln!("delete_domain_mask error: {e}"),
-        }
-    }
-
-    // --- JWT (placeholder public key will fail at runtime) ---
+    // --- JWT validation ---
 
     match qn
         .admin
-        .create_jwt(
+        .create_jwt_with_response(
             &endpoint_id,
             &CreateJwtRequest {
                 public_key: "-----BEGIN PUBLIC KEY-----\nPLACEHOLDER\n-----END PUBLIC KEY-----"
@@ -461,28 +471,22 @@ async fn main() {
         )
         .await
     {
-        Ok(()) => println!("create_jwt: ok"),
-        Err(e) => eprintln!("create_jwt error (expected with placeholder key): {e}"),
-    }
-
-    let jwt_id = match qn.admin.show_endpoint(&endpoint_id).await {
-        Ok(resp) => resp
-            .data
-            .and_then(|ep| ep.security)
-            .and_then(|s| s.jwts)
-            .and_then(|jwts| jwts.into_iter().next())
-            .map(|j| j.id),
-        Err(e) => {
-            eprintln!("show_endpoint (for jwt) error: {e}");
-            None
+        Err(SdkError::Api { status, body }) => {
+            assert!([400, 422].contains(&status.as_u16()));
+            assert!(!body.is_empty());
+            println!("create_jwt_with_response: invalid key rejected");
         }
-    };
-
-    if let Some(jwt_id) = jwt_id {
-        match qn.admin.delete_jwt(&endpoint_id, &jwt_id).await {
-            Ok(()) => println!("delete_jwt: ok"),
-            Err(e) => eprintln!("delete_jwt error: {e}"),
+        Ok(resp) => {
+            qn.admin
+                .delete_jwt(&endpoint_id, &resp.data.id)
+                .await
+                .expect("delete unexpected JWT");
+            expect_api_error(Ok::<_, SdkError>(resp), 422);
         }
+        Err(error) => assert!(
+            matches!(error, SdkError::Api { .. }),
+            "expected JWT API validation error: {error}"
+        ),
     }
 
     // --- Request filter ---
@@ -561,7 +565,7 @@ async fn main() {
 
     match qn
         .admin
-        .update_rate_limits(
+        .update_rate_limits_with_response(
             &endpoint_id,
             &UpdateRateLimitsRequest {
                 rate_limits: RateLimitSettings {
@@ -572,8 +576,11 @@ async fn main() {
         )
         .await
     {
-        Ok(()) => println!("update_rate_limits: ok"),
-        Err(e) => eprintln!("update_rate_limits error: {e}"),
+        Ok(resp) => {
+            assert_eq!(resp.data.limits.rps, Some(3));
+            println!("update_rate_limits_with_response: effective override retained");
+        }
+        Err(e) => return Err(e),
     }
 
     match qn.admin.get_rate_limits(&endpoint_id).await {
@@ -599,19 +606,16 @@ async fn main() {
                 interval: "second".to_string(),
                 methods: vec!["eth_call".to_string()],
                 rate: 5,
-                limit_by_ip: None,
+                limit_by_ip: Some(true),
             },
         )
         .await
     {
-        Ok(resp) => {
-            println!("create_method_rate_limit: {:?}", resp.data);
-            resp.data.map(|d| d.id)
-        }
-        Err(e) => {
-            eprintln!("create_method_rate_limit error: {e}");
-            None
-        }
+        Ok(resp) => resp.data.map(|d| {
+            assert_eq!(d.limit_by_ip, Some(true));
+            d.id
+        }),
+        Err(e) => return Err(e),
     };
 
     if let Some(mrl_id) = mrl_id {
@@ -622,13 +626,17 @@ async fn main() {
                 &mrl_id,
                 &UpdateMethodRateLimitRequest {
                     rate: Some(10),
+                    limit_by_ip: Some(false),
                     ..Default::default()
                 },
             )
             .await
         {
-            Ok(resp) => println!("update_method_rate_limit: {:?}", resp.data),
-            Err(e) => eprintln!("update_method_rate_limit error: {e}"),
+            Ok(resp) => assert_eq!(
+                resp.data.expect("updated method limiter").limit_by_ip,
+                Some(false)
+            ),
+            Err(e) => return Err(e),
         }
 
         match qn
@@ -657,18 +665,32 @@ async fn main() {
 
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
-    // --- Bulk endpoint ops (single-endpoint batch) ---
+    // --- Bulk endpoint ops ---
 
     match qn
         .admin
         .bulk_update_endpoint_status(&BulkUpdateEndpointStatusRequest {
-            ids: vec![endpoint_id.clone()],
+            ids: vec![endpoint_id.clone(), "0".to_string()],
             status: "paused".to_string(),
         })
         .await
     {
-        Ok(resp) => println!("bulk_update_endpoint_status paused: {:?}", resp.data),
-        Err(e) => eprintln!("bulk_update_endpoint_status paused error: {e}"),
+        Ok(resp) => {
+            let results = resp.data.expect("bulk results").results;
+            let failed = results
+                .iter()
+                .find(|row| row.id == "0")
+                .expect("missing endpoint result");
+            assert!(!failed.success);
+            assert!(failed.error.as_ref().is_some_and(|error| !error.is_empty()));
+            let succeeded = results
+                .iter()
+                .find(|row| row.id == endpoint_id)
+                .expect("created endpoint result");
+            assert!(succeeded.success);
+            assert!(succeeded.error.is_none());
+        }
+        Err(e) => return Err(e),
     }
 
     match qn
@@ -824,6 +846,15 @@ async fn main() {
 
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
+    let checks_sdk = QuicknodeSdk::new(&config)?;
+    let checks_endpoint_id = endpoint_id.clone();
+    let checks = tokio::spawn(async move {
+        let security = aligned_security(&checks_sdk, &checks_endpoint_id).await;
+        let reads = aligned_reads(&checks_sdk, &checks_endpoint_id).await;
+        (security, reads)
+    })
+    .await;
+
     // --- Cleanup endpoint ---
 
     match qn.admin.archive_endpoint(&endpoint_id).await {
@@ -831,32 +862,20 @@ async fn main() {
         Err(e) => eprintln!("archive_endpoint error: {e}"),
     }
 
+    let (security_result, reads_result) =
+        checks.expect("Admin checks failed after endpoint cleanup");
+    security_result?;
+    reads_result?;
+
     // --- Error handling ---
 
-    // 1) API error path — 404 on a bogus endpoint id.
-    match qn.admin.show_endpoint("does-not-exist").await {
-        Err(SdkError::Api { status, body }) => {
-            println!("api error {status}: {}", &body[..body.len().min(80)]);
-            assert_eq!(status.as_u16(), 404);
-        }
-        other => eprintln!("expected Api 404, got {other:?}"),
-    }
-
-    // 1b) Rate-limit override delete with a bogus override id — also a 404.
-    match qn
-        .admin
-        .delete_rate_limit_override("does-not-exist", "00000000-0000-0000-0000-000000000000")
-        .await
-    {
-        Err(SdkError::Api { status, body }) => {
-            println!(
-                "delete_rate_limit_override api error {status}: {}",
-                &body[..body.len().min(80)]
-            );
-            assert_eq!(status.as_u16(), 404);
-        }
-        other => eprintln!("expected Api 404 from delete_rate_limit_override, got {other:?}"),
-    }
+    expect_api_error(qn.admin.show_endpoint("does-not-exist").await, 404);
+    expect_api_error(
+        qn.admin
+            .delete_rate_limit_override("does-not-exist", "00000000-0000-0000-0000-000000000000")
+            .await,
+        404,
+    );
 
     // Custom headers smoke test — construct an SDK that overrides User-Agent
     // and adds a correlation header. We don't verify what reaches the wire
@@ -907,19 +926,503 @@ async fn main() {
         rpc: None,
     };
     let tiny = QuicknodeSdk::new(&blackhole).expect("build tiny sdk");
-    match tiny
+    let timeout_error = tiny
         .admin
         .get_endpoints(&GetEndpointsRequest::default())
         .await
-    {
-        Err(e)
-            if matches!(
-                e.http_kind(),
-                Some(quicknode_sdk::errors::HttpKind::Timeout)
-            ) =>
-        {
-            println!("timed out as expected");
+        .expect_err("expected timeout, got success");
+    assert!(
+        matches!(
+            timeout_error.http_kind(),
+            Some(quicknode_sdk::errors::HttpKind::Timeout)
+        ),
+        "expected timeout, got {timeout_error}"
+    );
+    println!("timed out as expected");
+    Ok(())
+}
+
+fn feature_access<T>(operation: &str, result: Result<T, SdkError>) -> Result<Option<T>, SdkError> {
+    match result {
+        Ok(response) => Ok(Some(response)),
+        Err(SdkError::Api { status, body }) if status.as_u16() == 403 => {
+            assert!(!body.is_empty(), "{operation}: empty 403 response");
+            println!("{operation}: skipped because feature access returned 403");
+            Ok(None)
         }
-        other => eprintln!("expected timeout, got {other:?}"),
+        Err(error) => Err(error),
     }
+}
+
+fn expect_api_error<T>(result: Result<T, SdkError>, expected_status: u16) {
+    match result {
+        Err(SdkError::Api { status, body }) => {
+            assert_eq!(status.as_u16(), expected_status);
+            assert!(!body.is_empty());
+        }
+        unexpected => assert!(
+            matches!(unexpected, Err(SdkError::Api { .. })),
+            "expected API {expected_status}"
+        ),
+    }
+}
+
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+async fn aligned_security(qn: &QuicknodeSdk, endpoint_id: &str) -> Result<(), SdkError> {
+    if let Some(certificates) = feature_access(
+        "client certificates",
+        qn.admin.get_client_certs(endpoint_id).await,
+    )? {
+        println!(
+            "get_client_certs: {} certificates",
+            certificates.data.certs.len()
+        );
+        expect_api_error(
+            qn.admin
+                .create_client_cert(
+                    endpoint_id,
+                    &CreateClientCertRequest {
+                        certificate: "invalid certificate".into(),
+                    },
+                )
+                .await,
+            422,
+        );
+        expect_api_error(
+            qn.admin
+                .delete_client_cert(endpoint_id, "missing-fingerprint")
+                .await,
+            422,
+        );
+    }
+
+    let original_blacklist = qn
+        .admin
+        .get_method_blacklist(endpoint_id)
+        .await?
+        .data
+        .methods;
+    let replaced = qn
+        .admin
+        .update_method_blacklist(
+            endpoint_id,
+            &UpdateMethodBlacklistRequest {
+                methods: vec!["eth_sendRawTransaction".into()],
+            },
+        )
+        .await;
+    let cleared = qn
+        .admin
+        .update_method_blacklist(
+            endpoint_id,
+            &UpdateMethodBlacklistRequest { methods: vec![] },
+        )
+        .await;
+    qn.admin
+        .update_method_blacklist(
+            endpoint_id,
+            &UpdateMethodBlacklistRequest {
+                methods: original_blacklist,
+            },
+        )
+        .await?;
+    assert_eq!(replaced?.data.methods, vec!["eth_sendRawTransaction"]);
+    assert!(cleared?.data.methods.is_empty());
+
+    let original_ranges = qn.admin.get_range_limits(endpoint_id).await?.data;
+    if let Some(method) = original_ranges.supported_methods.first() {
+        let limits = HashMap::from([(method.clone(), 100)]);
+        let replaced = qn
+            .admin
+            .update_range_limits(
+                endpoint_id,
+                &UpdateRangeLimitsRequest {
+                    limits: limits.clone(),
+                },
+            )
+            .await;
+        let cleared = qn
+            .admin
+            .update_range_limits(
+                endpoint_id,
+                &UpdateRangeLimitsRequest {
+                    limits: HashMap::new(),
+                },
+            )
+            .await;
+        qn.admin
+            .update_range_limits(
+                endpoint_id,
+                &UpdateRangeLimitsRequest {
+                    limits: original_ranges.limits,
+                },
+            )
+            .await?;
+        assert_eq!(replaced?.data.limits, limits);
+        assert!(cleared?.data.limits.is_empty());
+    }
+
+    let before = qn
+        .admin
+        .get_endpoint_security(endpoint_id)
+        .await?
+        .data
+        .expect("security snapshot");
+    let ips_enabled = before.options.as_ref().and_then(|options| options.ips) == Some(true);
+    let blocked = qn.admin.get_blocked_ips(endpoint_id).await?;
+    println!("get_blocked_ips: {} visible records", blocked.data.len());
+    if ips_enabled {
+        let created = qn
+            .admin
+            .create_blocked_ip(
+                endpoint_id,
+                &CreateBlockedIpRequest {
+                    ip: "192.0.2.0/24".into(),
+                },
+            )
+            .await?;
+        let listed = qn.admin.get_blocked_ips(endpoint_id).await;
+        let deleted = qn
+            .admin
+            .delete_blocked_ip(endpoint_id, &created.data.id)
+            .await;
+        assert_eq!(created.data.ip, "192.0.2.0/24");
+        assert!(listed?
+            .data
+            .iter()
+            .any(|record| record.id == created.data.id));
+        assert_eq!(deleted?.data, Some(true));
+    } else {
+        println!("blocked-IP create/delete skipped: IP security is disabled; leave its setting unchanged");
+    }
+    expect_api_error(
+        qn.admin
+            .delete_blocked_ip(endpoint_id, "missing-blocked-ip")
+            .await,
+        404,
+    );
+
+    let pattern = HashMap::from([
+        ("method".to_string(), json!([{"prefix":"eth_"}])),
+        ("jsonrpc".to_string(), json!(["2.0"])),
+    ]);
+    let created = qn
+        .admin
+        .create_request_filter_pattern(
+            endpoint_id,
+            &CreateRequestFilterPatternRequest {
+                pattern: pattern.clone(),
+            },
+        )
+        .await?
+        .data
+        .expect("created filter");
+    let replacement = HashMap::from([
+        ("method".to_string(), json!([{"prefix":"eth_get"}])),
+        ("jsonrpc".to_string(), json!(["2.0"])),
+    ]);
+    let updated = qn
+        .admin
+        .update_request_filter_pattern(
+            endpoint_id,
+            &created.id,
+            &UpdateRequestFilterPatternRequest {
+                pattern: replacement.clone(),
+            },
+        )
+        .await;
+    let listed = qn.admin.get_request_filters(endpoint_id).await;
+    let security = qn.admin.get_endpoint_security(endpoint_id).await;
+    let endpoint = qn.admin.show_endpoint(endpoint_id).await;
+    let deleted = qn
+        .admin
+        .delete_request_filter(endpoint_id, &created.id)
+        .await;
+    assert_eq!(created.pattern, Some(pattern));
+    updated?;
+    deleted?;
+    let listed = listed?;
+    let listed_filter = listed
+        .data
+        .iter()
+        .find(|filter| filter.id == created.id)
+        .expect("listed custom filter");
+    assert!(!listed_filter.method_whitelist);
+    assert_eq!(listed_filter.pattern, replacement);
+    for snapshot in [
+        security?.data,
+        endpoint?.data.and_then(|endpoint| endpoint.security),
+    ] {
+        let snapshot = snapshot.expect("security snapshot");
+        let filters = snapshot.request_filters.expect("snapshot filters");
+        let filter = filters
+            .iter()
+            .find(|filter| filter.id == created.id)
+            .expect("snapshot custom filter");
+        assert_eq!(json!(filter.method), replacement["method"]);
+        assert_eq!(filter.params["jsonrpc"], replacement["jsonrpc"]);
+        assert_eq!(
+            snapshot.options.and_then(|options| options.ips),
+            before.options.as_ref().and_then(|options| options.ips)
+        );
+    }
+    expect_api_error(qn.admin.get_request_filters("0").await, 404);
+    expect_api_error(
+        qn.admin
+            .get_endpoint_metrics(
+                endpoint_id,
+                &GetEndpointMetricsRequest {
+                    period: "day".into(),
+                    metric: "response_time_over_time".into(),
+                    percentile: None,
+                },
+            )
+            .await,
+        400,
+    );
+    expect_api_error(
+        qn.admin
+            .create_method_rate_limit(
+                endpoint_id,
+                &CreateMethodRateLimitRequest {
+                    interval: "second".into(),
+                    methods: vec!["eth_call".into()],
+                    rate: 0,
+                    limit_by_ip: None,
+                },
+            )
+            .await,
+        400,
+    );
+    Ok(())
+}
+
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+async fn aligned_reads(qn: &QuicknodeSdk, endpoint_id: &str) -> Result<(), SdkError> {
+    if let Some(response) = feature_access(
+        "credits summary",
+        qn.admin
+            .get_usage_credits_summary(&GetUsageCreditsSummaryRequest {
+                last: Some("1h".into()),
+                ..Default::default()
+            })
+            .await,
+    )? {
+        assert!(response.data.totals.credits.is_finite());
+    }
+    if let Some(response) = feature_access(
+        "RPC summary",
+        qn.admin
+            .get_usage_rpc_summary(&GetUsageRpcSummaryRequest {
+                last: Some("1h".into()),
+                group_by: Some(vec!["method".into()]),
+                limit: Some(1),
+                ..Default::default()
+            })
+            .await,
+    )? {
+        assert!(response.data.totals.requests.is_finite());
+        if let Some(cursor) = response.data.next_cursor {
+            let next = qn
+                .admin
+                .get_usage_rpc_summary(&GetUsageRpcSummaryRequest {
+                    cursor: Some(cursor),
+                    ..Default::default()
+                })
+                .await?;
+            assert_eq!(next.data.from_time, response.data.from_time);
+            assert_eq!(next.data.to_time, response.data.to_time);
+        }
+    }
+    if let Some(response) = feature_access(
+        "Streams summary",
+        qn.admin
+            .get_usage_streams_summary(&GetUsageStreamsSummaryRequest {
+                last: Some("1h".into()),
+                group_by: Some(vec!["stream".into()]),
+                ..Default::default()
+            })
+            .await,
+    )? {
+        assert!(response.data.totals.block_credits.is_finite());
+    }
+    if let Some(response) = feature_access(
+        "Webhooks summary",
+        qn.admin
+            .get_usage_webhooks_summary(&GetUsageWebhooksSummaryRequest {
+                last: Some("1h".into()),
+                group_by: Some(vec!["webhook".into()]),
+                ..Default::default()
+            })
+            .await,
+    )? {
+        assert!(response.data.totals.deliveries.is_finite());
+    }
+    if let Some(response) = feature_access(
+        "traffic summary",
+        qn.admin
+            .get_traffic_summary(&GetTrafficSummaryRequest {
+                last: Some("1h".into()),
+                group_by: Some(vec!["method".into()]),
+                ..Default::default()
+            })
+            .await,
+    )? {
+        assert!(response.data.totals.bytes.is_finite());
+    }
+    for kind in ["rpc", "http"] {
+        if let Some(response) = feature_access(
+            "account errors summary",
+            qn.admin
+                .get_errors_summary(&GetErrorsSummaryRequest {
+                    last: Some("1h".into()),
+                    kind: Some(kind.into()),
+                    group_by: Some(vec!["code".into()]),
+                    ..Default::default()
+                })
+                .await,
+        )? {
+            assert!(response.data.totals.rpc_errors.is_finite());
+            for row in response.data.breakdown.unwrap_or_default() {
+                assert_eq!(row.kind, kind);
+                assert!(row.count.is_finite());
+            }
+        }
+    }
+    if let Some(response) = feature_access(
+        "endpoint errors summary",
+        qn.admin
+            .get_endpoint_errors_summary(
+                endpoint_id,
+                &GetEndpointErrorsSummaryRequest {
+                    last: Some("1h".into()),
+                    ..Default::default()
+                },
+            )
+            .await,
+    )? {
+        assert!(response.data.totals.http_errors.is_finite());
+    }
+
+    if let Some(filters) = feature_access(
+        "activity filters",
+        qn.admin.list_activity_log_filters().await,
+    )? {
+        println!(
+            "list_activity_log_filters: {} target types",
+            filters.data.types.len()
+        );
+    }
+    if let Some(page) = feature_access(
+        "activity list",
+        qn.admin
+            .list_activity_logs(&ListActivityLogsRequest {
+                endpoint_id: Some(endpoint_id.into()),
+                limit: Some(1),
+                offset: Some(0),
+                ..Default::default()
+            })
+            .await,
+    )? {
+        assert_eq!(page.pagination.limit, 1);
+        assert_eq!(page.pagination.offset, 0);
+        if let Some(entry) = page.data.first() {
+            let detail = qn
+                .admin
+                .get_activity_log(&entry.id)
+                .await?
+                .data
+                .expect("activity detail");
+            assert_eq!(detail.id, entry.id);
+            assert_eq!(detail.actor.actor_type, entry.actor.actor_type);
+        } else {
+            println!("activity detail skipped: no entries for the new endpoint");
+        }
+        expect_api_error(
+            qn.admin
+                .get_activity_log("00000000-0000-0000-0000-000000000000")
+                .await,
+            404,
+        );
+    }
+
+    if let Some(page) = feature_access(
+        "transaction list",
+        qn.admin
+            .list_transactions(&ListTransactionsRequest {
+                last: Some("1h".into()),
+                limit: Some(1),
+                ..Default::default()
+            })
+            .await,
+    )? {
+        if let Some(cursor) = page.data.next_cursor {
+            let next = qn
+                .admin
+                .list_transactions(&ListTransactionsRequest {
+                    cursor: Some(cursor),
+                    ..Default::default()
+                })
+                .await?;
+            assert_eq!(next.data.from_time, page.data.from_time);
+            assert_eq!(next.data.to_time, page.data.to_time);
+        }
+        if let Some(transaction) = page.data.transactions.first() {
+            if let Some(height) = &transaction.height {
+                assert!(!height.is_empty() && height.bytes().all(|byte| byte.is_ascii_digit()));
+                assert_eq!(json!(transaction)["height"].as_str(), Some(height.as_str()));
+            }
+            for include_payloads in [false, true] {
+                let lookup = qn
+                    .admin
+                    .get_transaction(
+                        &transaction.network,
+                        &transaction.transaction_hash,
+                        &GetTransactionRequest {
+                            include_payloads: Some(include_payloads),
+                        },
+                    )
+                    .await?
+                    .data;
+                if lookup.exists {
+                    let detail = lookup.data.expect("retained transaction details");
+                    assert_eq!(detail.transaction_hash, transaction.transaction_hash);
+                    if let Some(height) = &detail.height {
+                        assert_eq!(json!(detail)["height"].as_str(), Some(height.as_str()));
+                    }
+                    for attempt in &detail.attempts {
+                        if !include_payloads {
+                            assert!(attempt.payloads.is_none());
+                        }
+                        if let Some(payloads) = &attempt.payloads {
+                            let serialized = json!(payloads);
+                            assert_eq!(serialized["request"].as_str(), payloads.request.as_deref());
+                            assert_eq!(
+                                serialized["response"].as_str(),
+                                payloads.response.as_deref()
+                            );
+                        }
+                    }
+                } else {
+                    assert!(lookup.data.is_none());
+                }
+            }
+        } else {
+            println!("populated transaction checks skipped: no retained transactions");
+        }
+        let absent = qn
+            .admin
+            .get_transaction(
+                "ethereum-mainnet",
+                &format!("0x{}", "0".repeat(64)),
+                &GetTransactionRequest {
+                    include_payloads: Some(false),
+                },
+            )
+            .await?
+            .data;
+        assert!(!absent.exists);
+        assert!(absent.data.is_none());
+    }
+    Ok(())
 }

@@ -5,44 +5,88 @@ import {
   QuicknodeError,
 } from "../sdk";
 
+async function optionalRead<T>(label: string, request: Promise<T>): Promise<T | undefined> {
+  try {
+    return await request;
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 403) throw error;
+    if (!(error instanceof QuicknodeError) || !error.body) {
+      throw new Error(`${label}: expected typed API error with a body`);
+    }
+    console.log(`${label}: access is unavailable for this account`);
+    return undefined;
+  }
+}
+
+async function expectApiError(request: Promise<unknown>, status: number) {
+  try {
+    await request;
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    if (!(error instanceof QuicknodeError) || error.status !== status || !error.body) {
+      throw new Error(`expected ApiError ${status} with a body`);
+    }
+    return;
+  }
+  throw new Error(`expected ApiError ${status}`);
+}
+
 async function showObservability(qn: QuicknodeSdk) {
-  const summary = await qn.admin.getUsageRpcSummary({ last: "1h", groupBy: ["method"], limit: 20 });
-  console.log(`RPC credits in window: ${summary.data.totals.credits}`);
-  if (summary.data.nextCursor) {
-    const nextPage = await qn.admin.getUsageRpcSummary({ cursor: summary.data.nextCursor });
-    console.log(`next summary page: ${nextPage.data.breakdown?.length ?? 0} groups`);
+  const summaries = [
+    qn.admin.getUsageCreditsSummary.bind(qn.admin),
+    qn.admin.getUsageRpcSummary.bind(qn.admin),
+    qn.admin.getUsageStreamsSummary.bind(qn.admin),
+    qn.admin.getUsageWebhooksSummary.bind(qn.admin),
+    qn.admin.getTrafficSummary.bind(qn.admin),
+    qn.admin.getErrorsSummary.bind(qn.admin),
+  ];
+  for (const method of summaries) {
+    const summary = await optionalRead<Awaited<ReturnType<typeof method>>>("summary", method({ last: "1h", limit: 20 }));
+    if (!summary) continue;
+    if (!summary.data.from || !summary.data.to) throw new Error("missing summary window");
+    if (summary.data.nextCursor) {
+      const nextPage = await method({ cursor: summary.data.nextCursor });
+      if (nextPage.data.from !== summary.data.from || nextPage.data.to !== summary.data.to) {
+        throw new Error("summary cursor changed its window");
+      }
+    }
+    console.log("summary decoded");
   }
 
-  const filters = await qn.admin.listActivityLogFilters();
-  console.log(`activity filter actors: ${filters.data.actors.length}`);
-  const activity = await qn.admin.listActivityLogs({ limit: 20 });
-  console.log(`activity entries: ${activity.data.length}`);
-  if (activity.data.length > 0) {
+  const filters = await optionalRead("activity filters", qn.admin.listActivityLogFilters());
+  if (filters) console.log(`activity filter actors: ${filters.data.actors.length}`);
+  const activity = await optionalRead("activity logs", qn.admin.listActivityLogs({ limit: 20 }));
+  if (activity && activity.data.length > 0) {
     const detail = await qn.admin.getActivityLog(activity.data[0].id);
-    console.log(`activity detail present: ${detail.data != null}`);
+    if (detail.data?.id !== activity.data[0].id) throw new Error("activity detail ID mismatch");
   }
 
-  const transactions = await qn.admin.listTransactions({ last: "1h", limit: 20 });
+  const transactions = await optionalRead("transactions", qn.admin.listTransactions({ last: "1h", limit: 20 }));
+  if (!transactions) return;
   for (const transaction of transactions.data.transactions) {
-    console.log(`transaction state=${transaction.state}, height=${transaction.height}`);
+    if (transaction.height != null && typeof transaction.height !== "string") {
+      throw new Error("transaction height must remain a string");
+    }
   }
   const transaction = transactions.data.transactions[0];
   if (transaction) {
     const detail = await qn.admin.getTransaction(
       transaction.network, transaction.transactionHash, { includePayloads: false },
     );
-    console.log(`retained transaction exists: ${detail.data.exists}`);
+    if (detail.data.exists) {
+      if (detail.data.data?.transactionHash !== transaction.transactionHash) {
+        throw new Error("transaction detail hash mismatch");
+      }
+      if (detail.data.data.attempts.some(attempt => attempt.payloads != null)) {
+        throw new Error("transaction payloads were not requested");
+      }
+    }
   }
 }
 
 async function main() {
   const qn = QuicknodeSdk.fromEnv();
-  try {
-    await showObservability(qn);
-  } catch (error) {
-    if (!(error instanceof ApiError) || error.status !== 403) throw error;
-    console.log("Observability access is unavailable for this account.");
-  }
+  await showObservability(qn);
 
   const account = await qn.admin.accountInfo();
   if (account.data) {
@@ -89,6 +133,12 @@ async function main() {
 
   if (response.data.length > 0) {
     const epId = response.data[0].id;
+    const endpointErrors = await optionalRead(
+      "endpoint error summary", qn.admin.getEndpointErrorsSummary(epId, { last: "1h", limit: 20 }),
+    );
+    if (endpointErrors && (!endpointErrors.data.from || !endpointErrors.data.to)) {
+      throw new Error("missing endpoint error summary window");
+    }
     const sec = await qn.admin.getEndpointSecurity(epId);
     console.log(`getEndpointSecurity: has_data=${sec.data !== undefined && sec.data !== null}`);
 
@@ -96,8 +146,10 @@ async function main() {
     for (const filter of filters.data) {
       console.log(`filter ${filter.id}: whitelist=${filter.methodWhitelist}, pattern keys=${Object.keys(filter.pattern).length}`);
     }
-    const certificates = await qn.admin.getClientCerts(epId);
-    console.log(`client certificates: ${certificates.data.certs.length}, enabled=${certificates.data.enabled}`);
+    const certificates = await optionalRead("client certificates", qn.admin.getClientCerts(epId));
+    if (certificates) {
+      console.log(`client certificates: ${certificates.data.certs.length}, enabled=${certificates.data.enabled}`);
+    }
     const blacklist = await qn.admin.getMethodBlacklist(epId);
     console.log(`blocked methods: ${blacklist.data.methods.length}`);
     const ranges = await qn.admin.getRangeLimits(epId);
@@ -140,28 +192,11 @@ async function main() {
     }
   }
 
-  // ── Error handling ──────────────────────────────────────────────────
-  // 1) API error path — 404 on a bogus endpoint id.
-  try {
-    await qn.admin.showEndpoint("does-not-exist");
-  } catch (e) {
-    if (!(e instanceof ApiError)) throw e;
-    console.assert(e instanceof QuicknodeError);
-    console.assert(e.status === 404);
-    console.log(`api error ${e.status}: ${e.body.slice(0, 80)}`);
-  }
-
-  // 1b) Rate-limit override delete with a bogus override id — also a 404.
-  try {
-    await qn.admin.deleteRateLimitOverride(
-      "does-not-exist",
-      "00000000-0000-0000-0000-000000000000",
-    );
-  } catch (e) {
-    if (!(e instanceof ApiError)) throw e;
-    console.assert(e.status === 404);
-    console.log(`deleteRateLimitOverride api error ${e.status}: ${e.body.slice(0, 80)}`);
-  }
+  await expectApiError(qn.admin.showEndpoint("does-not-exist"), 404);
+  await expectApiError(
+    qn.admin.deleteRateLimitOverride("does-not-exist", "00000000-0000-0000-0000-000000000000"),
+    404,
+  );
 
   // Custom headers smoke test — override User-Agent + add a correlation header.
   const headered = new QuicknodeSdk({
@@ -173,13 +208,8 @@ async function main() {
       },
     },
   });
-  try {
-    const resp = await headered.admin.getEndpoints({ limit: 1 });
-    console.log(`custom-headers smoke: ok (${resp.data.length} endpoints)`);
-  } catch (e) {
-    if (!(e instanceof QuicknodeError)) throw e;
-    console.log(`custom-headers smoke error: ${e.message}`);
-  }
+  const resp = await headered.admin.getEndpoints({ limit: 1 });
+  console.log(`custom-headers smoke: ok (${resp.data.length} endpoints)`);
 
   // 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.
   const blackhole = new QuicknodeSdk({
@@ -189,6 +219,7 @@ async function main() {
   });
   try {
     await blackhole.admin.getEndpoints();
+    throw new Error("expected TimeoutError");
   } catch (e) {
     if (!(e instanceof TimeoutError)) throw e;
     console.log("timed out as expected");

@@ -11,40 +11,76 @@ from quicknode_sdk import (
 )
 
 
+async def optional_read(label, request):
+    try:
+        return await request
+    except ApiError as error:
+        if error.status != 403:
+            raise
+        assert isinstance(error, QuicknodeError)
+        assert isinstance(error.body, str) and error.body
+        print(f"{label}: access is unavailable for this account")
+        return None
+
+
+async def expect_api_error(request, status):
+    try:
+        await request
+    except ApiError as error:
+        assert isinstance(error, QuicknodeError)
+        assert error.status == status
+        assert isinstance(error.body, str) and error.body
+    else:
+        raise AssertionError(f"expected ApiError {status}")
+
+
 async def show_observability(qn):
-    summary = await qn.admin.get_usage_rpc_summary(last="1h", group_by=["method"], limit=20)
-    print(f"RPC credits in window: {summary.data.totals.credits}")
-    if summary.data.next_cursor is not None:
-        next_page = await qn.admin.get_usage_rpc_summary(cursor=summary.data.next_cursor)
-        print(f"next summary page: {len(next_page.data.breakdown or [])} groups")
+    for name in (
+        "get_usage_credits_summary", "get_usage_rpc_summary",
+        "get_usage_streams_summary", "get_usage_webhooks_summary",
+        "get_traffic_summary", "get_errors_summary",
+    ):
+        method = getattr(qn.admin, name)
+        summary = await optional_read(name, method(last="1h", limit=20))
+        if summary is None:
+            continue
+        assert summary.data.from_time and summary.data.to_time
+        if summary.data.next_cursor is not None:
+            next_page = await method(cursor=summary.data.next_cursor)
+            assert next_page.data.from_time == summary.data.from_time
+            assert next_page.data.to_time == summary.data.to_time
+        print(f"{name}: summary decoded")
 
-    filters = await qn.admin.list_activity_log_filters()
-    print(f"activity filter actors: {len(filters.data.actors)}")
-    activity = await qn.admin.list_activity_logs(limit=20)
-    print(f"activity entries: {len(activity.data)}")
-    if activity.data:
+    filters = await optional_read("activity filters", qn.admin.list_activity_log_filters())
+    if filters is not None:
+        print(f"activity filter actors: {len(filters.data.actors)}")
+    activity = await optional_read("activity logs", qn.admin.list_activity_logs(limit=20))
+    if activity is not None and activity.data:
         detail = await qn.admin.get_activity_log(activity.data[0].id)
-        print(f"activity detail present: {detail.data is not None}")
+        assert detail.data is not None
+        assert detail.data.id == activity.data[0].id
 
-    transactions = await qn.admin.list_transactions(last="1h", limit=20)
+    transactions = await optional_read(
+        "transactions", qn.admin.list_transactions(last="1h", limit=20),
+    )
+    if transactions is None:
+        return
     for transaction in transactions.data.transactions:
-        print(f"transaction state={transaction.state}, height={transaction.height}")
+        assert transaction.height is None or isinstance(transaction.height, str)
     if transactions.data.transactions:
         transaction = transactions.data.transactions[0]
         detail = await qn.admin.get_transaction(
             transaction.network, transaction.transaction_hash, include_payloads=False,
         )
-        print(f"retained transaction exists: {detail.data.exists}")
+        if detail.data.exists:
+            assert detail.data.data is not None
+            assert detail.data.data.transaction_hash == transaction.transaction_hash
+            assert all(attempt.payloads is None for attempt in detail.data.data.attempts)
 
 
 async def main():
     qn = QuicknodeSdk.from_env()
-    try:
-        await show_observability(qn)
-    except ApiError as error:
-        if error.status != 403:
-            raise
-        print("Observability access is unavailable for this account.")
+    await show_observability(qn)
 
     account = await qn.admin.account_info()
     if account.data is not None:
@@ -84,14 +120,21 @@ async def main():
 
     if response.data:
         ep_id = response.data[0].id
+        endpoint_errors = await optional_read(
+            "endpoint error summary",
+            qn.admin.get_endpoint_errors_summary(ep_id, last="1h", limit=20),
+        )
+        if endpoint_errors is not None:
+            assert endpoint_errors.data.from_time and endpoint_errors.data.to_time
         sec = await qn.admin.get_endpoint_security(ep_id)
         print(f"get_endpoint_security: has_data={sec.data is not None}")
         filters = await qn.admin.get_request_filters(ep_id)
         for request_filter in filters.data:
             print(f"filter {request_filter.id}: whitelist={request_filter.method_whitelist}, "
                   f"pattern keys={len(request_filter.pattern)}")
-        certificates = await qn.admin.get_client_certs(ep_id)
-        print(f"client certificates: {len(certificates.data.certs)}, enabled={certificates.data.enabled}")
+        certificates = await optional_read("client certificates", qn.admin.get_client_certs(ep_id))
+        if certificates is not None:
+            print(f"client certificates: {len(certificates.data.certs)}, enabled={certificates.data.enabled}")
         blacklist = await qn.admin.get_method_blacklist(ep_id)
         print(f"blocked methods: {len(blacklist.data.methods)}")
         ranges = await qn.admin.get_range_limits(ep_id)
@@ -130,23 +173,13 @@ async def main():
                     f"rate_limit={row.rate_limit} source={row.source} id={row.id}"
                 )
 
-    # ── Error handling ──────────────────────────────────────────────────
-    # 1) API error path — 404 on a bogus endpoint id.
-    try:
-        await qn.admin.show_endpoint("does-not-exist")
-    except ApiError as e:
-        assert isinstance(e, QuicknodeError)
-        assert e.status == 404
-        print(f"api error {e.status}: {e.body[:80]}")
-
-    # 1b) Rate-limit override delete with a bogus override id — also a 404.
-    try:
-        await qn.admin.delete_rate_limit_override(
-            "does-not-exist", "00000000-0000-0000-0000-000000000000"
-        )
-    except ApiError as e:
-        assert e.status == 404
-        print(f"delete_rate_limit_override api error {e.status}: {e.body[:80]}")
+    await expect_api_error(qn.admin.show_endpoint("does-not-exist"), 404)
+    await expect_api_error(
+        qn.admin.delete_rate_limit_override(
+            "does-not-exist", "00000000-0000-0000-0000-000000000000",
+        ),
+        404,
+    )
 
     # Custom headers smoke test — override User-Agent + add a correlation header.
     headered = QuicknodeSdk(
@@ -160,11 +193,8 @@ async def main():
             ),
         )
     )
-    try:
-        resp = await headered.admin.get_endpoints(limit=1)
-        print(f"custom-headers smoke: ok ({len(resp.data)} endpoints)")
-    except QuicknodeError as e:
-        print(f"custom-headers smoke error: {e}")
+    resp = await headered.admin.get_endpoints(limit=1)
+    print(f"custom-headers smoke: ok ({len(resp.data)} endpoints)")
 
     # 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.
     blackhole = QuicknodeSdk(
@@ -178,6 +208,8 @@ async def main():
         await blackhole.admin.get_endpoints()
     except TimeoutError:
         print("timed out as expected")
+    else:
+        raise AssertionError("expected TimeoutError")
 
 
 asyncio.run(main())
