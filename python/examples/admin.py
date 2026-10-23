@@ -11,8 +11,40 @@ from quicknode_sdk import (
 )
 
 
+async def show_observability(qn):
+    summary = await qn.admin.get_usage_rpc_summary(last="1h", group_by=["method"], limit=20)
+    print(f"RPC credits in window: {summary.data.totals.credits}")
+    if summary.data.next_cursor is not None:
+        next_page = await qn.admin.get_usage_rpc_summary(cursor=summary.data.next_cursor)
+        print(f"next summary page: {len(next_page.data.breakdown or [])} groups")
+
+    filters = await qn.admin.list_activity_log_filters()
+    print(f"activity filter actors: {len(filters.data.actors)}")
+    activity = await qn.admin.list_activity_logs(limit=20)
+    print(f"activity entries: {len(activity.data)}")
+    if activity.data:
+        detail = await qn.admin.get_activity_log(activity.data[0].id)
+        print(f"activity detail present: {detail.data is not None}")
+
+    transactions = await qn.admin.list_transactions(last="1h", limit=20)
+    for transaction in transactions.data.transactions:
+        print(f"transaction state={transaction.state}, height={transaction.height}")
+    if transactions.data.transactions:
+        transaction = transactions.data.transactions[0]
+        detail = await qn.admin.get_transaction(
+            transaction.network, transaction.transaction_hash, include_payloads=False,
+        )
+        print(f"retained transaction exists: {detail.data.exists}")
+
+
 async def main():
     qn = QuicknodeSdk.from_env()
+    try:
+        await show_observability(qn)
+    except ApiError as error:
+        if error.status != 403:
+            raise
+        print("Observability access is unavailable for this account.")
 
     account = await qn.admin.account_info()
     if account.data is not None:
@@ -54,6 +86,22 @@ async def main():
         ep_id = response.data[0].id
         sec = await qn.admin.get_endpoint_security(ep_id)
         print(f"get_endpoint_security: has_data={sec.data is not None}")
+        filters = await qn.admin.get_request_filters(ep_id)
+        for request_filter in filters.data:
+            print(f"filter {request_filter.id}: whitelist={request_filter.method_whitelist}, "
+                  f"pattern keys={len(request_filter.pattern)}")
+        certificates = await qn.admin.get_client_certs(ep_id)
+        print(f"client certificates: {len(certificates.data.certs)}, enabled={certificates.data.enabled}")
+        blacklist = await qn.admin.get_method_blacklist(ep_id)
+        print(f"blocked methods: {len(blacklist.data.methods)}")
+        ranges = await qn.admin.get_range_limits(ep_id)
+        print(f"range limits: {len(ranges.data.limits)}, supported methods={len(ranges.data.supported_methods)}")
+        blocked = await qn.admin.get_blocked_ips(ep_id)
+        print(f"blocked IP records: {len(blocked.data)}")
+        latency = await qn.admin.get_endpoint_metrics(
+            ep_id, period="day", metric="response_time_over_time", percentile=95,
+        )
+        print(f"p95 latency series: {len(latency.data)}")
 
         urls = await qn.admin.get_endpoint_urls(ep_id)
         if urls.data is not None:
@@ -71,8 +119,8 @@ async def main():
                     f"rate_limit={row.rate_limit} source={row.source} id={row.id}"
                 )
 
-        await qn.admin.update_rate_limits(ep_id, rps=3)
-        print("update_rate_limits: ok")
+        effective = await qn.admin.update_rate_limits_with_response(ep_id, rps=3)
+        print(f"effective RPS override: {effective.data.limits.rps}")
 
         rl_after = await qn.admin.get_rate_limits(ep_id)
         if rl_after.data is not None:
