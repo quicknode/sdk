@@ -494,10 +494,11 @@ async fn useful_mutation_responses_preserve_records_and_wire_shapes() {
         .update_rate_limits_with_response(
             "12",
             &UpdateRateLimitsRequest {
-                rate_limits: RateLimitSettings {
+                rate_limits: Some(RateLimitSettings {
                     rps: Some(10),
                     ..Default::default()
-                },
+                }),
+                ..Default::default()
             },
         )
         .await
@@ -942,5 +943,76 @@ async fn new_security_operations_preserve_api_errors() {
             .map(|_| ()),
         404,
         "blocked IP not found",
+    );
+}
+
+#[tokio::test]
+async fn endpoint_rate_limits_support_independent_per_ip_updates() {
+    let server = MockServer::start().await;
+    let sdk = make_sdk(&server);
+    for (rate_limits, limit_by_ip, body) in [
+        (None, Some(true), json!({"limit_by_ip": true})),
+        (None, Some(false), json!({"limit_by_ip": false})),
+        (
+            Some(RateLimitSettings {
+                rps: Some(10),
+                ..Default::default()
+            }),
+            None,
+            json!({"rate_limits": {"rps": 10}}),
+        ),
+        (
+            Some(RateLimitSettings {
+                rps: Some(10),
+                ..Default::default()
+            }),
+            Some(false),
+            json!({"rate_limits": {"rps": 10}, "limit_by_ip": false}),
+        ),
+    ] {
+        let params = UpdateRateLimitsRequest {
+            rate_limits,
+            limit_by_ip,
+        };
+        Mock::given(method("PATCH"))
+            .and(path("/endpoints/12/rate-limits"))
+            .and(body_json(body))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "data": {"limits": {"rps": 10, "rpm": null, "rpd": null}}
+            })))
+            .expect(2)
+            .mount(&server)
+            .await;
+        sdk.admin.update_rate_limits("12", &params).await.unwrap();
+        let response = sdk
+            .admin
+            .update_rate_limits_with_response("12", &params)
+            .await
+            .unwrap();
+        assert_eq!(response.data.limits.rps, Some(10));
+    }
+    Mock::given(method("PATCH"))
+        .and(path("/endpoints/12/rate-limits"))
+        .and(body_json(json!({})))
+        .respond_with(
+            ResponseTemplate::new(400).set_body_string("at least one property is required"),
+        )
+        .expect(2)
+        .mount(&server)
+        .await;
+    assert_api_error(
+        sdk.admin
+            .update_rate_limits("12", &UpdateRateLimitsRequest::default())
+            .await,
+        400,
+        "at least one property is required",
+    );
+    assert_api_error(
+        sdk.admin
+            .update_rate_limits_with_response("12", &UpdateRateLimitsRequest::default())
+            .await
+            .map(|_| ()),
+        400,
+        "at least one property is required",
     );
 }

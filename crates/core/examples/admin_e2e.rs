@@ -568,10 +568,11 @@ async fn main() -> Result<(), SdkError> {
         .update_rate_limits_with_response(
             &endpoint_id,
             &UpdateRateLimitsRequest {
-                rate_limits: RateLimitSettings {
+                rate_limits: Some(RateLimitSettings {
                     rps: Some(3),
                     ..Default::default()
-                },
+                }),
+                limit_by_ip: Some(true),
             },
         )
         .await
@@ -582,6 +583,16 @@ async fn main() -> Result<(), SdkError> {
         }
         Err(e) => return Err(e),
     }
+
+    qn.admin
+        .update_rate_limits(
+            &endpoint_id,
+            &UpdateRateLimitsRequest {
+                limit_by_ip: Some(false),
+                ..Default::default()
+            },
+        )
+        .await?;
 
     match qn.admin.get_rate_limits(&endpoint_id).await {
         Ok(resp) => println!("get_rate_limits after PATCH: {:?}", resp.data),

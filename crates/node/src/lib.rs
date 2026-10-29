@@ -521,7 +521,8 @@ impl AdminApiClient {
     /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
     /// (requests per day). Only buckets included are modified — omitted
     /// buckets are left unchanged. Values are capped by the account's plan
-    /// tier.
+    /// tier. `limitByIp` applies these caps per client IP and can be sent alone.
+    /// Supply `rateLimits` or `limitByIp`; omitted fields stay unchanged.
     #[napi]
     pub async fn update_rate_limits_with_response(
         &self,
@@ -1038,7 +1039,8 @@ impl AdminApiClient {
     /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
     /// (requests per day). Only buckets included are modified — omitted
     /// buckets are left unchanged. Values are capped by the account's plan
-    /// tier.
+    /// tier. `limitByIp` applies these caps per client IP and can be sent alone.
+    /// Supply `rateLimits` or `limitByIp`; omitted fields stay unchanged.
     #[napi]
     pub async fn update_rate_limits(
         &self,

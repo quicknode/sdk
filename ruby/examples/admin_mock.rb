@@ -19,6 +19,16 @@ check(security[:blocked_ips][0][:ip] == "192.0.2.0/24")
 check(admin.show_endpoint(id: "12")[:data][:security][:request_filters][0][:method] == pattern["method"])
 check(admin.create_token_with_response(id: "12")[:data][:id] == "token")
 check(admin.update_method_rate_limit(id: "12", method_rate_limit_id: "rule", limit_by_ip: false)[:data][:limit_by_ip] == false)
+admin.update_rate_limits(id: "per-ip", limit_by_ip: true)
+check(admin.update_rate_limits_with_response(id: "endpoint-wide", limit_by_ip: false)[:data][:limits][:rps] == 10)
+check(admin.update_rate_limits_with_response(id: "combined", rps: 10, limit_by_ip: false)[:data][:limits][:rps] == 10)
+admin.update_rate_limits(id: "limits-only", rps: 10)
+begin
+  admin.update_rate_limits(id: "empty")
+  raise "Expected ApiError for empty update"
+rescue QuicknodeSdk::ApiError => error
+  check(error.status == 400 && error.body.include?("at least one property"))
+end
 summary = admin.get_usage_rpc_summary(last: "1d", group_by: ["method", "endpoint"])[:data]
 check(summary[:totals][:rpc_credits] == 7.5)
 row = summary[:breakdown][0]

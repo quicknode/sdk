@@ -33,6 +33,16 @@ async def main():
     assert endpoint.security.request_filters[0].method == PATTERN["method"]
     assert (await admin.create_token_with_response("12")).data.id == "token"
     assert (await admin.update_method_rate_limit("12", "rule", limit_by_ip=False)).data.limit_by_ip is False
+    await admin.update_rate_limits("per-ip", limit_by_ip=True)
+    assert (await admin.update_rate_limits_with_response("endpoint-wide", limit_by_ip=False)).data.limits.rps == 10
+    assert (await admin.update_rate_limits_with_response("combined", rps=10, limit_by_ip=False)).data.limits.rps == 10
+    await admin.update_rate_limits("limits-only", rps=10)
+    try:
+        await admin.update_rate_limits("empty")
+    except ApiError as error:
+        assert error.status == 400 and "at least one property" in error.body
+    else:
+        raise AssertionError("expected ApiError for empty update")
     summary = (await admin.get_usage_rpc_summary(last="1d", group_by=["method", "endpoint"])).data
     assert summary.totals.rpc_credits == 7.5
     assert summary.breakdown[0].requests is None

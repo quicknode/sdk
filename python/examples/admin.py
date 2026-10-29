@@ -162,9 +162,10 @@ async def main():
                     f"rate_limit={row.rate_limit} source={row.source} id={row.id}"
                 )
 
-        effective = await qn.admin.update_rate_limits_with_response(ep_id, rps=3)
+        effective = await qn.admin.update_rate_limits_with_response(ep_id, rps=3, limit_by_ip=True)
         print(f"effective RPS override: {effective.data.limits.rps}")
 
+        await qn.admin.update_rate_limits(ep_id, limit_by_ip=False)
         rl_after = await qn.admin.get_rate_limits(ep_id)
         if rl_after.data is not None:
             for row in rl_after.data.rate_limits:

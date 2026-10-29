@@ -880,7 +880,9 @@ impl AdminApiClient {
     /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
     /// (requests per day). Only buckets passed are modified — omitted buckets
     /// are left unchanged. Values are capped by the account's plan tier.
-    #[pyo3(signature = (id, rps=None, rpm=None, rpd=None))]
+    /// `limit_by_ip` applies these caps per client IP and can be sent alone.
+    /// Supply at least one cap or `limit_by_ip`; omitted fields stay unchanged.
+    #[pyo3(signature = (id, rps=None, rpm=None, rpd=None, limit_by_ip=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateRateLimitsResponse]"
     ))]
@@ -891,10 +893,16 @@ impl AdminApiClient {
         rps: Option<i32>,
         rpm: Option<i32>,
         rpd: Option<i32>,
+        limit_by_ip: Option<bool>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::UpdateRateLimitsRequest {
-            rate_limits: core::admin::RateLimitSettings { rps, rpm, rpd },
+            rate_limits: if rps.is_some() || rpm.is_some() || rpd.is_some() {
+                Some(core::admin::RateLimitSettings { rps, rpm, rpd })
+            } else {
+                None
+            },
+            limit_by_ip,
         };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -1741,7 +1749,9 @@ impl AdminApiClient {
     /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
     /// (requests per day). Only buckets passed are modified — omitted buckets
     /// are left unchanged. Values are capped by the account's plan tier.
-    #[pyo3(signature = (id, rps=None, rpm=None, rpd=None))]
+    /// `limit_by_ip` applies these caps per client IP and can be sent alone.
+    /// Supply at least one cap or `limit_by_ip`; omitted fields stay unchanged.
+    #[pyo3(signature = (id, rps=None, rpm=None, rpd=None, limit_by_ip=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_rate_limits<'py>(
         &self,
@@ -1750,10 +1760,16 @@ impl AdminApiClient {
         rps: Option<i32>,
         rpm: Option<i32>,
         rpd: Option<i32>,
+        limit_by_ip: Option<bool>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::UpdateRateLimitsRequest {
-            rate_limits: core::admin::RateLimitSettings { rps, rpm, rpd },
+            rate_limits: if rps.is_some() || rpm.is_some() || rpd.is_some() {
+                Some(core::admin::RateLimitSettings { rps, rpm, rpd })
+            } else {
+                None
+            },
+            limit_by_ip,
         };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client

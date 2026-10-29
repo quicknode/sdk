@@ -866,15 +866,16 @@ qn.admin.delete_method_rate_limit(id: "ep-123", method_rate_limit_id: "rl-1")
 
 ##### `update_rate_limits` / `updateRateLimits`
 
-Partial update of the endpoint-level RPS / RPM / RPD caps. Only buckets included in the request are modified — omitted buckets are left unchanged. Values are capped by the account's plan tier. Sends `PATCH`.
+Partial update of the endpoint-level RPS / RPM / RPD caps. Only supplied fields change. Values are capped by the account's plan tier. Sends `PATCH`. Set `limit_by_ip` (`limitByIp` in Node) to `true` to apply the caps per client IP or `false` to apply them to the whole endpoint. You can update this flag without sending caps. Supply at least one cap or the flag; an empty update returns an API error. Both update methods accept these options.
 
-**Parameters**: `id` (endpoint id, required); `rate_limits`: `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional).
+**Parameters**: `id` (endpoint id, required); `rps`, `rpm`, `rpd`: optional integers; `limit_by_ip`: optional boolean.
 
 **Returns**: nothing.
 
 ```ruby
 # Ruby
-qn.admin.update_rate_limits(id: "ep-123", rps: 100, rpm: 5000)
+qn.admin.update_rate_limits(id: "ep-123", rps: 100, rpm: 5000, limit_by_ip: true)
+qn.admin.update_rate_limits(id: "ep-123", limit_by_ip: false)
 ```
 
 ##### `get_rate_limits` / `getRateLimits`

@@ -2749,10 +2749,12 @@ export interface UpdateRateLimitsData {
   limits: EffectiveRateLimits
 }
 
-/** Parameters for `update_rate_limits`. */
+/** Parameters for `update_rate_limits`. Supply at least one field. */
 export interface UpdateRateLimitsRequest {
-  /** Rate limit values to apply. */
-  rateLimits: RateLimitSettings
+  /** Rate limit values to apply. Omit to leave the caps unchanged. */
+  rateLimits?: RateLimitSettings
+  /** Apply endpoint limits per client IP. Omit to leave the mode unchanged. */
+  limitByIp?: boolean
 }
 
 /** Response from update_rate_limits_with_response. */
@@ -3165,7 +3167,8 @@ export declare class AdminApiClient {
    * `rps` (requests per second), `rpm` (requests per minute), and `rpd`
    * (requests per day). Only buckets included are modified — omitted
    * buckets are left unchanged. Values are capped by the account's plan
-   * tier.
+   * tier. `limitByIp` applies these caps per client IP and can be sent alone.
+   * Supply `rateLimits` or `limitByIp`; omitted fields stay unchanged.
    */
   updateRateLimitsWithResponse(id: string, params: UpdateRateLimitsRequest): Promise<UpdateRateLimitsResponse>
   /**
@@ -3340,7 +3343,8 @@ export declare class AdminApiClient {
    * `rps` (requests per second), `rpm` (requests per minute), and `rpd`
    * (requests per day). Only buckets included are modified — omitted
    * buckets are left unchanged. Values are capped by the account's plan
-   * tier.
+   * tier. `limitByIp` applies these caps per client IP and can be sent alone.
+   * Supply `rateLimits` or `limitByIp`; omitted fields stay unchanged.
    */
   updateRateLimits(id: string, params: UpdateRateLimitsRequest): Promise<void>
   /**

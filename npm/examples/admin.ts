@@ -178,9 +178,10 @@ async function main() {
       }
     }
 
-    const effective = await qn.admin.updateRateLimitsWithResponse(epId, { rateLimits: { rps: 3 } });
+    const effective = await qn.admin.updateRateLimitsWithResponse(epId, { rateLimits: { rps: 3 }, limitByIp: true });
     console.log(`effective RPS override: ${effective.data.limits.rps}`);
 
+    await qn.admin.updateRateLimits(epId, { limitByIp: false });
     const rlAfter = await qn.admin.getRateLimits(epId);
     if (rlAfter.data) {
       for (const row of rlAfter.data.rateLimits) {

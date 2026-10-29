@@ -135,15 +135,19 @@ pub struct RateLimitSettings {
     pub rpd: Option<i32>,
 }
 
-/// Parameters for `update_rate_limits`.
+/// Parameters for `update_rate_limits`. Supply at least one field.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct UpdateRateLimitsRequest {
-    /// Rate limit values to apply.
-    pub rate_limits: RateLimitSettings,
+    /// Rate limit values to apply. Omit to leave the caps unchanged.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_limits: Option<RateLimitSettings>,
+    /// Apply endpoint limits per client IP. Omit to leave the mode unchanged.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_by_ip: Option<bool>,
 }
 
 /// A single rate-limit row returned by `get_rate_limits`, identifying the

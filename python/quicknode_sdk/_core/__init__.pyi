@@ -915,12 +915,14 @@ class AdminApiClient:
         Creates a new tag on a specific endpoint from a label. Returns the new
         tag with its id, account info, and timestamps.
         """
-    def update_rate_limits_with_response(self, id: builtins.str, rps: typing.Optional[builtins.int] = None, rpm: typing.Optional[builtins.int] = None, rpd: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, UpdateRateLimitsResponse]:
+    def update_rate_limits_with_response(self, id: builtins.str, rps: typing.Optional[builtins.int] = None, rpm: typing.Optional[builtins.int] = None, rpd: typing.Optional[builtins.int] = None, limit_by_ip: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, UpdateRateLimitsResponse]:
         r"""
         Partial update of the endpoint-level rate-limit overrides. Accepts
         `rps` (requests per second), `rpm` (requests per minute), and `rpd`
         (requests per day). Only buckets passed are modified — omitted buckets
         are left unchanged. Values are capped by the account's plan tier.
+        `limit_by_ip` applies these caps per client IP and can be sent alone.
+        Supply at least one cap or `limit_by_ip`; omitted fields stay unchanged.
         """
     def get_endpoints(self, limit: typing.Optional[builtins.int] = None, offset: typing.Optional[builtins.int] = None, search: typing.Optional[builtins.str] = None, sort_by: typing.Optional[builtins.str] = None, sort_direction: typing.Optional[builtins.str] = None, networks: typing.Optional[typing.Sequence[builtins.str]] = None, statuses: typing.Optional[typing.Sequence[builtins.str]] = None, labels: typing.Optional[typing.Sequence[builtins.str]] = None, dedicated: typing.Optional[builtins.bool] = None, is_flat_rate: typing.Optional[builtins.bool] = None, tag_ids: typing.Optional[typing.Sequence[builtins.int]] = None, tag_labels: typing.Optional[typing.Sequence[builtins.str]] = None) -> typing.Coroutine[typing.Any, typing.Any, GetEndpointsResponse]:
         r"""
@@ -1113,12 +1115,14 @@ class AdminApiClient:
         r"""
         Removes a method rate limit from an endpoint by method rate limit id.
         """
-    def update_rate_limits(self, id: builtins.str, rps: typing.Optional[builtins.int] = None, rpm: typing.Optional[builtins.int] = None, rpd: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
+    def update_rate_limits(self, id: builtins.str, rps: typing.Optional[builtins.int] = None, rpm: typing.Optional[builtins.int] = None, rpd: typing.Optional[builtins.int] = None, limit_by_ip: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
         Partial update of the endpoint-level rate-limit overrides. Accepts
         `rps` (requests per second), `rpm` (requests per minute), and `rpd`
         (requests per day). Only buckets passed are modified — omitted buckets
         are left unchanged. Values are capped by the account's plan tier.
+        `limit_by_ip` applies these caps per client IP and can be sent alone.
+        Supply at least one cap or `limit_by_ip`; omitted fields stay unchanged.
         """
     def get_rate_limits(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetRateLimitsResponse]:
         r"""
@@ -9657,17 +9661,27 @@ class UpdateRateLimitsData:
 @typing.final
 class UpdateRateLimitsRequest:
     r"""
-    Parameters for `update_rate_limits`.
+    Parameters for `update_rate_limits`. Supply at least one field.
     """
     @property
-    def rate_limits(self) -> RateLimitSettings:
+    def rate_limits(self) -> typing.Optional[RateLimitSettings]:
         r"""
-        Rate limit values to apply.
+        Rate limit values to apply. Omit to leave the caps unchanged.
         """
     @rate_limits.setter
-    def rate_limits(self, value: RateLimitSettings) -> None:
+    def rate_limits(self, value: typing.Optional[RateLimitSettings]) -> None:
         r"""
-        Rate limit values to apply.
+        Rate limit values to apply. Omit to leave the caps unchanged.
+        """
+    @property
+    def limit_by_ip(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Apply endpoint limits per client IP. Omit to leave the mode unchanged.
+        """
+    @limit_by_ip.setter
+    def limit_by_ip(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Apply endpoint limits per client IP. Omit to leave the mode unchanged.
         """
 
 @typing.final

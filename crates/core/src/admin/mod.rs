@@ -1419,7 +1419,8 @@ impl AdminApiClient {
     /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
     /// (requests per day). Only buckets included in the request body are
     /// modified — omitted buckets are left unchanged. Values are capped by the
-    /// account's plan tier.
+    /// account's plan tier. `limit_by_ip` applies these caps per client IP and
+    /// can be sent alone. Supply at least one field; omitted fields stay unchanged.
     pub async fn update_rate_limits(
         &self,
         id: &str,
@@ -3395,11 +3396,12 @@ mod tests {
 
         let sdk = make_sdk(format!("{}/", server.uri()));
         let params = UpdateRateLimitsRequest {
-            rate_limits: RateLimitSettings {
+            rate_limits: Some(RateLimitSettings {
                 rps: Some(100),
                 rpm: None,
                 rpd: None,
-            },
+            }),
+            ..Default::default()
         };
         sdk.admin
             .update_rate_limits("ep123", &params)

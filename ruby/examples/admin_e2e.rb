@@ -379,13 +379,14 @@ begin
   resp = qn.admin.get_rate_limits(id: endpoint_id)
   puts "get_rate_limits before PATCH: #{resp[:data]}"
 
-  effective = qn.admin.update_rate_limits_with_response(id: endpoint_id, rps: 3).fetch(:data).fetch(:limits)
+  effective = qn.admin.update_rate_limits_with_response(id: endpoint_id, rps: 3, limit_by_ip: true).fetch(:data).fetch(:limits)
   raise "effective RPS override was lost" unless effective[:rps] == 3
   [:rps, :rpm, :rpd].each do |bucket|
     raise "missing effective rate-limit bucket" unless effective.key?(bucket)
     raise "invalid nullable rate-limit bucket" unless effective[bucket].nil? || effective[bucket].is_a?(Integer)
   end
   puts "update_rate_limits_with_response: ok"
+  qn.admin.update_rate_limits(id: endpoint_id, limit_by_ip: false)
 
   resp = qn.admin.get_rate_limits(id: endpoint_id)
   puts "get_rate_limits after PATCH: #{resp[:data]}"

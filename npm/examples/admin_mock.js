@@ -17,6 +17,11 @@ async function main() {
   assert.deepEqual((await admin.showEndpoint("12")).data.security.requestFilters[0].method, pattern.method);
   assert.equal((await admin.createTokenWithResponse("12")).data.id, "token");
   assert.equal((await admin.updateMethodRateLimit("12", "rule", { limitByIp: false })).data.limitByIp, false);
+  await admin.updateRateLimits("per-ip", { limitByIp: true });
+  assert.equal((await admin.updateRateLimitsWithResponse("endpoint-wide", { limitByIp: false })).data.limits.rps, 10);
+  assert.equal((await admin.updateRateLimitsWithResponse("combined", { rateLimits: { rps: 10 }, limitByIp: false })).data.limits.rps, 10);
+  await admin.updateRateLimits("limits-only", { rateLimits: { rps: 10 } });
+  await assert.rejects(admin.updateRateLimits("empty", {}), error => error instanceof ApiError && error.status === 400 && error.body.includes("at least one property"));
   const summary = (await admin.getUsageRpcSummary({ last: "1d", groupBy: ["method", "endpoint"] })).data;
   assert.equal(summary.totals.rpcCredits, 7.5);
   assert.equal(summary.breakdown[0].requests, null);

@@ -888,15 +888,19 @@ impl AdminApiClient {
     }
 
     fn update_rate_limits_with_response(&self, opts: RHash) -> Result<magnus::Value, Error> {
-        validate_keys(&opts, &["id", "rps", "rpm", "rpd"])?;
+        validate_keys(&opts, &["id", "rps", "rpm", "rpd", "limit_by_ip"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
+        let rps = hash_get_i32(&opts, "rps")?;
+        let rpm = hash_get_i32(&opts, "rpm")?;
+        let rpd = hash_get_i32(&opts, "rpd")?;
         let params = core::admin::UpdateRateLimitsRequest {
-            rate_limits: core::admin::RateLimitSettings {
-                rps: hash_get_i32(&opts, "rps")?,
-                rpm: hash_get_i32(&opts, "rpm")?,
-                rpd: hash_get_i32(&opts, "rpd")?,
+            rate_limits: if rps.is_some() || rpm.is_some() || rpd.is_some() {
+                Some(core::admin::RateLimitSettings { rps, rpm, rpd })
+            } else {
+                None
             },
+            limit_by_ip: hash_get_bool(&opts, "limit_by_ip")?,
         };
         runtime()
             .block_on(client.update_rate_limits_with_response(&id, &params))
@@ -1415,15 +1419,19 @@ impl AdminApiClient {
     }
 
     fn update_rate_limits(&self, opts: RHash) -> Result<(), Error> {
-        validate_keys(&opts, &["id", "rps", "rpm", "rpd"])?;
+        validate_keys(&opts, &["id", "rps", "rpm", "rpd", "limit_by_ip"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
+        let rps = hash_get_i32(&opts, "rps")?;
+        let rpm = hash_get_i32(&opts, "rpm")?;
+        let rpd = hash_get_i32(&opts, "rpd")?;
         let params = core::admin::UpdateRateLimitsRequest {
-            rate_limits: core::admin::RateLimitSettings {
-                rps: hash_get_i32(&opts, "rps")?,
-                rpm: hash_get_i32(&opts, "rpm")?,
-                rpd: hash_get_i32(&opts, "rpd")?,
+            rate_limits: if rps.is_some() || rpm.is_some() || rpd.is_some() {
+                Some(core::admin::RateLimitSettings { rps, rpm, rpd })
+            } else {
+                None
             },
+            limit_by_ip: hash_get_bool(&opts, "limit_by_ip")?,
         };
         runtime()
             .block_on(client.update_rate_limits(&id, &params))

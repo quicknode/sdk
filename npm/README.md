@@ -863,15 +863,16 @@ await qn.admin.deleteMethodRateLimit("ep-123", "rl-1");
 
 ##### `update_rate_limits` / `updateRateLimits`
 
-Partial update of the endpoint-level RPS / RPM / RPD caps. Only buckets included in the request are modified — omitted buckets are left unchanged. Values are capped by the account's plan tier. Sends `PATCH`.
+Partial update of the endpoint-level RPS / RPM / RPD caps. Only supplied fields change. Values are capped by the account's plan tier. Sends `PATCH`. Set `limit_by_ip` (`limitByIp` in Node) to `true` to apply the caps per client IP or `false` to apply them to the whole endpoint. You can update this flag without sending caps. Supply at least one cap or the flag; an empty update returns an API error. Both update methods accept these options.
 
-**Parameters**: `id` (endpoint id, required); `rate_limits`: `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional).
+**Parameters**: `id` (endpoint id, required); `rateLimits`: optional `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional); `limitByIp`: optional boolean.
 
 **Returns**: nothing.
 
 ```typescript
 // Node.js
-await qn.admin.updateRateLimits("ep-123", { rateLimits: { rps: 100, rpm: 5000 } });
+await qn.admin.updateRateLimits("ep-123", { rateLimits: { rps: 100, rpm: 5000 }, limitByIp: true });
+await qn.admin.updateRateLimits("ep-123", { limitByIp: false });
 ```
 
 ##### `get_rate_limits` / `getRateLimits`

@@ -925,16 +925,18 @@ qn.admin.delete_method_rate_limit("ep-123", "rl-1").await?;
 
 ##### `update_rate_limits` / `updateRateLimits`
 
-Partial update of the endpoint-level RPS / RPM / RPD caps. Only buckets included in the request are modified — omitted buckets are left unchanged. Values are capped by the account's plan tier. Sends `PATCH`.
+Partial update of the endpoint-level RPS / RPM / RPD caps. Only supplied fields change. Values are capped by the account's plan tier. Sends `PATCH`. Set `limit_by_ip` (`limitByIp` in Node) to `true` to apply the caps per client IP or `false` to apply them to the whole endpoint. You can update this flag without sending caps. Supply at least one cap or the flag; an empty update returns an API error. Both update methods accept these options.
 
-**Parameters**: `id` (endpoint id, required); `rate_limits`: `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional).
+**Parameters**: `id` (endpoint id, required); `rate_limits`: optional `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional); `limit_by_ip`: optional boolean.
 
 **Returns**: nothing.
 
 ```rust
 // Rust
 let rate_limits = RateLimitSettings::builder().rps(100).rpm(5000).build();
-let params = UpdateRateLimitsRequest { rate_limits };
+let params = UpdateRateLimitsRequest { rate_limits: Some(rate_limits), limit_by_ip: Some(true) };
+qn.admin.update_rate_limits("ep-123", &params).await?;
+let params = UpdateRateLimitsRequest { limit_by_ip: Some(false), ..Default::default() };
 qn.admin.update_rate_limits("ep-123", &params).await?;
 ```
 
@@ -1365,6 +1367,8 @@ if let Some(cursor) = page.data.next_cursor {
 #### Admin compatibility notes
 
 Existing methods retain their return values and optional argument requiredness. Required API inputs are documented above; omitted or invalid values still produce API errors. Use the response-returning methods when you need created records.
+
+`UpdateRateLimitsRequest.rate_limits` is now `Option<RateLimitSettings>`. Wrap existing values in `Some(...)`, or omit them for a flag-only update. Set the new `limit_by_ip` field or use `..Default::default()`.
 
 Rust callers must update affected full struct literals for the added fields, even when those fields are optional. This includes security snapshots/options, filter responses, usage rows, bulk results, method-rate-limit requests/responses, and endpoint metric requests. Request structs with `Default` can use `..Default::default()` for omitted fields; builders avoid full-literal updates where available.
 

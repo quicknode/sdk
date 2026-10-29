@@ -145,7 +145,7 @@ module QuicknodeSdk
     def create_domain_mask_with_response: (id: String, ?domain_mask: String) -> untyped
     def create_jwt_with_response: (id: String, kid: String, public_key: String, name: String) -> untyped
     def create_tag_with_response: (id: String, ?label: String) -> untyped
-    def update_rate_limits_with_response: (id: String, ?rps: Integer, ?rpm: Integer, ?rpd: Integer) -> untyped
+    def update_rate_limits_with_response: (id: String, ?rps: Integer, ?rpm: Integer, ?rpd: Integer, ?limit_by_ip: bool) -> untyped
     def create_request_filter: (id: String, methods: Array[String]) -> untyped
     def update_request_filter: (id: String, request_filter_id: String, ?methods: Array[String]) -> void
     def delete_request_filter: (id: String, request_filter_id: String) -> void
@@ -157,7 +157,7 @@ module QuicknodeSdk
     def create_method_rate_limit: (id: String, interval: String, methods: Array[String], rate: Integer, ?limit_by_ip: bool) -> untyped
     def update_method_rate_limit: (id: String, method_rate_limit_id: String, ?methods: Array[String], ?status: String, ?rate: Integer, ?limit_by_ip: bool) -> untyped
     def delete_method_rate_limit: (id: String, method_rate_limit_id: String) -> void
-    def update_rate_limits: (id: String, ?rps: Integer, ?rpm: Integer, ?rpd: Integer) -> void
+    def update_rate_limits: (id: String, ?rps: Integer, ?rpm: Integer, ?rpd: Integer, ?limit_by_ip: bool) -> void
     def get_rate_limits: (id: String) -> untyped
     def delete_rate_limit_override: (id: String, override_id: String) -> void
     def get_endpoint_urls: (id: String) -> untyped

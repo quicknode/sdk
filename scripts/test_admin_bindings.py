@@ -79,6 +79,18 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/endpoints/12/method-rate-limits/rule" and method == "PATCH":
             assert body == {"limit_by_ip": False}, body
             return 200, {"data": {"id": "rule", "interval": "second", "methods": ["eth_chainId"], "rate": 5, "status": "enabled", "created": "2026-10-01T00:00:00Z", "limit_by_ip": False}}
+        if path.startswith("/endpoints/") and path.endswith("/rate-limits") and method == "PATCH":
+            expected = {
+                "per-ip": {"limit_by_ip": True},
+                "endpoint-wide": {"limit_by_ip": False},
+                "combined": {"rate_limits": {"rps": 10}, "limit_by_ip": False},
+                "limits-only": {"rate_limits": {"rps": 10}},
+                "empty": {},
+            }[path.split("/")[2]]
+            assert body == expected, body
+            if not body:
+                return 400, {"error": "at least one property is required"}
+            return 200, {"data": {"limits": {"rps": 10, "rpm": None, "rpd": None}}}
         if path == "/usage/rpc/summary":
             data = {"from": "2026-10-01T00:00:00Z", "to": "2026-10-02T00:00:00Z", "totals": TOTALS}
             if "cursor" in query:
@@ -125,8 +137,8 @@ def main():
                 env = dict(os.environ, ADMIN_MOCK_URL=f"http://127.0.0.1:{server.server_port}/")
                 subprocess.run(commands[language], cwd=ROOT, env=env, check=True, timeout=60)
                 assert not server.failures, server.failures
-                assert len(server.calls) == 14, (language, server.calls)
-                print(f"{language}: 14 localhost Admin requests verified", flush=True)
+                assert len(server.calls) == 19, (language, server.calls)
+                print(f"{language}: 19 localhost Admin requests verified", flush=True)
         finally:
             server.shutdown()
             thread.join()
