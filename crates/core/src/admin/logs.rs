@@ -15,14 +15,14 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct GetEndpointLogsRequest {
-    /// Start of the query window (timestamp).
+    /// Start of the query window as an ISO 8601 timestamp.
     pub from: String,
-    /// End of the query window (timestamp).
+    /// End of the query window as an ISO 8601 timestamp.
     pub to: String,
     /// When true, include full request/response payloads in each entry.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_details: Option<bool>,
-    /// Maximum number of log entries returned.
+    /// Maximum log entries: 1 through 100, default 20.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
     /// Cursor returned by a previous page; pass to fetch the next page.

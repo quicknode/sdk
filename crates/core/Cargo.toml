@@ -14,7 +14,7 @@ workspace = true
 
 [features]
 python = ["pyo3", "pyo3-async-runtimes", "pyo3-stub-gen"]
-node = ["napi", "napi-derive"]
+node = ["napi", "napi-derive", "napi/serde-json"]
 ruby = ["magnus"]
 rust = ["bon"]
 extension-module = ["pyo3/extension-module"]

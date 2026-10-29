@@ -43,6 +43,9 @@ pub struct GetEndpointMetricsRequest {
     pub period: String,
     /// Metric name (e.g. `method_calls_over_time`, `response_status_breakdown`).
     pub metric: String,
+    /// Percentile from 1 through 100, required for response-time metrics.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub percentile: Option<i32>,
 }
 
 /// Parameters for `get_account_metrics`.

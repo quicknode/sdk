@@ -5,6 +5,8 @@ use pyo3_stub_gen::{
 };
 use quicknode_sdk as core;
 
+mod admin_security;
+mod admin_summaries;
 mod errors;
 mod sql;
 mod streams_destination;
@@ -119,6 +121,797 @@ pub struct AdminApiClient {
 #[gen_stub_pymethods]
 #[pymethods]
 impl AdminApiClient {
+    /// Get client certs.
+    #[pyo3(signature = (id))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetClientCertsResponse]"
+    ))]
+    fn get_client_certs<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_client_certs(&id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Create client cert.
+    #[pyo3(signature = (id, certificate))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateClientCertResponse]"
+    ))]
+    fn create_client_cert<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        certificate: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::CreateClientCertRequest { certificate };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_client_cert(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Update client certs.
+    #[pyo3(signature = (id, enabled))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateClientCertsResponse]"
+    ))]
+    fn update_client_certs<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        enabled: bool,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::UpdateClientCertsRequest { enabled };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .update_client_certs(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Delete client cert.
+    #[pyo3(signature = (id, fingerprint))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteClientCertResponse]"
+    ))]
+    fn delete_client_cert<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        fingerprint: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_client_cert(&id, &fingerprint)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get method blacklist.
+    #[pyo3(signature = (id))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetMethodBlacklistResponse]"
+    ))]
+    fn get_method_blacklist<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_method_blacklist(&id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Update method blacklist.
+    #[pyo3(signature = (id, methods))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateMethodBlacklistResponse]"
+    ))]
+    fn update_method_blacklist<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        methods: Vec<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::UpdateMethodBlacklistRequest { methods };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .update_method_blacklist(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get range limits.
+    #[pyo3(signature = (id))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetRangeLimitsResponse]"
+    ))]
+    fn get_range_limits<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_range_limits(&id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Update range limits.
+    #[pyo3(signature = (id, limits))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateRangeLimitsResponse]"
+    ))]
+    fn update_range_limits<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        limits: std::collections::HashMap<String, i64>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::UpdateRangeLimitsRequest { limits };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .update_range_limits(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get blocked ips.
+    #[pyo3(signature = (id))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetBlockedIpsResponse]"
+    ))]
+    fn get_blocked_ips<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_blocked_ips(&id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Create blocked ip.
+    #[pyo3(signature = (id, ip))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateBlockedIpResponse]"
+    ))]
+    fn create_blocked_ip<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        ip: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::CreateBlockedIpRequest { ip };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_blocked_ip(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Delete blocked ip.
+    #[pyo3(signature = (id, ip_id))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, DeleteBoolResponse]"
+    ))]
+    fn delete_blocked_ip<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        ip_id: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .delete_blocked_ip(&id, &ip_id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// List activity logs.
+    #[pyo3(signature = (q=None, actor=None, endpoint_id=None, target_type=None, from_time=None, to_time=None, limit=None, offset=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ListActivityLogsResponse]"
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn list_activity_logs<'py>(
+        &self,
+        py: Python<'py>,
+        q: Option<String>,
+        actor: Option<String>,
+        endpoint_id: Option<String>,
+        target_type: Option<String>,
+        from_time: Option<String>,
+        to_time: Option<String>,
+        limit: Option<i32>,
+        offset: Option<i64>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::ListActivityLogsRequest {
+            q,
+            actor,
+            endpoint_id,
+            target_type,
+            from_time,
+            to_time,
+            limit,
+            offset,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .list_activity_logs(&params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// List activity log filters.
+    #[pyo3(signature = ())]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ListActivityLogFiltersResponse]"
+    ))]
+    fn list_activity_log_filters<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .list_activity_log_filters()
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get activity log.
+    #[pyo3(signature = (id))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetActivityLogResponse]"
+    ))]
+    fn get_activity_log<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_activity_log(&id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// List transactions.
+    #[pyo3(signature = (last=None, from_time=None, to_time=None, network=None, method=None, state=None, transaction_hash=None, cursor=None, endpoints=None, limit=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, ListTransactionsResponse]"
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn list_transactions<'py>(
+        &self,
+        py: Python<'py>,
+        last: Option<String>,
+        from_time: Option<String>,
+        to_time: Option<String>,
+        network: Option<String>,
+        method: Option<String>,
+        state: Option<String>,
+        transaction_hash: Option<String>,
+        cursor: Option<String>,
+        endpoints: Option<Vec<i64>>,
+        limit: Option<i32>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::ListTransactionsRequest {
+            last,
+            from_time,
+            to_time,
+            network,
+            method,
+            state,
+            transaction_hash,
+            cursor,
+            endpoints,
+            limit,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .list_transactions(&params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get transaction.
+    #[pyo3(signature = (network, hash, include_payloads=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetTransactionResponse]"
+    ))]
+    fn get_transaction<'py>(
+        &self,
+        py: Python<'py>,
+        network: String,
+        hash: String,
+        include_payloads: Option<bool>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetTransactionRequest { include_payloads };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_transaction(&network, &hash, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get usage credits summary.
+    #[pyo3(signature = (last=None, from_time=None, to_time=None, cursor=None, limit=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageCreditsSummaryResponse]"
+    ))]
+    fn get_usage_credits_summary<'py>(
+        &self,
+        py: Python<'py>,
+        last: Option<String>,
+        from_time: Option<String>,
+        to_time: Option<String>,
+        cursor: Option<String>,
+        limit: Option<i32>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetUsageCreditsSummaryRequest {
+            last,
+            from_time,
+            to_time,
+            cursor,
+            limit,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_usage_credits_summary(&params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get usage rpc summary.
+    #[pyo3(signature = (last=None, from_time=None, to_time=None, cursor=None, limit=None, group_by=None, endpoint_names=None, chains=None, networks=None, methods=None, tag_ids=None, addon_ids=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageRpcSummaryResponse]"
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn get_usage_rpc_summary<'py>(
+        &self,
+        py: Python<'py>,
+        last: Option<String>,
+        from_time: Option<String>,
+        to_time: Option<String>,
+        cursor: Option<String>,
+        limit: Option<i32>,
+        group_by: Option<Vec<String>>,
+        endpoint_names: Option<Vec<String>>,
+        chains: Option<Vec<String>>,
+        networks: Option<Vec<String>>,
+        methods: Option<Vec<String>>,
+        tag_ids: Option<Vec<String>>,
+        addon_ids: Option<Vec<String>>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetUsageRpcSummaryRequest {
+            last,
+            from_time,
+            to_time,
+            cursor,
+            limit,
+            group_by,
+            endpoint_names,
+            chains,
+            networks,
+            methods,
+            tag_ids,
+            addon_ids,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_usage_rpc_summary(&params)
+                .await
+                .map(admin_summaries::GetUsageRpcSummaryResponse::from)
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get usage streams summary.
+    #[pyo3(signature = (last=None, from_time=None, to_time=None, cursor=None, limit=None, group_by=None, stream_id=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageStreamsSummaryResponse]"
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn get_usage_streams_summary<'py>(
+        &self,
+        py: Python<'py>,
+        last: Option<String>,
+        from_time: Option<String>,
+        to_time: Option<String>,
+        cursor: Option<String>,
+        limit: Option<i32>,
+        group_by: Option<Vec<String>>,
+        stream_id: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetUsageStreamsSummaryRequest {
+            last,
+            from_time,
+            to_time,
+            cursor,
+            limit,
+            group_by,
+            stream_id,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_usage_streams_summary(&params)
+                .await
+                .map(admin_summaries::GetUsageStreamsSummaryResponse::from)
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get usage webhooks summary.
+    #[pyo3(signature = (last=None, from_time=None, to_time=None, cursor=None, limit=None, group_by=None, webhook_id=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetUsageWebhooksSummaryResponse]"
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn get_usage_webhooks_summary<'py>(
+        &self,
+        py: Python<'py>,
+        last: Option<String>,
+        from_time: Option<String>,
+        to_time: Option<String>,
+        cursor: Option<String>,
+        limit: Option<i32>,
+        group_by: Option<Vec<String>>,
+        webhook_id: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetUsageWebhooksSummaryRequest {
+            last,
+            from_time,
+            to_time,
+            cursor,
+            limit,
+            group_by,
+            webhook_id,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_usage_webhooks_summary(&params)
+                .await
+                .map(admin_summaries::GetUsageWebhooksSummaryResponse::from)
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get traffic summary.
+    #[pyo3(signature = (last=None, from_time=None, to_time=None, cursor=None, limit=None, group_by=None, endpoint_names=None, chains=None, networks=None, methods=None, tag_ids=None, addon_ids=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetTrafficSummaryResponse]"
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn get_traffic_summary<'py>(
+        &self,
+        py: Python<'py>,
+        last: Option<String>,
+        from_time: Option<String>,
+        to_time: Option<String>,
+        cursor: Option<String>,
+        limit: Option<i32>,
+        group_by: Option<Vec<String>>,
+        endpoint_names: Option<Vec<String>>,
+        chains: Option<Vec<String>>,
+        networks: Option<Vec<String>>,
+        methods: Option<Vec<String>>,
+        tag_ids: Option<Vec<String>>,
+        addon_ids: Option<Vec<String>>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetTrafficSummaryRequest {
+            last,
+            from_time,
+            to_time,
+            cursor,
+            limit,
+            group_by,
+            endpoint_names,
+            chains,
+            networks,
+            methods,
+            tag_ids,
+            addon_ids,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_traffic_summary(&params)
+                .await
+                .map(admin_summaries::GetTrafficSummaryResponse::from)
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get errors summary.
+    #[pyo3(signature = (last=None, from_time=None, to_time=None, cursor=None, limit=None, group_by=None, endpoints=None, networks=None, methods=None, codes=None, status_codes=None, kind=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetErrorsSummaryResponse]"
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn get_errors_summary<'py>(
+        &self,
+        py: Python<'py>,
+        last: Option<String>,
+        from_time: Option<String>,
+        to_time: Option<String>,
+        cursor: Option<String>,
+        limit: Option<i32>,
+        group_by: Option<Vec<String>>,
+        endpoints: Option<Vec<i64>>,
+        networks: Option<Vec<String>>,
+        methods: Option<Vec<String>>,
+        codes: Option<Vec<String>>,
+        status_codes: Option<Vec<String>>,
+        kind: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetErrorsSummaryRequest {
+            last,
+            from_time,
+            to_time,
+            cursor,
+            limit,
+            group_by,
+            endpoints,
+            networks,
+            methods,
+            codes,
+            status_codes,
+            kind,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_errors_summary(&params)
+                .await
+                .map(admin_summaries::GetErrorsSummaryResponse::from)
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Get endpoint errors summary.
+    #[pyo3(signature = (id, last=None, from_time=None, to_time=None, cursor=None, limit=None, group_by=None, networks=None, methods=None, codes=None, status_codes=None, kind=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetEndpointErrorsSummaryResponse]"
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn get_endpoint_errors_summary<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        last: Option<String>,
+        from_time: Option<String>,
+        to_time: Option<String>,
+        cursor: Option<String>,
+        limit: Option<i32>,
+        group_by: Option<Vec<String>>,
+        networks: Option<Vec<String>>,
+        methods: Option<Vec<String>>,
+        codes: Option<Vec<String>>,
+        status_codes: Option<Vec<String>>,
+        kind: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::GetEndpointErrorsSummaryRequest {
+            last,
+            from_time,
+            to_time,
+            cursor,
+            limit,
+            group_by,
+            networks,
+            methods,
+            codes,
+            status_codes,
+            kind,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_endpoint_errors_summary(&id, &params)
+                .await
+                .map(admin_summaries::GetEndpointErrorsSummaryResponse::from)
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Generates a new authentication token for an endpoint.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateTokenResponse]"
+    ))]
+    fn create_token_with_response<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_token_with_response(&id)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Adds a referrer to an endpoint's security settings, specifying which
+    /// external URL or domain is permitted to call the endpoint.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateReferrerResponse]"
+    ))]
+    fn create_referrer_with_response<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        referrer: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::CreateReferrerRequest { referrer };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_referrer_with_response(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Adds an IP address to an endpoint's security whitelist.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateIpResponse]"
+    ))]
+    fn create_ip_with_response<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        ip: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::CreateIpRequest { ip };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_ip_with_response(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Adds a domain mask to an endpoint — a custom domain used to hide the
+    /// endpoint's Quicknode URL so requests can be routed through your own
+    /// domain.
+    #[pyo3(signature = (id, domain_mask=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateDomainMaskResponse]"
+    ))]
+    fn create_domain_mask_with_response<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        domain_mask: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::CreateDomainMaskRequest { domain_mask };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_domain_mask_with_response(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Creates a new JWT for endpoint authentication. Accepts a public key,
+    /// key id (`kid`), and token name.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateJwtResponse]"
+    ))]
+    fn create_jwt_with_response<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        kid: String,
+        public_key: String,
+        name: String,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::CreateJwtRequest {
+            public_key,
+            kid,
+            name,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_jwt_with_response(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Creates a new tag on a specific endpoint from a label. Returns the new
+    /// tag with its id, account info, and timestamps.
+    #[pyo3(signature = (id, label=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateTagResponse]"
+    ))]
+    fn create_tag_with_response<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        label: Option<String>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::CreateTagRequest { label };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_tag_with_response(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    /// Partial update of the endpoint-level rate-limit overrides. Accepts
+    /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
+    /// (requests per day). Only buckets passed are modified — omitted buckets
+    /// are left unchanged. Values are capped by the account's plan tier.
+    /// `limit_by_ip` applies these caps per client IP and can be sent alone.
+    /// Supply at least one cap or `limit_by_ip`; omitted fields stay unchanged.
+    #[pyo3(signature = (id, rps=None, rpm=None, rpd=None, limit_by_ip=None))]
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateRateLimitsResponse]"
+    ))]
+    fn update_rate_limits_with_response<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        rps: Option<i32>,
+        rpm: Option<i32>,
+        rpd: Option<i32>,
+        limit_by_ip: Option<bool>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::UpdateRateLimitsRequest {
+            rate_limits: if rps.is_some() || rpm.is_some() || rpd.is_some() {
+                Some(core::admin::RateLimitSettings { rps, rpm, rpd })
+            } else {
+                None
+            },
+            limit_by_ip,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .update_rate_limits_with_response(&id, &params)
+                .await
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
     /// Returns a paginated list of endpoints on the account. Supports searching
     /// by subdomain or label, filtering by networks, statuses, labels, and
     /// tags, and sorting. The response includes endpoint metadata (id, label,
@@ -207,6 +1000,7 @@ impl AdminApiClient {
             client
                 .create_endpoint(&params)
                 .await
+                .map(admin_security::CreateEndpointResponse::from)
                 .map_err(errors::map_sdk_err)
         })
     }
@@ -218,12 +1012,15 @@ impl AdminApiClient {
     fn show_endpoint<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            client.show_endpoint(&id).await.map_err(errors::map_sdk_err)
+            client
+                .show_endpoint(&id)
+                .await
+                .map(admin_security::ShowEndpointResponse::from)
+                .map_err(errors::map_sdk_err)
         })
     }
 
-    /// Updates editable fields on an endpoint (e.g. its label). Returns a
-    /// boolean indicating whether the update succeeded.
+    /// Updates the endpoint label, which the API requires. Returns HTTP success.
     #[pyo3(signature = (id, label=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_endpoint<'py>(
@@ -492,7 +1289,7 @@ impl AdminApiClient {
     /// in the submitted object can be toggled `enabled` or `disabled` —
     /// examples include token auth, JWT validation, IP restrictions, CORS,
     /// HSTS, referrer validation, and domain masking.
-    #[pyo3(signature = (id, tokens=None, referrers=None, jwts=None, ips=None, domain_masks=None, hsts=None, cors=None, request_filters=None, ip_custom_header=None))]
+    #[pyo3(signature = (id, tokens=None, referrers=None, jwts=None, ips=None, domain_masks=None, hsts=None, cors=None, request_filters=None, ip_custom_header=None, response_logging=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateSecurityOptionsResponse]"
     ))]
@@ -510,6 +1307,7 @@ impl AdminApiClient {
         cors: Option<String>,
         request_filters: Option<String>,
         ip_custom_header: Option<String>,
+        response_logging: Option<String>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::UpdateSecurityOptionsRequest {
@@ -523,6 +1321,7 @@ impl AdminApiClient {
                 cors,
                 request_filters,
                 ip_custom_header,
+                response_logging,
             },
         };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
@@ -737,6 +1536,7 @@ impl AdminApiClient {
             client
                 .create_request_filter(&id, &params)
                 .await
+                .map(admin_security::CreateRequestFilterResponse::from)
                 .map_err(errors::map_sdk_err)
         })
     }
@@ -871,6 +1671,7 @@ impl AdminApiClient {
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateMethodRateLimitResponse]"
     ))]
+    #[pyo3(signature = (id, interval, methods, rate, limit_by_ip=None))]
     fn create_method_rate_limit<'py>(
         &self,
         py: Python<'py>,
@@ -878,12 +1679,14 @@ impl AdminApiClient {
         interval: String,
         methods: Vec<String>,
         rate: i32,
+        limit_by_ip: Option<bool>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::CreateMethodRateLimitRequest {
             interval,
             methods,
             rate,
+            limit_by_ip,
         };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -895,10 +1698,11 @@ impl AdminApiClient {
 
     /// Updates an existing method rate limit on an endpoint. Accepts the
     /// methods to apply the limit to, the desired `status`, and the `rate`.
-    #[pyo3(signature = (id, method_rate_limit_id, methods=None, status=None, rate=None))]
+    #[pyo3(signature = (id, method_rate_limit_id, methods=None, status=None, rate=None, limit_by_ip=None))]
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, UpdateMethodRateLimitResponse]"
     ))]
+    #[allow(clippy::too_many_arguments)]
     fn update_method_rate_limit<'py>(
         &self,
         py: Python<'py>,
@@ -907,12 +1711,14 @@ impl AdminApiClient {
         methods: Option<Vec<String>>,
         status: Option<String>,
         rate: Option<i32>,
+        limit_by_ip: Option<bool>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::UpdateMethodRateLimitRequest {
             methods,
             status,
             rate,
+            limit_by_ip,
         };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -943,7 +1749,9 @@ impl AdminApiClient {
     /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
     /// (requests per day). Only buckets passed are modified — omitted buckets
     /// are left unchanged. Values are capped by the account's plan tier.
-    #[pyo3(signature = (id, rps=None, rpm=None, rpd=None))]
+    /// `limit_by_ip` applies these caps per client IP and can be sent alone.
+    /// Supply at least one cap or `limit_by_ip`; omitted fields stay unchanged.
+    #[pyo3(signature = (id, rps=None, rpm=None, rpd=None, limit_by_ip=None))]
     #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
     fn update_rate_limits<'py>(
         &self,
@@ -952,10 +1760,16 @@ impl AdminApiClient {
         rps: Option<i32>,
         rpm: Option<i32>,
         rpd: Option<i32>,
+        limit_by_ip: Option<bool>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
         let params = core::admin::UpdateRateLimitsRequest {
-            rate_limits: core::admin::RateLimitSettings { rps, rpm, rpd },
+            rate_limits: if rps.is_some() || rpm.is_some() || rpd.is_some() {
+                Some(core::admin::RateLimitSettings { rps, rpm, rpd })
+            } else {
+                None
+            },
+            limit_by_ip,
         };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
@@ -1023,15 +1837,21 @@ impl AdminApiClient {
     #[gen_stub(override_return_type(
         type_repr = "typing.Coroutine[typing.Any, typing.Any, GetEndpointMetricsResponse]"
     ))]
+    #[pyo3(signature = (id, period, metric, percentile=None))]
     fn get_endpoint_metrics<'py>(
         &self,
         py: Python<'py>,
         id: String,
         period: String,
         metric: String,
+        percentile: Option<i32>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
-        let params = core::admin::GetEndpointMetricsRequest { period, metric };
+        let params = core::admin::GetEndpointMetricsRequest {
+            period,
+            metric,
+            percentile,
+        };
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .get_endpoint_metrics(&id, &params)
@@ -1515,6 +2335,64 @@ impl AdminApiClient {
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             client
                 .get_endpoint_security(&id)
+                .await
+                .map(admin_security::GetEndpointSecurityResponse::from)
+                .map_err(errors::map_sdk_err)
+        })
+    }
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, GetRequestFiltersResponse]"
+    ))]
+    fn get_request_filters<'py>(&self, py: Python<'py>, id: String) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .get_request_filters(&id)
+                .await
+                .map(admin_security::GetRequestFiltersResponse::from)
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, CreateRequestFilterResponse]"
+    ))]
+    fn create_request_filter_pattern<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        #[gen_stub(override_type(type_repr = "dict[str, typing.Any]", imports = ("typing")))]
+        pattern: &Bound<'py, pyo3::types::PyDict>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::CreateRequestFilterPatternRequest {
+            pattern: pythonize::depythonize(pattern)?,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .create_request_filter_pattern(&id, &params)
+                .await
+                .map(admin_security::CreateRequestFilterResponse::from)
+                .map_err(errors::map_sdk_err)
+        })
+    }
+
+    #[gen_stub(override_return_type(type_repr = "typing.Coroutine[typing.Any, typing.Any, None]"))]
+    fn update_request_filter_pattern<'py>(
+        &self,
+        py: Python<'py>,
+        id: String,
+        request_filter_id: String,
+        #[gen_stub(override_type(type_repr = "dict[str, typing.Any]", imports = ("typing")))]
+        pattern: &Bound<'py, pyo3::types::PyDict>,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        let params = core::admin::UpdateRequestFilterPatternRequest {
+            pattern: pythonize::depythonize(pattern)?,
+        };
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client
+                .update_request_filter_pattern(&id, &request_filter_id, &params)
                 .await
                 .map_err(errors::map_sdk_err)
         })
@@ -3053,10 +3931,10 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::Endpoint>()?;
     m.add_class::<core::admin::EndpointTag>()?;
     m.add_class::<core::admin::CreateEndpointRequest>()?;
-    m.add_class::<core::admin::CreateEndpointResponse>()?;
-    m.add_class::<core::admin::SingleEndpoint>()?;
+    m.add_class::<admin_security::CreateEndpointResponse>()?;
+    m.add_class::<admin_security::SingleEndpoint>()?;
     m.add_class::<core::admin::EndpointRateLimits>()?;
-    m.add_class::<core::admin::EndpointSecurity>()?;
+    m.add_class::<admin_security::EndpointSecurity>()?;
     m.add_class::<core::admin::EndpointSecurityOptions>()?;
     m.add_class::<core::admin::EndpointIpCustomHeaderOption>()?;
     m.add_class::<core::admin::EndpointToken>()?;
@@ -3064,8 +3942,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::EndpointReferrer>()?;
     m.add_class::<core::admin::EndpointDomainMask>()?;
     m.add_class::<core::admin::EndpointIp>()?;
-    m.add_class::<core::admin::EndpointRequestFilter>()?;
-    m.add_class::<core::admin::ShowEndpointResponse>()?;
+    m.add_class::<admin_security::EndpointRequestFilter>()?;
+    m.add_class::<admin_security::ShowEndpointResponse>()?;
     m.add_class::<core::admin::UpdateEndpointRequest>()?;
     m.add_class::<core::admin::UpdateEndpointStatusRequest>()?;
     m.add_class::<core::admin::UpdateEndpointStatusResponse>()?;
@@ -3096,9 +3974,98 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::CreateIpRequest>()?;
     m.add_class::<core::admin::CreateDomainMaskRequest>()?;
     m.add_class::<core::admin::CreateJwtRequest>()?;
+    m.add_class::<admin_security::CreateRequestFilterPatternRequest>()?;
+    m.add_class::<admin_security::UpdateRequestFilterPatternRequest>()?;
+    m.add_class::<admin_security::RequestFilter>()?;
+    m.add_class::<admin_security::GetRequestFiltersResponse>()?;
+    m.add_class::<core::admin::CreatedReferrer>()?;
+    m.add_class::<core::admin::CreatedDomainMask>()?;
+    m.add_class::<core::admin::CreateTokenResponse>()?;
+    m.add_class::<core::admin::CreateReferrerResponse>()?;
+    m.add_class::<core::admin::CreateIpResponse>()?;
+    m.add_class::<core::admin::CreateDomainMaskResponse>()?;
+    m.add_class::<core::admin::CreateJwtResponse>()?;
+    m.add_class::<core::admin::ClientCertificate>()?;
+    m.add_class::<core::admin::ClientCertsData>()?;
+    m.add_class::<core::admin::CreateClientCertRequest>()?;
+    m.add_class::<core::admin::UpdateClientCertsRequest>()?;
+    m.add_class::<core::admin::GetClientCertsResponse>()?;
+    m.add_class::<core::admin::CreateClientCertResponse>()?;
+    m.add_class::<core::admin::UpdateClientCertsResponse>()?;
+    m.add_class::<core::admin::DeleteClientCertResponse>()?;
+    m.add_class::<core::admin::MethodBlacklistData>()?;
+    m.add_class::<core::admin::UpdateMethodBlacklistRequest>()?;
+    m.add_class::<core::admin::GetMethodBlacklistResponse>()?;
+    m.add_class::<core::admin::UpdateMethodBlacklistResponse>()?;
+    m.add_class::<core::admin::RangeLimitsData>()?;
+    m.add_class::<core::admin::UpdateRangeLimitsRequest>()?;
+    m.add_class::<core::admin::GetRangeLimitsResponse>()?;
+    m.add_class::<core::admin::UpdateRangeLimitsResponse>()?;
+    m.add_class::<core::admin::CreateBlockedIpRequest>()?;
+    m.add_class::<core::admin::GetBlockedIpsResponse>()?;
+    m.add_class::<core::admin::CreateBlockedIpResponse>()?;
+    m.add_class::<core::admin::EndpointTagAssociation>()?;
+    m.add_class::<core::admin::CreateTagData>()?;
+    m.add_class::<core::admin::CreateTagResponse>()?;
+    m.add_class::<core::admin::EffectiveRateLimits>()?;
+    m.add_class::<core::admin::UpdateRateLimitsData>()?;
+    m.add_class::<core::admin::UpdateRateLimitsResponse>()?;
+    m.add_class::<core::admin::GetUsageCreditsSummaryRequest>()?;
+    m.add_class::<core::admin::UsageCreditsSummaryTotals>()?;
+    m.add_class::<core::admin::UsageCreditsSummaryRow>()?;
+    m.add_class::<core::admin::UsageCreditsSummaryData>()?;
+    m.add_class::<core::admin::GetUsageCreditsSummaryResponse>()?;
+    m.add_class::<core::admin::GetUsageRpcSummaryRequest>()?;
+    m.add_class::<core::admin::UsageRpcSummaryTotals>()?;
+    m.add_class::<admin_summaries::UsageRpcSummaryRow>()?;
+    m.add_class::<admin_summaries::UsageRpcSummaryData>()?;
+    m.add_class::<admin_summaries::GetUsageRpcSummaryResponse>()?;
+    m.add_class::<core::admin::GetUsageStreamsSummaryRequest>()?;
+    m.add_class::<core::admin::UsageStreamsSummaryTotals>()?;
+    m.add_class::<admin_summaries::UsageStreamsSummaryRow>()?;
+    m.add_class::<admin_summaries::UsageStreamsSummaryData>()?;
+    m.add_class::<admin_summaries::GetUsageStreamsSummaryResponse>()?;
+    m.add_class::<core::admin::GetUsageWebhooksSummaryRequest>()?;
+    m.add_class::<core::admin::UsageWebhooksSummaryTotals>()?;
+    m.add_class::<admin_summaries::UsageWebhooksSummaryRow>()?;
+    m.add_class::<admin_summaries::UsageWebhooksSummaryData>()?;
+    m.add_class::<admin_summaries::GetUsageWebhooksSummaryResponse>()?;
+    m.add_class::<core::admin::GetTrafficSummaryRequest>()?;
+    m.add_class::<core::admin::TrafficSummaryTotals>()?;
+    m.add_class::<admin_summaries::TrafficSummaryRow>()?;
+    m.add_class::<admin_summaries::TrafficSummaryData>()?;
+    m.add_class::<admin_summaries::GetTrafficSummaryResponse>()?;
+    m.add_class::<core::admin::GetErrorsSummaryRequest>()?;
+    m.add_class::<core::admin::ErrorsSummaryTotals>()?;
+    m.add_class::<admin_summaries::ErrorsSummaryRow>()?;
+    m.add_class::<admin_summaries::ErrorsSummaryData>()?;
+    m.add_class::<admin_summaries::GetErrorsSummaryResponse>()?;
+    m.add_class::<core::admin::GetEndpointErrorsSummaryRequest>()?;
+    m.add_class::<admin_summaries::GetEndpointErrorsSummaryResponse>()?;
+    m.add_class::<core::admin::ListActivityLogsRequest>()?;
+    m.add_class::<core::admin::ListActivityLogsResponse>()?;
+    m.add_class::<core::admin::ActivityLogPagination>()?;
+    m.add_class::<core::admin::GetActivityLogResponse>()?;
+    m.add_class::<core::admin::ActivityLogEntry>()?;
+    m.add_class::<core::admin::ActivityLogTarget>()?;
+    m.add_class::<core::admin::ActivityLogActor>()?;
+    m.add_class::<core::admin::ListActivityLogFiltersResponse>()?;
+    m.add_class::<core::admin::ActivityLogFiltersData>()?;
+    m.add_class::<core::admin::ActivityLogFilterActor>()?;
+    m.add_class::<core::admin::ActivityLogFilterType>()?;
+    m.add_class::<core::admin::ListTransactionsRequest>()?;
+    m.add_class::<core::admin::GetTransactionRequest>()?;
+    m.add_class::<core::admin::ListTransactionsResponse>()?;
+    m.add_class::<core::admin::TransactionsData>()?;
+    m.add_class::<core::admin::TransactionSummary>()?;
+    m.add_class::<core::admin::GetTransactionResponse>()?;
+    m.add_class::<core::admin::TransactionLookup>()?;
+    m.add_class::<core::admin::TransactionDetail>()?;
+    m.add_class::<core::admin::TransactionAttempt>()?;
+    m.add_class::<core::admin::TransactionPayloads>()?;
     m.add_class::<core::admin::CreateRequestFilterRequest>()?;
-    m.add_class::<core::admin::CreateRequestFilterData>()?;
-    m.add_class::<core::admin::CreateRequestFilterResponse>()?;
+    m.add_class::<admin_security::CreateRequestFilterData>()?;
+    m.add_class::<admin_security::CreateRequestFilterResponse>()?;
     m.add_class::<core::admin::UpdateRequestFilterRequest>()?;
     m.add_class::<core::admin::CreateOrUpdateIpCustomHeaderRequest>()?;
     m.add_class::<core::admin::IpCustomHeaderData>()?;
@@ -3161,7 +4128,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::admin::RemoveTeamMemberResponse>()?;
     m.add_class::<core::admin::ResendTeamInviteResponse>()?;
     m.add_class::<core::admin::Pagination>()?;
-    m.add_class::<core::admin::GetEndpointSecurityResponse>()?;
+    m.add_class::<admin_security::GetEndpointSecurityResponse>()?;
     m.add_class::<core::admin::BulkOperationResult>()?;
     m.add_class::<core::admin::BulkUpdateEndpointStatusRequest>()?;
     m.add_class::<core::admin::BulkUpdateEndpointStatusData>()?;

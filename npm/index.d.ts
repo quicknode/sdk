@@ -48,6 +48,82 @@ export interface ActivateWebhookParams {
   startFrom: WebhookStartFrom
 }
 
+/** Actor attached to an activity entry, including deleted users. */
+export interface ActivityLogActor {
+  /** User or API-key UUID; absent for Quicknode and deleted users. */
+  id?: string
+  /** Actor kind: `user`, `api_key`, `quicknode`, or `deleted_user`. */
+  actorType: string
+  /** Actor name, when available. */
+  name?: string
+  /** Actor email, when available. */
+  email?: string
+}
+
+/** An account change and the actor who made it. */
+export interface ActivityLogEntry {
+  /** Activity entry UUID. */
+  id: string
+  /** ISO 8601 timestamp of the change. */
+  occurredAt: string
+  /** Action performed, such as `created`. */
+  action: string
+  /** Human-readable description, when available. */
+  description?: string
+  /** Resource affected by the change. */
+  target: ActivityLogTarget
+  /** Actor responsible for the change. */
+  actor: ActivityLogActor
+}
+
+/** An actor available for activity-log filtering. */
+export interface ActivityLogFilterActor {
+  /** User or API-key UUID to pass as `actor`. */
+  id: string
+  /** Actor name, when available. */
+  name?: string
+  /** Actor kind, such as `user` or `api_key`. */
+  actorType: string
+}
+
+/** Values accepted by the activity-log filters. */
+export interface ActivityLogFiltersData {
+  /** Users and API keys available for filtering. */
+  actors: Array<ActivityLogFilterActor>
+  /** Target types available for filtering. */
+  types: Array<ActivityLogFilterType>
+}
+
+/** A target type available for activity-log filtering. */
+export interface ActivityLogFilterType {
+  /** Value to pass as `target_type`. */
+  value: string
+  /** Human-readable target type. */
+  label: string
+}
+
+/** Offset pagination for activity logs. */
+export interface ActivityLogPagination {
+  /** Total entries matching the filters. */
+  total: number
+  /** Page size used for this response. */
+  limit: number
+  /** Number of entries skipped. */
+  offset: number
+}
+
+/** Resource affected by an activity entry. */
+export interface ActivityLogTarget {
+  /** Resource identifier; endpoint targets use numeric IDs as strings. */
+  id: string
+  /** Resource kind, when available. */
+  kind?: string
+  /** Resource label. */
+  label: string
+  /** Resource name, when available. */
+  name?: string
+}
+
 /** Parameters for `add_list_item`. */
 export interface AddListItemParams {
   /** Item to append to the list. */
@@ -147,6 +223,8 @@ export interface BulkOperationResult {
   id: string
   /** Whether the operation succeeded for this endpoint. */
   success: boolean
+  /** Per-endpoint failure reason; absent on successful rows. */
+  error?: string
 }
 
 /** Summary data for a `bulk_remove_tag` response. */
@@ -274,6 +352,26 @@ export interface ChainUsage {
   name: string
   /** Credits consumed on the chain. */
   creditsUsed: number
+  /** RPC credits consumed. */
+  rpcCredits?: number
+  /** Data credits consumed. */
+  dataCredits?: number
+  /** Response bytes transferred. */
+  bytes?: number
+}
+
+/** Client certificate metadata. */
+export interface ClientCertificate {
+  fingerprint: string
+  subject: string
+  issuer: string
+  expiresAt: string
+}
+
+/** Current client-certificate authentication state. */
+export interface ClientCertsData {
+  enabled: boolean
+  certs: Array<ClientCertificate>
 }
 
 /** Metadata describing a single column in a query result set. */
@@ -292,17 +390,57 @@ export interface ColumnSchema {
   columnType: string
 }
 
+/** Blocked IP address or CIDR range. Does not enable IP security. */
+export interface CreateBlockedIpRequest {
+  ip: string
+}
+
+/** Created blocked IP record. */
+export interface CreateBlockedIpResponse {
+  data: EndpointIp
+  error?: string
+}
+
+/** PEM certificate to add. */
+export interface CreateClientCertRequest {
+  certificate: string
+}
+
+/** Full certificate state after the operation. */
+export interface CreateClientCertResponse {
+  data: ClientCertsData
+  error?: string
+}
+
+/** Created security record. */
+export interface CreatedDomainMask {
+  id: string
+  domainMask: string
+}
+
 /** Parameters for `create_domain_mask`. */
 export interface CreateDomainMaskRequest {
-  /** Custom domain that will mask the endpoint's Quicknode URL. */
+  /** Custom domain that will mask the endpoint's Quicknode URL; required by the API. */
   domainMask?: string
+}
+
+/** Created security record and API error. */
+export interface CreateDomainMaskResponse {
+  data: CreatedDomainMask
+  error?: string
+}
+
+/** Created security record. */
+export interface CreatedReferrer {
+  id: string
+  url: string
 }
 
 /** Parameters for `create_endpoint`. */
 export interface CreateEndpointRequest {
-  /** Blockchain the endpoint should serve (e.g. `ethereum`). */
+  /** Blockchain the endpoint should serve (e.g. `ethereum`); required by the API. */
   chain?: string
-  /** Specific network within the chain (e.g. `mainnet`). */
+  /** Specific network within the chain (e.g. `mainnet`); required for creation. */
   network?: string
 }
 
@@ -320,6 +458,12 @@ export interface CreateIpRequest {
   ip: string
 }
 
+/** Created security record and API error. */
+export interface CreateIpResponse {
+  data: EndpointIp
+  error?: string
+}
+
 /** Parameters for `create_jwt`. */
 export interface CreateJwtRequest {
   /** Public key used to verify signed JWTs. */
@@ -330,6 +474,12 @@ export interface CreateJwtRequest {
   name: string
 }
 
+/** Created security record and API error. */
+export interface CreateJwtResponse {
+  data: EndpointJwt
+  error?: string
+}
+
 /** Parameters for `create_list`. */
 export interface CreateListParams {
   /** Unique key identifying the list. */
@@ -338,7 +488,7 @@ export interface CreateListParams {
   items: Array<string>
 }
 
-/** Parameters for `create_method_rate_limit`. */
+/** Parameters for `create_method_rate_limit`. The API requires a positive rate. */
 export interface CreateMethodRateLimitRequest {
   /** Interval over which the rate applies (e.g. `second`). */
   interval: string
@@ -346,6 +496,8 @@ export interface CreateMethodRateLimitRequest {
   methods: Array<string>
   /** Maximum number of calls allowed per interval. */
   rate: number
+  /** Whether the method limit applies per client IP. */
+  limitByIp?: boolean
 }
 
 /** Response from `create_method_rate_limit`. */
@@ -376,10 +528,23 @@ export interface CreateReferrerRequest {
   referrer: string
 }
 
+/** Created security record and API error. */
+export interface CreateReferrerResponse {
+  data: CreatedReferrer
+  error?: string
+}
+
 /** Data wrapper for a created request filter. */
 export interface CreateRequestFilterData {
   /** Identifier of the newly created request filter. */
   id: string
+  /** Custom pattern, when returned by the API. */
+  pattern?: Record<string, unknown>
+}
+
+/** Custom JSON pattern for a request filter. */
+export interface CreateRequestFilterPatternRequest {
+  pattern: Record<string, unknown>
 }
 
 /** Parameters for `create_request_filter`. */
@@ -404,10 +569,21 @@ export interface CreateSetParams {
   value: string
 }
 
+/** Tags associated with the endpoint. */
+export interface CreateTagData {
+  tags: Array<EndpointTagAssociation>
+}
+
 /** Parameters for `create_tag` (on a specific endpoint). */
 export interface CreateTagRequest {
-  /** Label for the new tag. Maximum 25 characters. */
+  /** Nonblank label, 3 through 25 characters after trimming. The SDK does not trim it. */
   label?: string
+}
+
+/** Response from create_tag_with_response. */
+export interface CreateTagResponse {
+  data: CreateTagData
+  error?: string
 }
 
 /** Inner data for `create_team` responses. */
@@ -436,6 +612,12 @@ export interface CreateTeamResponse {
   error?: string
 }
 
+/** Created security record and API error. */
+export interface CreateTokenResponse {
+  data: EndpointToken
+  error?: string
+}
+
 /** Inner data for `delete_account_tag`. */
 export interface DeleteAccountTagData {
   /** `true` when the tag was deleted. */
@@ -458,6 +640,12 @@ export interface DeleteBoolResponse {
   error?: string
 }
 
+/** Full certificate state after the operation. */
+export interface DeleteClientCertResponse {
+  data: ClientCertsData
+  error?: string
+}
+
 /** Inner data for `delete_team` responses. */
 export interface DeleteTeamData {
   /** Human-readable confirmation message. */
@@ -470,6 +658,13 @@ export interface DeleteTeamResponse {
   data?: DeleteTeamData
   /** Error message when the request did not succeed. */
   error?: string
+}
+
+/** Effective endpoint rate-limit overrides; null means no override. */
+export interface EffectiveRateLimits {
+  rps?: number
+  rpd?: number
+  rpm?: number
 }
 
 /** Result of `get_enabled_count`. */
@@ -490,7 +685,7 @@ export interface Endpoint {
   status: string
   /** Blockchain the endpoint serves (e.g. `ethereum`). */
   chain: string
-  /** Specific network within the chain (e.g. `mainnet`). */
+  /** Specific network within the chain (e.g. `mainnet`); required for creation. */
   network: string
   /** Whether the endpoint is dedicated. */
   isDedicated: boolean
@@ -600,8 +795,10 @@ export interface EndpointReferrer {
 export interface EndpointRequestFilter {
   /** Filter identifier. */
   id: string
-  /** Whitelisted RPC methods. */
-  method: Array<string>
+  /** String methods or structured matchers. */
+  method: unknown[]
+  /** All top-level pattern keys other than method. */
+  params: Record<string, unknown>
 }
 
 /**
@@ -622,6 +819,8 @@ export interface EndpointSecurity {
   domainMasks?: Array<EndpointDomainMask>
   /** Whitelisted IP addresses. */
   ips?: Array<EndpointIp>
+  /** Blocked IP addresses or CIDR ranges. */
+  blockedIps?: Array<EndpointIp>
   /** Request (method) filters. */
   requestFilters?: Array<EndpointRequestFilter>
 }
@@ -630,6 +829,12 @@ export interface EndpointSecurity {
 export interface EndpointSecurityOptions {
   /** Whether token authentication is enforced. */
   tokens?: boolean
+  /** Whether HSTS is enabled. */
+  hsts?: boolean
+  /** Whether CORS is enabled. */
+  cors?: boolean
+  /** Whether response logging is enabled. */
+  responseLogging?: boolean
   /** Whether JWT validation is enforced. */
   jwts?: boolean
   /** Whether domain masking is enabled. */
@@ -650,6 +855,17 @@ export interface EndpointTag {
   tagId: number
   /** Tag label. */
   label: string
+}
+
+/** Endpoint tag association; id identifies the association, tag_id identifies the tag. */
+export interface EndpointTagAssociation {
+  id: number
+  tagId: number
+  accountId: number
+  endpointId: number
+  label: string
+  createdAt: string
+  updatedAt: string
 }
 
 /** Authentication token configured on an endpoint. */
@@ -686,6 +902,53 @@ export interface EndpointUsage {
   methodsBreakdown: Array<MethodUsage>
   /** Request count during the window. */
   requests?: number
+  /** RPC credits consumed. */
+  rpcCredits?: number
+  /** Data credits consumed. */
+  dataCredits?: number
+  /** Response bytes transferred. */
+  bytes?: number
+}
+
+/** Summary window and grouped results. Totals cover the full window on every page. */
+export interface ErrorsSummaryData {
+  /** Returned window start; the server may align it to billing boundaries. */
+  from: string
+  /** Returned window end; retain the server value without rounding. */
+  to: string
+  /** Totals for the complete window, independent of page size. */
+  totals: ErrorsSummaryTotals
+  /** Grouped results, omitted when grouping was not requested. */
+  breakdown?: Array<ErrorsSummaryRow>
+  /** Cursor for the next page, when present. */
+  nextCursor?: string
+}
+
+/**
+ * One grouped row from `get_errors_summary`. Dimension fields are absent unless
+ * selected; `Some(None)` represents an explicitly null dimension.
+ */
+export interface ErrorsSummaryRow {
+  /** Kind for this group. */
+  kind: string
+  /** Count for this group. */
+  count: number
+  /** Group value, preserving omitted versus explicitly null fields. */
+  code?: string | undefined | null
+  /** Group value, preserving omitted versus explicitly null fields. */
+  endpoint?: number | undefined | null
+  /** Group value, preserving omitted versus explicitly null fields. */
+  network?: string | undefined | null
+  /** Group value, preserving omitted versus explicitly null fields. */
+  method?: string | undefined | null
+}
+
+/** Full-window totals for `get_errors_summary`. Numbers can be fractional. */
+export interface ErrorsSummaryTotals {
+  /** Rpc errors across the complete window. */
+  rpcErrors: number
+  /** Http errors across the complete window. */
+  httpErrors: number
 }
 
 /**
@@ -784,6 +1047,14 @@ export interface GetAccountMetricsResponse {
   error?: string
 }
 
+/** Response from `get_activity_log`. */
+export interface GetActivityLogResponse {
+  /** The matching activity entry, when present. */
+  data?: ActivityLogEntry
+  /** Error message when the request did not succeed. */
+  error?: string
+}
+
 /** Response from `get_api_credits`. */
 export interface GetApiCreditsResponse {
   /**
@@ -795,15 +1066,64 @@ export interface GetApiCreditsResponse {
   error?: string
 }
 
+/** Blocked IP records visible for the current security state. */
+export interface GetBlockedIpsResponse {
+  data: Array<EndpointIp>
+  error?: string
+}
+
+/** Full certificate state after the operation. */
+export interface GetClientCertsResponse {
+  data: ClientCertsData
+  error?: string
+}
+
+/**
+ * Parameters for `get_endpoint_errors_summary`. A first page requires `last`, or both
+ * `from` and `to`; a continuation can contain only `cursor`.
+ */
+export interface GetEndpointErrorsSummaryRequest {
+  /** Relative window, such as `1h`; use a positive duration in s, m, h, or d. */
+  last?: string
+  /** Window start as an ISO 8601 timestamp with timezone. */
+  from?: string
+  /** Window end as an ISO 8601 timestamp with timezone. */
+  to?: string
+  /** Opaque cursor returned by the same route and original query. */
+  cursor?: string
+  /** Page size from 1 through 1000; the API defaults to 100. */
+  limit?: number
+  /** Grouping dimensions. Allowed values: `code`, `network`, `method`. */
+  groupBy?: Array<string>
+  /** Network names to include. */
+  networks?: Array<string>
+  /** RPC method names to include. */
+  methods?: Array<string>
+  /** RPC error codes represented as strings; requires RPC kind. */
+  codes?: Array<string>
+  /** HTTP status codes represented as strings; requires HTTP kind. */
+  statusCodes?: Array<string>
+  /** Error kind (`rpc` or `http`); method filters/grouping require RPC kind. */
+  kind?: string
+}
+
+/** Response from `get_endpoint_errors_summary`. */
+export interface GetEndpointErrorsSummaryResponse {
+  /** Summary window, totals, and optional grouped results. */
+  data: ErrorsSummaryData
+  /** Error returned by the API, when present. */
+  error?: string
+}
+
 /** Parameters for `get_endpoint_logs`. */
 export interface GetEndpointLogsRequest {
-  /** Start of the query window (timestamp). */
+  /** Start of the query window as an ISO 8601 timestamp. */
   from: string
-  /** End of the query window (timestamp). */
+  /** End of the query window as an ISO 8601 timestamp. */
   to: string
   /** When true, include full request/response payloads in each entry. */
   includeDetails?: boolean
-  /** Maximum number of log entries returned. */
+  /** Maximum log entries: 1 through 100, default 20. */
   limit?: number
   /** Cursor returned by a previous page; pass to fetch the next page. */
   nextAt?: string
@@ -823,6 +1143,8 @@ export interface GetEndpointMetricsRequest {
   period: string
   /** Metric name (e.g. `method_calls_over_time`, `response_status_breakdown`). */
   metric: string
+  /** Percentile from 1 through 100, required for response-time metrics. */
+  percentile?: number
 }
 
 /** Response from `get_endpoint_metrics`. */
@@ -843,7 +1165,7 @@ export interface GetEndpointSecurityResponse {
 
 /** Parameters for `get_endpoints`. */
 export interface GetEndpointsRequest {
-  /** Maximum number of endpoints returned. */
+  /** Maximum number of endpoints returned, capped at 100. */
   limit?: number
   /** Starting index into the result set. */
   offset?: number
@@ -863,9 +1185,9 @@ export interface GetEndpointsRequest {
   dedicated?: boolean
   /** When true, return only flat-rate endpoints. */
   isFlatRate?: boolean
-  /** Filter results by associated tag ids. */
+  /** Filter by tag IDs; cannot be combined with nonempty tag_labels. */
   tagIds?: Array<number>
-  /** Filter results by associated tag labels. */
+  /** Filter by tag labels; cannot be combined with nonempty tag_ids. */
   tagLabels?: Array<string>
 }
 
@@ -897,6 +1219,45 @@ export interface GetEndpointUrlsResponse {
   /** URLs for the endpoint. */
   data?: GetEndpointUrlsData
   /** Error message when the request did not succeed. */
+  error?: string
+}
+
+/**
+ * Parameters for `get_errors_summary`. A first page requires `last`, or both
+ * `from` and `to`; a continuation can contain only `cursor`.
+ */
+export interface GetErrorsSummaryRequest {
+  /** Relative window, such as `1h`; use a positive duration in s, m, h, or d. */
+  last?: string
+  /** Window start as an ISO 8601 timestamp with timezone. */
+  from?: string
+  /** Window end as an ISO 8601 timestamp with timezone. */
+  to?: string
+  /** Opaque cursor returned by the same route and original query. */
+  cursor?: string
+  /** Page size from 1 through 1000; the API defaults to 100. */
+  limit?: number
+  /** Grouping dimensions. Allowed values: `code`, `endpoint`, `network`, `method`. */
+  groupBy?: Array<string>
+  /** Numeric endpoint IDs to include. */
+  endpoints?: Array<number>
+  /** Network names to include. */
+  networks?: Array<string>
+  /** RPC method names to include. */
+  methods?: Array<string>
+  /** RPC error codes represented as strings; requires RPC kind. */
+  codes?: Array<string>
+  /** HTTP status codes represented as strings; requires HTTP kind. */
+  statusCodes?: Array<string>
+  /** Error kind (`rpc` or `http`); method filters/grouping require RPC kind. */
+  kind?: string
+}
+
+/** Response from `get_errors_summary`. */
+export interface GetErrorsSummaryResponse {
+  /** Summary window, totals, and optional grouped results. */
+  data: ErrorsSummaryData
+  /** Error returned by the API, when present. */
   error?: string
 }
 
@@ -950,6 +1311,12 @@ export interface GetLogDetailsResponse {
   data?: LogDetails
 }
 
+/** Current method blacklist. */
+export interface GetMethodBlacklistResponse {
+  data: MethodBlacklistData
+  error?: string
+}
+
 /** Inner data for `get_method_rate_limits`. */
 export interface GetMethodRateLimitsData {
   /** Rate limiters configured on the endpoint. */
@@ -964,6 +1331,12 @@ export interface GetMethodRateLimitsResponse {
   error?: string
 }
 
+/** Current method range limits. */
+export interface GetRangeLimitsResponse {
+  data: RangeLimitsData
+  error?: string
+}
+
 /** Inner data for `get_rate_limits`. */
 export interface GetRateLimitsData {
   /** One row per enforced bucket. */
@@ -975,6 +1348,12 @@ export interface GetRateLimitsResponse {
   /** Rate-limit rows with their source. */
   data?: GetRateLimitsData
   /** Error message when the request did not succeed. */
+  error?: string
+}
+
+/** Response from `get_request_filters`. */
+export interface GetRequestFiltersResponse {
+  data: Array<RequestFilter>
   error?: string
 }
 
@@ -1016,6 +1395,51 @@ export interface GetTeamResponse {
   error?: string
 }
 
+/**
+ * Parameters for `get_traffic_summary`. A first page requires `last`, or both
+ * `from` and `to`; a continuation can contain only `cursor`.
+ */
+export interface GetTrafficSummaryRequest {
+  /** Relative window, such as `1h`; use a positive duration in s, m, h, or d. */
+  last?: string
+  /** Window start as an ISO 8601 timestamp with timezone. */
+  from?: string
+  /** Window end as an ISO 8601 timestamp with timezone. */
+  to?: string
+  /** Opaque cursor returned by the same route and original query. */
+  cursor?: string
+  /** Page size from 1 through 1000; the API defaults to 100. */
+  limit?: number
+  /** Grouping dimensions. Allowed values: `method`, `endpoint`. */
+  groupBy?: Array<string>
+  /** Endpoint subdomains to include. */
+  endpointNames?: Array<string>
+  /** Chain names to include. */
+  chains?: Array<string>
+  /** Network names to include. */
+  networks?: Array<string>
+  /** RPC method names to include. */
+  methods?: Array<string>
+  /** Numeric account tag IDs represented as strings. */
+  tagIds?: Array<string>
+  /** Numeric account add-on IDs represented as strings. */
+  addonIds?: Array<string>
+}
+
+/** Options for `get_transaction`. */
+export interface GetTransactionRequest {
+  /** Include retained request/response text. The API defaults to false. */
+  includePayloads?: boolean
+}
+
+/** Response from `get_transaction`. */
+export interface GetTransactionResponse {
+  /** Lookup result, including whether retained details exist. */
+  data: TransactionLookup
+  /** Error message when the request did not succeed. */
+  error?: string
+}
+
 /** Response from `get_usage_by_chain`. */
 export interface GetUsageByChainResponse {
   /** Per-chain usage payload. */
@@ -1049,8 +1473,33 @@ export interface GetUsageByTagResponse {
 }
 
 /**
+ * Parameters for `get_usage_credits_summary`. A first page requires `last`, or both
+ * `from` and `to`; a continuation can contain only `cursor`.
+ */
+export interface GetUsageCreditsSummaryRequest {
+  /** Relative window, such as `1h`; use a positive duration in s, m, h, or d. */
+  last?: string
+  /** Window start as an ISO 8601 timestamp with timezone. */
+  from?: string
+  /** Window end as an ISO 8601 timestamp with timezone. */
+  to?: string
+  /** Opaque cursor returned by the same route and original query. */
+  cursor?: string
+  /** Page size from 1 through 1000; the API defaults to 100. */
+  limit?: number
+}
+
+/** Response from `get_usage_credits_summary`. */
+export interface GetUsageCreditsSummaryResponse {
+  /** Summary window, totals, and optional grouped results. */
+  data: UsageCreditsSummaryData
+  /** Error returned by the API, when present. */
+  error?: string
+}
+
+/**
  * Parameters for the account usage methods (`get_usage`, `get_usage_by_*`).
- * Both bounds are optional; omit for account-to-date totals.
+ * Both bounds are optional; omit for billing-period totals.
  */
 export interface GetUsageRequest {
   /** Start of the query window (Unix timestamp). */
@@ -1064,6 +1513,95 @@ export interface GetUsageResponse {
   /** Aggregate usage payload. */
   data?: UsageData
   /** Error message when the request did not succeed. */
+  error?: string
+}
+
+/**
+ * Parameters for `get_usage_rpc_summary`. A first page requires `last`, or both
+ * `from` and `to`; a continuation can contain only `cursor`.
+ */
+export interface GetUsageRpcSummaryRequest {
+  /** Relative window, such as `1h`; use a positive duration in s, m, h, or d. */
+  last?: string
+  /** Window start as an ISO 8601 timestamp with timezone. */
+  from?: string
+  /** Window end as an ISO 8601 timestamp with timezone. */
+  to?: string
+  /** Opaque cursor returned by the same route and original query. */
+  cursor?: string
+  /** Page size from 1 through 1000; the API defaults to 100. */
+  limit?: number
+  /** Grouping dimensions. Allowed values: `method`, `endpoint`, `chain`, `network`. */
+  groupBy?: Array<string>
+  /** Endpoint subdomains to include. */
+  endpointNames?: Array<string>
+  /** Chain names to include. */
+  chains?: Array<string>
+  /** Network names to include. */
+  networks?: Array<string>
+  /** RPC method names to include. */
+  methods?: Array<string>
+  /** Numeric account tag IDs represented as strings. */
+  tagIds?: Array<string>
+  /** Numeric account add-on IDs represented as strings. */
+  addonIds?: Array<string>
+}
+
+/**
+ * Parameters for `get_usage_streams_summary`. A first page requires `last`, or both
+ * `from` and `to`; a continuation can contain only `cursor`.
+ */
+export interface GetUsageStreamsSummaryRequest {
+  /** Relative window, such as `1h`; use a positive duration in s, m, h, or d. */
+  last?: string
+  /** Window start as an ISO 8601 timestamp with timezone. */
+  from?: string
+  /** Window end as an ISO 8601 timestamp with timezone. */
+  to?: string
+  /** Opaque cursor returned by the same route and original query. */
+  cursor?: string
+  /** Page size from 1 through 1000; the API defaults to 100. */
+  limit?: number
+  /** Grouping dimensions. Allowed values: `stream`. */
+  groupBy?: Array<string>
+  /** Stream identifier to include. */
+  streamId?: string
+}
+
+/** Response from `get_usage_streams_summary`. */
+export interface GetUsageStreamsSummaryResponse {
+  /** Summary window, totals, and optional grouped results. */
+  data: UsageStreamsSummaryData
+  /** Error returned by the API, when present. */
+  error?: string
+}
+
+/**
+ * Parameters for `get_usage_webhooks_summary`. A first page requires `last`, or both
+ * `from` and `to`; a continuation can contain only `cursor`.
+ */
+export interface GetUsageWebhooksSummaryRequest {
+  /** Relative window, such as `1h`; use a positive duration in s, m, h, or d. */
+  last?: string
+  /** Window start as an ISO 8601 timestamp with timezone. */
+  from?: string
+  /** Window end as an ISO 8601 timestamp with timezone. */
+  to?: string
+  /** Opaque cursor returned by the same route and original query. */
+  cursor?: string
+  /** Page size from 1 through 1000; the API defaults to 100. */
+  limit?: number
+  /** Grouping dimensions. Allowed values: `webhook`. */
+  groupBy?: Array<string>
+  /** Webhook identifier to include. */
+  webhookId?: string
+}
+
+/** Response from `get_usage_webhooks_summary`. */
+export interface GetUsageWebhooksSummaryResponse {
+  /** Summary window, totals, and optional grouped results. */
+  data: UsageWebhooksSummaryData
+  /** Error returned by the API, when present. */
   error?: string
 }
 
@@ -1107,7 +1645,7 @@ export interface InviteTeamMemberRequest {
   email: string
   /** Full name (required for new users). */
   fullName?: string
-  /** Team role (`admin`, `viewer`, or `billing`); required for new users. */
+  /** Standard role or account custom-role key; required for new users. */
   role?: string
 }
 
@@ -1199,6 +1737,44 @@ export interface KvStoreConfig {
   baseUrl?: string
 }
 
+/** Response from `list_activity_log_filters`. */
+export interface ListActivityLogFiltersResponse {
+  /** Available actor and target-type filters. */
+  data: ActivityLogFiltersData
+  /** Error message when the request did not succeed. */
+  error?: string
+}
+
+/** Filters and pagination for `list_activity_logs`. */
+export interface ListActivityLogsRequest {
+  /** Search descriptions, endpoint subdomains, and team names. */
+  q?: string
+  /** User or API-key UUID returned by `list_activity_log_filters`. */
+  actor?: string
+  /** Numeric endpoint ID represented as a string. */
+  endpointId?: string
+  /** Target type, such as `endpoint`, `team`, or `api_key`. */
+  targetType?: string
+  /** ISO 8601 start date or timestamp; a bare date starts at midnight UTC. */
+  from?: string
+  /** ISO 8601 end date or timestamp; a bare date includes that entire UTC day. */
+  to?: string
+  /** Page size from 0 through 100; the API defaults to 20. */
+  limit?: number
+  /** Entries to skip. Pin `to_time` when exporting to avoid shifting pages. */
+  offset?: number
+}
+
+/** Response from `list_activity_logs`. */
+export interface ListActivityLogsResponse {
+  /** Activity entries, newest first. */
+  data: Array<ActivityLogEntry>
+  /** Offset pagination metadata. */
+  pagination: ActivityLogPagination
+  /** Error message when the request did not succeed. */
+  error?: string
+}
+
 /** Response from `list_chains`. */
 export interface ListChainsResponse {
   /** Supported chains and their networks. */
@@ -1285,6 +1861,38 @@ export interface ListTeamsResponse {
   error?: string
 }
 
+/** Time window, filters, and cursor for `list_transactions`. */
+export interface ListTransactionsRequest {
+  /** Positive duration ending now, such as `1h` or `7d`; units are s, m, h, or d. */
+  last?: string
+  /** ISO 8601 start timestamp with timezone; supply with `to_time` instead of `last`. */
+  from?: string
+  /** ISO 8601 end timestamp with timezone. */
+  to?: string
+  /** Network to filter. */
+  network?: string
+  /** RPC method to filter. */
+  method?: string
+  /** Transaction state: `submitted`, `succeeded`, or `failed`. */
+  state?: string
+  /** Transaction hash to filter. */
+  transactionHash?: string
+  /** Opaque continuation cursor; can be supplied without a time window. */
+  cursor?: string
+  /** Numeric endpoint IDs, encoded as repeated `endpoints[]` keys. */
+  endpoints?: Array<number>
+  /** Page size from 1 through 1000; the API defaults to 100. */
+  limit?: number
+}
+
+/** Response from `list_transactions`. */
+export interface ListTransactionsResponse {
+  /** Resolved time window and transaction page. */
+  data: TransactionsData
+  /** Error message when the request did not succeed. */
+  error?: string
+}
+
 /** Response from `list_webhooks`. */
 export interface ListWebhooksResponse {
   /** Webhooks on the current page. */
@@ -1301,6 +1909,11 @@ export interface LogDetails {
   response?: string
 }
 
+/** Blocked methods. */
+export interface MethodBlacklistData {
+  methods: Array<string>
+}
+
 /** A per-method rate limiter configured on an endpoint. */
 export interface MethodRateLimiter {
   /** Rate limiter identifier. */
@@ -1315,6 +1928,8 @@ export interface MethodRateLimiter {
   status: string
   /** Creation timestamp. */
   created: string
+  /** Whether the method limit applies per client IP. */
+  limitByIp?: boolean
 }
 
 /** Per-method usage row. */
@@ -1329,6 +1944,8 @@ export interface MethodUsage {
   network?: string
   /** Chain the calls targeted. */
   chain?: string
+  /** Response bytes transferred. */
+  bytes?: number
 }
 
 /** Pagination metadata returned alongside a paginated result set. */
@@ -1465,6 +2082,12 @@ export interface QueryStatistics {
   bytesRead: number
 }
 
+/** Range limits and supported methods for this endpoint chain. */
+export interface RangeLimitsData {
+  limits: Record<string, number>
+  supportedMethods: Array<string>
+}
+
 /**
  * A single rate-limit row returned by `get_rate_limits`, identifying the
  * bucket (`rps`/`rpm`/`rpd`), the value enforced, and whether the value comes
@@ -1521,6 +2144,13 @@ export interface RenameTagResponse {
   data?: AccountTag
   /** Error message when the request did not succeed. */
   error?: string
+}
+
+/** Filter as returned by the request-filter list API. */
+export interface RequestFilter {
+  id: string
+  pattern: Record<string, unknown>
+  methodWhitelist: boolean
 }
 
 /** Response from `resend_team_invite`. */
@@ -1654,6 +2284,8 @@ export interface SecurityOptionsUpdate {
   requestFilters?: string
   /** Custom IP header toggle. */
   ipCustomHeader?: string
+  /** Response logging toggle. */
+  responseLogging?: string
 }
 
 /** Response from `show_endpoint`. */
@@ -1808,6 +2440,12 @@ export interface TagUsage {
   creditsUsed: number
   /** Request count during the window. */
   requests: number
+  /** RPC credits consumed. */
+  rpcCredits?: number
+  /** Data credits consumed. */
+  dataCredits?: number
+  /** Response bytes transferred. */
+  bytes?: number
 }
 
 /** Full team detail including pending invites. */
@@ -1917,9 +2555,128 @@ export interface ToolingAccessStatus {
   endpointId?: string
 }
 
+/** Full-window totals for `get_traffic_summary`. Numbers can be fractional. */
+export interface TrafficSummaryTotals {
+  /** Successful requests across the complete window. */
+  successfulRequests: number
+  /** Bytes across the complete window. */
+  bytes: number
+  /** Request credits across the complete window. */
+  requestCredits: number
+  /** Bytes credits across the complete window. */
+  bytesCredits: number
+  /** Credits across the complete window. */
+  credits: number
+  /** Active methods across the complete window. */
+  activeMethods: number
+}
+
+/** One retained submission attempt. */
+export interface TransactionAttempt {
+  /** Submission timestamp. */
+  submittedAt: string
+  /** Numeric ID of the submitting endpoint. */
+  endpointId: number
+  /** RPC method used. */
+  method: string
+  /** Request UUID. */
+  requestId: string
+  /** Payload text, only when requested and available. */
+  payloads?: TransactionPayloads
+}
+
+/** Retained transaction details and ordered submission attempts. */
+export interface TransactionDetail {
+  /** Network on which the transaction was submitted. */
+  network: string
+  /** Transaction hash. */
+  transactionHash: string
+  /** Timestamp of the first submission. */
+  firstSubmittedAt: string
+  /** Timestamp of the latest submission. */
+  lastSubmittedAt: string
+  /** Current transaction state. */
+  state: string
+  /** Number of attempts, when available. */
+  attemptCount?: number
+  /** Numeric endpoint IDs, when available; individual entries may be null. */
+  endpointIds?: Array<number | undefined | null>
+  /** Submission methods, when available. */
+  methods?: Array<string>
+  /** Whether archive data was used, when available. */
+  archive?: boolean
+  /** Decimal block-height string, when available. */
+  height?: string
+  /** Retained attempts in the order returned by the API. */
+  attempts: Array<TransactionAttempt>
+}
+
+/** Result of a retained transaction lookup. */
+export interface TransactionLookup {
+  /** Whether the transaction has retained details. */
+  exists: boolean
+  /** Details when retained; null or absent when `exists` is false. */
+  data?: TransactionDetail
+}
+
+/** Original request and response text for an attempt. */
+export interface TransactionPayloads {
+  /** Original request text; preserved without parsing or reformatting. */
+  request?: string
+  /** Original response text; may contain non-JSON content. */
+  response?: string
+}
+
+/** A page of transactions within the resolved time window. */
+export interface TransactionsData {
+  /** Resolved start timestamp. */
+  from: string
+  /** Resolved end timestamp. */
+  to: string
+  /** Transactions, newest first. */
+  transactions: Array<TransactionSummary>
+  /** Cursor for the next page; omitted when there are no more rows. */
+  nextCursor?: string
+}
+
+/** A retained transaction and its aggregate submission metadata. */
+export interface TransactionSummary {
+  /** Network on which the transaction was submitted. */
+  network: string
+  /** Transaction hash. */
+  transactionHash: string
+  /** Timestamp of the first submission. */
+  firstSubmittedAt: string
+  /** Timestamp of the latest submission. */
+  lastSubmittedAt: string
+  /** Number of submission attempts. */
+  attemptCount: number
+  /** Numeric IDs of submitting endpoints; null entries remain in place. */
+  endpointIds: Array<number | undefined | null>
+  /** RPC methods used to submit this transaction. */
+  methods: Array<string>
+  /** Whether archive data was used. */
+  archive: boolean
+  /** Decimal block-height string, preserving values above JavaScript safe integers. */
+  height?: string
+  /** Transaction state: `submitted`, `succeeded`, or `failed`. */
+  state: string
+}
+
+/** Enable or disable client-certificate authentication. */
+export interface UpdateClientCertsRequest {
+  enabled: boolean
+}
+
+/** Full certificate state after the operation. */
+export interface UpdateClientCertsResponse {
+  data: ClientCertsData
+  error?: string
+}
+
 /** Parameters for `update_endpoint`. */
 export interface UpdateEndpointRequest {
-  /** New human-readable label. */
+  /** New human-readable label; required by the API. */
   label?: string
 }
 
@@ -1945,7 +2702,18 @@ export interface UpdateListParams {
   removeItems?: Array<string>
 }
 
-/** Parameters for `update_method_rate_limit`. Only provided fields are changed. */
+/** Replacement blacklist; an empty list clears it. */
+export interface UpdateMethodBlacklistRequest {
+  methods: Array<string>
+}
+
+/** Current method blacklist. */
+export interface UpdateMethodBlacklistResponse {
+  data: MethodBlacklistData
+  error?: string
+}
+
+/** Parameters for `update_method_rate_limit`. Supply at least one field; false counts. Only provided fields are changed. */
 export interface UpdateMethodRateLimitRequest {
   /** New set of RPC methods the limiter applies to. */
   methods?: Array<string>
@@ -1953,6 +2721,8 @@ export interface UpdateMethodRateLimitRequest {
   status?: string
   /** New rate value. */
   rate?: number
+  /** Whether the method limit applies per client IP. */
+  limitByIp?: boolean
 }
 
 /** Response from `update_method_rate_limit`. */
@@ -1963,10 +2733,39 @@ export interface UpdateMethodRateLimitResponse {
   error?: string
 }
 
-/** Parameters for `update_rate_limits`. */
+/** Replacement positive range limits; an empty object clears them. */
+export interface UpdateRangeLimitsRequest {
+  limits: Record<string, number>
+}
+
+/** Current method range limits. */
+export interface UpdateRangeLimitsResponse {
+  data: RangeLimitsData
+  error?: string
+}
+
+/** Effective rate-limit override payload. */
+export interface UpdateRateLimitsData {
+  limits: EffectiveRateLimits
+}
+
+/** Parameters for `update_rate_limits`. Supply at least one field. */
 export interface UpdateRateLimitsRequest {
-  /** Rate limit values to apply. */
-  rateLimits: RateLimitSettings
+  /** Rate limit values to apply. Omit to leave the caps unchanged. */
+  rateLimits?: RateLimitSettings
+  /** Apply endpoint limits per client IP. Omit to leave the mode unchanged. */
+  limitByIp?: boolean
+}
+
+/** Response from update_rate_limits_with_response. */
+export interface UpdateRateLimitsResponse {
+  data: UpdateRateLimitsData
+  error?: string
+}
+
+/** Custom JSON pattern for a request filter. */
+export interface UpdateRequestFilterPatternRequest {
+  pattern: Record<string, unknown>
 }
 
 /** Parameters for `update_request_filter`. */
@@ -2062,6 +2861,32 @@ export interface UsageByTagData {
   endTime?: number
 }
 
+/** Summary window and grouped results. Totals cover the full window on every page. */
+export interface UsageCreditsSummaryData {
+  /** Returned window start; the server may align it to billing boundaries. */
+  from: string
+  /** Returned window end; retain the server value without rounding. */
+  to: string
+  /** Totals for the complete window, independent of page size. */
+  totals: UsageCreditsSummaryTotals
+  /** Grouped results, omitted when grouping was not requested. */
+  breakdown?: Array<UsageCreditsSummaryRow>
+  /** Cursor for the next page, when present. */
+  nextCursor?: string
+}
+
+/** Credits row supported by the response schema. The credits request has no grouping option. */
+export interface UsageCreditsSummaryRow {
+  /** Credits for this group. */
+  credits: number
+}
+
+/** Full-window totals for `get_usage_credits_summary`. Numbers can be fractional. */
+export interface UsageCreditsSummaryTotals {
+  /** Credits across the complete window. */
+  credits: number
+}
+
 /** Aggregate account usage for a time window. */
 export interface UsageData {
   /** Credits consumed during the window. */
@@ -2076,6 +2901,94 @@ export interface UsageData {
   startTime: number
   /** End of the queried window. */
   endTime: number
+}
+
+/** Full-window totals for `get_usage_rpc_summary`. Numbers can be fractional. */
+export interface UsageRpcSummaryTotals {
+  /** Requests across the complete window. */
+  requests: number
+  /** Bytes across the complete window. */
+  bytes: number
+  /** Rpc credits across the complete window. */
+  rpcCredits: number
+  /** Data credits across the complete window. */
+  dataCredits: number
+  /** Credits across the complete window. */
+  credits: number
+}
+
+/** Summary window and grouped results. Totals cover the full window on every page. */
+export interface UsageStreamsSummaryData {
+  /** Returned window start; the server may align it to billing boundaries. */
+  from: string
+  /** Returned window end; retain the server value without rounding. */
+  to: string
+  /** Totals for the complete window, independent of page size. */
+  totals: UsageStreamsSummaryTotals
+  /** Grouped results, omitted when grouping was not requested. */
+  breakdown?: Array<UsageStreamsSummaryRow>
+  /** Cursor for the next page, when present. */
+  nextCursor?: string
+}
+
+/**
+ * One grouped row from `get_usage_streams_summary`. Dimension fields are absent unless
+ * selected; `Some(None)` represents an explicitly null dimension.
+ */
+export interface UsageStreamsSummaryRow {
+  /** Blocks for this group. */
+  blocks: number
+  /** Bytes for this group. */
+  bytes: number
+  /** Block credits for this group. */
+  blockCredits: number
+  /** Group value, preserving omitted versus explicitly null fields. */
+  stream?: string | undefined | null
+}
+
+/** Full-window totals for `get_usage_streams_summary`. Numbers can be fractional. */
+export interface UsageStreamsSummaryTotals {
+  /** Blocks across the complete window. */
+  blocks: number
+  /** Bytes across the complete window. */
+  bytes: number
+  /** Block credits across the complete window. */
+  blockCredits: number
+}
+
+/** Summary window and grouped results. Totals cover the full window on every page. */
+export interface UsageWebhooksSummaryData {
+  /** Returned window start; the server may align it to billing boundaries. */
+  from: string
+  /** Returned window end; retain the server value without rounding. */
+  to: string
+  /** Totals for the complete window, independent of page size. */
+  totals: UsageWebhooksSummaryTotals
+  /** Grouped results, omitted when grouping was not requested. */
+  breakdown?: Array<UsageWebhooksSummaryRow>
+  /** Cursor for the next page, when present. */
+  nextCursor?: string
+}
+
+/**
+ * One grouped row from `get_usage_webhooks_summary`. Dimension fields are absent unless
+ * selected; `Some(None)` represents an explicitly null dimension.
+ */
+export interface UsageWebhooksSummaryRow {
+  /** Deliveries for this group. */
+  deliveries: number
+  /** Credits for this group. */
+  credits: number
+  /** Group value, preserving omitted versus explicitly null fields. */
+  webhook?: string | undefined | null
+}
+
+/** Full-window totals for `get_usage_webhooks_summary`. Numbers can be fractional. */
+export interface UsageWebhooksSummaryTotals {
+  /** Deliveries across the complete window. */
+  deliveries: number
+  /** Credits across the complete window. */
+  credits: number
 }
 
 /** A webhook's full configuration and current state. */
@@ -2178,6 +3091,86 @@ export interface XrplWalletFilterTemplate {
   wallets: Array<string>
 }
 export declare class AdminApiClient {
+  /** Get client certs. */
+  getClientCerts(id: string): Promise<GetClientCertsResponse>
+  /** Create client cert. */
+  createClientCert(id: string, params: CreateClientCertRequest): Promise<CreateClientCertResponse>
+  /** Update client certs. */
+  updateClientCerts(id: string, params: UpdateClientCertsRequest): Promise<UpdateClientCertsResponse>
+  /** Delete client cert. */
+  deleteClientCert(id: string, fingerprint: string): Promise<DeleteClientCertResponse>
+  /** Get method blacklist. */
+  getMethodBlacklist(id: string): Promise<GetMethodBlacklistResponse>
+  /** Update method blacklist. */
+  updateMethodBlacklist(id: string, params: UpdateMethodBlacklistRequest): Promise<UpdateMethodBlacklistResponse>
+  /** Get range limits. */
+  getRangeLimits(id: string): Promise<GetRangeLimitsResponse>
+  /** Update range limits. */
+  updateRangeLimits(id: string, params: UpdateRangeLimitsRequest): Promise<UpdateRangeLimitsResponse>
+  /** Get blocked ips. */
+  getBlockedIps(id: string): Promise<GetBlockedIpsResponse>
+  /** Create blocked ip. */
+  createBlockedIp(id: string, params: CreateBlockedIpRequest): Promise<CreateBlockedIpResponse>
+  /** Delete blocked ip. */
+  deleteBlockedIp(id: string, ipId: string): Promise<DeleteBoolResponse>
+  /** List activity logs. */
+  listActivityLogs(params?: ListActivityLogsRequest | undefined | null): Promise<ListActivityLogsResponse>
+  /** List activity log filters. */
+  listActivityLogFilters(): Promise<ListActivityLogFiltersResponse>
+  /** Get activity log. */
+  getActivityLog(id: string): Promise<GetActivityLogResponse>
+  /** List transactions. */
+  listTransactions(params?: ListTransactionsRequest | undefined | null): Promise<ListTransactionsResponse>
+  /** Get transaction. */
+  getTransaction(network: string, hash: string, params?: GetTransactionRequest | undefined | null): Promise<GetTransactionResponse>
+  /** Get usage credits summary. */
+  getUsageCreditsSummary(params?: GetUsageCreditsSummaryRequest | undefined | null): Promise<GetUsageCreditsSummaryResponse>
+  /** Get usage rpc summary. */
+  getUsageRpcSummary(params?: GetUsageRpcSummaryRequest | undefined | null): Promise<GetUsageRpcSummaryResponse>
+  /** Get usage streams summary. */
+  getUsageStreamsSummary(params?: GetUsageStreamsSummaryRequest | undefined | null): Promise<GetUsageStreamsSummaryResponse>
+  /** Get usage webhooks summary. */
+  getUsageWebhooksSummary(params?: GetUsageWebhooksSummaryRequest | undefined | null): Promise<GetUsageWebhooksSummaryResponse>
+  /** Get traffic summary. */
+  getTrafficSummary(params?: GetTrafficSummaryRequest | undefined | null): Promise<GetTrafficSummaryResponse>
+  /** Get errors summary. */
+  getErrorsSummary(params?: GetErrorsSummaryRequest | undefined | null): Promise<GetErrorsSummaryResponse>
+  /** Get endpoint errors summary. */
+  getEndpointErrorsSummary(id: string, params?: GetEndpointErrorsSummaryRequest | undefined | null): Promise<GetEndpointErrorsSummaryResponse>
+  /** Generates a new authentication token for an endpoint. */
+  createTokenWithResponse(id: string): Promise<CreateTokenResponse>
+  /**
+   * Adds a referrer to an endpoint's security settings, specifying which
+   * external URL or domain is permitted to call the endpoint.
+   */
+  createReferrerWithResponse(id: string, params?: CreateReferrerRequest | undefined | null): Promise<CreateReferrerResponse>
+  /** Adds an IP address to an endpoint's security whitelist. */
+  createIpWithResponse(id: string, params?: CreateIpRequest | undefined | null): Promise<CreateIpResponse>
+  /**
+   * Adds a domain mask to an endpoint — a custom domain used to hide the
+   * endpoint's Quicknode URL so requests can be routed through your own
+   * domain.
+   */
+  createDomainMaskWithResponse(id: string, params?: CreateDomainMaskRequest | undefined | null): Promise<CreateDomainMaskResponse>
+  /**
+   * Creates a new JWT for endpoint authentication. Accepts a public key,
+   * key id (`kid`), and token name.
+   */
+  createJwtWithResponse(id: string, params?: CreateJwtRequest | undefined | null): Promise<CreateJwtResponse>
+  /**
+   * Creates a new tag on a specific endpoint from a label. Returns the new
+   * tag with its id, account info, and timestamps.
+   */
+  createTagWithResponse(id: string, params?: CreateTagRequest | undefined | null): Promise<CreateTagResponse>
+  /**
+   * Partial update of the endpoint-level rate-limit overrides. Accepts
+   * `rps` (requests per second), `rpm` (requests per minute), and `rpd`
+   * (requests per day). Only buckets included are modified — omitted
+   * buckets are left unchanged. Values are capped by the account's plan
+   * tier. `limitByIp` applies these caps per client IP and can be sent alone.
+   * Supply `rateLimits` or `limitByIp`; omitted fields stay unchanged.
+   */
+  updateRateLimitsWithResponse(id: string, params: UpdateRateLimitsRequest): Promise<UpdateRateLimitsResponse>
   /**
    * Returns a paginated list of endpoints on the account. Supports searching
    * by subdomain or label, filtering by networks, statuses, labels, and
@@ -2195,10 +3188,7 @@ export declare class AdminApiClient {
   createEndpoint(params?: CreateEndpointRequest | undefined | null): Promise<CreateEndpointResponse>
   /** Returns details for a specific endpoint by ID. */
   showEndpoint(id: string): Promise<ShowEndpointResponse>
-  /**
-   * Updates editable fields on an endpoint (e.g. its label). Returns a
-   * boolean indicating whether the update succeeded.
-   */
+  /** Updates the endpoint label, which the API requires. Returns HTTP success. */
   updateEndpoint(id: string, params?: UpdateEndpointRequest | undefined | null): Promise<void>
   /**
    * Archives an endpoint. The API uses `DELETE` but the effect is archival
@@ -2353,7 +3343,8 @@ export declare class AdminApiClient {
    * `rps` (requests per second), `rpm` (requests per minute), and `rpd`
    * (requests per day). Only buckets included are modified — omitted
    * buckets are left unchanged. Values are capped by the account's plan
-   * tier.
+   * tier. `limitByIp` applies these caps per client IP and can be sent alone.
+   * Supply `rateLimits` or `limitByIp`; omitted fields stay unchanged.
    */
   updateRateLimits(id: string, params: UpdateRateLimitsRequest): Promise<void>
   /**
@@ -2522,6 +3513,9 @@ export declare class AdminApiClient {
    * object describing which features are enabled.
    */
   getEndpointSecurity(id: string): Promise<GetEndpointSecurityResponse>
+  getRequestFilters(id: string): Promise<GetRequestFiltersResponse>
+  createRequestFilterPattern(id: string, params: CreateRequestFilterPatternRequest): Promise<CreateRequestFilterResponse>
+  updateRequestFilterPattern(id: string, requestFilterId: string, params: UpdateRequestFilterPatternRequest): Promise<void>
 }
 
 export declare class KvStoreApiClient {
@@ -2907,6 +3901,16 @@ export interface CreateWebhookFromTemplateParamsNode {
  */
 export declare function generatePaymentWallet(chain: string): any
 
+export interface GetTrafficSummaryResponse {
+  data: TrafficSummaryData
+  error?: string
+}
+
+export interface GetUsageRpcSummaryResponse {
+  data: UsageRpcSummaryData
+  error?: string
+}
+
 export interface ListStreamsResponseNode {
   data: Array<StreamNode>
   pageInfo: PageInfo
@@ -2989,6 +3993,25 @@ export interface TableSchemaNode {
   columns: Array<ColumnSchemaNode>
 }
 
+export interface TrafficSummaryData {
+  from: string
+  to: string
+  totals: TrafficSummaryTotals
+  breakdown?: Array<TrafficSummaryRow>
+  nextCursor?: string
+}
+
+export interface TrafficSummaryRow {
+  successfulRequests: number | null
+  bytes: number
+  requestCredits: number
+  bytesCredits: number
+  credits: number
+  activeMethods: number
+  method?: string | undefined | null
+  endpoint?: number | undefined | null
+}
+
 export interface UpdateStreamParamsNode {
   name?: string
   region?: StreamRegion
@@ -3022,4 +4045,24 @@ export interface UpdateWebhookTemplateParamsNode {
   notificationEmail?: string
   destinationAttributes?: WebhookDestinationAttributes
   templateArgs: any
+}
+
+export interface UsageRpcSummaryData {
+  from: string
+  to: string
+  totals: UsageRpcSummaryTotals
+  breakdown?: Array<UsageRpcSummaryRow>
+  nextCursor?: string
+}
+
+export interface UsageRpcSummaryRow {
+  requests: number | null
+  bytes: number
+  rpcCredits: number
+  dataCredits: number
+  credits: number
+  method?: string | undefined | null
+  endpoint?: number | undefined | null
+  chain?: string | undefined | null
+  network?: string | undefined | null
 }

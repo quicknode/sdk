@@ -42,6 +42,12 @@ This is one of four language bindings published from the same Rust core. See the
     - [Billing](#billing)
     - [Bulk Operations](#bulk-operations)
     - [Account Tags](#account-tags)
+    - [Additional security operations](#additional-security-operations)
+    - [Mutation responses](#mutation-responses)
+    - [Usage and metrics summaries](#usage-and-metrics-summaries)
+    - [Activity logs](#activity-logs)
+    - [Transactions](#transactions)
+    - [Admin compatibility notes](#admin-compatibility-notes)
   - [Streams Client](#streams-client)
     - [Datasets, Regions, and Destinations](#datasets-regions-and-destinations)
     - [Streams methods](#streams-methods)
@@ -171,9 +177,9 @@ Accessed as `qn.admin`. Manages endpoints, tags, teams, billing, usage, metrics,
 
 ##### `get_endpoints` / `getEndpoints`
 
-Returns a paginated list of endpoints on the account with optional search, filters (networks, statuses, labels, tags, dedicated, flat-rate), sorting, and pagination.
+Returns a paginated list of endpoints on the account with optional search, filters (networks, statuses, labels, tags, dedicated, flat-rate), sorting, and pagination. The API caps `limit` at 100. Nonempty `tagIds` and `tagLabels` filters are mutually exclusive.
 
-**Parameters** (all optional): `limit` (i32), `offset` (i32), `search` (string), `sort_by` (string), `sort_direction` (`"asc"` | `"desc"`), `networks` (string[]), `statuses` (string[]), `labels` (string[]), `dedicated` (bool), `is_flat_rate` (bool), `tag_ids` (i32[]), `tag_labels` (string[]).
+**Parameters** (all optional): `limit` (i32), `offset` (i32), `search` (string), `sort_by` (string), `sort_direction` (`"asc"` | `"desc"`), `networks` (string[]), `statuses` (string[]), `labels` (string[]), `dedicated` (bool), `is_flat_rate` (bool), `tagIds` (i32[]), `tagLabels` (string[]).
 
 **Returns**: `GetEndpointsResponse` — `{ data: Endpoint[], pagination?: Pagination }`.
 
@@ -190,7 +196,7 @@ const resp = await qn.admin.getEndpoints({
 
 Creates a new endpoint for the given blockchain and network.
 
-**Parameters**: `chain` (string, optional), `network` (string, optional).
+**Parameters**: `chain` and `network` are strings required by the API. The SDK retains its existing optional arguments for compatibility; supply both for a valid request.
 
 **Returns**: `CreateEndpointResponse` with `data: SingleEndpoint`.
 
@@ -216,7 +222,7 @@ const resp = await qn.admin.showEndpoint("ep-123");
 
 Updates editable fields on an endpoint. Currently supports `label`.
 
-**Parameters**: `id` (string, required); body: `label` (string, optional).
+**Parameters**: `id` (string, required); `label` (string, required by the API). The SDK retains the optional label argument; omitting it produces an API error.
 
 **Returns**: nothing.
 
@@ -259,7 +265,7 @@ Per-endpoint tag add/remove. For account-wide tag management see [Account Tags](
 
 Tags an endpoint with the given label. Creates the tag on the account if it does not exist.
 
-**Parameters**: `id` (string, required); body: `label` (string, optional).
+**Parameters**: `id` (string, required); `label` (string, required by the API). Labels must be nonblank and contain 3 through 25 characters after trimming. The SDK retains its optional argument and does not trim values.
 
 **Returns**: nothing.
 
@@ -298,7 +304,7 @@ const resp = await qn.admin.listTeams();
 
 ##### `create_team` / `createTeam`
 
-Creates a new team.
+Creates a new team. The name must contain at least four characters.
 
 **Parameters**: `name` (string, required).
 
@@ -365,7 +371,7 @@ await qn.admin.updateTeamEndpoints(42, { endpointIds: ["ep-123", "ep-456"] });
 
 Invites a user to a team. Existing users only need `email`; new users require `full_name` and `role`.
 
-**Parameters**: `id` (i64, required); body: `email` (string, required), `full_name` (string, optional), `role` (string, optional — `admin` | `viewer` | `billing`).
+**Parameters**: `id` (i64, required); body: `email` (string, required), `full_name` (string, optional), `role` (string, optional). Standard roles and account custom-role keys are accepted.
 
 **Returns**: `InviteTeamMemberResponse`.
 
@@ -402,7 +408,9 @@ await qn.admin.resendTeamInvite(42, 7);
 
 #### Usage
 
-All usage methods accept optional `start_time` and `end_time` Unix timestamps. Omit both for account-to-date totals.
+Endpoint, chain, and tag usage rows include integer `rpcCredits`, `dataCredits`, and `bytes`. Shared method rows, including methods nested under endpoints, include integer `bytes`. Existing nullable method metadata and null tag IDs for untagged usage remain nullable.
+
+All usage methods accept optional `start_time` and `end_time` Unix timestamps. Omit both to use the current billing-period default.
 
 ##### `get_usage` / `getUsage`
 
@@ -463,9 +471,9 @@ const resp = await qn.admin.getUsageByTag();
 
 ##### `get_endpoint_logs` / `getEndpointLogs`
 
-Fetches a page of request logs for an endpoint. Set `include_details=true` for full request/response payloads (truncated at 2 KB each).
+Fetches a page of request logs for an endpoint. Use ISO 8601 timestamps for explicit bounds. The limit is 1 through 100 and defaults to 20. Set `include_details=true` for full request/response payloads (truncated at 2 KB each).
 
-**Parameters**: `id` (endpoint id, required); body: `from` (string timestamp, required), `to` (string timestamp, required), `include_details` (bool, optional), `limit` (i32, optional), `next_at` (string cursor, optional).
+**Parameters**: `id` (endpoint id, required); query: `from` (string timestamp, required), `to` (string timestamp, required), `include_details` (bool, optional), `limit` (i32, optional), `next_at` (string cursor, optional).
 
 **Returns**: `GetEndpointLogsResponse` — `{ data: EndpointLog[], next_at?: string }`.
 
@@ -495,7 +503,7 @@ const resp = await qn.admin.getLogDetails("ep-123", "req-abc");
 
 ##### `get_endpoint_security` / `getEndpointSecurity`
 
-Returns the full security configuration for an endpoint: tokens, JWTs, referrers, domain masks, IPs, request filters, and their per-feature toggles.
+Returns the full security configuration for an endpoint: tokens, JWTs, referrers, domain masks, IPs, blocked IPs (`blockedIps`), request filters, and their per-feature toggles. Snapshot options include `hsts`, `cors`, and `responseLogging` (wire key `responseLogging`). Structured filter matchers and `params` are preserved.
 
 **Parameters**: `id` (string, required).
 
@@ -525,14 +533,14 @@ const resp = await qn.admin.getSecurityOptions("ep-123");
 
 Enables or disables individual security features. Each field accepts `"enabled"` or `"disabled"`.
 
-**Parameters**: `id` (string, required); `options`: `SecurityOptionsUpdate` (`tokens`, `referrers`, `jwts`, `ips`, `domain_masks`, `hsts`, `cors`, `request_filters`, `ip_custom_header`).
+**Parameters**: `id` (string, required); `options`: `SecurityOptionsUpdate` (`tokens`, `referrers`, `jwts`, `ips`, `domain_masks`, `hsts`, `cors`, `request_filters`, `ip_custom_header`, `responseLogging`). The `responseLogging` option is sent as `responseLogging` and accepts `"enabled"` or `"disabled"`.
 
 **Returns**: `UpdateSecurityOptionsResponse` with updated `SecurityOption[]`.
 
 ```typescript
 // Node.js
 await qn.admin.updateSecurityOptions("ep-123", {
-  options: { tokens: "enabled", jwts: "disabled" },
+  options: { tokens: "enabled", jwts: "disabled", responseLogging: "enabled" },
 });
 ```
 
@@ -626,7 +634,7 @@ await qn.admin.deleteIp("ep-123", "ip-1");
 
 Adds a custom domain mask to an endpoint.
 
-**Parameters**: `id` (endpoint id, required); body: `domain_mask` (string, optional).
+**Parameters**: `id` (endpoint id, required); body: `domain_mask` (string, required by the API). The SDK retains its optional argument, but supplies no default value.
 
 **Returns**: nothing.
 
@@ -641,7 +649,7 @@ Removes a domain mask.
 
 **Parameters**: `id` (endpoint id, required), `domain_mask_id` (string, required).
 
-**Returns**: nothing.
+**Returns**: `DeleteBoolResponse`.
 
 ```typescript
 // Node.js
@@ -701,7 +709,7 @@ const resp = await qn.admin.createRequestFilter("ep-123", {
 
 **Parameters**: `id` (endpoint id, required), `request_filter_id` (string, required); body: `method` (string[], optional). Ruby's Hash keys are `request_filter_id` and `methods` (plural).
 
-**Returns**: nothing.
+**Returns**: nothing. Supply a method list for an update; an empty request produces an API error.
 
 ```typescript
 // Node.js
@@ -717,6 +725,23 @@ await qn.admin.updateRequestFilter("ep-123", "f-1", { method: ["eth_call"] });
 ```typescript
 // Node.js
 await qn.admin.deleteRequestFilter("ep-123", "f-1");
+```
+
+##### Structured patterns and filter listing
+
+`getRequestFilters` returns list records with `id`, `pattern`, and `methodWhitelist`. This differs from endpoint/security snapshots, where each filter has `id`, a `method` matcher array, and `params`. Snapshot `params` holds every top-level pattern key except `method`, not only a nested `params` matcher.
+
+Use `createRequestFilterPattern` and `updateRequestFilterPattern` for a custom JSON object. The existing whitelist methods keep their current inputs, including Ruby's `methods:` keyword. Do not combine a whitelist and a custom pattern in one request or use an update to switch filter kinds. One whitelist and multiple custom filters can coexist. Updates and deletions continue to accept successful empty HTTP 204 responses.
+
+Nested objects, arrays, nulls, and keys such as `anything-but` remain intact. Pass a native object rather than a JSON string. Creation returns `data.id` and, when supplied by the API, `data.pattern`.
+
+```typescript
+const pattern = { method: [{ prefix: "eth_" }], jsonrpc: ["2.0"] };
+const created = await qn.admin.createRequestFilterPattern("123", { pattern });
+if (created.data) {
+  await qn.admin.updateRequestFilterPattern("123", created.data.id, { pattern });
+}
+const filters = await qn.admin.getRequestFilters("123");
 ```
 
 #### Multichain
@@ -792,9 +817,9 @@ const resp = await qn.admin.getMethodRateLimits("ep-123");
 
 ##### `create_method_rate_limit` / `createMethodRateLimit`
 
-Creates a new method-level rate limiter.
+Creates a new method-level rate limiter. `rate` must be positive; zero produces an API error. Optional `limitByIp` applies the limit per client IP and is returned on `MethodRateLimiter`.
 
-**Parameters**: `id` (endpoint id, required); body: `interval` (string, e.g. `"second"`), `methods` (string[]), `rate` (i32).
+**Parameters**: `id` (endpoint id, required); body: `interval` (string, e.g. `"second"`), `methods` (string[]), `rate` (i32), `limitByIp` (bool, optional).
 
 **Returns**: `CreateMethodRateLimitResponse` with `data: MethodRateLimiter`.
 
@@ -804,20 +829,21 @@ const resp = await qn.admin.createMethodRateLimit("ep-123", {
   interval: "second",
   methods: ["eth_call"],
   rate: 10,
+  limitByIp: true,
 });
 ```
 
 ##### `update_method_rate_limit` / `updateMethodRateLimit`
 
-Updates an existing rate limiter. Only provided fields change.
+Updates an existing rate limiter. Only provided fields change. Supply at least one supported field; an empty PATCH produces an API error. `limitByIp=false` is an explicit update, not an omitted value.
 
-**Parameters**: `id` (endpoint id, required), `method_rate_limit_id` (string, required); body: `methods` (string[], optional), `status` (`"enabled"` | `"disabled"`, optional), `rate` (i32, optional).
+**Parameters**: `id` (endpoint id, required), `method_rate_limit_id` (string, required); body: `methods` (string[], optional), `status` (`"enabled"` | `"disabled"`, optional), `rate` (i32, optional), `limitByIp` (bool, optional).
 
 **Returns**: `UpdateMethodRateLimitResponse`.
 
 ```typescript
 // Node.js
-await qn.admin.updateMethodRateLimit("ep-123", "rl-1", { rate: 50 });
+await qn.admin.updateMethodRateLimit("ep-123", "rl-1", { rate: 50, limitByIp: false });
 ```
 
 ##### `delete_method_rate_limit` / `deleteMethodRateLimit`
@@ -837,15 +863,16 @@ await qn.admin.deleteMethodRateLimit("ep-123", "rl-1");
 
 ##### `update_rate_limits` / `updateRateLimits`
 
-Partial update of the endpoint-level RPS / RPM / RPD caps. Only buckets included in the request are modified — omitted buckets are left unchanged. Values are capped by the account's plan tier. Sends `PATCH`.
+Partial update of the endpoint-level RPS / RPM / RPD caps. Only supplied fields change. Values are capped by the account's plan tier. Sends `PATCH`. Set `limit_by_ip` (`limitByIp` in Node) to `true` to apply the caps per client IP or `false` to apply them to the whole endpoint. You can update this flag without sending caps. Supply at least one cap or the flag; an empty update returns an API error. Both update methods accept these options.
 
-**Parameters**: `id` (endpoint id, required); `rate_limits`: `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional).
+**Parameters**: `id` (endpoint id, required); `rateLimits`: optional `RateLimitSettings` (`rps`, `rpm`, `rpd`, all optional); `limitByIp`: optional boolean.
 
 **Returns**: nothing.
 
 ```typescript
 // Node.js
-await qn.admin.updateRateLimits("ep-123", { rateLimits: { rps: 100, rpm: 5000 } });
+await qn.admin.updateRateLimits("ep-123", { rateLimits: { rps: 100, rpm: 5000 }, limitByIp: true });
+await qn.admin.updateRateLimits("ep-123", { limitByIp: false });
 ```
 
 ##### `get_rate_limits` / `getRateLimits`
@@ -902,9 +929,9 @@ if (resp.data.multichainUrls) {
 
 ##### `get_endpoint_metrics` / `getEndpointMetrics`
 
-Returns metric series for an endpoint over a time period.
+Returns metric series for an endpoint over a time period. Optional integer `percentile` ranges from 1 through 100 and is required for `response_time_over_time` and `method_response_time_max`. For example, use `95`. Metric and period strings remain open.
 
-**Parameters**: `id` (endpoint id, required); body: `period` (`"hour"` | `"day"` | `"week"` | `"month"`), `metric` (e.g. `"method_calls_over_time"`, `"response_status_breakdown"`).
+**Parameters**: `id` (endpoint id, required); query: `period` (`"hour"` | `"day"` | `"week"` | `"month"`), `metric` (e.g. `"method_calls_over_time"`, `"response_status_breakdown"`), `percentile` (integer, optional).
 
 **Returns**: `GetEndpointMetricsResponse` with `data: EndpointMetric[]`. Each `EndpointMetric` has a `tag: string[]` and a `data: [timestamp, value][]`. Single-axis series (e.g. `response_time_over_time` with a percentile) come back as a one-element tag like `["p95"]`; multi-axis series come back as `["network", "arbitrum-mainnet"]`.
 
@@ -912,13 +939,14 @@ Returns metric series for an endpoint over a time period.
 // Node.js
 const resp = await qn.admin.getEndpointMetrics("ep-123", {
   period: "day",
-  metric: "method_calls_over_time",
+  metric: "response_time_over_time",
+  percentile: 95,
 });
 ```
 
 ##### `get_account_metrics` / `getAccountMetrics`
 
-Returns account-level metric series. Supports an optional `percentile` (e.g. `"p50"`, `"p95"`, `"p99"`) for latency metrics.
+Returns account-level metric series. The existing optional `percentile` argument remains for compatibility; the API currently ignores it. Endpoint latency percentile support belongs to `get_endpoint_metrics`.
 
 **Parameters**: `period` (required), `metric` (required), `percentile` (string, optional).
 
@@ -1005,6 +1033,8 @@ const resp = await qn.admin.listPayments();
 
 #### Bulk Operations
 
+Each result can include an `error` string. Check individual results: HTTP 200 can contain both successes and failures. Successful rows can omit `error`.
+
 ##### `bulk_update_endpoint_status` / `bulkUpdateEndpointStatus`
 
 Activates or pauses many endpoints at once.
@@ -1064,7 +1094,7 @@ const resp = await qn.admin.listTags();
 
 ##### `rename_tag` / `renameTag`
 
-Renames an account-level tag.
+Renames an account-level tag. Labels must be nonblank and contain 3 through 25 characters after trimming. The SDK does not trim values.
 
 **Parameters**: `tag_id` (i32, required); body: `label` (string, required).
 
@@ -1087,6 +1117,160 @@ Deletes a tag from the account. The tag must first be removed from any endpoints
 // Node.js
 await qn.admin.deleteAccountTag(42);
 ```
+
+#### Additional security operations
+
+All methods below take the numeric endpoint `id` as a string. Reads do not enable a security feature.
+
+| Method | Additional input | Returned `data` |
+| --- | --- | --- |
+| `getClientCerts` | None | `enabled`, `certs` |
+| `createClientCert` | `certificate`, a PEM string | Full certificate state |
+| `updateClientCerts` | `enabled`, a boolean | Full certificate state |
+| `deleteClientCert` | `fingerprint` | Full state after deletion |
+| `getMethodBlacklist` | None | `methods` |
+| `updateMethodBlacklist` | `methods`, a string array | Replaced method list |
+| `getRangeLimits` | None | `limits`, `supportedMethods` |
+| `updateRangeLimits` | `limits`, a method-to-integer map | Replaced limits and supported methods |
+| `getBlockedIps` | None | Array of string `id` and `ip` records |
+| `createBlockedIp` | `ip`, an address or CIDR string | Created string `id` and `ip` |
+| `deleteBlockedIp` | `ipId` | Boolean confirmation |
+
+Certificate records contain `fingerprint`, `subject`, `issuer`, and `expiresAt`. Deleting the last certificate returns disabled state with an empty list; DELETE still has a response body. Invalid, expired, duplicate, or unknown certificates can return HTTP 422.
+
+Blacklist and range-limit updates replace the complete configuration. An empty array clears the blacklist; an empty object clears range limits. Range limits must be positive integers. Read `supportedMethods` for the endpoint's supported methods instead of assuming one global list. Blocked-IP calls do not toggle IP security; visibility can depend on the endpoint's IP security setting.
+
+```typescript
+const certificates = await qn.admin.getClientCerts("123");
+const ranges = await qn.admin.getRangeLimits("123");
+const blocked = await qn.admin.getBlockedIps("123");
+const blacklist = await qn.admin.updateMethodBlacklist("123", { methods: ["eth_sendRawTransaction"] });
+```
+
+#### Mutation responses
+
+Existing mutation methods keep their original return values. Use these response-returning variants when you need the created record or effective limits. Each takes the same arguments as its existing counterpart.
+
+| Method | Returned `data` |
+| --- | --- |
+| `createTokenWithResponse` | Token `id` and `token` |
+| `createReferrerWithResponse` | Referrer `id` and `url` |
+| `createIpWithResponse` | IP record `id` and `ip` |
+| `createDomainMaskWithResponse` | Record `id` and `domainMask` |
+| `createJwtWithResponse` | JWT `id`, `publicKey`, `kid`, and `name` |
+| `createTagWithResponse` | `tags` containing association `id`, `tagId`, `accountId`, `endpointId`, label, and timestamps |
+| `updateRateLimitsWithResponse` | `limits` with nullable `rps`, `rpm`, and `rpd` |
+
+Creation and snapshot fields differ: a created referrer uses `url`, while endpoint snapshots use `referrer`; a created domain mask uses `domainMask`, while snapshots use `domain`. Tag association `id` differs from `tagId`; these IDs are numeric. Rust Debug output redacts token and JWT credential values. Store returned credentials securely and do not log them.
+
+```typescript
+const created = await qn.admin.createReferrerWithResponse("123", { referrer: "https://example.com" });
+console.log(created.data.id);
+```
+
+#### Usage and metrics summaries
+
+These methods return a resolved time window, typed totals, optional grouped rows, and an optional continuation cursor.
+
+| Method | Grouping | Additional filters |
+| --- | --- | --- |
+| `getUsageCreditsSummary` | None | None |
+| `getUsageRpcSummary` | `method`, `endpoint`, `chain`, `network` | `endpointNames`, `chains`, `networks`, `methods`, `tagIds`, `addonIds` |
+| `getUsageStreamsSummary` | `stream` | `streamId` |
+| `getUsageWebhooksSummary` | `webhook` | `webhookId` |
+| `getTrafficSummary` | `method`, `endpoint` | Same filters as the RPC summary |
+| `getErrorsSummary` | `code`, `endpoint`, `network`, `method` | `endpoints`, `networks`, `methods`, `codes`, `statusCodes`, `kind` |
+| `getEndpointErrorsSummary` | `code`, `network`, `method` | Required endpoint `id`; error-summary filters except `endpoints` |
+
+| Summary | Totals fields |
+| --- | --- |
+| Credits | `credits` |
+| RPC | `requests`, `bytes`, `rpcCredits`, `dataCredits`, `credits` |
+| Streams | `blocks`, `bytes`, `blockCredits` |
+| Webhooks | `deliveries`, `credits` |
+| Traffic | `successfulRequests`, `bytes`, `requestCredits`, `bytesCredits`, `credits`, `activeMethods` |
+| Account and endpoint errors | `rpcErrors`, `httpErrors` |
+
+Error breakdown rows contain `kind` and `count`, plus the selected grouping dimensions. Other breakdown rows carry their summary metrics and selected dimensions.
+
+For the first page, supply `last` as a positive integer duration ending now (`s`, `m`, `h`, or `d`), or both `from` and `to` as ISO 8601 timestamps with timezones. Bare dates are not summary timestamps. Use `groupBy` for grouping. Credits summaries have no grouping parameter. The limit is 1 through 1000 and defaults to 100.
+
+Pass native arrays for groups and array filters. The SDK encodes repeated bracketed query keys such as `group_by[]=method&group_by[]=endpoint`. Error codes and HTTP status-code filters remain strings. `endpointNames` contains endpoint subdomains; RPC, traffic, and account-error result `endpoint` values are integer endpoint IDs. Account-error `endpoints` filters accept integer arrays, such as `[123, 456]`. `tagIds` and `addonIds` contain numeric IDs represented as strings. Endpoint error-summary `id` uses the numeric endpoint ID represented as a string.
+
+For error summaries, `kind` is `rpc` or `http`. Method filtering/grouping requires `rpc`; RPC kind rejects `statusCodes`, and HTTP kind rejects `codes`. Feature access and retention can produce API errors, including HTTP 403.
+
+Continue with `cursor` alone. A cursor belongs to the original route, account, and query; any repeated parameters, including `limit`, must match. Keep the returned window values: the server can align summary windows to billing boundaries. Totals cover the full window on every page, not only the current rows. The SDK does not round windows or paginate automatically.
+
+Summary metrics use floating-point numbers, including count-like fields, and can contain fractions such as `7.5`. They do not promise arbitrary decimal precision. Legacy usage fields remain integers. RPC breakdown `requests` and traffic breakdown `successfulRequests` can be null even though totals are non-null. A missing `breakdown` is not an empty grouped result.
+
+Endpoint grouping values are `number` or `null`. An omitted grouping dimension is absent from the object; an explicit null remains `null`. Use `Object.hasOwn` or the `in` operator when presence matters. An omitted breakdown remains absent.
+
+```typescript
+const page = await qn.admin.getUsageRpcSummary({
+  last: "1h", groupBy: ["method", "endpoint"], limit: 20,
+});
+console.log(page.data.totals.credits);
+if (page.data.nextCursor) {
+  const nextPage = await qn.admin.getUsageRpcSummary({ cursor: page.data.nextCursor });
+}
+```
+
+#### Activity logs
+
+Lists account changes, newest first. `listActivityLogFilters` returns the actor IDs and target types accepted by `listActivityLogs`; `getActivityLog` returns one entry by UUID.
+
+List filters are `q`, `actor`, `endpointId`, `targetType`, `from`, `to`, `limit`, and `offset`. `endpointId` is a numeric endpoint ID represented as a string. `targetType` is sent as `type`. The limit is 0 through 100 and defaults to 20. Offset pagination returns `total`, `limit`, and `offset`; pin `to` when exporting because new entries shift offsets. Bare dates are accepted: `from` starts at midnight UTC, and `to` includes the entire day.
+
+Responses keep actor and target metadata typed. Actor IDs, names, and emails can be null, including for deleted users. Feature access can return HTTP 403; a missing detail entry returns HTTP 404.
+
+```typescript
+const filters = await qn.admin.listActivityLogFilters();
+const activity = await qn.admin.listActivityLogs({ limit: 20 });
+if (activity.data.length > 0) {
+  const detail = await qn.admin.getActivityLog(activity.data[0].id);
+}
+```
+
+#### Transactions
+
+`listTransactions` returns retained transactions and an optional continuation cursor. A first page needs `last` (for example, `1h`), or both `from` and `to` as ISO 8601 timestamps with timezones. A cursor alone continues the same resolved window.
+
+Optional filters are `network`, `method`, `state`, `transactionHash`, and `endpoints`. States are `submitted`, `succeeded`, and `failed`. Endpoint filters accept integer endpoint IDs, such as `[123, 456]`, and use repeated `endpoints[]` query keys. The limit is 1 through 1000 and defaults to 100.
+
+`getTransaction` takes a network, a transaction hash, and optional `includePayloads`. It returns an outer `data` containing `exists` and a second `data` value. An absent or expired transaction can return `exists: false`; Node exposes the optional detail as `undefined` when the API returns null or omits it. Payloads default to excluded; set `includePayloads` to true to request retained request and response text. The SDK preserves that text without parsing it. Feature access can return HTTP 403.
+
+Transaction `endpointIds` arrays contain integer endpoint IDs or null elements. Node exposes an absent or null detail array as `undefined`; null entries inside a returned array remain null. Each attempt has a required integer `endpointId`. Block heights remain decimal strings, including values such as `9007199254740993`. Other detail metadata can be absent or null. Attempts retain the order returned by the API.
+
+```typescript
+const page = await qn.admin.listTransactions({ last: "1h", endpoints: [123, 456], limit: 20 });
+const transaction = page.data.transactions[0];
+if (transaction) {
+  const result = await qn.admin.getTransaction(
+    transaction.network, transaction.transactionHash, { includePayloads: false },
+  );
+  if (result.data.exists && result.data.data) {
+    console.log(result.data.data.height); // string, never a rounded Number
+  }
+}
+if (page.data.nextCursor) {
+  const nextPage = await qn.admin.listTransactions({ cursor: page.data.nextCursor });
+}
+```
+
+#### Admin compatibility notes
+
+Summary endpoint dimensions and transaction endpoint IDs use `number` values. Account-error and transaction `endpoints` filters accept `number[]`. Transaction `endpointIds` arrays can contain `null`; attempt `endpointId` is required. Update callers that used UUID strings.
+
+Existing methods retain their return values and optional argument requiredness. Required API inputs are documented above; omitted or invalid values still produce API errors. Use the response-returning methods when you need created records.
+
+Rust callers must update affected full struct literals for the added fields, even when those fields are optional. This includes security snapshots/options, filter responses, usage rows, bulk results, method-rate-limit requests/responses, and endpoint metric requests. Request structs with `Default` can use `..Default::default()` for omitted fields; builders avoid full-literal updates where available.
+
+`EndpointRequestFilter.method` changed from `Vec<String>` to `Vec<serde_json::Value>` so it can preserve structured matchers. Convert strings with `.into()` or `serde_json::json!`, and use `as_str()` when reading a string matcher. Match object values as JSON rather than assuming every matcher is a string. Snapshot `params` and custom `pattern` are object maps containing JSON values.
+
+Python endpoint/security response wrappers keep their public class names, getters, and setters. Filter values are native lists and dictionaries; assign through the setter after editing a returned value. Node uses `unknown[]` for matcher arrays and `Record<string, unknown>` for open pattern objects. Narrow a matcher with `typeof matcher === "string"` before using string methods. Ruby continues to return `IndifferentHash` values. JSON object keys are preserved without recursive case conversion.
+
+New summary, activity, and transaction window fields use `from_time` and `to_time` in Rust/Python. Node fields and serialized response keys remain `from` and `to`; Python/Ruby client arguments use `from_time` and `to_time`. Existing endpoint-log arguments do not change.
+
 
 ---
 
@@ -1697,8 +1881,9 @@ mints short-lived session JWTs. `qn.rpc` makes JSON-RPC calls directly against t
 endpoint, minting and refreshing the JWT automatically — no endpoint URL or token to
 manage.
 
-Tooling Access must be enabled once (admin role + eligible plan). The control-plane
-methods live on `qn.admin`:
+Tooling Access must be enabled once (admin role + eligible plan). Status reads can
+return HTTP 403 when feature access is unavailable; successful authentication alone
+does not guarantee access. The control-plane methods live on `qn.admin`:
 
 ```typescript
 // Node.js

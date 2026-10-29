@@ -2,6 +2,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use quicknode_sdk as core;
 
+mod admin_summaries;
 mod errors;
 mod key_case;
 mod sql;
@@ -135,6 +136,405 @@ pub struct AdminApiClient {
 
 #[napi]
 impl AdminApiClient {
+    /// Get client certs.
+    #[napi]
+    pub async fn get_client_certs(
+        &self,
+        id: String,
+    ) -> Result<core::admin::GetClientCertsResponse> {
+        self.inner
+            .get_client_certs(&id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Create client cert.
+    #[napi]
+    pub async fn create_client_cert(
+        &self,
+        id: String,
+        params: core::admin::CreateClientCertRequest,
+    ) -> Result<core::admin::CreateClientCertResponse> {
+        self.inner
+            .create_client_cert(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Update client certs.
+    #[napi]
+    pub async fn update_client_certs(
+        &self,
+        id: String,
+        params: core::admin::UpdateClientCertsRequest,
+    ) -> Result<core::admin::UpdateClientCertsResponse> {
+        self.inner
+            .update_client_certs(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Delete client cert.
+    #[napi]
+    pub async fn delete_client_cert(
+        &self,
+        id: String,
+        fingerprint: String,
+    ) -> Result<core::admin::DeleteClientCertResponse> {
+        self.inner
+            .delete_client_cert(&id, &fingerprint)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get method blacklist.
+    #[napi]
+    pub async fn get_method_blacklist(
+        &self,
+        id: String,
+    ) -> Result<core::admin::GetMethodBlacklistResponse> {
+        self.inner
+            .get_method_blacklist(&id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Update method blacklist.
+    #[napi]
+    pub async fn update_method_blacklist(
+        &self,
+        id: String,
+        params: core::admin::UpdateMethodBlacklistRequest,
+    ) -> Result<core::admin::UpdateMethodBlacklistResponse> {
+        self.inner
+            .update_method_blacklist(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get range limits.
+    #[napi]
+    pub async fn get_range_limits(
+        &self,
+        id: String,
+    ) -> Result<core::admin::GetRangeLimitsResponse> {
+        self.inner
+            .get_range_limits(&id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Update range limits.
+    #[napi]
+    pub async fn update_range_limits(
+        &self,
+        id: String,
+        params: core::admin::UpdateRangeLimitsRequest,
+    ) -> Result<core::admin::UpdateRangeLimitsResponse> {
+        self.inner
+            .update_range_limits(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get blocked ips.
+    #[napi]
+    pub async fn get_blocked_ips(&self, id: String) -> Result<core::admin::GetBlockedIpsResponse> {
+        self.inner
+            .get_blocked_ips(&id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Create blocked ip.
+    #[napi]
+    pub async fn create_blocked_ip(
+        &self,
+        id: String,
+        params: core::admin::CreateBlockedIpRequest,
+    ) -> Result<core::admin::CreateBlockedIpResponse> {
+        self.inner
+            .create_blocked_ip(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Delete blocked ip.
+    #[napi]
+    pub async fn delete_blocked_ip(
+        &self,
+        id: String,
+        ip_id: String,
+    ) -> Result<core::admin::DeleteBoolResponse> {
+        self.inner
+            .delete_blocked_ip(&id, &ip_id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// List activity logs.
+    #[napi]
+    pub async fn list_activity_logs(
+        &self,
+        params: Option<core::admin::ListActivityLogsRequest>,
+    ) -> Result<core::admin::ListActivityLogsResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .list_activity_logs(&params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// List activity log filters.
+    #[napi]
+    pub async fn list_activity_log_filters(
+        &self,
+    ) -> Result<core::admin::ListActivityLogFiltersResponse> {
+        self.inner
+            .list_activity_log_filters()
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get activity log.
+    #[napi]
+    pub async fn get_activity_log(
+        &self,
+        id: String,
+    ) -> Result<core::admin::GetActivityLogResponse> {
+        self.inner
+            .get_activity_log(&id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// List transactions.
+    #[napi]
+    pub async fn list_transactions(
+        &self,
+        params: Option<core::admin::ListTransactionsRequest>,
+    ) -> Result<core::admin::ListTransactionsResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .list_transactions(&params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get transaction.
+    #[napi]
+    pub async fn get_transaction(
+        &self,
+        network: String,
+        hash: String,
+        params: Option<core::admin::GetTransactionRequest>,
+    ) -> Result<core::admin::GetTransactionResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_transaction(&network, &hash, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get usage credits summary.
+    #[napi]
+    pub async fn get_usage_credits_summary(
+        &self,
+        params: Option<core::admin::GetUsageCreditsSummaryRequest>,
+    ) -> Result<core::admin::GetUsageCreditsSummaryResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_usage_credits_summary(&params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get usage rpc summary.
+    #[napi]
+    pub async fn get_usage_rpc_summary(
+        &self,
+        params: Option<core::admin::GetUsageRpcSummaryRequest>,
+    ) -> Result<admin_summaries::GetUsageRpcSummaryResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_usage_rpc_summary(&params)
+            .await
+            .map(admin_summaries::GetUsageRpcSummaryResponse::from)
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get usage streams summary.
+    #[napi]
+    pub async fn get_usage_streams_summary(
+        &self,
+        params: Option<core::admin::GetUsageStreamsSummaryRequest>,
+    ) -> Result<core::admin::GetUsageStreamsSummaryResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_usage_streams_summary(&params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get usage webhooks summary.
+    #[napi]
+    pub async fn get_usage_webhooks_summary(
+        &self,
+        params: Option<core::admin::GetUsageWebhooksSummaryRequest>,
+    ) -> Result<core::admin::GetUsageWebhooksSummaryResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_usage_webhooks_summary(&params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get traffic summary.
+    #[napi]
+    pub async fn get_traffic_summary(
+        &self,
+        params: Option<core::admin::GetTrafficSummaryRequest>,
+    ) -> Result<admin_summaries::GetTrafficSummaryResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_traffic_summary(&params)
+            .await
+            .map(admin_summaries::GetTrafficSummaryResponse::from)
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get errors summary.
+    #[napi]
+    pub async fn get_errors_summary(
+        &self,
+        params: Option<core::admin::GetErrorsSummaryRequest>,
+    ) -> Result<core::admin::GetErrorsSummaryResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_errors_summary(&params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Get endpoint errors summary.
+    #[napi]
+    pub async fn get_endpoint_errors_summary(
+        &self,
+        id: String,
+        params: Option<core::admin::GetEndpointErrorsSummaryRequest>,
+    ) -> Result<core::admin::GetEndpointErrorsSummaryResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .get_endpoint_errors_summary(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Generates a new authentication token for an endpoint.
+    #[napi]
+    pub async fn create_token_with_response(
+        &self,
+        id: String,
+    ) -> Result<core::admin::CreateTokenResponse> {
+        self.inner
+            .create_token_with_response(&id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Adds a referrer to an endpoint's security settings, specifying which
+    /// external URL or domain is permitted to call the endpoint.
+    #[napi]
+    pub async fn create_referrer_with_response(
+        &self,
+        id: String,
+        params: Option<core::admin::CreateReferrerRequest>,
+    ) -> Result<core::admin::CreateReferrerResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .create_referrer_with_response(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Adds an IP address to an endpoint's security whitelist.
+    #[napi]
+    pub async fn create_ip_with_response(
+        &self,
+        id: String,
+        params: Option<core::admin::CreateIpRequest>,
+    ) -> Result<core::admin::CreateIpResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .create_ip_with_response(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Adds a domain mask to an endpoint — a custom domain used to hide the
+    /// endpoint's Quicknode URL so requests can be routed through your own
+    /// domain.
+    #[napi]
+    pub async fn create_domain_mask_with_response(
+        &self,
+        id: String,
+        params: Option<core::admin::CreateDomainMaskRequest>,
+    ) -> Result<core::admin::CreateDomainMaskResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .create_domain_mask_with_response(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Creates a new JWT for endpoint authentication. Accepts a public key,
+    /// key id (`kid`), and token name.
+    #[napi]
+    pub async fn create_jwt_with_response(
+        &self,
+        id: String,
+        params: Option<core::admin::CreateJwtRequest>,
+    ) -> Result<core::admin::CreateJwtResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .create_jwt_with_response(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Creates a new tag on a specific endpoint from a label. Returns the new
+    /// tag with its id, account info, and timestamps.
+    #[napi]
+    pub async fn create_tag_with_response(
+        &self,
+        id: String,
+        params: Option<core::admin::CreateTagRequest>,
+    ) -> Result<core::admin::CreateTagResponse> {
+        let params = params.unwrap_or_default();
+        self.inner
+            .create_tag_with_response(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    /// Partial update of the endpoint-level rate-limit overrides. Accepts
+    /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
+    /// (requests per day). Only buckets included are modified — omitted
+    /// buckets are left unchanged. Values are capped by the account's plan
+    /// tier. `limitByIp` applies these caps per client IP and can be sent alone.
+    /// Supply `rateLimits` or `limitByIp`; omitted fields stay unchanged.
+    #[napi]
+    pub async fn update_rate_limits_with_response(
+        &self,
+        id: String,
+        params: core::admin::UpdateRateLimitsRequest,
+    ) -> Result<core::admin::UpdateRateLimitsResponse> {
+        self.inner
+            .update_rate_limits_with_response(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
     /// Returns a paginated list of endpoints on the account. Supports searching
     /// by subdomain or label, filtering by networks, statuses, labels, and
     /// tags, and sorting. The response includes endpoint metadata (id, label,
@@ -177,8 +577,7 @@ impl AdminApiClient {
             .map_err(errors::map_sdk_err)
     }
 
-    /// Updates editable fields on an endpoint (e.g. its label). Returns a
-    /// boolean indicating whether the update succeeded.
+    /// Updates the endpoint label, which the API requires. Returns HTTP success.
     #[napi]
     pub async fn update_endpoint(
         &self,
@@ -640,7 +1039,8 @@ impl AdminApiClient {
     /// `rps` (requests per second), `rpm` (requests per minute), and `rpd`
     /// (requests per day). Only buckets included are modified — omitted
     /// buckets are left unchanged. Values are capped by the account's plan
-    /// tier.
+    /// tier. `limitByIp` applies these caps per client IP and can be sent alone.
+    /// Supply `rateLimits` or `limitByIp`; omitted fields stay unchanged.
     #[napi]
     pub async fn update_rate_limits(
         &self,
@@ -1019,6 +1419,41 @@ impl AdminApiClient {
     ) -> Result<core::admin::GetEndpointSecurityResponse> {
         self.inner
             .get_endpoint_security(&id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+    #[napi]
+    pub async fn get_request_filters(
+        &self,
+        id: String,
+    ) -> Result<core::admin::GetRequestFiltersResponse> {
+        self.inner
+            .get_request_filters(&id)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    #[napi]
+    pub async fn create_request_filter_pattern(
+        &self,
+        id: String,
+        params: core::admin::CreateRequestFilterPatternRequest,
+    ) -> Result<core::admin::CreateRequestFilterResponse> {
+        self.inner
+            .create_request_filter_pattern(&id, &params)
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
+    #[napi]
+    pub async fn update_request_filter_pattern(
+        &self,
+        id: String,
+        request_filter_id: String,
+        params: core::admin::UpdateRequestFilterPatternRequest,
+    ) -> Result<()> {
+        self.inner
+            .update_request_filter_pattern(&id, &request_filter_id, &params)
             .await
             .map_err(errors::map_sdk_err)
     }

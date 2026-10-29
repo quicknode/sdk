@@ -8,6 +8,13 @@ __all__ = [
     "AccountInfoResponse",
     "AccountSubscription",
     "AccountTag",
+    "ActivityLogActor",
+    "ActivityLogEntry",
+    "ActivityLogFilterActor",
+    "ActivityLogFilterType",
+    "ActivityLogFiltersData",
+    "ActivityLogPagination",
+    "ActivityLogTarget",
     "AddressBookConfig",
     "AdminApiClient",
     "AdminConfig",
@@ -33,30 +40,48 @@ __all__ = [
     "ChainNetwork",
     "ChainSchema",
     "ChainUsage",
+    "ClientCertificate",
+    "ClientCertsData",
     "ColumnMeta",
     "ColumnSchema",
+    "CreateBlockedIpRequest",
+    "CreateBlockedIpResponse",
+    "CreateClientCertRequest",
+    "CreateClientCertResponse",
     "CreateDomainMaskRequest",
+    "CreateDomainMaskResponse",
     "CreateEndpointRequest",
     "CreateEndpointResponse",
     "CreateIpRequest",
+    "CreateIpResponse",
     "CreateJwtRequest",
+    "CreateJwtResponse",
     "CreateMethodRateLimitRequest",
     "CreateMethodRateLimitResponse",
     "CreateOrUpdateIpCustomHeaderRequest",
     "CreateOrUpdateIpCustomHeaderResponse",
     "CreateReferrerRequest",
+    "CreateReferrerResponse",
     "CreateRequestFilterData",
+    "CreateRequestFilterPatternRequest",
     "CreateRequestFilterRequest",
     "CreateRequestFilterResponse",
+    "CreateTagData",
     "CreateTagRequest",
+    "CreateTagResponse",
     "CreateTeamData",
     "CreateTeamRequest",
     "CreateTeamResponse",
+    "CreateTokenResponse",
+    "CreatedDomainMask",
+    "CreatedReferrer",
     "DeleteAccountTagData",
     "DeleteAccountTagResponse",
     "DeleteBoolResponse",
+    "DeleteClientCertResponse",
     "DeleteTeamData",
     "DeleteTeamResponse",
+    "EffectiveRateLimits",
     "EnabledCountResponse",
     "Endpoint",
     "EndpointDomainMask",
@@ -71,9 +96,13 @@ __all__ = [
     "EndpointSecurity",
     "EndpointSecurityOptions",
     "EndpointTag",
+    "EndpointTagAssociation",
     "EndpointToken",
     "EndpointUrl",
     "EndpointUsage",
+    "ErrorsSummaryData",
+    "ErrorsSummaryRow",
+    "ErrorsSummaryTotals",
     "EvmAbiFilterArgs",
     "EvmAbiFilterByListArgs",
     "EvmAbiFilterByListTemplate",
@@ -88,7 +117,12 @@ __all__ = [
     "EvmWalletFilterTemplate",
     "GetAccountMetricsRequest",
     "GetAccountMetricsResponse",
+    "GetActivityLogResponse",
     "GetApiCreditsResponse",
+    "GetBlockedIpsResponse",
+    "GetClientCertsResponse",
+    "GetEndpointErrorsSummaryRequest",
+    "GetEndpointErrorsSummaryResponse",
     "GetEndpointLogsRequest",
     "GetEndpointLogsResponse",
     "GetEndpointMetricsRequest",
@@ -98,25 +132,42 @@ __all__ = [
     "GetEndpointUrlsResponse",
     "GetEndpointsRequest",
     "GetEndpointsResponse",
+    "GetErrorsSummaryRequest",
+    "GetErrorsSummaryResponse",
     "GetListData",
     "GetListResponse",
     "GetListsData",
     "GetListsResponse",
     "GetLogDetailsResponse",
+    "GetMethodBlacklistResponse",
     "GetMethodRateLimitsData",
     "GetMethodRateLimitsResponse",
+    "GetRangeLimitsResponse",
     "GetRateLimitsData",
     "GetRateLimitsResponse",
+    "GetRequestFiltersResponse",
     "GetSecurityOptionsResponse",
     "GetSetResponse",
     "GetSetsResponse",
     "GetTeamResponse",
+    "GetTrafficSummaryRequest",
+    "GetTrafficSummaryResponse",
+    "GetTransactionRequest",
+    "GetTransactionResponse",
     "GetUsageByChainResponse",
     "GetUsageByEndpointResponse",
     "GetUsageByMethodResponse",
     "GetUsageByTagResponse",
+    "GetUsageCreditsSummaryRequest",
+    "GetUsageCreditsSummaryResponse",
     "GetUsageRequest",
     "GetUsageResponse",
+    "GetUsageRpcSummaryRequest",
+    "GetUsageRpcSummaryResponse",
+    "GetUsageStreamsSummaryRequest",
+    "GetUsageStreamsSummaryResponse",
+    "GetUsageWebhooksSummaryRequest",
+    "GetUsageWebhooksSummaryResponse",
     "GetWebhooksParams",
     "HttpConfig",
     "HyperliquidWalletEventsFilterArgs",
@@ -132,6 +183,9 @@ __all__ = [
     "KvSetEntry",
     "KvStoreApiClient",
     "KvStoreConfig",
+    "ListActivityLogFiltersResponse",
+    "ListActivityLogsRequest",
+    "ListActivityLogsResponse",
     "ListChainsResponse",
     "ListContainsItemResponse",
     "ListInvoicesData",
@@ -143,8 +197,11 @@ __all__ = [
     "ListTagsResponse",
     "ListTeamEndpointsResponse",
     "ListTeamsResponse",
+    "ListTransactionsRequest",
+    "ListTransactionsResponse",
     "ListWebhooksResponse",
     "LogDetails",
+    "MethodBlacklistData",
     "MethodRateLimiter",
     "MethodUsage",
     "PageInfo",
@@ -155,12 +212,14 @@ __all__ = [
     "QueryResponse",
     "QueryStatistics",
     "QuicknodeSdk",
+    "RangeLimitsData",
     "RateLimitEntry",
     "RateLimitSettings",
     "RemoveTeamMemberRequest",
     "RemoveTeamMemberResponse",
     "RenameTagRequest",
     "RenameTagResponse",
+    "RequestFilter",
     "ResendTeamInviteResponse",
     "RpcApiClient",
     "RpcConfig",
@@ -197,12 +256,30 @@ __all__ = [
     "TeamUser",
     "TestFilterResponse",
     "ToolingAccessStatus",
+    "TrafficSummaryData",
+    "TrafficSummaryRow",
+    "TrafficSummaryTotals",
+    "TransactionAttempt",
+    "TransactionDetail",
+    "TransactionLookup",
+    "TransactionPayloads",
+    "TransactionSummary",
+    "TransactionsData",
+    "UpdateClientCertsRequest",
+    "UpdateClientCertsResponse",
     "UpdateEndpointRequest",
     "UpdateEndpointStatusRequest",
     "UpdateEndpointStatusResponse",
+    "UpdateMethodBlacklistRequest",
+    "UpdateMethodBlacklistResponse",
     "UpdateMethodRateLimitRequest",
     "UpdateMethodRateLimitResponse",
+    "UpdateRangeLimitsRequest",
+    "UpdateRangeLimitsResponse",
+    "UpdateRateLimitsData",
     "UpdateRateLimitsRequest",
+    "UpdateRateLimitsResponse",
+    "UpdateRequestFilterPatternRequest",
     "UpdateRequestFilterRequest",
     "UpdateSecurityOptionsRequest",
     "UpdateSecurityOptionsResponse",
@@ -214,7 +291,19 @@ __all__ = [
     "UsageByEndpointData",
     "UsageByMethodData",
     "UsageByTagData",
+    "UsageCreditsSummaryData",
+    "UsageCreditsSummaryRow",
+    "UsageCreditsSummaryTotals",
     "UsageData",
+    "UsageRpcSummaryData",
+    "UsageRpcSummaryRow",
+    "UsageRpcSummaryTotals",
+    "UsageStreamsSummaryData",
+    "UsageStreamsSummaryRow",
+    "UsageStreamsSummaryTotals",
+    "UsageWebhooksSummaryData",
+    "UsageWebhooksSummaryRow",
+    "UsageWebhooksSummaryTotals",
     "Webhook",
     "WebhookAttributes",
     "WebhookDestinationAttributes",
@@ -384,6 +473,288 @@ class AccountTag:
         """
 
 @typing.final
+class ActivityLogActor:
+    r"""
+    Actor attached to an activity entry, including deleted users.
+    """
+    @property
+    def id(self) -> typing.Optional[builtins.str]:
+        r"""
+        User or API-key UUID; absent for Quicknode and deleted users.
+        """
+    @id.setter
+    def id(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        User or API-key UUID; absent for Quicknode and deleted users.
+        """
+    @property
+    def actor_type(self) -> builtins.str:
+        r"""
+        Actor kind: `user`, `api_key`, `quicknode`, or `deleted_user`.
+        """
+    @actor_type.setter
+    def actor_type(self, value: builtins.str) -> None:
+        r"""
+        Actor kind: `user`, `api_key`, `quicknode`, or `deleted_user`.
+        """
+    @property
+    def name(self) -> typing.Optional[builtins.str]:
+        r"""
+        Actor name, when available.
+        """
+    @name.setter
+    def name(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Actor name, when available.
+        """
+    @property
+    def email(self) -> typing.Optional[builtins.str]:
+        r"""
+        Actor email, when available.
+        """
+    @email.setter
+    def email(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Actor email, when available.
+        """
+
+@typing.final
+class ActivityLogEntry:
+    r"""
+    An account change and the actor who made it.
+    """
+    @property
+    def id(self) -> builtins.str:
+        r"""
+        Activity entry UUID.
+        """
+    @id.setter
+    def id(self, value: builtins.str) -> None:
+        r"""
+        Activity entry UUID.
+        """
+    @property
+    def occurred_at(self) -> builtins.str:
+        r"""
+        ISO 8601 timestamp of the change.
+        """
+    @occurred_at.setter
+    def occurred_at(self, value: builtins.str) -> None:
+        r"""
+        ISO 8601 timestamp of the change.
+        """
+    @property
+    def action(self) -> builtins.str:
+        r"""
+        Action performed, such as `created`.
+        """
+    @action.setter
+    def action(self, value: builtins.str) -> None:
+        r"""
+        Action performed, such as `created`.
+        """
+    @property
+    def description(self) -> typing.Optional[builtins.str]:
+        r"""
+        Human-readable description, when available.
+        """
+    @description.setter
+    def description(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Human-readable description, when available.
+        """
+    @property
+    def target(self) -> ActivityLogTarget:
+        r"""
+        Resource affected by the change.
+        """
+    @target.setter
+    def target(self, value: ActivityLogTarget) -> None:
+        r"""
+        Resource affected by the change.
+        """
+    @property
+    def actor(self) -> ActivityLogActor:
+        r"""
+        Actor responsible for the change.
+        """
+    @actor.setter
+    def actor(self, value: ActivityLogActor) -> None:
+        r"""
+        Actor responsible for the change.
+        """
+
+@typing.final
+class ActivityLogFilterActor:
+    r"""
+    An actor available for activity-log filtering.
+    """
+    @property
+    def id(self) -> builtins.str:
+        r"""
+        User or API-key UUID to pass as `actor`.
+        """
+    @id.setter
+    def id(self, value: builtins.str) -> None:
+        r"""
+        User or API-key UUID to pass as `actor`.
+        """
+    @property
+    def name(self) -> typing.Optional[builtins.str]:
+        r"""
+        Actor name, when available.
+        """
+    @name.setter
+    def name(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Actor name, when available.
+        """
+    @property
+    def actor_type(self) -> builtins.str:
+        r"""
+        Actor kind, such as `user` or `api_key`.
+        """
+    @actor_type.setter
+    def actor_type(self, value: builtins.str) -> None:
+        r"""
+        Actor kind, such as `user` or `api_key`.
+        """
+
+@typing.final
+class ActivityLogFilterType:
+    r"""
+    A target type available for activity-log filtering.
+    """
+    @property
+    def value(self) -> builtins.str:
+        r"""
+        Value to pass as `target_type`.
+        """
+    @value.setter
+    def value(self, value: builtins.str) -> None:
+        r"""
+        Value to pass as `target_type`.
+        """
+    @property
+    def label(self) -> builtins.str:
+        r"""
+        Human-readable target type.
+        """
+    @label.setter
+    def label(self, value: builtins.str) -> None:
+        r"""
+        Human-readable target type.
+        """
+
+@typing.final
+class ActivityLogFiltersData:
+    r"""
+    Values accepted by the activity-log filters.
+    """
+    @property
+    def actors(self) -> builtins.list[ActivityLogFilterActor]:
+        r"""
+        Users and API keys available for filtering.
+        """
+    @actors.setter
+    def actors(self, value: builtins.list[ActivityLogFilterActor]) -> None:
+        r"""
+        Users and API keys available for filtering.
+        """
+    @property
+    def types(self) -> builtins.list[ActivityLogFilterType]:
+        r"""
+        Target types available for filtering.
+        """
+    @types.setter
+    def types(self, value: builtins.list[ActivityLogFilterType]) -> None:
+        r"""
+        Target types available for filtering.
+        """
+
+@typing.final
+class ActivityLogPagination:
+    r"""
+    Offset pagination for activity logs.
+    """
+    @property
+    def total(self) -> builtins.int:
+        r"""
+        Total entries matching the filters.
+        """
+    @total.setter
+    def total(self, value: builtins.int) -> None:
+        r"""
+        Total entries matching the filters.
+        """
+    @property
+    def limit(self) -> builtins.int:
+        r"""
+        Page size used for this response.
+        """
+    @limit.setter
+    def limit(self, value: builtins.int) -> None:
+        r"""
+        Page size used for this response.
+        """
+    @property
+    def offset(self) -> builtins.int:
+        r"""
+        Number of entries skipped.
+        """
+    @offset.setter
+    def offset(self, value: builtins.int) -> None:
+        r"""
+        Number of entries skipped.
+        """
+
+@typing.final
+class ActivityLogTarget:
+    r"""
+    Resource affected by an activity entry.
+    """
+    @property
+    def id(self) -> builtins.str:
+        r"""
+        Resource identifier; endpoint targets use numeric IDs as strings.
+        """
+    @id.setter
+    def id(self, value: builtins.str) -> None:
+        r"""
+        Resource identifier; endpoint targets use numeric IDs as strings.
+        """
+    @property
+    def kind(self) -> typing.Optional[builtins.str]:
+        r"""
+        Resource kind, when available.
+        """
+    @kind.setter
+    def kind(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Resource kind, when available.
+        """
+    @property
+    def label(self) -> builtins.str:
+        r"""
+        Resource label.
+        """
+    @label.setter
+    def label(self, value: builtins.str) -> None:
+        r"""
+        Resource label.
+        """
+    @property
+    def name(self) -> typing.Optional[builtins.str]:
+        r"""
+        Resource name, when available.
+        """
+    @name.setter
+    def name(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Resource name, when available.
+        """
+
+@typing.final
 class AddressBookConfig:
     r"""
     Links a stream's filter to an address book so JSON paths resolve against its
@@ -423,6 +794,136 @@ class AddressBookConfig:
 
 @typing.final
 class AdminApiClient:
+    def get_client_certs(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetClientCertsResponse]:
+        r"""
+        Get client certs.
+        """
+    def create_client_cert(self, id: builtins.str, certificate: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, CreateClientCertResponse]:
+        r"""
+        Create client cert.
+        """
+    def update_client_certs(self, id: builtins.str, enabled: builtins.bool) -> typing.Coroutine[typing.Any, typing.Any, UpdateClientCertsResponse]:
+        r"""
+        Update client certs.
+        """
+    def delete_client_cert(self, id: builtins.str, fingerprint: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, DeleteClientCertResponse]:
+        r"""
+        Delete client cert.
+        """
+    def get_method_blacklist(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetMethodBlacklistResponse]:
+        r"""
+        Get method blacklist.
+        """
+    def update_method_blacklist(self, id: builtins.str, methods: typing.Sequence[builtins.str]) -> typing.Coroutine[typing.Any, typing.Any, UpdateMethodBlacklistResponse]:
+        r"""
+        Update method blacklist.
+        """
+    def get_range_limits(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetRangeLimitsResponse]:
+        r"""
+        Get range limits.
+        """
+    def update_range_limits(self, id: builtins.str, limits: typing.Mapping[builtins.str, builtins.int]) -> typing.Coroutine[typing.Any, typing.Any, UpdateRangeLimitsResponse]:
+        r"""
+        Update range limits.
+        """
+    def get_blocked_ips(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetBlockedIpsResponse]:
+        r"""
+        Get blocked ips.
+        """
+    def create_blocked_ip(self, id: builtins.str, ip: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, CreateBlockedIpResponse]:
+        r"""
+        Create blocked ip.
+        """
+    def delete_blocked_ip(self, id: builtins.str, ip_id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, DeleteBoolResponse]:
+        r"""
+        Delete blocked ip.
+        """
+    def list_activity_logs(self, q: typing.Optional[builtins.str] = None, actor: typing.Optional[builtins.str] = None, endpoint_id: typing.Optional[builtins.str] = None, target_type: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None, offset: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, ListActivityLogsResponse]:
+        r"""
+        List activity logs.
+        """
+    def list_activity_log_filters(self) -> typing.Coroutine[typing.Any, typing.Any, ListActivityLogFiltersResponse]:
+        r"""
+        List activity log filters.
+        """
+    def get_activity_log(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetActivityLogResponse]:
+        r"""
+        Get activity log.
+        """
+    def list_transactions(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, network: typing.Optional[builtins.str] = None, method: typing.Optional[builtins.str] = None, state: typing.Optional[builtins.str] = None, transaction_hash: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, endpoints: typing.Optional[typing.Sequence[builtins.int]] = None, limit: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, ListTransactionsResponse]:
+        r"""
+        List transactions.
+        """
+    def get_transaction(self, network: builtins.str, hash: builtins.str, include_payloads: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, GetTransactionResponse]:
+        r"""
+        Get transaction.
+        """
+    def get_usage_credits_summary(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, GetUsageCreditsSummaryResponse]:
+        r"""
+        Get usage credits summary.
+        """
+    def get_usage_rpc_summary(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None, group_by: typing.Optional[typing.Sequence[builtins.str]] = None, endpoint_names: typing.Optional[typing.Sequence[builtins.str]] = None, chains: typing.Optional[typing.Sequence[builtins.str]] = None, networks: typing.Optional[typing.Sequence[builtins.str]] = None, methods: typing.Optional[typing.Sequence[builtins.str]] = None, tag_ids: typing.Optional[typing.Sequence[builtins.str]] = None, addon_ids: typing.Optional[typing.Sequence[builtins.str]] = None) -> typing.Coroutine[typing.Any, typing.Any, GetUsageRpcSummaryResponse]:
+        r"""
+        Get usage rpc summary.
+        """
+    def get_usage_streams_summary(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None, group_by: typing.Optional[typing.Sequence[builtins.str]] = None, stream_id: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, GetUsageStreamsSummaryResponse]:
+        r"""
+        Get usage streams summary.
+        """
+    def get_usage_webhooks_summary(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None, group_by: typing.Optional[typing.Sequence[builtins.str]] = None, webhook_id: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, GetUsageWebhooksSummaryResponse]:
+        r"""
+        Get usage webhooks summary.
+        """
+    def get_traffic_summary(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None, group_by: typing.Optional[typing.Sequence[builtins.str]] = None, endpoint_names: typing.Optional[typing.Sequence[builtins.str]] = None, chains: typing.Optional[typing.Sequence[builtins.str]] = None, networks: typing.Optional[typing.Sequence[builtins.str]] = None, methods: typing.Optional[typing.Sequence[builtins.str]] = None, tag_ids: typing.Optional[typing.Sequence[builtins.str]] = None, addon_ids: typing.Optional[typing.Sequence[builtins.str]] = None) -> typing.Coroutine[typing.Any, typing.Any, GetTrafficSummaryResponse]:
+        r"""
+        Get traffic summary.
+        """
+    def get_errors_summary(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None, group_by: typing.Optional[typing.Sequence[builtins.str]] = None, endpoints: typing.Optional[typing.Sequence[builtins.int]] = None, networks: typing.Optional[typing.Sequence[builtins.str]] = None, methods: typing.Optional[typing.Sequence[builtins.str]] = None, codes: typing.Optional[typing.Sequence[builtins.str]] = None, status_codes: typing.Optional[typing.Sequence[builtins.str]] = None, kind: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, GetErrorsSummaryResponse]:
+        r"""
+        Get errors summary.
+        """
+    def get_endpoint_errors_summary(self, id: builtins.str, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None, group_by: typing.Optional[typing.Sequence[builtins.str]] = None, networks: typing.Optional[typing.Sequence[builtins.str]] = None, methods: typing.Optional[typing.Sequence[builtins.str]] = None, codes: typing.Optional[typing.Sequence[builtins.str]] = None, status_codes: typing.Optional[typing.Sequence[builtins.str]] = None, kind: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, GetEndpointErrorsSummaryResponse]:
+        r"""
+        Get endpoint errors summary.
+        """
+    def create_token_with_response(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, CreateTokenResponse]:
+        r"""
+        Generates a new authentication token for an endpoint.
+        """
+    def create_referrer_with_response(self, id: builtins.str, referrer: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, CreateReferrerResponse]:
+        r"""
+        Adds a referrer to an endpoint's security settings, specifying which
+        external URL or domain is permitted to call the endpoint.
+        """
+    def create_ip_with_response(self, id: builtins.str, ip: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, CreateIpResponse]:
+        r"""
+        Adds an IP address to an endpoint's security whitelist.
+        """
+    def create_domain_mask_with_response(self, id: builtins.str, domain_mask: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, CreateDomainMaskResponse]:
+        r"""
+        Adds a domain mask to an endpoint — a custom domain used to hide the
+        endpoint's Quicknode URL so requests can be routed through your own
+        domain.
+        """
+    def create_jwt_with_response(self, id: builtins.str, kid: builtins.str, public_key: builtins.str, name: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, CreateJwtResponse]:
+        r"""
+        Creates a new JWT for endpoint authentication. Accepts a public key,
+        key id (`kid`), and token name.
+        """
+    def create_tag_with_response(self, id: builtins.str, label: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, CreateTagResponse]:
+        r"""
+        Creates a new tag on a specific endpoint from a label. Returns the new
+        tag with its id, account info, and timestamps.
+        """
+    def update_rate_limits_with_response(self, id: builtins.str, rps: typing.Optional[builtins.int] = None, rpm: typing.Optional[builtins.int] = None, rpd: typing.Optional[builtins.int] = None, limit_by_ip: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, UpdateRateLimitsResponse]:
+        r"""
+        Partial update of the endpoint-level rate-limit overrides. Accepts
+        `rps` (requests per second), `rpm` (requests per minute), and `rpd`
+        (requests per day). Only buckets passed are modified — omitted buckets
+        are left unchanged. Values are capped by the account's plan tier.
+        `limit_by_ip` applies these caps per client IP and can be sent alone.
+        Supply at least one cap or `limit_by_ip`; omitted fields stay unchanged.
+        """
     def get_endpoints(self, limit: typing.Optional[builtins.int] = None, offset: typing.Optional[builtins.int] = None, search: typing.Optional[builtins.str] = None, sort_by: typing.Optional[builtins.str] = None, sort_direction: typing.Optional[builtins.str] = None, networks: typing.Optional[typing.Sequence[builtins.str]] = None, statuses: typing.Optional[typing.Sequence[builtins.str]] = None, labels: typing.Optional[typing.Sequence[builtins.str]] = None, dedicated: typing.Optional[builtins.bool] = None, is_flat_rate: typing.Optional[builtins.bool] = None, tag_ids: typing.Optional[typing.Sequence[builtins.int]] = None, tag_labels: typing.Optional[typing.Sequence[builtins.str]] = None) -> typing.Coroutine[typing.Any, typing.Any, GetEndpointsResponse]:
         r"""
         Returns a paginated list of endpoints on the account. Supports searching
@@ -444,8 +945,7 @@ class AdminApiClient:
         """
     def update_endpoint(self, id: builtins.str, label: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
-        Updates editable fields on an endpoint (e.g. its label). Returns a
-        boolean indicating whether the update succeeded.
+        Updates the endpoint label, which the API requires. Returns HTTP success.
         """
     def archive_endpoint(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
@@ -507,7 +1007,7 @@ class AdminApiClient:
         Returns the security options for an endpoint — an object of security
         feature toggles with their current enabled/disabled status.
         """
-    def update_security_options(self, id: builtins.str, tokens: typing.Optional[builtins.str] = None, referrers: typing.Optional[builtins.str] = None, jwts: typing.Optional[builtins.str] = None, ips: typing.Optional[builtins.str] = None, domain_masks: typing.Optional[builtins.str] = None, hsts: typing.Optional[builtins.str] = None, cors: typing.Optional[builtins.str] = None, request_filters: typing.Optional[builtins.str] = None, ip_custom_header: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, UpdateSecurityOptionsResponse]:
+    def update_security_options(self, id: builtins.str, tokens: typing.Optional[builtins.str] = None, referrers: typing.Optional[builtins.str] = None, jwts: typing.Optional[builtins.str] = None, ips: typing.Optional[builtins.str] = None, domain_masks: typing.Optional[builtins.str] = None, hsts: typing.Optional[builtins.str] = None, cors: typing.Optional[builtins.str] = None, request_filters: typing.Optional[builtins.str] = None, ip_custom_header: typing.Optional[builtins.str] = None, response_logging: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, UpdateSecurityOptionsResponse]:
         r"""
         Updates which security features are enabled on an endpoint. Each option
         in the submitted object can be toggled `enabled` or `disabled` —
@@ -600,13 +1100,13 @@ class AdminApiClient:
         Returns the method rate limits configured on an endpoint, including
         each limiter's interval, methods, rate, and status.
         """
-    def create_method_rate_limit(self, id: builtins.str, interval: builtins.str, methods: typing.Sequence[builtins.str], rate: builtins.int) -> typing.Coroutine[typing.Any, typing.Any, CreateMethodRateLimitResponse]:
+    def create_method_rate_limit(self, id: builtins.str, interval: builtins.str, methods: typing.Sequence[builtins.str], rate: builtins.int, limit_by_ip: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, CreateMethodRateLimitResponse]:
         r"""
         Creates a per-method rate limit on an endpoint. A method rate limit
         caps specific RPC methods rather than the endpoint as a whole, defined
         by an `interval` (e.g. `second`), the target `methods`, and a `rate`.
         """
-    def update_method_rate_limit(self, id: builtins.str, method_rate_limit_id: builtins.str, methods: typing.Optional[typing.Sequence[builtins.str]] = None, status: typing.Optional[builtins.str] = None, rate: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, UpdateMethodRateLimitResponse]:
+    def update_method_rate_limit(self, id: builtins.str, method_rate_limit_id: builtins.str, methods: typing.Optional[typing.Sequence[builtins.str]] = None, status: typing.Optional[builtins.str] = None, rate: typing.Optional[builtins.int] = None, limit_by_ip: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, UpdateMethodRateLimitResponse]:
         r"""
         Updates an existing method rate limit on an endpoint. Accepts the
         methods to apply the limit to, the desired `status`, and the `rate`.
@@ -615,12 +1115,14 @@ class AdminApiClient:
         r"""
         Removes a method rate limit from an endpoint by method rate limit id.
         """
-    def update_rate_limits(self, id: builtins.str, rps: typing.Optional[builtins.int] = None, rpm: typing.Optional[builtins.int] = None, rpd: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
+    def update_rate_limits(self, id: builtins.str, rps: typing.Optional[builtins.int] = None, rpm: typing.Optional[builtins.int] = None, rpd: typing.Optional[builtins.int] = None, limit_by_ip: typing.Optional[builtins.bool] = None) -> typing.Coroutine[typing.Any, typing.Any, None]:
         r"""
         Partial update of the endpoint-level rate-limit overrides. Accepts
         `rps` (requests per second), `rpm` (requests per minute), and `rpd`
         (requests per day). Only buckets passed are modified — omitted buckets
         are left unchanged. Values are capped by the account's plan tier.
+        `limit_by_ip` applies these caps per client IP and can be sent alone.
+        Supply at least one cap or `limit_by_ip`; omitted fields stay unchanged.
         """
     def get_rate_limits(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetRateLimitsResponse]:
         r"""
@@ -641,7 +1143,7 @@ class AdminApiClient:
         is a per-network mapping of additional URLs; for single-chain endpoints
         it is `None`.
         """
-    def get_endpoint_metrics(self, id: builtins.str, period: builtins.str, metric: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetEndpointMetricsResponse]:
+    def get_endpoint_metrics(self, id: builtins.str, period: builtins.str, metric: builtins.str, percentile: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, GetEndpointMetricsResponse]:
         r"""
         Returns time-series metrics for a specific endpoint. Requires a
         `period` (`hour`, `day`, `week`, or `month`) and a metric type such as
@@ -792,6 +1294,9 @@ class AdminApiClient:
         tokens, JWTs, referrers, domain masks, IPs, and a security options
         object describing which features are enabled.
         """
+    def get_request_filters(self, id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, GetRequestFiltersResponse]: ...
+    def create_request_filter_pattern(self, id: builtins.str, pattern: dict[str, typing.Any]) -> typing.Coroutine[typing.Any, typing.Any, CreateRequestFilterResponse]: ...
+    def update_request_filter_pattern(self, id: builtins.str, request_filter_id: builtins.str, pattern: dict[str, typing.Any]) -> typing.Coroutine[typing.Any, typing.Any, None]: ...
 
 @typing.final
 class AdminConfig:
@@ -1093,6 +1598,16 @@ class BulkOperationResult:
         r"""
         Whether the operation succeeded for this endpoint.
         """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Per-endpoint failure reason; absent on successful rows.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Per-endpoint failure reason; absent on successful rows.
+        """
 
 @typing.final
 class BulkRemoveTagData:
@@ -1322,7 +1837,7 @@ class CachedToken:
     A minted session JWT plus the endpoint it authenticates against and its
     wall-clock expiry. This is the unit cached by the RPC client and the unit a
     host persists between processes (e.g. the CLI's on-disk token cache).
-    
+
     `exp_unix` is the JWT `exp` claim (unix seconds), used directly so it
     survives a process restart (unlike a monotonic `Instant`).
     """
@@ -1492,6 +2007,72 @@ class ChainUsage:
         r"""
         Credits consumed on the chain.
         """
+    @property
+    def rpc_credits(self) -> typing.Optional[builtins.int]:
+        r"""
+        RPC credits consumed.
+        """
+    @rpc_credits.setter
+    def rpc_credits(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        RPC credits consumed.
+        """
+    @property
+    def data_credits(self) -> typing.Optional[builtins.int]:
+        r"""
+        Data credits consumed.
+        """
+    @data_credits.setter
+    def data_credits(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Data credits consumed.
+        """
+    @property
+    def bytes(self) -> typing.Optional[builtins.int]:
+        r"""
+        Response bytes transferred.
+        """
+    @bytes.setter
+    def bytes(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Response bytes transferred.
+        """
+
+@typing.final
+class ClientCertificate:
+    r"""
+    Client certificate metadata.
+    """
+    @property
+    def fingerprint(self) -> builtins.str: ...
+    @fingerprint.setter
+    def fingerprint(self, value: builtins.str) -> None: ...
+    @property
+    def subject(self) -> builtins.str: ...
+    @subject.setter
+    def subject(self, value: builtins.str) -> None: ...
+    @property
+    def issuer(self) -> builtins.str: ...
+    @issuer.setter
+    def issuer(self, value: builtins.str) -> None: ...
+    @property
+    def expires_at(self) -> builtins.str: ...
+    @expires_at.setter
+    def expires_at(self, value: builtins.str) -> None: ...
+
+@typing.final
+class ClientCertsData:
+    r"""
+    Current client-certificate authentication state.
+    """
+    @property
+    def enabled(self) -> builtins.bool: ...
+    @enabled.setter
+    def enabled(self, value: builtins.bool) -> None: ...
+    @property
+    def certs(self) -> builtins.list[ClientCertificate]: ...
+    @certs.setter
+    def certs(self, value: builtins.list[ClientCertificate]) -> None: ...
 
 @typing.final
 class ColumnMeta:
@@ -1548,6 +2129,54 @@ class ColumnSchema:
     def __new__(cls, name: builtins.str, column_type: builtins.str) -> ColumnSchema: ...
 
 @typing.final
+class CreateBlockedIpRequest:
+    r"""
+    Blocked IP address or CIDR range. Does not enable IP security.
+    """
+    @property
+    def ip(self) -> builtins.str: ...
+    @ip.setter
+    def ip(self, value: builtins.str) -> None: ...
+
+@typing.final
+class CreateBlockedIpResponse:
+    r"""
+    Created blocked IP record.
+    """
+    @property
+    def data(self) -> EndpointIp: ...
+    @data.setter
+    def data(self, value: EndpointIp) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
+class CreateClientCertRequest:
+    r"""
+    PEM certificate to add.
+    """
+    @property
+    def certificate(self) -> builtins.str: ...
+    @certificate.setter
+    def certificate(self, value: builtins.str) -> None: ...
+
+@typing.final
+class CreateClientCertResponse:
+    r"""
+    Full certificate state after the operation.
+    """
+    @property
+    def data(self) -> ClientCertsData: ...
+    @data.setter
+    def data(self, value: ClientCertsData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
 class CreateDomainMaskRequest:
     r"""
     Parameters for `create_domain_mask`.
@@ -1555,13 +2184,27 @@ class CreateDomainMaskRequest:
     @property
     def domain_mask(self) -> typing.Optional[builtins.str]:
         r"""
-        Custom domain that will mask the endpoint's Quicknode URL.
+        Custom domain that will mask the endpoint's Quicknode URL; required by the API.
         """
     @domain_mask.setter
     def domain_mask(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Custom domain that will mask the endpoint's Quicknode URL.
+        Custom domain that will mask the endpoint's Quicknode URL; required by the API.
         """
+
+@typing.final
+class CreateDomainMaskResponse:
+    r"""
+    Created security record and API error.
+    """
+    @property
+    def data(self) -> CreatedDomainMask: ...
+    @data.setter
+    def data(self, value: CreatedDomainMask) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
 class CreateEndpointRequest:
@@ -1571,49 +2214,34 @@ class CreateEndpointRequest:
     @property
     def chain(self) -> typing.Optional[builtins.str]:
         r"""
-        Blockchain the endpoint should serve (e.g. `ethereum`).
+        Blockchain the endpoint should serve (e.g. `ethereum`); required by the API.
         """
     @chain.setter
     def chain(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Blockchain the endpoint should serve (e.g. `ethereum`).
+        Blockchain the endpoint should serve (e.g. `ethereum`); required by the API.
         """
     @property
     def network(self) -> typing.Optional[builtins.str]:
         r"""
-        Specific network within the chain (e.g. `mainnet`).
+        Specific network within the chain (e.g. `mainnet`); required for creation.
         """
     @network.setter
     def network(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Specific network within the chain (e.g. `mainnet`).
+        Specific network within the chain (e.g. `mainnet`); required for creation.
         """
 
 @typing.final
 class CreateEndpointResponse:
-    r"""
-    Response from `create_endpoint`.
-    """
     @property
-    def data(self) -> SingleEndpoint:
-        r"""
-        The newly created endpoint.
-        """
+    def data(self) -> SingleEndpoint: ...
     @data.setter
-    def data(self, value: SingleEndpoint) -> None:
-        r"""
-        The newly created endpoint.
-        """
+    def data(self, value: SingleEndpoint) -> None: ...
     @property
-    def error(self) -> typing.Optional[builtins.str]:
-        r"""
-        Error message when the request did not succeed.
-        """
+    def error(self) -> typing.Optional[builtins.str]: ...
     @error.setter
-    def error(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        Error message when the request did not succeed.
-        """
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
 class CreateIpRequest:
@@ -1630,6 +2258,20 @@ class CreateIpRequest:
         r"""
         IP address to whitelist.
         """
+
+@typing.final
+class CreateIpResponse:
+    r"""
+    Created security record and API error.
+    """
+    @property
+    def data(self) -> EndpointIp: ...
+    @data.setter
+    def data(self, value: EndpointIp) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
 class CreateJwtRequest:
@@ -1668,9 +2310,23 @@ class CreateJwtRequest:
         """
 
 @typing.final
+class CreateJwtResponse:
+    r"""
+    Created security record and API error.
+    """
+    @property
+    def data(self) -> EndpointJwt: ...
+    @data.setter
+    def data(self, value: EndpointJwt) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
 class CreateMethodRateLimitRequest:
     r"""
-    Parameters for `create_method_rate_limit`.
+    Parameters for `create_method_rate_limit`. The API requires a positive rate.
     """
     @property
     def interval(self) -> builtins.str:
@@ -1701,6 +2357,16 @@ class CreateMethodRateLimitRequest:
     def rate(self, value: builtins.int) -> None:
         r"""
         Maximum number of calls allowed per interval.
+        """
+    @property
+    def limit_by_ip(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Whether the method limit applies per client IP.
+        """
+    @limit_by_ip.setter
+    def limit_by_ip(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Whether the method limit applies per client IP.
         """
 
 @typing.final
@@ -1788,20 +2454,36 @@ class CreateReferrerRequest:
         """
 
 @typing.final
-class CreateRequestFilterData:
+class CreateReferrerResponse:
     r"""
-    Data wrapper for a created request filter.
+    Created security record and API error.
     """
     @property
-    def id(self) -> builtins.str:
-        r"""
-        Identifier of the newly created request filter.
-        """
+    def data(self) -> CreatedReferrer: ...
+    @data.setter
+    def data(self, value: CreatedReferrer) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
+class CreateRequestFilterData:
+    @property
+    def id(self) -> builtins.str: ...
     @id.setter
-    def id(self, value: builtins.str) -> None:
-        r"""
-        Identifier of the newly created request filter.
-        """
+    def id(self, value: builtins.str) -> None: ...
+    @property
+    def pattern(self) -> typing.Optional[dict[str, typing.Any]]: ...
+    @pattern.setter
+    def pattern(self, value: typing.Optional[dict[str, typing.Any]]) -> None: ...
+
+@typing.final
+class CreateRequestFilterPatternRequest:
+    @property
+    def pattern(self) -> dict[str, typing.Any]: ...
+    @pattern.setter
+    def pattern(self, value: dict[str, typing.Any]) -> None: ...
 
 @typing.final
 class CreateRequestFilterRequest:
@@ -1821,29 +2503,24 @@ class CreateRequestFilterRequest:
 
 @typing.final
 class CreateRequestFilterResponse:
+    @property
+    def data(self) -> typing.Optional[CreateRequestFilterData]: ...
+    @data.setter
+    def data(self, value: typing.Optional[CreateRequestFilterData]) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
+class CreateTagData:
     r"""
-    Response from `create_request_filter`.
+    Tags associated with the endpoint.
     """
     @property
-    def data(self) -> typing.Optional[CreateRequestFilterData]:
-        r"""
-        The created filter payload.
-        """
-    @data.setter
-    def data(self, value: typing.Optional[CreateRequestFilterData]) -> None:
-        r"""
-        The created filter payload.
-        """
-    @property
-    def error(self) -> typing.Optional[builtins.str]:
-        r"""
-        Error message when the request did not succeed.
-        """
-    @error.setter
-    def error(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        Error message when the request did not succeed.
-        """
+    def tags(self) -> builtins.list[EndpointTagAssociation]: ...
+    @tags.setter
+    def tags(self, value: builtins.list[EndpointTagAssociation]) -> None: ...
 
 @typing.final
 class CreateTagRequest:
@@ -1853,13 +2530,27 @@ class CreateTagRequest:
     @property
     def label(self) -> typing.Optional[builtins.str]:
         r"""
-        Label for the new tag. Maximum 25 characters.
+        Nonblank label, 3 through 25 characters after trimming. The SDK does not trim it.
         """
     @label.setter
     def label(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Label for the new tag. Maximum 25 characters.
+        Nonblank label, 3 through 25 characters after trimming. The SDK does not trim it.
         """
+
+@typing.final
+class CreateTagResponse:
+    r"""
+    Response from create_tag_with_response.
+    """
+    @property
+    def data(self) -> CreateTagData: ...
+    @data.setter
+    def data(self, value: CreateTagData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
 class CreateTeamData:
@@ -1950,6 +2641,48 @@ class CreateTeamResponse:
         """
 
 @typing.final
+class CreateTokenResponse:
+    r"""
+    Created security record and API error.
+    """
+    @property
+    def data(self) -> EndpointToken: ...
+    @data.setter
+    def data(self, value: EndpointToken) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
+class CreatedDomainMask:
+    r"""
+    Created security record.
+    """
+    @property
+    def id(self) -> builtins.str: ...
+    @id.setter
+    def id(self, value: builtins.str) -> None: ...
+    @property
+    def domain_mask(self) -> builtins.str: ...
+    @domain_mask.setter
+    def domain_mask(self, value: builtins.str) -> None: ...
+
+@typing.final
+class CreatedReferrer:
+    r"""
+    Created security record.
+    """
+    @property
+    def id(self) -> builtins.str: ...
+    @id.setter
+    def id(self, value: builtins.str) -> None: ...
+    @property
+    def url(self) -> builtins.str: ...
+    @url.setter
+    def url(self, value: builtins.str) -> None: ...
+
+@typing.final
 class DeleteAccountTagData:
     r"""
     Inner data for `delete_account_tag`.
@@ -2018,6 +2751,20 @@ class DeleteBoolResponse:
         """
 
 @typing.final
+class DeleteClientCertResponse:
+    r"""
+    Full certificate state after the operation.
+    """
+    @property
+    def data(self) -> ClientCertsData: ...
+    @data.setter
+    def data(self, value: ClientCertsData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
 class DeleteTeamData:
     r"""
     Inner data for `delete_team` responses.
@@ -2058,6 +2805,24 @@ class DeleteTeamResponse:
         r"""
         Error message when the request did not succeed.
         """
+
+@typing.final
+class EffectiveRateLimits:
+    r"""
+    Effective endpoint rate-limit overrides; null means no override.
+    """
+    @property
+    def rps(self) -> typing.Optional[builtins.int]: ...
+    @rps.setter
+    def rps(self, value: typing.Optional[builtins.int]) -> None: ...
+    @property
+    def rpd(self) -> typing.Optional[builtins.int]: ...
+    @rpd.setter
+    def rpd(self, value: typing.Optional[builtins.int]) -> None: ...
+    @property
+    def rpm(self) -> typing.Optional[builtins.int]: ...
+    @rpm.setter
+    def rpm(self, value: typing.Optional[builtins.int]) -> None: ...
 
 @typing.final
 class EnabledCountResponse:
@@ -2133,12 +2898,12 @@ class Endpoint:
     @property
     def network(self) -> builtins.str:
         r"""
-        Specific network within the chain (e.g. `mainnet`).
+        Specific network within the chain (e.g. `mainnet`); required for creation.
         """
     @network.setter
     def network(self, value: builtins.str) -> None:
         r"""
-        Specific network within the chain (e.g. `mainnet`).
+        Specific network within the chain (e.g. `mainnet`); required for creation.
         """
     @property
     def is_dedicated(self) -> builtins.bool:
@@ -2525,107 +3290,53 @@ class EndpointReferrer:
 
 @typing.final
 class EndpointRequestFilter:
-    r"""
-    Request (method) filter configured on an endpoint.
-    """
     @property
-    def id(self) -> builtins.str:
-        r"""
-        Filter identifier.
-        """
+    def id(self) -> builtins.str: ...
     @id.setter
-    def id(self, value: builtins.str) -> None:
-        r"""
-        Filter identifier.
-        """
+    def id(self, value: builtins.str) -> None: ...
     @property
-    def method(self) -> builtins.list[builtins.str]:
-        r"""
-        Whitelisted RPC methods.
-        """
+    def method(self) -> list[typing.Any]: ...
     @method.setter
-    def method(self, value: builtins.list[builtins.str]) -> None:
-        r"""
-        Whitelisted RPC methods.
-        """
+    def method(self, value: list[typing.Any]) -> None: ...
+    @property
+    def params(self) -> dict[str, typing.Any]: ...
+    @params.setter
+    def params(self, value: dict[str, typing.Any]) -> None: ...
 
 @typing.final
 class EndpointSecurity:
-    r"""
-    Security configuration for an endpoint — the aggregate of tokens, JWTs,
-    referrers, domain masks, IPs, and request filters plus their enabled
-    toggles.
-    """
     @property
-    def options(self) -> typing.Optional[EndpointSecurityOptions]:
-        r"""
-        Per-feature enabled/disabled toggles.
-        """
+    def options(self) -> typing.Optional[EndpointSecurityOptions]: ...
     @options.setter
-    def options(self, value: typing.Optional[EndpointSecurityOptions]) -> None:
-        r"""
-        Per-feature enabled/disabled toggles.
-        """
+    def options(self, value: typing.Optional[EndpointSecurityOptions]) -> None: ...
     @property
-    def tokens(self) -> typing.Optional[builtins.list[EndpointToken]]:
-        r"""
-        Authentication tokens configured on the endpoint.
-        """
+    def tokens(self) -> typing.Optional[builtins.list[EndpointToken]]: ...
     @tokens.setter
-    def tokens(self, value: typing.Optional[builtins.list[EndpointToken]]) -> None:
-        r"""
-        Authentication tokens configured on the endpoint.
-        """
+    def tokens(self, value: typing.Optional[builtins.list[EndpointToken]]) -> None: ...
     @property
-    def jwts(self) -> typing.Optional[builtins.list[EndpointJwt]]:
-        r"""
-        JWTs configured on the endpoint.
-        """
+    def jwts(self) -> typing.Optional[builtins.list[EndpointJwt]]: ...
     @jwts.setter
-    def jwts(self, value: typing.Optional[builtins.list[EndpointJwt]]) -> None:
-        r"""
-        JWTs configured on the endpoint.
-        """
+    def jwts(self, value: typing.Optional[builtins.list[EndpointJwt]]) -> None: ...
     @property
-    def referrers(self) -> typing.Optional[builtins.list[EndpointReferrer]]:
-        r"""
-        Allowed referrer URLs/domains.
-        """
+    def referrers(self) -> typing.Optional[builtins.list[EndpointReferrer]]: ...
     @referrers.setter
-    def referrers(self, value: typing.Optional[builtins.list[EndpointReferrer]]) -> None:
-        r"""
-        Allowed referrer URLs/domains.
-        """
+    def referrers(self, value: typing.Optional[builtins.list[EndpointReferrer]]) -> None: ...
     @property
-    def domain_masks(self) -> typing.Optional[builtins.list[EndpointDomainMask]]:
-        r"""
-        Configured domain masks.
-        """
+    def domain_masks(self) -> typing.Optional[builtins.list[EndpointDomainMask]]: ...
     @domain_masks.setter
-    def domain_masks(self, value: typing.Optional[builtins.list[EndpointDomainMask]]) -> None:
-        r"""
-        Configured domain masks.
-        """
+    def domain_masks(self, value: typing.Optional[builtins.list[EndpointDomainMask]]) -> None: ...
     @property
-    def ips(self) -> typing.Optional[builtins.list[EndpointIp]]:
-        r"""
-        Whitelisted IP addresses.
-        """
+    def ips(self) -> typing.Optional[builtins.list[EndpointIp]]: ...
     @ips.setter
-    def ips(self, value: typing.Optional[builtins.list[EndpointIp]]) -> None:
-        r"""
-        Whitelisted IP addresses.
-        """
+    def ips(self, value: typing.Optional[builtins.list[EndpointIp]]) -> None: ...
     @property
-    def request_filters(self) -> typing.Optional[builtins.list[EndpointRequestFilter]]:
-        r"""
-        Request (method) filters.
-        """
+    def blocked_ips(self) -> typing.Optional[builtins.list[EndpointIp]]: ...
+    @blocked_ips.setter
+    def blocked_ips(self, value: typing.Optional[builtins.list[EndpointIp]]) -> None: ...
+    @property
+    def request_filters(self) -> typing.Optional[builtins.list[EndpointRequestFilter]]: ...
     @request_filters.setter
-    def request_filters(self, value: typing.Optional[builtins.list[EndpointRequestFilter]]) -> None:
-        r"""
-        Request (method) filters.
-        """
+    def request_filters(self, value: typing.Optional[builtins.list[EndpointRequestFilter]]) -> None: ...
 
 @typing.final
 class EndpointSecurityOptions:
@@ -2641,6 +3352,36 @@ class EndpointSecurityOptions:
     def tokens(self, value: typing.Optional[builtins.bool]) -> None:
         r"""
         Whether token authentication is enforced.
+        """
+    @property
+    def hsts(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Whether HSTS is enabled.
+        """
+    @hsts.setter
+    def hsts(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Whether HSTS is enabled.
+        """
+    @property
+    def cors(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Whether CORS is enabled.
+        """
+    @cors.setter
+    def cors(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Whether CORS is enabled.
+        """
+    @property
+    def response_logging(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Whether response logging is enabled.
+        """
+    @response_logging.setter
+    def response_logging(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Whether response logging is enabled.
         """
     @property
     def jwts(self) -> typing.Optional[builtins.bool]:
@@ -2728,6 +3469,40 @@ class EndpointTag:
         r"""
         Tag label.
         """
+
+@typing.final
+class EndpointTagAssociation:
+    r"""
+    Endpoint tag association; id identifies the association, tag_id identifies the tag.
+    """
+    @property
+    def id(self) -> builtins.int: ...
+    @id.setter
+    def id(self, value: builtins.int) -> None: ...
+    @property
+    def tag_id(self) -> builtins.int: ...
+    @tag_id.setter
+    def tag_id(self, value: builtins.int) -> None: ...
+    @property
+    def account_id(self) -> builtins.int: ...
+    @account_id.setter
+    def account_id(self, value: builtins.int) -> None: ...
+    @property
+    def endpoint_id(self) -> builtins.int: ...
+    @endpoint_id.setter
+    def endpoint_id(self, value: builtins.int) -> None: ...
+    @property
+    def label(self) -> builtins.str: ...
+    @label.setter
+    def label(self, value: builtins.str) -> None: ...
+    @property
+    def created_at(self) -> builtins.str: ...
+    @created_at.setter
+    def created_at(self, value: builtins.str) -> None: ...
+    @property
+    def updated_at(self) -> builtins.str: ...
+    @updated_at.setter
+    def updated_at(self, value: builtins.str) -> None: ...
 
 @typing.final
 class EndpointToken:
@@ -2865,6 +3640,102 @@ class EndpointUsage:
     def requests(self, value: typing.Optional[builtins.int]) -> None:
         r"""
         Request count during the window.
+        """
+    @property
+    def rpc_credits(self) -> typing.Optional[builtins.int]:
+        r"""
+        RPC credits consumed.
+        """
+    @rpc_credits.setter
+    def rpc_credits(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        RPC credits consumed.
+        """
+    @property
+    def data_credits(self) -> typing.Optional[builtins.int]:
+        r"""
+        Data credits consumed.
+        """
+    @data_credits.setter
+    def data_credits(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Data credits consumed.
+        """
+    @property
+    def bytes(self) -> typing.Optional[builtins.int]:
+        r"""
+        Response bytes transferred.
+        """
+    @bytes.setter
+    def bytes(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Response bytes transferred.
+        """
+
+@typing.final
+class ErrorsSummaryData:
+    @property
+    def from_time(self) -> builtins.str: ...
+    @property
+    def to_time(self) -> builtins.str: ...
+    @property
+    def totals(self) -> ErrorsSummaryTotals: ...
+    @property
+    def breakdown(self) -> typing.Optional[builtins.list[ErrorsSummaryRow]]: ...
+    @property
+    def next_cursor(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
+class ErrorsSummaryRow:
+    @property
+    def kind(self) -> builtins.str: ...
+    @property
+    def count(self) -> builtins.float: ...
+    @property
+    def code(self) -> typing.Optional[builtins.str]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+    @property
+    def endpoint(self) -> typing.Optional[builtins.int]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+    @property
+    def network(self) -> typing.Optional[builtins.str]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+    @property
+    def method(self) -> typing.Optional[builtins.str]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+
+@typing.final
+class ErrorsSummaryTotals:
+    r"""
+    Full-window totals for `get_errors_summary`. Numbers can be fractional.
+    """
+    @property
+    def rpc_errors(self) -> builtins.float:
+        r"""
+        Rpc errors across the complete window.
+        """
+    @rpc_errors.setter
+    def rpc_errors(self, value: builtins.float) -> None:
+        r"""
+        Rpc errors across the complete window.
+        """
+    @property
+    def http_errors(self) -> builtins.float:
+        r"""
+        Http errors across the complete window.
+        """
+    @http_errors.setter
+    def http_errors(self, value: builtins.float) -> None:
+        r"""
+        Http errors across the complete window.
         """
 
 @typing.final
@@ -3121,6 +3992,32 @@ class GetAccountMetricsResponse:
         """
 
 @typing.final
+class GetActivityLogResponse:
+    r"""
+    Response from `get_activity_log`.
+    """
+    @property
+    def data(self) -> typing.Optional[ActivityLogEntry]:
+        r"""
+        The matching activity entry, when present.
+        """
+    @data.setter
+    def data(self, value: typing.Optional[ActivityLogEntry]) -> None:
+        r"""
+        The matching activity entry, when present.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error message when the request did not succeed.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error message when the request did not succeed.
+        """
+
+@typing.final
 class GetApiCreditsResponse:
     r"""
     Response from `get_api_credits`.
@@ -3149,6 +4046,158 @@ class GetApiCreditsResponse:
         """
 
 @typing.final
+class GetBlockedIpsResponse:
+    r"""
+    Blocked IP records visible for the current security state.
+    """
+    @property
+    def data(self) -> builtins.list[EndpointIp]: ...
+    @data.setter
+    def data(self, value: builtins.list[EndpointIp]) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
+class GetClientCertsResponse:
+    r"""
+    Full certificate state after the operation.
+    """
+    @property
+    def data(self) -> ClientCertsData: ...
+    @data.setter
+    def data(self, value: ClientCertsData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
+class GetEndpointErrorsSummaryRequest:
+    r"""
+    Parameters for `get_endpoint_errors_summary`. A first page requires `last`, or both
+    `from` and `to`; a continuation can contain only `cursor`.
+    """
+    @property
+    def last(self) -> typing.Optional[builtins.str]:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @last.setter
+    def last(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @property
+    def from_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @from_time.setter
+    def from_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def to_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @to_time.setter
+    def to_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @cursor.setter
+    def cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @property
+    def limit(self) -> typing.Optional[builtins.int]:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @limit.setter
+    def limit(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @property
+    def group_by(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Grouping dimensions. Allowed values: `code`, `network`, `method`.
+        """
+    @group_by.setter
+    def group_by(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Grouping dimensions. Allowed values: `code`, `network`, `method`.
+        """
+    @property
+    def networks(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Network names to include.
+        """
+    @networks.setter
+    def networks(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Network names to include.
+        """
+    @property
+    def methods(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        RPC method names to include.
+        """
+    @methods.setter
+    def methods(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        RPC method names to include.
+        """
+    @property
+    def codes(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        RPC error codes represented as strings; requires RPC kind.
+        """
+    @codes.setter
+    def codes(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        RPC error codes represented as strings; requires RPC kind.
+        """
+    @property
+    def status_codes(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        HTTP status codes represented as strings; requires HTTP kind.
+        """
+    @status_codes.setter
+    def status_codes(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        HTTP status codes represented as strings; requires HTTP kind.
+        """
+    @property
+    def kind(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error kind (`rpc` or `http`); method filters/grouping require RPC kind.
+        """
+    @kind.setter
+    def kind(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error kind (`rpc` or `http`); method filters/grouping require RPC kind.
+        """
+
+@typing.final
+class GetEndpointErrorsSummaryResponse:
+    @property
+    def data(self) -> ErrorsSummaryData: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
 class GetEndpointLogsRequest:
     r"""
     Parameters for `get_endpoint_logs`.
@@ -3156,22 +4205,22 @@ class GetEndpointLogsRequest:
     @property
     def from(self) -> builtins.str:
         r"""
-        Start of the query window (timestamp).
+        Start of the query window as an ISO 8601 timestamp.
         """
     @from.setter
     def from(self, value: builtins.str) -> None:
         r"""
-        Start of the query window (timestamp).
+        Start of the query window as an ISO 8601 timestamp.
         """
     @property
     def to(self) -> builtins.str:
         r"""
-        End of the query window (timestamp).
+        End of the query window as an ISO 8601 timestamp.
         """
     @to.setter
     def to(self, value: builtins.str) -> None:
         r"""
-        End of the query window (timestamp).
+        End of the query window as an ISO 8601 timestamp.
         """
     @property
     def include_details(self) -> typing.Optional[builtins.bool]:
@@ -3186,12 +4235,12 @@ class GetEndpointLogsRequest:
     @property
     def limit(self) -> typing.Optional[builtins.int]:
         r"""
-        Maximum number of log entries returned.
+        Maximum log entries: 1 through 100, default 20.
         """
     @limit.setter
     def limit(self, value: typing.Optional[builtins.int]) -> None:
         r"""
-        Maximum number of log entries returned.
+        Maximum log entries: 1 through 100, default 20.
         """
     @property
     def next_at(self) -> typing.Optional[builtins.str]:
@@ -3255,6 +4304,16 @@ class GetEndpointMetricsRequest:
         r"""
         Metric name (e.g. `method_calls_over_time`, `response_status_breakdown`).
         """
+    @property
+    def percentile(self) -> typing.Optional[builtins.int]:
+        r"""
+        Percentile from 1 through 100, required for response-time metrics.
+        """
+    @percentile.setter
+    def percentile(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Percentile from 1 through 100, required for response-time metrics.
+        """
 
 @typing.final
 class GetEndpointMetricsResponse:
@@ -3284,29 +4343,14 @@ class GetEndpointMetricsResponse:
 
 @typing.final
 class GetEndpointSecurityResponse:
-    r"""
-    Response from `get_endpoint_security`.
-    """
     @property
-    def data(self) -> typing.Optional[EndpointSecurity]:
-        r"""
-        The endpoint's security configuration.
-        """
+    def data(self) -> typing.Optional[EndpointSecurity]: ...
     @data.setter
-    def data(self, value: typing.Optional[EndpointSecurity]) -> None:
-        r"""
-        The endpoint's security configuration.
-        """
+    def data(self, value: typing.Optional[EndpointSecurity]) -> None: ...
     @property
-    def error(self) -> typing.Optional[builtins.str]:
-        r"""
-        Error message when the request did not succeed.
-        """
+    def error(self) -> typing.Optional[builtins.str]: ...
     @error.setter
-    def error(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        Error message when the request did not succeed.
-        """
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
 class GetEndpointUrlsData:
@@ -3379,12 +4423,12 @@ class GetEndpointsRequest:
     @property
     def limit(self) -> typing.Optional[builtins.int]:
         r"""
-        Maximum number of endpoints returned.
+        Maximum number of endpoints returned, capped at 100.
         """
     @limit.setter
     def limit(self, value: typing.Optional[builtins.int]) -> None:
         r"""
-        Maximum number of endpoints returned.
+        Maximum number of endpoints returned, capped at 100.
         """
     @property
     def offset(self) -> typing.Optional[builtins.int]:
@@ -3479,22 +4523,22 @@ class GetEndpointsRequest:
     @property
     def tag_ids(self) -> typing.Optional[builtins.list[builtins.int]]:
         r"""
-        Filter results by associated tag ids.
+        Filter by tag IDs; cannot be combined with nonempty tag_labels.
         """
     @tag_ids.setter
     def tag_ids(self, value: typing.Optional[builtins.list[builtins.int]]) -> None:
         r"""
-        Filter results by associated tag ids.
+        Filter by tag IDs; cannot be combined with nonempty tag_labels.
         """
     @property
     def tag_labels(self) -> typing.Optional[builtins.list[builtins.str]]:
         r"""
-        Filter results by associated tag labels.
+        Filter by tag labels; cannot be combined with nonempty tag_ids.
         """
     @tag_labels.setter
     def tag_labels(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
         r"""
-        Filter results by associated tag labels.
+        Filter by tag labels; cannot be combined with nonempty tag_ids.
         """
 
 @typing.final
@@ -3532,6 +4576,140 @@ class GetEndpointsResponse:
         r"""
         Error message when the request did not succeed.
         """
+
+@typing.final
+class GetErrorsSummaryRequest:
+    r"""
+    Parameters for `get_errors_summary`. A first page requires `last`, or both
+    `from` and `to`; a continuation can contain only `cursor`.
+    """
+    @property
+    def last(self) -> typing.Optional[builtins.str]:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @last.setter
+    def last(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @property
+    def from_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @from_time.setter
+    def from_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def to_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @to_time.setter
+    def to_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @cursor.setter
+    def cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @property
+    def limit(self) -> typing.Optional[builtins.int]:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @limit.setter
+    def limit(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @property
+    def group_by(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Grouping dimensions. Allowed values: `code`, `endpoint`, `network`, `method`.
+        """
+    @group_by.setter
+    def group_by(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Grouping dimensions. Allowed values: `code`, `endpoint`, `network`, `method`.
+        """
+    @property
+    def endpoints(self) -> typing.Optional[builtins.list[builtins.int]]:
+        r"""
+        Numeric endpoint IDs to include.
+        """
+    @endpoints.setter
+    def endpoints(self, value: typing.Optional[builtins.list[builtins.int]]) -> None:
+        r"""
+        Numeric endpoint IDs to include.
+        """
+    @property
+    def networks(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Network names to include.
+        """
+    @networks.setter
+    def networks(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Network names to include.
+        """
+    @property
+    def methods(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        RPC method names to include.
+        """
+    @methods.setter
+    def methods(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        RPC method names to include.
+        """
+    @property
+    def codes(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        RPC error codes represented as strings; requires RPC kind.
+        """
+    @codes.setter
+    def codes(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        RPC error codes represented as strings; requires RPC kind.
+        """
+    @property
+    def status_codes(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        HTTP status codes represented as strings; requires HTTP kind.
+        """
+    @status_codes.setter
+    def status_codes(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        HTTP status codes represented as strings; requires HTTP kind.
+        """
+    @property
+    def kind(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error kind (`rpc` or `http`); method filters/grouping require RPC kind.
+        """
+    @kind.setter
+    def kind(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error kind (`rpc` or `http`); method filters/grouping require RPC kind.
+        """
+
+@typing.final
+class GetErrorsSummaryResponse:
+    @property
+    def data(self) -> ErrorsSummaryData: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
 
 @typing.final
 class GetListData:
@@ -3638,6 +4816,20 @@ class GetLogDetailsResponse:
         """
 
 @typing.final
+class GetMethodBlacklistResponse:
+    r"""
+    Current method blacklist.
+    """
+    @property
+    def data(self) -> MethodBlacklistData: ...
+    @data.setter
+    def data(self, value: MethodBlacklistData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
 class GetMethodRateLimitsData:
     r"""
     Inner data for `get_method_rate_limits`.
@@ -3680,6 +4872,20 @@ class GetMethodRateLimitsResponse:
         """
 
 @typing.final
+class GetRangeLimitsResponse:
+    r"""
+    Current method range limits.
+    """
+    @property
+    def data(self) -> RangeLimitsData: ...
+    @data.setter
+    def data(self, value: RangeLimitsData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
 class GetRateLimitsData:
     r"""
     Inner data for `get_rate_limits`.
@@ -3720,6 +4926,17 @@ class GetRateLimitsResponse:
         r"""
         Error message when the request did not succeed.
         """
+
+@typing.final
+class GetRequestFiltersResponse:
+    @property
+    def data(self) -> builtins.list[RequestFilter]: ...
+    @data.setter
+    def data(self, value: builtins.list[RequestFilter]) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
 class GetSecurityOptionsResponse:
@@ -3805,6 +5022,182 @@ class GetTeamResponse:
     def data(self, value: typing.Optional[TeamDetail]) -> None:
         r"""
         The team's full detail.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error message when the request did not succeed.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error message when the request did not succeed.
+        """
+
+@typing.final
+class GetTrafficSummaryRequest:
+    r"""
+    Parameters for `get_traffic_summary`. A first page requires `last`, or both
+    `from` and `to`; a continuation can contain only `cursor`.
+    """
+    @property
+    def last(self) -> typing.Optional[builtins.str]:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @last.setter
+    def last(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @property
+    def from_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @from_time.setter
+    def from_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def to_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @to_time.setter
+    def to_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @cursor.setter
+    def cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @property
+    def limit(self) -> typing.Optional[builtins.int]:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @limit.setter
+    def limit(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @property
+    def group_by(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Grouping dimensions. Allowed values: `method`, `endpoint`.
+        """
+    @group_by.setter
+    def group_by(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Grouping dimensions. Allowed values: `method`, `endpoint`.
+        """
+    @property
+    def endpoint_names(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Endpoint subdomains to include.
+        """
+    @endpoint_names.setter
+    def endpoint_names(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Endpoint subdomains to include.
+        """
+    @property
+    def chains(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Chain names to include.
+        """
+    @chains.setter
+    def chains(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Chain names to include.
+        """
+    @property
+    def networks(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Network names to include.
+        """
+    @networks.setter
+    def networks(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Network names to include.
+        """
+    @property
+    def methods(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        RPC method names to include.
+        """
+    @methods.setter
+    def methods(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        RPC method names to include.
+        """
+    @property
+    def tag_ids(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Numeric account tag IDs represented as strings.
+        """
+    @tag_ids.setter
+    def tag_ids(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Numeric account tag IDs represented as strings.
+        """
+    @property
+    def addon_ids(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Numeric account add-on IDs represented as strings.
+        """
+    @addon_ids.setter
+    def addon_ids(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Numeric account add-on IDs represented as strings.
+        """
+
+@typing.final
+class GetTrafficSummaryResponse:
+    @property
+    def data(self) -> TrafficSummaryData: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
+class GetTransactionRequest:
+    r"""
+    Options for `get_transaction`.
+    """
+    @property
+    def include_payloads(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Include retained request/response text. The API defaults to false.
+        """
+    @include_payloads.setter
+    def include_payloads(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Include retained request/response text. The API defaults to false.
+        """
+
+@typing.final
+class GetTransactionResponse:
+    r"""
+    Response from `get_transaction`.
+    """
+    @property
+    def data(self) -> TransactionLookup:
+        r"""
+        Lookup result, including whether retained details exist.
+        """
+    @data.setter
+    def data(self, value: TransactionLookup) -> None:
+        r"""
+        Lookup result, including whether retained details exist.
         """
     @property
     def error(self) -> typing.Optional[builtins.str]:
@@ -3922,10 +5315,93 @@ class GetUsageByTagResponse:
         """
 
 @typing.final
+class GetUsageCreditsSummaryRequest:
+    r"""
+    Parameters for `get_usage_credits_summary`. A first page requires `last`, or both
+    `from` and `to`; a continuation can contain only `cursor`.
+    """
+    @property
+    def last(self) -> typing.Optional[builtins.str]:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @last.setter
+    def last(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @property
+    def from_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @from_time.setter
+    def from_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def to_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @to_time.setter
+    def to_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @cursor.setter
+    def cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @property
+    def limit(self) -> typing.Optional[builtins.int]:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @limit.setter
+    def limit(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+
+@typing.final
+class GetUsageCreditsSummaryResponse:
+    r"""
+    Response from `get_usage_credits_summary`.
+    """
+    @property
+    def data(self) -> UsageCreditsSummaryData:
+        r"""
+        Summary window, totals, and optional grouped results.
+        """
+    @data.setter
+    def data(self, value: UsageCreditsSummaryData) -> None:
+        r"""
+        Summary window, totals, and optional grouped results.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error returned by the API, when present.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error returned by the API, when present.
+        """
+
+@typing.final
 class GetUsageRequest:
     r"""
     Parameters for the account usage methods (`get_usage`, `get_usage_by_*`).
-    Both bounds are optional; omit for account-to-date totals.
+    Both bounds are optional; omit for billing-period totals.
     """
     @property
     def start_time(self) -> typing.Optional[builtins.int]:
@@ -3975,6 +5451,308 @@ class GetUsageResponse:
         """
 
 @typing.final
+class GetUsageRpcSummaryRequest:
+    r"""
+    Parameters for `get_usage_rpc_summary`. A first page requires `last`, or both
+    `from` and `to`; a continuation can contain only `cursor`.
+    """
+    @property
+    def last(self) -> typing.Optional[builtins.str]:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @last.setter
+    def last(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @property
+    def from_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @from_time.setter
+    def from_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def to_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @to_time.setter
+    def to_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @cursor.setter
+    def cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @property
+    def limit(self) -> typing.Optional[builtins.int]:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @limit.setter
+    def limit(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @property
+    def group_by(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Grouping dimensions. Allowed values: `method`, `endpoint`, `chain`, `network`.
+        """
+    @group_by.setter
+    def group_by(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Grouping dimensions. Allowed values: `method`, `endpoint`, `chain`, `network`.
+        """
+    @property
+    def endpoint_names(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Endpoint subdomains to include.
+        """
+    @endpoint_names.setter
+    def endpoint_names(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Endpoint subdomains to include.
+        """
+    @property
+    def chains(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Chain names to include.
+        """
+    @chains.setter
+    def chains(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Chain names to include.
+        """
+    @property
+    def networks(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Network names to include.
+        """
+    @networks.setter
+    def networks(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Network names to include.
+        """
+    @property
+    def methods(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        RPC method names to include.
+        """
+    @methods.setter
+    def methods(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        RPC method names to include.
+        """
+    @property
+    def tag_ids(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Numeric account tag IDs represented as strings.
+        """
+    @tag_ids.setter
+    def tag_ids(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Numeric account tag IDs represented as strings.
+        """
+    @property
+    def addon_ids(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Numeric account add-on IDs represented as strings.
+        """
+    @addon_ids.setter
+    def addon_ids(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Numeric account add-on IDs represented as strings.
+        """
+
+@typing.final
+class GetUsageRpcSummaryResponse:
+    @property
+    def data(self) -> UsageRpcSummaryData: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
+class GetUsageStreamsSummaryRequest:
+    r"""
+    Parameters for `get_usage_streams_summary`. A first page requires `last`, or both
+    `from` and `to`; a continuation can contain only `cursor`.
+    """
+    @property
+    def last(self) -> typing.Optional[builtins.str]:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @last.setter
+    def last(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @property
+    def from_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @from_time.setter
+    def from_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def to_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @to_time.setter
+    def to_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @cursor.setter
+    def cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @property
+    def limit(self) -> typing.Optional[builtins.int]:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @limit.setter
+    def limit(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @property
+    def group_by(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Grouping dimensions. Allowed values: `stream`.
+        """
+    @group_by.setter
+    def group_by(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Grouping dimensions. Allowed values: `stream`.
+        """
+    @property
+    def stream_id(self) -> typing.Optional[builtins.str]:
+        r"""
+        Stream identifier to include.
+        """
+    @stream_id.setter
+    def stream_id(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Stream identifier to include.
+        """
+
+@typing.final
+class GetUsageStreamsSummaryResponse:
+    @property
+    def data(self) -> UsageStreamsSummaryData: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
+class GetUsageWebhooksSummaryRequest:
+    r"""
+    Parameters for `get_usage_webhooks_summary`. A first page requires `last`, or both
+    `from` and `to`; a continuation can contain only `cursor`.
+    """
+    @property
+    def last(self) -> typing.Optional[builtins.str]:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @last.setter
+    def last(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Relative window, such as `1h`; use a positive duration in s, m, h, or d.
+        """
+    @property
+    def from_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @from_time.setter
+    def from_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window start as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def to_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @to_time.setter
+    def to_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Window end as an ISO 8601 timestamp with timezone.
+        """
+    @property
+    def cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @cursor.setter
+    def cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Opaque cursor returned by the same route and original query.
+        """
+    @property
+    def limit(self) -> typing.Optional[builtins.int]:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @limit.setter
+    def limit(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @property
+    def group_by(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Grouping dimensions. Allowed values: `webhook`.
+        """
+    @group_by.setter
+    def group_by(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Grouping dimensions. Allowed values: `webhook`.
+        """
+    @property
+    def webhook_id(self) -> typing.Optional[builtins.str]:
+        r"""
+        Webhook identifier to include.
+        """
+    @webhook_id.setter
+    def webhook_id(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Webhook identifier to include.
+        """
+
+@typing.final
+class GetUsageWebhooksSummaryResponse:
+    @property
+    def data(self) -> UsageWebhooksSummaryData: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
 class GetWebhooksParams:
     r"""
     Parameters for `list_webhooks`.
@@ -4015,7 +5793,7 @@ class HttpConfig:
     def headers(self) -> typing.Optional[builtins.dict[builtins.str, builtins.str]]:
         r"""
         Custom HTTP headers added to every outbound request.
-        
+
         **These headers OVERRIDE any SDK-managed header with the same name**,
         including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`.
         Header names are matched case-insensitively. Use this to override the
@@ -4025,7 +5803,7 @@ class HttpConfig:
     def headers(self, value: typing.Optional[builtins.dict[builtins.str, builtins.str]]) -> None:
         r"""
         Custom HTTP headers added to every outbound request.
-        
+
         **These headers OVERRIDE any SDK-managed header with the same name**,
         including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`.
         Header names are matched case-insensitively. Use this to override the
@@ -4107,12 +5885,12 @@ class InviteTeamMemberRequest:
     @property
     def role(self) -> typing.Optional[builtins.str]:
         r"""
-        Team role (`admin`, `viewer`, or `billing`); required for new users.
+        Standard role or account custom-role key; required for new users.
         """
     @role.setter
     def role(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        Team role (`admin`, `viewer`, or `billing`); required for new users.
+        Standard role or account custom-role key; required for new users.
         """
 
 @typing.final
@@ -4522,6 +6300,154 @@ class KvStoreConfig:
     def __new__(cls, base_url: typing.Optional[builtins.str] = None) -> KvStoreConfig: ...
 
 @typing.final
+class ListActivityLogFiltersResponse:
+    r"""
+    Response from `list_activity_log_filters`.
+    """
+    @property
+    def data(self) -> ActivityLogFiltersData:
+        r"""
+        Available actor and target-type filters.
+        """
+    @data.setter
+    def data(self, value: ActivityLogFiltersData) -> None:
+        r"""
+        Available actor and target-type filters.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error message when the request did not succeed.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error message when the request did not succeed.
+        """
+
+@typing.final
+class ListActivityLogsRequest:
+    r"""
+    Filters and pagination for `list_activity_logs`.
+    """
+    @property
+    def q(self) -> typing.Optional[builtins.str]:
+        r"""
+        Search descriptions, endpoint subdomains, and team names.
+        """
+    @q.setter
+    def q(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Search descriptions, endpoint subdomains, and team names.
+        """
+    @property
+    def actor(self) -> typing.Optional[builtins.str]:
+        r"""
+        User or API-key UUID returned by `list_activity_log_filters`.
+        """
+    @actor.setter
+    def actor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        User or API-key UUID returned by `list_activity_log_filters`.
+        """
+    @property
+    def endpoint_id(self) -> typing.Optional[builtins.str]:
+        r"""
+        Numeric endpoint ID represented as a string.
+        """
+    @endpoint_id.setter
+    def endpoint_id(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Numeric endpoint ID represented as a string.
+        """
+    @property
+    def target_type(self) -> typing.Optional[builtins.str]:
+        r"""
+        Target type, such as `endpoint`, `team`, or `api_key`.
+        """
+    @target_type.setter
+    def target_type(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Target type, such as `endpoint`, `team`, or `api_key`.
+        """
+    @property
+    def from_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        ISO 8601 start date or timestamp; a bare date starts at midnight UTC.
+        """
+    @from_time.setter
+    def from_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        ISO 8601 start date or timestamp; a bare date starts at midnight UTC.
+        """
+    @property
+    def to_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        ISO 8601 end date or timestamp; a bare date includes that entire UTC day.
+        """
+    @to_time.setter
+    def to_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        ISO 8601 end date or timestamp; a bare date includes that entire UTC day.
+        """
+    @property
+    def limit(self) -> typing.Optional[builtins.int]:
+        r"""
+        Page size from 0 through 100; the API defaults to 20.
+        """
+    @limit.setter
+    def limit(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Page size from 0 through 100; the API defaults to 20.
+        """
+    @property
+    def offset(self) -> typing.Optional[builtins.int]:
+        r"""
+        Entries to skip. Pin `to_time` when exporting to avoid shifting pages.
+        """
+    @offset.setter
+    def offset(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Entries to skip. Pin `to_time` when exporting to avoid shifting pages.
+        """
+
+@typing.final
+class ListActivityLogsResponse:
+    r"""
+    Response from `list_activity_logs`.
+    """
+    @property
+    def data(self) -> builtins.list[ActivityLogEntry]:
+        r"""
+        Activity entries, newest first.
+        """
+    @data.setter
+    def data(self, value: builtins.list[ActivityLogEntry]) -> None:
+        r"""
+        Activity entries, newest first.
+        """
+    @property
+    def pagination(self) -> ActivityLogPagination:
+        r"""
+        Offset pagination metadata.
+        """
+    @pagination.setter
+    def pagination(self, value: ActivityLogPagination) -> None:
+        r"""
+        Offset pagination metadata.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error message when the request did not succeed.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error message when the request did not succeed.
+        """
+
+@typing.final
 class ListChainsResponse:
     r"""
     Response from `list_chains`.
@@ -4750,6 +6676,138 @@ class ListTeamsResponse:
         """
 
 @typing.final
+class ListTransactionsRequest:
+    r"""
+    Time window, filters, and cursor for `list_transactions`.
+    """
+    @property
+    def last(self) -> typing.Optional[builtins.str]:
+        r"""
+        Positive duration ending now, such as `1h` or `7d`; units are s, m, h, or d.
+        """
+    @last.setter
+    def last(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Positive duration ending now, such as `1h` or `7d`; units are s, m, h, or d.
+        """
+    @property
+    def from_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        ISO 8601 start timestamp with timezone; supply with `to_time` instead of `last`.
+        """
+    @from_time.setter
+    def from_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        ISO 8601 start timestamp with timezone; supply with `to_time` instead of `last`.
+        """
+    @property
+    def to_time(self) -> typing.Optional[builtins.str]:
+        r"""
+        ISO 8601 end timestamp with timezone.
+        """
+    @to_time.setter
+    def to_time(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        ISO 8601 end timestamp with timezone.
+        """
+    @property
+    def network(self) -> typing.Optional[builtins.str]:
+        r"""
+        Network to filter.
+        """
+    @network.setter
+    def network(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Network to filter.
+        """
+    @property
+    def method(self) -> typing.Optional[builtins.str]:
+        r"""
+        RPC method to filter.
+        """
+    @method.setter
+    def method(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        RPC method to filter.
+        """
+    @property
+    def state(self) -> typing.Optional[builtins.str]:
+        r"""
+        Transaction state: `submitted`, `succeeded`, or `failed`.
+        """
+    @state.setter
+    def state(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Transaction state: `submitted`, `succeeded`, or `failed`.
+        """
+    @property
+    def transaction_hash(self) -> typing.Optional[builtins.str]:
+        r"""
+        Transaction hash to filter.
+        """
+    @transaction_hash.setter
+    def transaction_hash(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Transaction hash to filter.
+        """
+    @property
+    def cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Opaque continuation cursor; can be supplied without a time window.
+        """
+    @cursor.setter
+    def cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Opaque continuation cursor; can be supplied without a time window.
+        """
+    @property
+    def endpoints(self) -> typing.Optional[builtins.list[builtins.int]]:
+        r"""
+        Numeric endpoint IDs, encoded as repeated `endpoints[]` keys.
+        """
+    @endpoints.setter
+    def endpoints(self, value: typing.Optional[builtins.list[builtins.int]]) -> None:
+        r"""
+        Numeric endpoint IDs, encoded as repeated `endpoints[]` keys.
+        """
+    @property
+    def limit(self) -> typing.Optional[builtins.int]:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+    @limit.setter
+    def limit(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Page size from 1 through 1000; the API defaults to 100.
+        """
+
+@typing.final
+class ListTransactionsResponse:
+    r"""
+    Response from `list_transactions`.
+    """
+    @property
+    def data(self) -> TransactionsData:
+        r"""
+        Resolved time window and transaction page.
+        """
+    @data.setter
+    def data(self, value: TransactionsData) -> None:
+        r"""
+        Resolved time window and transaction page.
+        """
+    @property
+    def error(self) -> typing.Optional[builtins.str]:
+        r"""
+        Error message when the request did not succeed.
+        """
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Error message when the request did not succeed.
+        """
+
+@typing.final
 class ListWebhooksResponse:
     r"""
     Response from `list_webhooks`.
@@ -4800,6 +6858,16 @@ class LogDetails:
         r"""
         JSON-encoded response body (truncated at 2KB).
         """
+
+@typing.final
+class MethodBlacklistData:
+    r"""
+    Blocked methods.
+    """
+    @property
+    def methods(self) -> builtins.list[builtins.str]: ...
+    @methods.setter
+    def methods(self, value: builtins.list[builtins.str]) -> None: ...
 
 @typing.final
 class MethodRateLimiter:
@@ -4866,6 +6934,16 @@ class MethodRateLimiter:
         r"""
         Creation timestamp.
         """
+    @property
+    def limit_by_ip(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Whether the method limit applies per client IP.
+        """
+    @limit_by_ip.setter
+    def limit_by_ip(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Whether the method limit applies per client IP.
+        """
 
 @typing.final
 class MethodUsage:
@@ -4921,6 +6999,16 @@ class MethodUsage:
     def chain(self, value: typing.Optional[builtins.str]) -> None:
         r"""
         Chain the calls targeted.
+        """
+    @property
+    def bytes(self) -> typing.Optional[builtins.int]:
+        r"""
+        Response bytes transferred.
+        """
+    @bytes.setter
+    def bytes(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Response bytes transferred.
         """
 
 @typing.final
@@ -5070,7 +7158,7 @@ class PaymentConfig:
     boundary. The private `key` field stays readable to the caller, but the
     SDK's own `Debug` redacts it (below) so an SDK log line or panic can't leak
     it.
-    
+
     **Do not log your own `PaymentConfig`** — `println!("{config:?}")` on the
     derived-Debug *binding* object (napi/pyclass/hash) still shows the raw key.
     Only the SDK's internal rendering is redacted.
@@ -5341,6 +7429,20 @@ class QuicknodeSdk:
         """
 
 @typing.final
+class RangeLimitsData:
+    r"""
+    Range limits and supported methods for this endpoint chain.
+    """
+    @property
+    def limits(self) -> builtins.dict[builtins.str, builtins.int]: ...
+    @limits.setter
+    def limits(self, value: builtins.dict[builtins.str, builtins.int]) -> None: ...
+    @property
+    def supported_methods(self) -> builtins.list[builtins.str]: ...
+    @supported_methods.setter
+    def supported_methods(self, value: builtins.list[builtins.str]) -> None: ...
+
+@typing.final
 class RateLimitEntry:
     r"""
     A single rate-limit row returned by `get_rate_limits`, identifying the
@@ -5513,6 +7615,21 @@ class RenameTagResponse:
         """
 
 @typing.final
+class RequestFilter:
+    @property
+    def id(self) -> builtins.str: ...
+    @id.setter
+    def id(self, value: builtins.str) -> None: ...
+    @property
+    def pattern(self) -> dict[str, typing.Any]: ...
+    @pattern.setter
+    def pattern(self, value: dict[str, typing.Any]) -> None: ...
+    @property
+    def method_whitelist(self) -> builtins.bool: ...
+    @method_whitelist.setter
+    def method_whitelist(self, value: builtins.bool) -> None: ...
+
+@typing.final
 class ResendTeamInviteResponse:
     r"""
     Response from `resend_team_invite`.
@@ -5548,7 +7665,7 @@ class RpcApiClient:
         and defaults to `[]`. `network` selects a chain on the multichain
         endpoint (a key in the seeded network map, e.g. `"solana-mainnet"`);
         omit for the endpoint's default network.
-        
+
         `endpoint_url` sends this call to a custom HTTP URL instead, bypassing
         the Tooling Access endpoint and the session JWT (no Authorization header
         is attached). It overrides the client-wide `RpcConfig.endpoint_url`
@@ -5622,7 +7739,7 @@ class RpcApiClient:
         decimal string) into the escrow. Returns the channel state dict — persist
         it; the gateway has no read-only channel endpoint, so a lost record means
         opening a new channel. Moves real funds; single-attempt.
-        
+
         Takes no network: the channel is scoped by the configured pay network and
         asset, so one channel funds calls to every supported network.
         """
@@ -5641,7 +7758,7 @@ class RpcApiClient:
         r"""
         Fetches the gateway's view of the channel as a dict `{channel_id,
         accepted_cumulative, spent}` (amounts are decimal strings).
-        
+
         **This costs one request unit** and advances the voucher by `per_call`,
         exactly like a session call — persist the advanced `cumulative_spent`.
         Raises `PaymentUnsupportedError` before any network I/O when the channel
@@ -6048,148 +8165,74 @@ class SecurityOptionsUpdate:
         r"""
         Custom IP header toggle.
         """
+    @property
+    def response_logging(self) -> typing.Optional[builtins.str]:
+        r"""
+        Response logging toggle.
+        """
+    @response_logging.setter
+    def response_logging(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Response logging toggle.
+        """
 
 @typing.final
 class ShowEndpointResponse:
-    r"""
-    Response from `show_endpoint`.
-    """
     @property
-    def data(self) -> typing.Optional[SingleEndpoint]:
-        r"""
-        The endpoint, when found.
-        """
+    def data(self) -> typing.Optional[SingleEndpoint]: ...
     @data.setter
-    def data(self, value: typing.Optional[SingleEndpoint]) -> None:
-        r"""
-        The endpoint, when found.
-        """
+    def data(self, value: typing.Optional[SingleEndpoint]) -> None: ...
     @property
-    def error(self) -> typing.Optional[builtins.str]:
-        r"""
-        Error message when the request did not succeed.
-        """
+    def error(self) -> typing.Optional[builtins.str]: ...
     @error.setter
-    def error(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        Error message when the request did not succeed.
-        """
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
 
 @typing.final
 class SingleEndpoint:
-    r"""
-    Full representation of a single endpoint, including its security and rate limits.
-    """
     @property
-    def id(self) -> builtins.str:
-        r"""
-        Unique endpoint identifier.
-        """
+    def id(self) -> builtins.str: ...
     @id.setter
-    def id(self, value: builtins.str) -> None:
-        r"""
-        Unique endpoint identifier.
-        """
+    def id(self, value: builtins.str) -> None: ...
     @property
-    def label(self) -> typing.Optional[builtins.str]:
-        r"""
-        Human-readable label.
-        """
+    def label(self) -> typing.Optional[builtins.str]: ...
     @label.setter
-    def label(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        Human-readable label.
-        """
+    def label(self, value: typing.Optional[builtins.str]) -> None: ...
     @property
-    def status(self) -> typing.Optional[builtins.str]:
-        r"""
-        Current operational status.
-        """
+    def status(self) -> typing.Optional[builtins.str]: ...
     @status.setter
-    def status(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        Current operational status.
-        """
+    def status(self, value: typing.Optional[builtins.str]) -> None: ...
     @property
-    def chain(self) -> builtins.str:
-        r"""
-        Blockchain the endpoint serves.
-        """
+    def chain(self) -> builtins.str: ...
     @chain.setter
-    def chain(self, value: builtins.str) -> None:
-        r"""
-        Blockchain the endpoint serves.
-        """
+    def chain(self, value: builtins.str) -> None: ...
     @property
-    def network(self) -> builtins.str:
-        r"""
-        Specific network within the chain.
-        """
+    def network(self) -> builtins.str: ...
     @network.setter
-    def network(self, value: builtins.str) -> None:
-        r"""
-        Specific network within the chain.
-        """
+    def network(self, value: builtins.str) -> None: ...
     @property
-    def http_url(self) -> builtins.str:
-        r"""
-        HTTP RPC URL.
-        """
+    def http_url(self) -> builtins.str: ...
     @http_url.setter
-    def http_url(self, value: builtins.str) -> None:
-        r"""
-        HTTP RPC URL.
-        """
+    def http_url(self, value: builtins.str) -> None: ...
     @property
-    def wss_url(self) -> typing.Optional[builtins.str]:
-        r"""
-        WebSocket RPC URL, when available.
-        """
+    def wss_url(self) -> typing.Optional[builtins.str]: ...
     @wss_url.setter
-    def wss_url(self, value: typing.Optional[builtins.str]) -> None:
-        r"""
-        WebSocket RPC URL, when available.
-        """
+    def wss_url(self, value: typing.Optional[builtins.str]) -> None: ...
     @property
-    def security(self) -> typing.Optional[EndpointSecurity]:
-        r"""
-        Endpoint security configuration.
-        """
+    def security(self) -> typing.Optional[EndpointSecurity]: ...
     @security.setter
-    def security(self, value: typing.Optional[EndpointSecurity]) -> None:
-        r"""
-        Endpoint security configuration.
-        """
+    def security(self, value: typing.Optional[EndpointSecurity]) -> None: ...
     @property
-    def rate_limits(self) -> typing.Optional[EndpointRateLimits]:
-        r"""
-        Endpoint rate limits.
-        """
+    def rate_limits(self) -> typing.Optional[EndpointRateLimits]: ...
     @rate_limits.setter
-    def rate_limits(self, value: typing.Optional[EndpointRateLimits]) -> None:
-        r"""
-        Endpoint rate limits.
-        """
+    def rate_limits(self, value: typing.Optional[EndpointRateLimits]) -> None: ...
     @property
-    def tags(self) -> builtins.list[EndpointTag]:
-        r"""
-        Tags applied to the endpoint.
-        """
+    def tags(self) -> builtins.list[EndpointTag]: ...
     @tags.setter
-    def tags(self, value: builtins.list[EndpointTag]) -> None:
-        r"""
-        Tags applied to the endpoint.
-        """
+    def tags(self, value: builtins.list[EndpointTag]) -> None: ...
     @property
-    def is_multichain(self) -> builtins.bool:
-        r"""
-        Whether the endpoint is configured to serve multiple chains/networks.
-        """
+    def is_multichain(self) -> builtins.bool: ...
     @is_multichain.setter
-    def is_multichain(self, value: builtins.bool) -> None:
-        r"""
-        Whether the endpoint is configured to serve multiple chains/networks.
-        """
+    def is_multichain(self, value: builtins.bool) -> None: ...
 
 @typing.final
 class SolanaWalletFilterArgs:
@@ -6585,6 +8628,36 @@ class TagUsage:
         r"""
         Request count during the window.
         """
+    @property
+    def rpc_credits(self) -> typing.Optional[builtins.int]:
+        r"""
+        RPC credits consumed.
+        """
+    @rpc_credits.setter
+    def rpc_credits(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        RPC credits consumed.
+        """
+    @property
+    def data_credits(self) -> typing.Optional[builtins.int]:
+        r"""
+        Data credits consumed.
+        """
+    @data_credits.setter
+    def data_credits(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Data credits consumed.
+        """
+    @property
+    def bytes(self) -> typing.Optional[builtins.int]:
+        r"""
+        Response bytes transferred.
+        """
+    @bytes.setter
+    def bytes(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Response bytes transferred.
+        """
 
 @typing.final
 class TeamDetail:
@@ -6894,6 +8967,510 @@ class ToolingAccessStatus:
         """
 
 @typing.final
+class TrafficSummaryData:
+    @property
+    def from_time(self) -> builtins.str: ...
+    @property
+    def to_time(self) -> builtins.str: ...
+    @property
+    def totals(self) -> TrafficSummaryTotals: ...
+    @property
+    def breakdown(self) -> typing.Optional[builtins.list[TrafficSummaryRow]]: ...
+    @property
+    def next_cursor(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
+class TrafficSummaryRow:
+    @property
+    def successful_requests(self) -> typing.Optional[builtins.float]: ...
+    @property
+    def bytes(self) -> builtins.float: ...
+    @property
+    def request_credits(self) -> builtins.float: ...
+    @property
+    def bytes_credits(self) -> builtins.float: ...
+    @property
+    def credits(self) -> builtins.float: ...
+    @property
+    def active_methods(self) -> builtins.float: ...
+    @property
+    def method(self) -> typing.Optional[builtins.str]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+    @property
+    def endpoint(self) -> typing.Optional[builtins.int]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+
+@typing.final
+class TrafficSummaryTotals:
+    r"""
+    Full-window totals for `get_traffic_summary`. Numbers can be fractional.
+    """
+    @property
+    def successful_requests(self) -> builtins.float:
+        r"""
+        Successful requests across the complete window.
+        """
+    @successful_requests.setter
+    def successful_requests(self, value: builtins.float) -> None:
+        r"""
+        Successful requests across the complete window.
+        """
+    @property
+    def bytes(self) -> builtins.float:
+        r"""
+        Bytes across the complete window.
+        """
+    @bytes.setter
+    def bytes(self, value: builtins.float) -> None:
+        r"""
+        Bytes across the complete window.
+        """
+    @property
+    def request_credits(self) -> builtins.float:
+        r"""
+        Request credits across the complete window.
+        """
+    @request_credits.setter
+    def request_credits(self, value: builtins.float) -> None:
+        r"""
+        Request credits across the complete window.
+        """
+    @property
+    def bytes_credits(self) -> builtins.float:
+        r"""
+        Bytes credits across the complete window.
+        """
+    @bytes_credits.setter
+    def bytes_credits(self, value: builtins.float) -> None:
+        r"""
+        Bytes credits across the complete window.
+        """
+    @property
+    def credits(self) -> builtins.float:
+        r"""
+        Credits across the complete window.
+        """
+    @credits.setter
+    def credits(self, value: builtins.float) -> None:
+        r"""
+        Credits across the complete window.
+        """
+    @property
+    def active_methods(self) -> builtins.float:
+        r"""
+        Active methods across the complete window.
+        """
+    @active_methods.setter
+    def active_methods(self, value: builtins.float) -> None:
+        r"""
+        Active methods across the complete window.
+        """
+
+@typing.final
+class TransactionAttempt:
+    r"""
+    One retained submission attempt.
+    """
+    @property
+    def submitted_at(self) -> builtins.str:
+        r"""
+        Submission timestamp.
+        """
+    @submitted_at.setter
+    def submitted_at(self, value: builtins.str) -> None:
+        r"""
+        Submission timestamp.
+        """
+    @property
+    def endpoint_id(self) -> builtins.int:
+        r"""
+        Numeric ID of the submitting endpoint.
+        """
+    @endpoint_id.setter
+    def endpoint_id(self, value: builtins.int) -> None:
+        r"""
+        Numeric ID of the submitting endpoint.
+        """
+    @property
+    def method(self) -> builtins.str:
+        r"""
+        RPC method used.
+        """
+    @method.setter
+    def method(self, value: builtins.str) -> None:
+        r"""
+        RPC method used.
+        """
+    @property
+    def request_id(self) -> builtins.str:
+        r"""
+        Request UUID.
+        """
+    @request_id.setter
+    def request_id(self, value: builtins.str) -> None:
+        r"""
+        Request UUID.
+        """
+    @property
+    def payloads(self) -> typing.Optional[TransactionPayloads]:
+        r"""
+        Payload text, only when requested and available.
+        """
+    @payloads.setter
+    def payloads(self, value: typing.Optional[TransactionPayloads]) -> None:
+        r"""
+        Payload text, only when requested and available.
+        """
+
+@typing.final
+class TransactionDetail:
+    r"""
+    Retained transaction details and ordered submission attempts.
+    """
+    @property
+    def network(self) -> builtins.str:
+        r"""
+        Network on which the transaction was submitted.
+        """
+    @network.setter
+    def network(self, value: builtins.str) -> None:
+        r"""
+        Network on which the transaction was submitted.
+        """
+    @property
+    def transaction_hash(self) -> builtins.str:
+        r"""
+        Transaction hash.
+        """
+    @transaction_hash.setter
+    def transaction_hash(self, value: builtins.str) -> None:
+        r"""
+        Transaction hash.
+        """
+    @property
+    def first_submitted_at(self) -> builtins.str:
+        r"""
+        Timestamp of the first submission.
+        """
+    @first_submitted_at.setter
+    def first_submitted_at(self, value: builtins.str) -> None:
+        r"""
+        Timestamp of the first submission.
+        """
+    @property
+    def last_submitted_at(self) -> builtins.str:
+        r"""
+        Timestamp of the latest submission.
+        """
+    @last_submitted_at.setter
+    def last_submitted_at(self, value: builtins.str) -> None:
+        r"""
+        Timestamp of the latest submission.
+        """
+    @property
+    def state(self) -> builtins.str:
+        r"""
+        Current transaction state.
+        """
+    @state.setter
+    def state(self, value: builtins.str) -> None:
+        r"""
+        Current transaction state.
+        """
+    @property
+    def attempt_count(self) -> typing.Optional[builtins.int]:
+        r"""
+        Number of attempts, when available.
+        """
+    @attempt_count.setter
+    def attempt_count(self, value: typing.Optional[builtins.int]) -> None:
+        r"""
+        Number of attempts, when available.
+        """
+    @property
+    def endpoint_ids(self) -> typing.Optional[builtins.list[typing.Optional[builtins.int]]]:
+        r"""
+        Numeric endpoint IDs, when available; individual entries may be null.
+        """
+    @endpoint_ids.setter
+    def endpoint_ids(self, value: typing.Optional[builtins.list[typing.Optional[builtins.int]]]) -> None:
+        r"""
+        Numeric endpoint IDs, when available; individual entries may be null.
+        """
+    @property
+    def methods(self) -> typing.Optional[builtins.list[builtins.str]]:
+        r"""
+        Submission methods, when available.
+        """
+    @methods.setter
+    def methods(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+        r"""
+        Submission methods, when available.
+        """
+    @property
+    def archive(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Whether archive data was used, when available.
+        """
+    @archive.setter
+    def archive(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Whether archive data was used, when available.
+        """
+    @property
+    def height(self) -> typing.Optional[builtins.str]:
+        r"""
+        Decimal block-height string, when available.
+        """
+    @height.setter
+    def height(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Decimal block-height string, when available.
+        """
+    @property
+    def attempts(self) -> builtins.list[TransactionAttempt]:
+        r"""
+        Retained attempts in the order returned by the API.
+        """
+    @attempts.setter
+    def attempts(self, value: builtins.list[TransactionAttempt]) -> None:
+        r"""
+        Retained attempts in the order returned by the API.
+        """
+
+@typing.final
+class TransactionLookup:
+    r"""
+    Result of a retained transaction lookup.
+    """
+    @property
+    def exists(self) -> builtins.bool:
+        r"""
+        Whether the transaction has retained details.
+        """
+    @exists.setter
+    def exists(self, value: builtins.bool) -> None:
+        r"""
+        Whether the transaction has retained details.
+        """
+    @property
+    def data(self) -> typing.Optional[TransactionDetail]:
+        r"""
+        Details when retained; null or absent when `exists` is false.
+        """
+    @data.setter
+    def data(self, value: typing.Optional[TransactionDetail]) -> None:
+        r"""
+        Details when retained; null or absent when `exists` is false.
+        """
+
+@typing.final
+class TransactionPayloads:
+    r"""
+    Original request and response text for an attempt.
+    """
+    @property
+    def request(self) -> typing.Optional[builtins.str]:
+        r"""
+        Original request text; preserved without parsing or reformatting.
+        """
+    @request.setter
+    def request(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Original request text; preserved without parsing or reformatting.
+        """
+    @property
+    def response(self) -> typing.Optional[builtins.str]:
+        r"""
+        Original response text; may contain non-JSON content.
+        """
+    @response.setter
+    def response(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Original response text; may contain non-JSON content.
+        """
+
+@typing.final
+class TransactionSummary:
+    r"""
+    A retained transaction and its aggregate submission metadata.
+    """
+    @property
+    def network(self) -> builtins.str:
+        r"""
+        Network on which the transaction was submitted.
+        """
+    @network.setter
+    def network(self, value: builtins.str) -> None:
+        r"""
+        Network on which the transaction was submitted.
+        """
+    @property
+    def transaction_hash(self) -> builtins.str:
+        r"""
+        Transaction hash.
+        """
+    @transaction_hash.setter
+    def transaction_hash(self, value: builtins.str) -> None:
+        r"""
+        Transaction hash.
+        """
+    @property
+    def first_submitted_at(self) -> builtins.str:
+        r"""
+        Timestamp of the first submission.
+        """
+    @first_submitted_at.setter
+    def first_submitted_at(self, value: builtins.str) -> None:
+        r"""
+        Timestamp of the first submission.
+        """
+    @property
+    def last_submitted_at(self) -> builtins.str:
+        r"""
+        Timestamp of the latest submission.
+        """
+    @last_submitted_at.setter
+    def last_submitted_at(self, value: builtins.str) -> None:
+        r"""
+        Timestamp of the latest submission.
+        """
+    @property
+    def attempt_count(self) -> builtins.int:
+        r"""
+        Number of submission attempts.
+        """
+    @attempt_count.setter
+    def attempt_count(self, value: builtins.int) -> None:
+        r"""
+        Number of submission attempts.
+        """
+    @property
+    def endpoint_ids(self) -> builtins.list[typing.Optional[builtins.int]]:
+        r"""
+        Numeric IDs of submitting endpoints; null entries remain in place.
+        """
+    @endpoint_ids.setter
+    def endpoint_ids(self, value: builtins.list[typing.Optional[builtins.int]]) -> None:
+        r"""
+        Numeric IDs of submitting endpoints; null entries remain in place.
+        """
+    @property
+    def methods(self) -> builtins.list[builtins.str]:
+        r"""
+        RPC methods used to submit this transaction.
+        """
+    @methods.setter
+    def methods(self, value: builtins.list[builtins.str]) -> None:
+        r"""
+        RPC methods used to submit this transaction.
+        """
+    @property
+    def archive(self) -> builtins.bool:
+        r"""
+        Whether archive data was used.
+        """
+    @archive.setter
+    def archive(self, value: builtins.bool) -> None:
+        r"""
+        Whether archive data was used.
+        """
+    @property
+    def height(self) -> typing.Optional[builtins.str]:
+        r"""
+        Decimal block-height string, preserving values above JavaScript safe integers.
+        """
+    @height.setter
+    def height(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Decimal block-height string, preserving values above JavaScript safe integers.
+        """
+    @property
+    def state(self) -> builtins.str:
+        r"""
+        Transaction state: `submitted`, `succeeded`, or `failed`.
+        """
+    @state.setter
+    def state(self, value: builtins.str) -> None:
+        r"""
+        Transaction state: `submitted`, `succeeded`, or `failed`.
+        """
+
+@typing.final
+class TransactionsData:
+    r"""
+    A page of transactions within the resolved time window.
+    """
+    @property
+    def from_time(self) -> builtins.str:
+        r"""
+        Resolved start timestamp.
+        """
+    @from_time.setter
+    def from_time(self, value: builtins.str) -> None:
+        r"""
+        Resolved start timestamp.
+        """
+    @property
+    def to_time(self) -> builtins.str:
+        r"""
+        Resolved end timestamp.
+        """
+    @to_time.setter
+    def to_time(self, value: builtins.str) -> None:
+        r"""
+        Resolved end timestamp.
+        """
+    @property
+    def transactions(self) -> builtins.list[TransactionSummary]:
+        r"""
+        Transactions, newest first.
+        """
+    @transactions.setter
+    def transactions(self, value: builtins.list[TransactionSummary]) -> None:
+        r"""
+        Transactions, newest first.
+        """
+    @property
+    def next_cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Cursor for the next page; omitted when there are no more rows.
+        """
+    @next_cursor.setter
+    def next_cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Cursor for the next page; omitted when there are no more rows.
+        """
+
+@typing.final
+class UpdateClientCertsRequest:
+    r"""
+    Enable or disable client-certificate authentication.
+    """
+    @property
+    def enabled(self) -> builtins.bool: ...
+    @enabled.setter
+    def enabled(self, value: builtins.bool) -> None: ...
+
+@typing.final
+class UpdateClientCertsResponse:
+    r"""
+    Full certificate state after the operation.
+    """
+    @property
+    def data(self) -> ClientCertsData: ...
+    @data.setter
+    def data(self, value: ClientCertsData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
 class UpdateEndpointRequest:
     r"""
     Parameters for `update_endpoint`.
@@ -6901,12 +9478,12 @@ class UpdateEndpointRequest:
     @property
     def label(self) -> typing.Optional[builtins.str]:
         r"""
-        New human-readable label.
+        New human-readable label; required by the API.
         """
     @label.setter
     def label(self, value: typing.Optional[builtins.str]) -> None:
         r"""
-        New human-readable label.
+        New human-readable label; required by the API.
         """
 
 @typing.final
@@ -6952,9 +9529,33 @@ class UpdateEndpointStatusResponse:
         """
 
 @typing.final
+class UpdateMethodBlacklistRequest:
+    r"""
+    Replacement blacklist; an empty list clears it.
+    """
+    @property
+    def methods(self) -> builtins.list[builtins.str]: ...
+    @methods.setter
+    def methods(self, value: builtins.list[builtins.str]) -> None: ...
+
+@typing.final
+class UpdateMethodBlacklistResponse:
+    r"""
+    Current method blacklist.
+    """
+    @property
+    def data(self) -> MethodBlacklistData: ...
+    @data.setter
+    def data(self, value: MethodBlacklistData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
 class UpdateMethodRateLimitRequest:
     r"""
-    Parameters for `update_method_rate_limit`. Only provided fields are changed.
+    Parameters for `update_method_rate_limit`. Supply at least one field; false counts. Only provided fields are changed.
     """
     @property
     def methods(self) -> typing.Optional[builtins.list[builtins.str]]:
@@ -6986,6 +9587,16 @@ class UpdateMethodRateLimitRequest:
         r"""
         New rate value.
         """
+    @property
+    def limit_by_ip(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Whether the method limit applies per client IP.
+        """
+    @limit_by_ip.setter
+    def limit_by_ip(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Whether the method limit applies per client IP.
+        """
 
 @typing.final
 class UpdateMethodRateLimitResponse:
@@ -7014,20 +9625,85 @@ class UpdateMethodRateLimitResponse:
         """
 
 @typing.final
-class UpdateRateLimitsRequest:
+class UpdateRangeLimitsRequest:
     r"""
-    Parameters for `update_rate_limits`.
+    Replacement positive range limits; an empty object clears them.
     """
     @property
-    def rate_limits(self) -> RateLimitSettings:
+    def limits(self) -> builtins.dict[builtins.str, builtins.int]: ...
+    @limits.setter
+    def limits(self, value: builtins.dict[builtins.str, builtins.int]) -> None: ...
+
+@typing.final
+class UpdateRangeLimitsResponse:
+    r"""
+    Current method range limits.
+    """
+    @property
+    def data(self) -> RangeLimitsData: ...
+    @data.setter
+    def data(self, value: RangeLimitsData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
+class UpdateRateLimitsData:
+    r"""
+    Effective rate-limit override payload.
+    """
+    @property
+    def limits(self) -> EffectiveRateLimits: ...
+    @limits.setter
+    def limits(self, value: EffectiveRateLimits) -> None: ...
+
+@typing.final
+class UpdateRateLimitsRequest:
+    r"""
+    Parameters for `update_rate_limits`. Supply at least one field.
+    """
+    @property
+    def rate_limits(self) -> typing.Optional[RateLimitSettings]:
         r"""
-        Rate limit values to apply.
+        Rate limit values to apply. Omit to leave the caps unchanged.
         """
     @rate_limits.setter
-    def rate_limits(self, value: RateLimitSettings) -> None:
+    def rate_limits(self, value: typing.Optional[RateLimitSettings]) -> None:
         r"""
-        Rate limit values to apply.
+        Rate limit values to apply. Omit to leave the caps unchanged.
         """
+    @property
+    def limit_by_ip(self) -> typing.Optional[builtins.bool]:
+        r"""
+        Apply endpoint limits per client IP. Omit to leave the mode unchanged.
+        """
+    @limit_by_ip.setter
+    def limit_by_ip(self, value: typing.Optional[builtins.bool]) -> None:
+        r"""
+        Apply endpoint limits per client IP. Omit to leave the mode unchanged.
+        """
+
+@typing.final
+class UpdateRateLimitsResponse:
+    r"""
+    Response from update_rate_limits_with_response.
+    """
+    @property
+    def data(self) -> UpdateRateLimitsData: ...
+    @data.setter
+    def data(self, value: UpdateRateLimitsData) -> None: ...
+    @property
+    def error(self) -> typing.Optional[builtins.str]: ...
+    @error.setter
+    def error(self, value: typing.Optional[builtins.str]) -> None: ...
+
+@typing.final
+class UpdateRequestFilterPatternRequest:
+    @property
+    def pattern(self) -> dict[str, typing.Any]: ...
+    @pattern.setter
+    def pattern(self, value: dict[str, typing.Any]) -> None: ...
 
 @typing.final
 class UpdateRequestFilterRequest:
@@ -7328,6 +10004,94 @@ class UsageByTagData:
         """
 
 @typing.final
+class UsageCreditsSummaryData:
+    r"""
+    Summary window and grouped results. Totals cover the full window on every page.
+    """
+    @property
+    def from_time(self) -> builtins.str:
+        r"""
+        Returned window start; the server may align it to billing boundaries.
+        """
+    @from_time.setter
+    def from_time(self, value: builtins.str) -> None:
+        r"""
+        Returned window start; the server may align it to billing boundaries.
+        """
+    @property
+    def to_time(self) -> builtins.str:
+        r"""
+        Returned window end; retain the server value without rounding.
+        """
+    @to_time.setter
+    def to_time(self, value: builtins.str) -> None:
+        r"""
+        Returned window end; retain the server value without rounding.
+        """
+    @property
+    def totals(self) -> UsageCreditsSummaryTotals:
+        r"""
+        Totals for the complete window, independent of page size.
+        """
+    @totals.setter
+    def totals(self, value: UsageCreditsSummaryTotals) -> None:
+        r"""
+        Totals for the complete window, independent of page size.
+        """
+    @property
+    def breakdown(self) -> typing.Optional[builtins.list[UsageCreditsSummaryRow]]:
+        r"""
+        Grouped results, omitted when grouping was not requested.
+        """
+    @breakdown.setter
+    def breakdown(self, value: typing.Optional[builtins.list[UsageCreditsSummaryRow]]) -> None:
+        r"""
+        Grouped results, omitted when grouping was not requested.
+        """
+    @property
+    def next_cursor(self) -> typing.Optional[builtins.str]:
+        r"""
+        Cursor for the next page, when present.
+        """
+    @next_cursor.setter
+    def next_cursor(self, value: typing.Optional[builtins.str]) -> None:
+        r"""
+        Cursor for the next page, when present.
+        """
+
+@typing.final
+class UsageCreditsSummaryRow:
+    r"""
+    Credits row supported by the response schema. The credits request has no grouping option.
+    """
+    @property
+    def credits(self) -> builtins.float:
+        r"""
+        Credits for this group.
+        """
+    @credits.setter
+    def credits(self, value: builtins.float) -> None:
+        r"""
+        Credits for this group.
+        """
+
+@typing.final
+class UsageCreditsSummaryTotals:
+    r"""
+    Full-window totals for `get_usage_credits_summary`. Numbers can be fractional.
+    """
+    @property
+    def credits(self) -> builtins.float:
+        r"""
+        Credits across the complete window.
+        """
+    @credits.setter
+    def credits(self, value: builtins.float) -> None:
+        r"""
+        Credits across the complete window.
+        """
+
+@typing.final
 class UsageData:
     r"""
     Aggregate account usage for a time window.
@@ -7391,6 +10155,222 @@ class UsageData:
     def end_time(self, value: builtins.int) -> None:
         r"""
         End of the queried window.
+        """
+
+@typing.final
+class UsageRpcSummaryData:
+    @property
+    def from_time(self) -> builtins.str: ...
+    @property
+    def to_time(self) -> builtins.str: ...
+    @property
+    def totals(self) -> UsageRpcSummaryTotals: ...
+    @property
+    def breakdown(self) -> typing.Optional[builtins.list[UsageRpcSummaryRow]]: ...
+    @property
+    def next_cursor(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
+class UsageRpcSummaryRow:
+    @property
+    def requests(self) -> typing.Optional[builtins.float]: ...
+    @property
+    def bytes(self) -> builtins.float: ...
+    @property
+    def rpc_credits(self) -> builtins.float: ...
+    @property
+    def data_credits(self) -> builtins.float: ...
+    @property
+    def credits(self) -> builtins.float: ...
+    @property
+    def method(self) -> typing.Optional[builtins.str]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+    @property
+    def endpoint(self) -> typing.Optional[builtins.int]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+    @property
+    def chain(self) -> typing.Optional[builtins.str]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+    @property
+    def network(self) -> typing.Optional[builtins.str]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+
+@typing.final
+class UsageRpcSummaryTotals:
+    r"""
+    Full-window totals for `get_usage_rpc_summary`. Numbers can be fractional.
+    """
+    @property
+    def requests(self) -> builtins.float:
+        r"""
+        Requests across the complete window.
+        """
+    @requests.setter
+    def requests(self, value: builtins.float) -> None:
+        r"""
+        Requests across the complete window.
+        """
+    @property
+    def bytes(self) -> builtins.float:
+        r"""
+        Bytes across the complete window.
+        """
+    @bytes.setter
+    def bytes(self, value: builtins.float) -> None:
+        r"""
+        Bytes across the complete window.
+        """
+    @property
+    def rpc_credits(self) -> builtins.float:
+        r"""
+        Rpc credits across the complete window.
+        """
+    @rpc_credits.setter
+    def rpc_credits(self, value: builtins.float) -> None:
+        r"""
+        Rpc credits across the complete window.
+        """
+    @property
+    def data_credits(self) -> builtins.float:
+        r"""
+        Data credits across the complete window.
+        """
+    @data_credits.setter
+    def data_credits(self, value: builtins.float) -> None:
+        r"""
+        Data credits across the complete window.
+        """
+    @property
+    def credits(self) -> builtins.float:
+        r"""
+        Credits across the complete window.
+        """
+    @credits.setter
+    def credits(self, value: builtins.float) -> None:
+        r"""
+        Credits across the complete window.
+        """
+
+@typing.final
+class UsageStreamsSummaryData:
+    @property
+    def from_time(self) -> builtins.str: ...
+    @property
+    def to_time(self) -> builtins.str: ...
+    @property
+    def totals(self) -> UsageStreamsSummaryTotals: ...
+    @property
+    def breakdown(self) -> typing.Optional[builtins.list[UsageStreamsSummaryRow]]: ...
+    @property
+    def next_cursor(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
+class UsageStreamsSummaryRow:
+    @property
+    def blocks(self) -> builtins.float: ...
+    @property
+    def bytes(self) -> builtins.float: ...
+    @property
+    def block_credits(self) -> builtins.float: ...
+    @property
+    def stream(self) -> typing.Optional[builtins.str]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+
+@typing.final
+class UsageStreamsSummaryTotals:
+    r"""
+    Full-window totals for `get_usage_streams_summary`. Numbers can be fractional.
+    """
+    @property
+    def blocks(self) -> builtins.float:
+        r"""
+        Blocks across the complete window.
+        """
+    @blocks.setter
+    def blocks(self, value: builtins.float) -> None:
+        r"""
+        Blocks across the complete window.
+        """
+    @property
+    def bytes(self) -> builtins.float:
+        r"""
+        Bytes across the complete window.
+        """
+    @bytes.setter
+    def bytes(self, value: builtins.float) -> None:
+        r"""
+        Bytes across the complete window.
+        """
+    @property
+    def block_credits(self) -> builtins.float:
+        r"""
+        Block credits across the complete window.
+        """
+    @block_credits.setter
+    def block_credits(self, value: builtins.float) -> None:
+        r"""
+        Block credits across the complete window.
+        """
+
+@typing.final
+class UsageWebhooksSummaryData:
+    @property
+    def from_time(self) -> builtins.str: ...
+    @property
+    def to_time(self) -> builtins.str: ...
+    @property
+    def totals(self) -> UsageWebhooksSummaryTotals: ...
+    @property
+    def breakdown(self) -> typing.Optional[builtins.list[UsageWebhooksSummaryRow]]: ...
+    @property
+    def next_cursor(self) -> typing.Optional[builtins.str]: ...
+
+@typing.final
+class UsageWebhooksSummaryRow:
+    @property
+    def deliveries(self) -> builtins.float: ...
+    @property
+    def credits(self) -> builtins.float: ...
+    @property
+    def webhook(self) -> typing.Optional[builtins.str]:
+        r"""
+        Present only when this dimension was selected for grouping.
+        """
+
+@typing.final
+class UsageWebhooksSummaryTotals:
+    r"""
+    Full-window totals for `get_usage_webhooks_summary`. Numbers can be fractional.
+    """
+    @property
+    def deliveries(self) -> builtins.float:
+        r"""
+        Deliveries across the complete window.
+        """
+    @deliveries.setter
+    def deliveries(self, value: builtins.float) -> None:
+        r"""
+        Deliveries across the complete window.
+        """
+    @property
+    def credits(self) -> builtins.float:
+        r"""
+        Credits across the complete window.
+        """
+    @credits.setter
+    def credits(self, value: builtins.float) -> None:
+        r"""
+        Credits across the complete window.
         """
 
 @typing.final

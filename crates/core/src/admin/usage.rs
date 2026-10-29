@@ -9,7 +9,7 @@ use pyo3_stub_gen::derive::gen_stub_pyclass;
 use serde::{Deserialize, Serialize};
 
 /// Parameters for the account usage methods (`get_usage`, `get_usage_by_*`).
-/// Both bounds are optional; omit for account-to-date totals.
+/// Both bounds are optional; omit for billing-period totals.
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
@@ -79,6 +79,12 @@ pub struct EndpointUsage {
     pub methods_breakdown: Vec<MethodUsage>,
     /// Request count during the window.
     pub requests: Option<i64>,
+    /// RPC credits consumed.
+    pub rpc_credits: Option<i64>,
+    /// Data credits consumed.
+    pub data_credits: Option<i64>,
+    /// Response bytes transferred.
+    pub bytes: Option<i64>,
 }
 
 /// Per-method usage row.
@@ -97,6 +103,8 @@ pub struct MethodUsage {
     pub network: Option<String>,
     /// Chain the calls targeted.
     pub chain: Option<String>,
+    /// Response bytes transferred.
+    pub bytes: Option<i64>,
 }
 
 /// Per-chain usage row.
@@ -109,6 +117,12 @@ pub struct ChainUsage {
     pub name: String,
     /// Credits consumed on the chain.
     pub credits_used: i64,
+    /// RPC credits consumed.
+    pub rpc_credits: Option<i64>,
+    /// Data credits consumed.
+    pub data_credits: Option<i64>,
+    /// Response bytes transferred.
+    pub bytes: Option<i64>,
 }
 
 /// Inner data for `get_usage_by_endpoint`.
@@ -206,6 +220,12 @@ pub struct TagUsage {
     pub credits_used: i64,
     /// Request count during the window.
     pub requests: i64,
+    /// RPC credits consumed.
+    pub rpc_credits: Option<i64>,
+    /// Data credits consumed.
+    pub data_credits: Option<i64>,
+    /// Response bytes transferred.
+    pub bytes: Option<i64>,
 }
 
 /// Inner data for `get_usage_by_tag`.

@@ -1,3 +1,4 @@
+use super::endpoints::{EndpointIp, EndpointJwt, EndpointToken};
 #[cfg(feature = "rust")]
 use bon::Builder;
 #[cfg(feature = "node")]
@@ -70,6 +71,9 @@ pub struct SecurityOptionsUpdate {
     /// Custom IP header toggle.
     #[serde(rename = "ipCustomHeader", skip_serializing_if = "Option::is_none")]
     pub ip_custom_header: Option<String>,
+    /// Response logging toggle.
+    #[serde(rename = "responseLogging", skip_serializing_if = "Option::is_none")]
+    pub response_logging: Option<String>,
 }
 
 /// Parameters for `update_security_options`.
@@ -125,7 +129,7 @@ pub struct CreateIpRequest {
 #[cfg_attr(feature = "rust", derive(Builder))]
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CreateDomainMaskRequest {
-    /// Custom domain that will mask the endpoint's Quicknode URL.
+    /// Custom domain that will mask the endpoint's Quicknode URL; required by the API.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub domain_mask: Option<String>,
 }
@@ -157,8 +161,6 @@ pub struct CreateRequestFilterRequest {
 }
 
 /// Response from `create_request_filter`.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateRequestFilterResponse {
@@ -169,13 +171,14 @@ pub struct CreateRequestFilterResponse {
 }
 
 /// Data wrapper for a created request filter.
-#[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
 #[cfg_attr(feature = "node", napi(object))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateRequestFilterData {
     /// Identifier of the newly created request filter.
     pub id: String,
+    /// Custom pattern, when returned by the API.
+    #[cfg_attr(feature = "node", napi(ts_type = "Record<string, unknown>"))]
+    pub pattern: Option<std::collections::HashMap<String, serde_json::Value>>,
 }
 
 /// Parameters for `update_request_filter`.
@@ -232,5 +235,302 @@ pub struct DeleteBoolResponse {
     /// `true` when the deletion succeeded.
     pub data: Option<bool>,
     /// Error message when the request did not succeed.
+    pub error: Option<String>,
+}
+
+/// Custom JSON pattern for a request filter.
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateRequestFilterPatternRequest {
+    #[cfg_attr(feature = "node", napi(ts_type = "Record<string, unknown>"))]
+    pub pattern: std::collections::HashMap<String, serde_json::Value>,
+}
+
+/// Custom JSON pattern for a request filter.
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateRequestFilterPatternRequest {
+    #[cfg_attr(feature = "node", napi(ts_type = "Record<string, unknown>"))]
+    pub pattern: std::collections::HashMap<String, serde_json::Value>,
+}
+
+/// Filter as returned by the request-filter list API.
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RequestFilter {
+    pub id: String,
+    #[cfg_attr(feature = "node", napi(ts_type = "Record<string, unknown>"))]
+    pub pattern: std::collections::HashMap<String, serde_json::Value>,
+    pub method_whitelist: bool,
+}
+
+/// Response from `get_request_filters`.
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetRequestFiltersResponse {
+    pub data: Vec<RequestFilter>,
+    pub error: Option<String>,
+}
+
+/// Created security record.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreatedReferrer {
+    pub id: String,
+    pub url: String,
+}
+
+/// Created security record.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreatedDomainMask {
+    pub id: String,
+    pub domain_mask: String,
+}
+
+/// Created security record and API error.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateTokenResponse {
+    pub data: EndpointToken,
+    pub error: Option<String>,
+}
+
+/// Created security record and API error.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateReferrerResponse {
+    pub data: CreatedReferrer,
+    pub error: Option<String>,
+}
+
+/// Created security record and API error.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateIpResponse {
+    pub data: EndpointIp,
+    pub error: Option<String>,
+}
+
+/// Created security record and API error.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateDomainMaskResponse {
+    pub data: CreatedDomainMask,
+    pub error: Option<String>,
+}
+
+/// Created security record and API error.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateJwtResponse {
+    pub data: EndpointJwt,
+    pub error: Option<String>,
+}
+
+/// Client certificate metadata.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClientCertificate {
+    pub fingerprint: String,
+    pub subject: String,
+    pub issuer: String,
+    pub expires_at: String,
+}
+
+/// Current client-certificate authentication state.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClientCertsData {
+    pub enabled: bool,
+    pub certs: Vec<ClientCertificate>,
+}
+
+/// PEM certificate to add.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateClientCertRequest {
+    pub certificate: String,
+}
+
+/// Enable or disable client-certificate authentication.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateClientCertsRequest {
+    pub enabled: bool,
+}
+
+/// Full certificate state after the operation.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetClientCertsResponse {
+    pub data: ClientCertsData,
+    pub error: Option<String>,
+}
+
+/// Full certificate state after the operation.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateClientCertResponse {
+    pub data: ClientCertsData,
+    pub error: Option<String>,
+}
+
+/// Full certificate state after the operation.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateClientCertsResponse {
+    pub data: ClientCertsData,
+    pub error: Option<String>,
+}
+
+/// Full certificate state after the operation.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeleteClientCertResponse {
+    pub data: ClientCertsData,
+    pub error: Option<String>,
+}
+
+/// Blocked methods.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MethodBlacklistData {
+    pub methods: Vec<String>,
+}
+
+/// Replacement blacklist; an empty list clears it.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateMethodBlacklistRequest {
+    pub methods: Vec<String>,
+}
+
+/// Current method blacklist.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetMethodBlacklistResponse {
+    pub data: MethodBlacklistData,
+    pub error: Option<String>,
+}
+
+/// Current method blacklist.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateMethodBlacklistResponse {
+    pub data: MethodBlacklistData,
+    pub error: Option<String>,
+}
+
+/// Range limits and supported methods for this endpoint chain.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RangeLimitsData {
+    pub limits: std::collections::HashMap<String, i64>,
+    pub supported_methods: Vec<String>,
+}
+
+/// Replacement positive range limits; an empty object clears them.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateRangeLimitsRequest {
+    pub limits: std::collections::HashMap<String, i64>,
+}
+
+/// Current method range limits.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetRangeLimitsResponse {
+    pub data: RangeLimitsData,
+    pub error: Option<String>,
+}
+
+/// Current method range limits.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateRangeLimitsResponse {
+    pub data: RangeLimitsData,
+    pub error: Option<String>,
+}
+
+/// Blocked IP address or CIDR range. Does not enable IP security.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[cfg_attr(feature = "rust", derive(Builder))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateBlockedIpRequest {
+    pub ip: String,
+}
+
+/// Blocked IP records visible for the current security state.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetBlockedIpsResponse {
+    pub data: Vec<EndpointIp>,
+    pub error: Option<String>,
+}
+
+/// Created blocked IP record.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateBlockedIpResponse {
+    pub data: EndpointIp,
     pub error: Option<String>,
 }

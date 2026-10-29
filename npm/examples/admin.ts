@@ -5,8 +5,105 @@ import {
   QuicknodeError,
 } from "../sdk";
 
+async function optionalRead<T>(label: string, request: Promise<T>): Promise<T | undefined> {
+  try {
+    return await request;
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 403) throw error;
+    if (!(error instanceof QuicknodeError) || !error.body) {
+      throw new Error(`${label}: expected typed API error with a body`);
+    }
+    console.log(`${label}: access is unavailable for this account`);
+    return undefined;
+  }
+}
+
+async function expectApiError(request: Promise<unknown>, status: number) {
+  try {
+    await request;
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    if (!(error instanceof QuicknodeError) || error.status !== status || !error.body) {
+      throw new Error(`expected ApiError ${status} with a body`);
+    }
+    return;
+  }
+  throw new Error(`expected ApiError ${status}`);
+}
+
+async function showObservability(qn: QuicknodeSdk) {
+  const summaries = [
+    { method: qn.admin.getUsageCreditsSummary.bind(qn.admin), endpointGroup: false },
+    { method: qn.admin.getUsageRpcSummary.bind(qn.admin), endpointGroup: true },
+    { method: qn.admin.getUsageStreamsSummary.bind(qn.admin), endpointGroup: false },
+    { method: qn.admin.getUsageWebhooksSummary.bind(qn.admin), endpointGroup: false },
+    { method: qn.admin.getTrafficSummary.bind(qn.admin), endpointGroup: true },
+    { method: qn.admin.getErrorsSummary.bind(qn.admin), endpointGroup: true },
+  ];
+  for (const { method, endpointGroup } of summaries) {
+    const params = { last: "1h", limit: 20, ...(endpointGroup ? { groupBy: ["endpoint"] } : {}) };
+    const summary = await optionalRead<Awaited<ReturnType<typeof method>>>("summary", method(params));
+    if (!summary) continue;
+    if (!summary.data.from || !summary.data.to) throw new Error("missing summary window");
+    if (endpointGroup) {
+      for (const row of summary.data.breakdown ?? []) {
+        if (!("endpoint" in row) || (row.endpoint !== null && !Number.isInteger(row.endpoint))) {
+          throw new Error("selected endpoint dimension must be an integer or null");
+        }
+      }
+    }
+    if (summary.data.nextCursor) {
+      const nextPage = await method({ cursor: summary.data.nextCursor });
+      if (nextPage.data.from !== summary.data.from || nextPage.data.to !== summary.data.to) {
+        throw new Error("summary cursor changed its window");
+      }
+    }
+    console.log("summary decoded");
+  }
+
+  const filters = await optionalRead("activity filters", qn.admin.listActivityLogFilters());
+  if (filters) console.log(`activity filter actors: ${filters.data.actors.length}`);
+  const activity = await optionalRead("activity logs", qn.admin.listActivityLogs({ limit: 20 }));
+  if (activity && activity.data.length > 0) {
+    const detail = await qn.admin.getActivityLog(activity.data[0].id);
+    if (detail.data?.id !== activity.data[0].id) throw new Error("activity detail ID mismatch");
+  }
+
+  const transactions = await optionalRead("transactions", qn.admin.listTransactions({ last: "1h", limit: 20 }));
+  if (!transactions) return;
+  for (const transaction of transactions.data.transactions) {
+    if (!transaction.endpointIds.every(id => id === null || Number.isInteger(id))) {
+      throw new Error("transaction endpoint IDs must be integers or null");
+    }
+    if (transaction.height != null && typeof transaction.height !== "string") {
+      throw new Error("transaction height must remain a string");
+    }
+  }
+  const transaction = transactions.data.transactions[0];
+  if (transaction) {
+    const detail = await qn.admin.getTransaction(
+      transaction.network, transaction.transactionHash, { includePayloads: false },
+    );
+    if (detail.data.exists) {
+      if (detail.data.data?.transactionHash !== transaction.transactionHash) {
+        throw new Error("transaction detail hash mismatch");
+      }
+      if (detail.data.data.endpointIds != null && !detail.data.data.endpointIds.every(id => id === null || Number.isInteger(id))) {
+        throw new Error("transaction detail endpoint IDs must be integers or null");
+      }
+      if (!detail.data.data.attempts.every(attempt => Number.isInteger(attempt.endpointId))) {
+        throw new Error("transaction attempt endpoint ID must be an integer");
+      }
+      if (detail.data.data.attempts.some(attempt => attempt.payloads != null)) {
+        throw new Error("transaction payloads were not requested");
+      }
+    }
+  }
+}
+
 async function main() {
   const qn = QuicknodeSdk.fromEnv();
+  await showObservability(qn);
 
   const account = await qn.admin.accountInfo();
   if (account.data) {
@@ -53,8 +150,33 @@ async function main() {
 
   if (response.data.length > 0) {
     const epId = response.data[0].id;
+    const endpointErrors = await optionalRead(
+      "endpoint error summary", qn.admin.getEndpointErrorsSummary(epId, { last: "1h", limit: 20 }),
+    );
+    if (endpointErrors && (!endpointErrors.data.from || !endpointErrors.data.to)) {
+      throw new Error("missing endpoint error summary window");
+    }
     const sec = await qn.admin.getEndpointSecurity(epId);
     console.log(`getEndpointSecurity: has_data=${sec.data !== undefined && sec.data !== null}`);
+
+    const filters = await qn.admin.getRequestFilters(epId);
+    for (const filter of filters.data) {
+      console.log(`filter ${filter.id}: whitelist=${filter.methodWhitelist}, pattern keys=${Object.keys(filter.pattern).length}`);
+    }
+    const certificates = await optionalRead("client certificates", qn.admin.getClientCerts(epId));
+    if (certificates) {
+      console.log(`client certificates: ${certificates.data.certs.length}, enabled=${certificates.data.enabled}`);
+    }
+    const blacklist = await qn.admin.getMethodBlacklist(epId);
+    console.log(`blocked methods: ${blacklist.data.methods.length}`);
+    const ranges = await qn.admin.getRangeLimits(epId);
+    console.log(`range limits: ${Object.keys(ranges.data.limits).length}, supported methods=${ranges.data.supportedMethods.length}`);
+    const blocked = await qn.admin.getBlockedIps(epId);
+    console.log(`blocked IP records: ${blocked.data.length}`);
+    const latency = await qn.admin.getEndpointMetrics(epId, {
+      period: "day", metric: "response_time_over_time", percentile: 95,
+    });
+    console.log(`p95 latency series: ${latency.data.length}`);
 
     const urls = await qn.admin.getEndpointUrls(epId);
     if (urls.data) {
@@ -73,9 +195,10 @@ async function main() {
       }
     }
 
-    await qn.admin.updateRateLimits(epId, { rateLimits: { rps: 3 } });
-    console.log("updateRateLimits: ok");
+    const effective = await qn.admin.updateRateLimitsWithResponse(epId, { rateLimits: { rps: 3 }, limitByIp: true });
+    console.log(`effective RPS override: ${effective.data.limits.rps}`);
 
+    await qn.admin.updateRateLimits(epId, { limitByIp: false });
     const rlAfter = await qn.admin.getRateLimits(epId);
     if (rlAfter.data) {
       for (const row of rlAfter.data.rateLimits) {
@@ -87,28 +210,11 @@ async function main() {
     }
   }
 
-  // ── Error handling ──────────────────────────────────────────────────
-  // 1) API error path — 404 on a bogus endpoint id.
-  try {
-    await qn.admin.showEndpoint("does-not-exist");
-  } catch (e) {
-    if (!(e instanceof ApiError)) throw e;
-    console.assert(e instanceof QuicknodeError);
-    console.assert(e.status === 404);
-    console.log(`api error ${e.status}: ${e.body.slice(0, 80)}`);
-  }
-
-  // 1b) Rate-limit override delete with a bogus override id — also a 404.
-  try {
-    await qn.admin.deleteRateLimitOverride(
-      "does-not-exist",
-      "00000000-0000-0000-0000-000000000000",
-    );
-  } catch (e) {
-    if (!(e instanceof ApiError)) throw e;
-    console.assert(e.status === 404);
-    console.log(`deleteRateLimitOverride api error ${e.status}: ${e.body.slice(0, 80)}`);
-  }
+  await expectApiError(qn.admin.showEndpoint("does-not-exist"), 404);
+  await expectApiError(
+    qn.admin.deleteRateLimitOverride("does-not-exist", "00000000-0000-0000-0000-000000000000"),
+    404,
+  );
 
   // Custom headers smoke test — override User-Agent + add a correlation header.
   const headered = new QuicknodeSdk({
@@ -120,13 +226,8 @@ async function main() {
       },
     },
   });
-  try {
-    const resp = await headered.admin.getEndpoints({ limit: 1 });
-    console.log(`custom-headers smoke: ok (${resp.data.length} endpoints)`);
-  } catch (e) {
-    if (!(e instanceof QuicknodeError)) throw e;
-    console.log(`custom-headers smoke error: ${e.message}`);
-  }
+  const resp = await headered.admin.getEndpoints({ limit: 1 });
+  console.log(`custom-headers smoke: ok (${resp.data.length} endpoints)`);
 
   // 2) Timeout path — unreachable base URL + 1s timeout forces a timeout.
   const blackhole = new QuicknodeSdk({
@@ -136,6 +237,7 @@ async function main() {
   });
   try {
     await blackhole.admin.getEndpoints();
+    throw new Error("expected TimeoutError");
   } catch (e) {
     if (!(e instanceof TimeoutError)) throw e;
     console.log("timed out as expected");

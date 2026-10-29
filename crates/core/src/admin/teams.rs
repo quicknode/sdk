@@ -231,7 +231,7 @@ pub struct InviteTeamMemberRequest {
     /// Full name (required for new users).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub full_name: Option<String>,
-    /// Team role (`admin`, `viewer`, or `billing`); required for new users.
+    /// Standard role or account custom-role key; required for new users.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
 }

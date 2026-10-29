@@ -182,6 +182,16 @@ fn hash_get_vec_i32(h: &RHash, key: &str) -> Result<Option<Vec<i32>>, Error> {
     }
 }
 
+fn hash_get_vec_i64(h: &RHash, key: &str) -> Result<Option<Vec<i64>>, Error> {
+    let r = ruby();
+    match h.get(r.to_symbol(key)) {
+        Some(v) if !v.is_nil() => Vec::<i64>::try_convert(v)
+            .map(Some)
+            .map_err(|e| Error::new(r.exception_type_error(), format!("{key}: {e}"))),
+        _ => Ok(None),
+    }
+}
+
 fn hash_get_map_string_string(
     h: &RHash,
     key: &str,
@@ -376,6 +386,538 @@ pub struct AdminApiClient {
 
 #[allow(clippy::needless_pass_by_value)]
 impl AdminApiClient {
+    fn get_client_certs(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id"])?;
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(self.inner.get_client_certs(&id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn create_client_cert(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "certificate"])?;
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateClientCertRequest {
+            certificate: hash_require_string(&opts, "certificate")?,
+        };
+        runtime()
+            .block_on(self.inner.create_client_cert(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn update_client_certs(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "enabled"])?;
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::UpdateClientCertsRequest {
+            enabled: hash_require_bool(&opts, "enabled")?,
+        };
+        runtime()
+            .block_on(self.inner.update_client_certs(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn delete_client_cert(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "fingerprint"])?;
+        let id = hash_require_string(&opts, "id")?;
+        let fingerprint = hash_require_string(&opts, "fingerprint")?;
+        runtime()
+            .block_on(self.inner.delete_client_cert(&id, &fingerprint))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_method_blacklist(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id"])?;
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(self.inner.get_method_blacklist(&id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn update_method_blacklist(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "methods"])?;
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::UpdateMethodBlacklistRequest {
+            methods: hash_require_vec_string(&opts, "methods")?,
+        };
+        runtime()
+            .block_on(self.inner.update_method_blacklist(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_range_limits(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id"])?;
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(self.inner.get_range_limits(&id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn update_range_limits(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "limits"])?;
+        let id = hash_require_string(&opts, "id")?;
+        let limits = hash_get_json(&opts, "limits")?
+            .ok_or_else(|| arg_err("limits is required".to_string()))?;
+        let params = core::admin::UpdateRangeLimitsRequest {
+            limits: serde_json::from_value(limits).map_err(|e| arg_err(e.to_string()))?,
+        };
+        runtime()
+            .block_on(self.inner.update_range_limits(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_blocked_ips(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id"])?;
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(self.inner.get_blocked_ips(&id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn create_blocked_ip(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "ip"])?;
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateBlockedIpRequest {
+            ip: hash_require_string(&opts, "ip")?,
+        };
+        runtime()
+            .block_on(self.inner.create_blocked_ip(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn delete_blocked_ip(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "ip_id"])?;
+        let id = hash_require_string(&opts, "id")?;
+        let ip_id = hash_require_string(&opts, "ip_id")?;
+        runtime()
+            .block_on(self.inner.delete_blocked_ip(&id, &ip_id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn list_activity_logs(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "q",
+                "actor",
+                "endpoint_id",
+                "target_type",
+                "from_time",
+                "to_time",
+                "limit",
+                "offset",
+            ],
+        )?;
+        let params = core::admin::ListActivityLogsRequest {
+            q: hash_get_string(&opts, "q")?,
+            actor: hash_get_string(&opts, "actor")?,
+            endpoint_id: hash_get_string(&opts, "endpoint_id")?,
+            target_type: hash_get_string(&opts, "target_type")?,
+            from_time: hash_get_string(&opts, "from_time")?,
+            to_time: hash_get_string(&opts, "to_time")?,
+            limit: hash_get_i32(&opts, "limit")?,
+            offset: hash_get_i64(&opts, "offset")?,
+        };
+        runtime()
+            .block_on(self.inner.list_activity_logs(&params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn list_activity_log_filters(&self) -> Result<magnus::Value, Error> {
+        runtime()
+            .block_on(self.inner.list_activity_log_filters())
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_activity_log(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id"])?;
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(self.inner.get_activity_log(&id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn list_transactions(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "last",
+                "from_time",
+                "to_time",
+                "network",
+                "method",
+                "state",
+                "transaction_hash",
+                "cursor",
+                "endpoints",
+                "limit",
+            ],
+        )?;
+        let params = core::admin::ListTransactionsRequest {
+            last: hash_get_string(&opts, "last")?,
+            from_time: hash_get_string(&opts, "from_time")?,
+            to_time: hash_get_string(&opts, "to_time")?,
+            network: hash_get_string(&opts, "network")?,
+            method: hash_get_string(&opts, "method")?,
+            state: hash_get_string(&opts, "state")?,
+            transaction_hash: hash_get_string(&opts, "transaction_hash")?,
+            cursor: hash_get_string(&opts, "cursor")?,
+            endpoints: hash_get_vec_i64(&opts, "endpoints")?,
+            limit: hash_get_i32(&opts, "limit")?,
+        };
+        runtime()
+            .block_on(self.inner.list_transactions(&params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_transaction(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["network", "hash", "include_payloads"])?;
+        let network = hash_require_string(&opts, "network")?;
+        let hash = hash_require_string(&opts, "hash")?;
+        let params = core::admin::GetTransactionRequest {
+            include_payloads: hash_get_bool(&opts, "include_payloads")?,
+        };
+        runtime()
+            .block_on(self.inner.get_transaction(&network, &hash, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_usage_credits_summary(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["last", "from_time", "to_time", "cursor", "limit"])?;
+        let params = core::admin::GetUsageCreditsSummaryRequest {
+            last: hash_get_string(&opts, "last")?,
+            from_time: hash_get_string(&opts, "from_time")?,
+            to_time: hash_get_string(&opts, "to_time")?,
+            cursor: hash_get_string(&opts, "cursor")?,
+            limit: hash_get_i32(&opts, "limit")?,
+        };
+        runtime()
+            .block_on(self.inner.get_usage_credits_summary(&params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_usage_rpc_summary(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "last",
+                "from_time",
+                "to_time",
+                "cursor",
+                "limit",
+                "group_by",
+                "endpoint_names",
+                "chains",
+                "networks",
+                "methods",
+                "tag_ids",
+                "addon_ids",
+            ],
+        )?;
+        let params = core::admin::GetUsageRpcSummaryRequest {
+            last: hash_get_string(&opts, "last")?,
+            from_time: hash_get_string(&opts, "from_time")?,
+            to_time: hash_get_string(&opts, "to_time")?,
+            cursor: hash_get_string(&opts, "cursor")?,
+            limit: hash_get_i32(&opts, "limit")?,
+            group_by: hash_get_vec_string(&opts, "group_by")?,
+            endpoint_names: hash_get_vec_string(&opts, "endpoint_names")?,
+            chains: hash_get_vec_string(&opts, "chains")?,
+            networks: hash_get_vec_string(&opts, "networks")?,
+            methods: hash_get_vec_string(&opts, "methods")?,
+            tag_ids: hash_get_vec_string(&opts, "tag_ids")?,
+            addon_ids: hash_get_vec_string(&opts, "addon_ids")?,
+        };
+        runtime()
+            .block_on(self.inner.get_usage_rpc_summary(&params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_usage_streams_summary(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "last",
+                "from_time",
+                "to_time",
+                "cursor",
+                "limit",
+                "group_by",
+                "stream_id",
+            ],
+        )?;
+        let params = core::admin::GetUsageStreamsSummaryRequest {
+            last: hash_get_string(&opts, "last")?,
+            from_time: hash_get_string(&opts, "from_time")?,
+            to_time: hash_get_string(&opts, "to_time")?,
+            cursor: hash_get_string(&opts, "cursor")?,
+            limit: hash_get_i32(&opts, "limit")?,
+            group_by: hash_get_vec_string(&opts, "group_by")?,
+            stream_id: hash_get_string(&opts, "stream_id")?,
+        };
+        runtime()
+            .block_on(self.inner.get_usage_streams_summary(&params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_usage_webhooks_summary(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "last",
+                "from_time",
+                "to_time",
+                "cursor",
+                "limit",
+                "group_by",
+                "webhook_id",
+            ],
+        )?;
+        let params = core::admin::GetUsageWebhooksSummaryRequest {
+            last: hash_get_string(&opts, "last")?,
+            from_time: hash_get_string(&opts, "from_time")?,
+            to_time: hash_get_string(&opts, "to_time")?,
+            cursor: hash_get_string(&opts, "cursor")?,
+            limit: hash_get_i32(&opts, "limit")?,
+            group_by: hash_get_vec_string(&opts, "group_by")?,
+            webhook_id: hash_get_string(&opts, "webhook_id")?,
+        };
+        runtime()
+            .block_on(self.inner.get_usage_webhooks_summary(&params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_traffic_summary(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "last",
+                "from_time",
+                "to_time",
+                "cursor",
+                "limit",
+                "group_by",
+                "endpoint_names",
+                "chains",
+                "networks",
+                "methods",
+                "tag_ids",
+                "addon_ids",
+            ],
+        )?;
+        let params = core::admin::GetTrafficSummaryRequest {
+            last: hash_get_string(&opts, "last")?,
+            from_time: hash_get_string(&opts, "from_time")?,
+            to_time: hash_get_string(&opts, "to_time")?,
+            cursor: hash_get_string(&opts, "cursor")?,
+            limit: hash_get_i32(&opts, "limit")?,
+            group_by: hash_get_vec_string(&opts, "group_by")?,
+            endpoint_names: hash_get_vec_string(&opts, "endpoint_names")?,
+            chains: hash_get_vec_string(&opts, "chains")?,
+            networks: hash_get_vec_string(&opts, "networks")?,
+            methods: hash_get_vec_string(&opts, "methods")?,
+            tag_ids: hash_get_vec_string(&opts, "tag_ids")?,
+            addon_ids: hash_get_vec_string(&opts, "addon_ids")?,
+        };
+        runtime()
+            .block_on(self.inner.get_traffic_summary(&params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_errors_summary(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "last",
+                "from_time",
+                "to_time",
+                "cursor",
+                "limit",
+                "group_by",
+                "endpoints",
+                "networks",
+                "methods",
+                "codes",
+                "status_codes",
+                "kind",
+            ],
+        )?;
+        let params = core::admin::GetErrorsSummaryRequest {
+            last: hash_get_string(&opts, "last")?,
+            from_time: hash_get_string(&opts, "from_time")?,
+            to_time: hash_get_string(&opts, "to_time")?,
+            cursor: hash_get_string(&opts, "cursor")?,
+            limit: hash_get_i32(&opts, "limit")?,
+            group_by: hash_get_vec_string(&opts, "group_by")?,
+            endpoints: hash_get_vec_i64(&opts, "endpoints")?,
+            networks: hash_get_vec_string(&opts, "networks")?,
+            methods: hash_get_vec_string(&opts, "methods")?,
+            codes: hash_get_vec_string(&opts, "codes")?,
+            status_codes: hash_get_vec_string(&opts, "status_codes")?,
+            kind: hash_get_string(&opts, "kind")?,
+        };
+        runtime()
+            .block_on(self.inner.get_errors_summary(&params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn get_endpoint_errors_summary(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(
+            &opts,
+            &[
+                "id",
+                "last",
+                "from_time",
+                "to_time",
+                "cursor",
+                "limit",
+                "group_by",
+                "networks",
+                "methods",
+                "codes",
+                "status_codes",
+                "kind",
+            ],
+        )?;
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::GetEndpointErrorsSummaryRequest {
+            last: hash_get_string(&opts, "last")?,
+            from_time: hash_get_string(&opts, "from_time")?,
+            to_time: hash_get_string(&opts, "to_time")?,
+            cursor: hash_get_string(&opts, "cursor")?,
+            limit: hash_get_i32(&opts, "limit")?,
+            group_by: hash_get_vec_string(&opts, "group_by")?,
+            networks: hash_get_vec_string(&opts, "networks")?,
+            methods: hash_get_vec_string(&opts, "methods")?,
+            codes: hash_get_vec_string(&opts, "codes")?,
+            status_codes: hash_get_vec_string(&opts, "status_codes")?,
+            kind: hash_get_string(&opts, "kind")?,
+        };
+        runtime()
+            .block_on(self.inner.get_endpoint_errors_summary(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn create_token_with_response(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(client.create_token_with_response(&id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn create_referrer_with_response(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "referrer"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateReferrerRequest {
+            referrer: hash_require_string(&opts, "referrer")?,
+        };
+        runtime()
+            .block_on(client.create_referrer_with_response(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn create_ip_with_response(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "ip"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateIpRequest {
+            ip: hash_require_string(&opts, "ip")?,
+        };
+        runtime()
+            .block_on(client.create_ip_with_response(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn create_domain_mask_with_response(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "domain_mask"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateDomainMaskRequest {
+            domain_mask: hash_get_string(&opts, "domain_mask")?,
+        };
+        runtime()
+            .block_on(client.create_domain_mask_with_response(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn create_jwt_with_response(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "public_key", "kid", "name"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateJwtRequest {
+            public_key: hash_require_string(&opts, "public_key")?,
+            kid: hash_require_string(&opts, "kid")?,
+            name: hash_require_string(&opts, "name")?,
+        };
+        runtime()
+            .block_on(client.create_jwt_with_response(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn create_tag_with_response(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "label"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let params = core::admin::CreateTagRequest {
+            label: hash_get_string(&opts, "label")?,
+        };
+        runtime()
+            .block_on(client.create_tag_with_response(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn update_rate_limits_with_response(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "rps", "rpm", "rpd", "limit_by_ip"])?;
+        let client = self.inner.clone();
+        let id = hash_require_string(&opts, "id")?;
+        let rps = hash_get_i32(&opts, "rps")?;
+        let rpm = hash_get_i32(&opts, "rpm")?;
+        let rpd = hash_get_i32(&opts, "rpd")?;
+        let params = core::admin::UpdateRateLimitsRequest {
+            rate_limits: if rps.is_some() || rpm.is_some() || rpd.is_some() {
+                Some(core::admin::RateLimitSettings { rps, rpm, rpd })
+            } else {
+                None
+            },
+            limit_by_ip: hash_get_bool(&opts, "limit_by_ip")?,
+        };
+        runtime()
+            .block_on(client.update_rate_limits_with_response(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
     fn get_endpoints(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
@@ -608,6 +1150,7 @@ impl AdminApiClient {
                 "cors",
                 "request_filters",
                 "ip_custom_header",
+                "response_logging",
             ],
         )?;
         let client = self.inner.clone();
@@ -623,6 +1166,7 @@ impl AdminApiClient {
                 cors: hash_get_string(&opts, "cors")?,
                 request_filters: hash_get_string(&opts, "request_filters")?,
                 ip_custom_header: hash_get_string(&opts, "ip_custom_header")?,
+                response_logging: hash_get_string(&opts, "response_logging")?,
             },
         };
         runtime()
@@ -832,13 +1376,14 @@ impl AdminApiClient {
     }
 
     fn create_method_rate_limit(&self, opts: RHash) -> Result<magnus::Value, Error> {
-        validate_keys(&opts, &["id", "interval", "methods", "rate"])?;
+        validate_keys(&opts, &["id", "interval", "methods", "rate", "limit_by_ip"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         let params = core::admin::CreateMethodRateLimitRequest {
             interval: hash_require_string(&opts, "interval")?,
             methods: hash_require_vec_string(&opts, "methods")?,
             rate: hash_require_i32(&opts, "rate")?,
+            limit_by_ip: hash_get_bool(&opts, "limit_by_ip")?,
         };
         runtime()
             .block_on(client.create_method_rate_limit(&id, &params))
@@ -849,7 +1394,14 @@ impl AdminApiClient {
     fn update_method_rate_limit(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(
             &opts,
-            &["id", "method_rate_limit_id", "methods", "status", "rate"],
+            &[
+                "id",
+                "method_rate_limit_id",
+                "methods",
+                "status",
+                "rate",
+                "limit_by_ip",
+            ],
         )?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
@@ -858,6 +1410,7 @@ impl AdminApiClient {
             methods: hash_get_vec_string(&opts, "methods")?,
             status: hash_get_string(&opts, "status")?,
             rate: hash_get_i32(&opts, "rate")?,
+            limit_by_ip: hash_get_bool(&opts, "limit_by_ip")?,
         };
         runtime()
             .block_on(client.update_method_rate_limit(&id, &method_rate_limit_id, &params))
@@ -876,15 +1429,19 @@ impl AdminApiClient {
     }
 
     fn update_rate_limits(&self, opts: RHash) -> Result<(), Error> {
-        validate_keys(&opts, &["id", "rps", "rpm", "rpd"])?;
+        validate_keys(&opts, &["id", "rps", "rpm", "rpd", "limit_by_ip"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
+        let rps = hash_get_i32(&opts, "rps")?;
+        let rpm = hash_get_i32(&opts, "rpm")?;
+        let rpd = hash_get_i32(&opts, "rpd")?;
         let params = core::admin::UpdateRateLimitsRequest {
-            rate_limits: core::admin::RateLimitSettings {
-                rps: hash_get_i32(&opts, "rps")?,
-                rpm: hash_get_i32(&opts, "rpm")?,
-                rpd: hash_get_i32(&opts, "rpd")?,
+            rate_limits: if rps.is_some() || rpm.is_some() || rpd.is_some() {
+                Some(core::admin::RateLimitSettings { rps, rpm, rpd })
+            } else {
+                None
             },
+            limit_by_ip: hash_get_bool(&opts, "limit_by_ip")?,
         };
         runtime()
             .block_on(client.update_rate_limits(&id, &params))
@@ -922,12 +1479,13 @@ impl AdminApiClient {
     }
 
     fn get_endpoint_metrics(&self, opts: RHash) -> Result<magnus::Value, Error> {
-        validate_keys(&opts, &["id", "period", "metric"])?;
+        validate_keys(&opts, &["id", "period", "metric", "percentile"])?;
         let client = self.inner.clone();
         let id = hash_require_string(&opts, "id")?;
         let params = core::admin::GetEndpointMetricsRequest {
             period: hash_require_string(&opts, "period")?,
             metric: hash_require_string(&opts, "metric")?,
+            percentile: hash_get_i32(&opts, "percentile")?,
         };
         runtime()
             .block_on(client.get_endpoint_metrics(&id, &params))
@@ -1217,6 +1775,45 @@ impl AdminApiClient {
             .block_on(client.get_endpoint_security(&id))
             .map_err(map_err)
             .and_then(to_ruby)
+    }
+    fn get_request_filters(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id"])?;
+        let id = hash_require_string(&opts, "id")?;
+        runtime()
+            .block_on(self.inner.get_request_filters(&id))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn create_request_filter_pattern(&self, opts: RHash) -> Result<magnus::Value, Error> {
+        validate_keys(&opts, &["id", "pattern"])?;
+        let id = hash_require_string(&opts, "id")?;
+        let pattern = hash_get_json(&opts, "pattern")?
+            .ok_or_else(|| arg_err("pattern is required".to_string()))?;
+        let params = core::admin::CreateRequestFilterPatternRequest {
+            pattern: serde_json::from_value(pattern).map_err(|e| arg_err(e.to_string()))?,
+        };
+        runtime()
+            .block_on(self.inner.create_request_filter_pattern(&id, &params))
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
+    fn update_request_filter_pattern(&self, opts: RHash) -> Result<(), Error> {
+        validate_keys(&opts, &["id", "request_filter_id", "pattern"])?;
+        let id = hash_require_string(&opts, "id")?;
+        let request_filter_id = hash_require_string(&opts, "request_filter_id")?;
+        let pattern = hash_get_json(&opts, "pattern")?
+            .ok_or_else(|| arg_err("pattern is required".to_string()))?;
+        let params = core::admin::UpdateRequestFilterPatternRequest {
+            pattern: serde_json::from_value(pattern).map_err(|e| arg_err(e.to_string()))?,
+        };
+        runtime()
+            .block_on(
+                self.inner
+                    .update_request_filter_pattern(&id, &request_filter_id, &params),
+            )
+            .map_err(map_err)
     }
 }
 
@@ -2354,6 +2951,138 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     admin.define_method(
         "update_security_options",
         method!(AdminApiClient::update_security_options, 1),
+    )?;
+    admin.define_method(
+        "get_request_filters",
+        method!(AdminApiClient::get_request_filters, 1),
+    )?;
+    admin.define_method(
+        "create_request_filter_pattern",
+        method!(AdminApiClient::create_request_filter_pattern, 1),
+    )?;
+    admin.define_method(
+        "update_request_filter_pattern",
+        method!(AdminApiClient::update_request_filter_pattern, 1),
+    )?;
+    admin.define_method(
+        "create_token_with_response",
+        method!(AdminApiClient::create_token_with_response, 1),
+    )?;
+    admin.define_method(
+        "create_referrer_with_response",
+        method!(AdminApiClient::create_referrer_with_response, 1),
+    )?;
+    admin.define_method(
+        "create_ip_with_response",
+        method!(AdminApiClient::create_ip_with_response, 1),
+    )?;
+    admin.define_method(
+        "create_domain_mask_with_response",
+        method!(AdminApiClient::create_domain_mask_with_response, 1),
+    )?;
+    admin.define_method(
+        "create_jwt_with_response",
+        method!(AdminApiClient::create_jwt_with_response, 1),
+    )?;
+    admin.define_method(
+        "create_tag_with_response",
+        method!(AdminApiClient::create_tag_with_response, 1),
+    )?;
+    admin.define_method(
+        "update_rate_limits_with_response",
+        method!(AdminApiClient::update_rate_limits_with_response, 1),
+    )?;
+    admin.define_method(
+        "get_client_certs",
+        method!(AdminApiClient::get_client_certs, 1),
+    )?;
+    admin.define_method(
+        "create_client_cert",
+        method!(AdminApiClient::create_client_cert, 1),
+    )?;
+    admin.define_method(
+        "update_client_certs",
+        method!(AdminApiClient::update_client_certs, 1),
+    )?;
+    admin.define_method(
+        "delete_client_cert",
+        method!(AdminApiClient::delete_client_cert, 1),
+    )?;
+    admin.define_method(
+        "get_method_blacklist",
+        method!(AdminApiClient::get_method_blacklist, 1),
+    )?;
+    admin.define_method(
+        "update_method_blacklist",
+        method!(AdminApiClient::update_method_blacklist, 1),
+    )?;
+    admin.define_method(
+        "get_range_limits",
+        method!(AdminApiClient::get_range_limits, 1),
+    )?;
+    admin.define_method(
+        "update_range_limits",
+        method!(AdminApiClient::update_range_limits, 1),
+    )?;
+    admin.define_method(
+        "get_blocked_ips",
+        method!(AdminApiClient::get_blocked_ips, 1),
+    )?;
+    admin.define_method(
+        "create_blocked_ip",
+        method!(AdminApiClient::create_blocked_ip, 1),
+    )?;
+    admin.define_method(
+        "delete_blocked_ip",
+        method!(AdminApiClient::delete_blocked_ip, 1),
+    )?;
+    admin.define_method(
+        "list_activity_logs",
+        method!(AdminApiClient::list_activity_logs, 1),
+    )?;
+    admin.define_method(
+        "list_activity_log_filters",
+        method!(AdminApiClient::list_activity_log_filters, 0),
+    )?;
+    admin.define_method(
+        "get_activity_log",
+        method!(AdminApiClient::get_activity_log, 1),
+    )?;
+    admin.define_method(
+        "list_transactions",
+        method!(AdminApiClient::list_transactions, 1),
+    )?;
+    admin.define_method(
+        "get_transaction",
+        method!(AdminApiClient::get_transaction, 1),
+    )?;
+    admin.define_method(
+        "get_usage_credits_summary",
+        method!(AdminApiClient::get_usage_credits_summary, 1),
+    )?;
+    admin.define_method(
+        "get_usage_rpc_summary",
+        method!(AdminApiClient::get_usage_rpc_summary, 1),
+    )?;
+    admin.define_method(
+        "get_usage_streams_summary",
+        method!(AdminApiClient::get_usage_streams_summary, 1),
+    )?;
+    admin.define_method(
+        "get_usage_webhooks_summary",
+        method!(AdminApiClient::get_usage_webhooks_summary, 1),
+    )?;
+    admin.define_method(
+        "get_traffic_summary",
+        method!(AdminApiClient::get_traffic_summary, 1),
+    )?;
+    admin.define_method(
+        "get_errors_summary",
+        method!(AdminApiClient::get_errors_summary, 1),
+    )?;
+    admin.define_method(
+        "get_endpoint_errors_summary",
+        method!(AdminApiClient::get_endpoint_errors_summary, 1),
     )?;
     admin.define_method("create_token", method!(AdminApiClient::create_token, 1))?;
     admin.define_method("delete_token", method!(AdminApiClient::delete_token, 1))?;
