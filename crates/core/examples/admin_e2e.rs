@@ -1226,13 +1226,19 @@ async fn aligned_reads(qn: &QuicknodeSdk, endpoint_id: &str) -> Result<(), SdkEr
         qn.admin
             .get_usage_rpc_summary(&GetUsageRpcSummaryRequest {
                 last: Some("1h".into()),
-                group_by: Some(vec!["method".into()]),
+                group_by: Some(vec!["method".into(), "endpoint".into()]),
                 limit: Some(1),
                 ..Default::default()
             })
             .await,
     )? {
         assert!(response.data.totals.requests.is_finite());
+        for row in response.data.breakdown.as_deref().unwrap_or_default() {
+            assert!(
+                row.endpoint.is_some(),
+                "selected endpoint dimension omitted"
+            );
+        }
         if let Some(cursor) = response.data.next_cursor {
             let next = qn
                 .admin
@@ -1274,12 +1280,18 @@ async fn aligned_reads(qn: &QuicknodeSdk, endpoint_id: &str) -> Result<(), SdkEr
         qn.admin
             .get_traffic_summary(&GetTrafficSummaryRequest {
                 last: Some("1h".into()),
-                group_by: Some(vec!["method".into()]),
+                group_by: Some(vec!["method".into(), "endpoint".into()]),
                 ..Default::default()
             })
             .await,
     )? {
         assert!(response.data.totals.bytes.is_finite());
+        for row in response.data.breakdown.as_deref().unwrap_or_default() {
+            assert!(
+                row.endpoint.is_some(),
+                "selected endpoint dimension omitted"
+            );
+        }
     }
     for kind in ["rpc", "http"] {
         if let Some(response) = feature_access(
@@ -1288,7 +1300,7 @@ async fn aligned_reads(qn: &QuicknodeSdk, endpoint_id: &str) -> Result<(), SdkEr
                 .get_errors_summary(&GetErrorsSummaryRequest {
                     last: Some("1h".into()),
                     kind: Some(kind.into()),
-                    group_by: Some(vec!["code".into()]),
+                    group_by: Some(vec!["code".into(), "endpoint".into()]),
                     ..Default::default()
                 })
                 .await,
@@ -1297,6 +1309,10 @@ async fn aligned_reads(qn: &QuicknodeSdk, endpoint_id: &str) -> Result<(), SdkEr
             for row in response.data.breakdown.unwrap_or_default() {
                 assert_eq!(row.kind, kind);
                 assert!(row.count.is_finite());
+                assert!(
+                    row.endpoint.is_some(),
+                    "selected endpoint dimension omitted"
+                );
             }
         }
     }

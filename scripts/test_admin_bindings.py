@@ -98,22 +98,25 @@ class Handler(BaseHTTPRequestHandler):
                 data["breakdown"] = []
             else:
                 assert query == {"last": ["1d"], "group_by[]": ["method", "endpoint"]}, query
-                data["breakdown"] = [{**TOTALS, "requests": None, "method": None}]
+                data["breakdown"] = [{**TOTALS, "requests": None, "method": None, **dimension} for dimension in ({"endpoint": 4123}, {"endpoint": None}, {})]
                 data["next_cursor"] = "opaque-cursor"
             return 200, {"data": data}
         if path == "/metrics/traffic/summary":
-            assert query == {"last": ["1d"], "group_by[]": ["method"]}, query
+            assert query == {"last": ["1d"], "group_by[]": ["method", "endpoint"]}, query
             totals = {"successful_requests": 7.5, "bytes": 10.5, "request_credits": 5.5, "bytes_credits": 3.5, "credits": 9.0, "active_methods": 1.0}
-            return 200, {"data": {"from": "2026-10-01T00:00:00Z", "to": "2026-10-02T00:00:00Z", "totals": totals, "breakdown": [{**totals, "successful_requests": None, "method": None}]}}
+            return 200, {"data": {"from": "2026-10-01T00:00:00Z", "to": "2026-10-02T00:00:00Z", "totals": totals, "breakdown": [{**totals, "successful_requests": None, "method": None, **dimension} for dimension in ({"endpoint": 4123}, {"endpoint": None}, {})]}}
+        if path == "/metrics/errors/summary":
+            assert query == {"last": ["1d"], "group_by[]": ["endpoint"], "endpoints[]": ["4123", "4124"]}, query
+            return 200, {"data": {"from": "2026-10-01T00:00:00Z", "to": "2026-10-02T00:00:00Z", "totals": {"rpc_errors": 3.0, "http_errors": 0.0}, "breakdown": [{"kind": "rpc", "count": 1.0, **dimension} for dimension in ({"endpoint": 4123}, {"endpoint": None}, {})]}}
         if path == "/transactions":
-            assert query == {"last": ["1d"]}, query
-            row = {"network": "ethereum-mainnet", "transaction_hash": "hash", "first_submitted_at": "2026-10-01T00:00:00Z", "last_submitted_at": "2026-10-01T00:00:01Z", "state": "succeeded", "attempt_count": 1, "endpoint_ids": ["fixture-uuid"], "methods": ["eth_sendRawTransaction"], "archive": False, "height": HEIGHT}
+            assert query == {"last": ["1d"], "endpoints[]": ["4123", "4124"]}, query
+            row = {"network": "ethereum-mainnet", "transaction_hash": "hash", "first_submitted_at": "2026-10-01T00:00:00Z", "last_submitted_at": "2026-10-01T00:00:01Z", "state": "succeeded", "attempt_count": 1, "endpoint_ids": [4123, None, 4124], "methods": ["eth_sendRawTransaction"], "archive": False, "height": HEIGHT}
             return 200, {"data": {"from": "2026-10-01T00:00:00Z", "to": "2026-10-02T00:00:00Z", "transactions": [row]}}
         if path == "/transactions/ethereum-mainnet/hash":
             assert query.get("include_payloads") in [["false"], ["true"]], query
             if query["include_payloads"] == ["false"]:
                 return 200, {"data": {"exists": False, "data": None}}
-            return 200, {"data": {"exists": True, "data": {"network": "ethereum-mainnet", "transaction_hash": "hash", "first_submitted_at": "2026-10-01T00:00:00Z", "last_submitted_at": "2026-10-01T00:00:01Z", "state": "succeeded", "height": HEIGHT, "attempts": [{"submitted_at": "2026-10-01T00:00:00Z", "endpoint_id": "fixture-uuid", "method": "eth_sendRawTransaction", "request_id": "request", "payloads": {"request": PAYLOAD, "response": "plain text"}}]}}}
+            return 200, {"data": {"exists": True, "data": {"network": "ethereum-mainnet", "transaction_hash": "hash", "first_submitted_at": "2026-10-01T00:00:00Z", "last_submitted_at": "2026-10-01T00:00:01Z", "state": "succeeded", "height": HEIGHT, "endpoint_ids": [4123, None, 4124], "attempts": [{"submitted_at": "2026-10-01T00:00:00Z", "endpoint_id": 4123, "method": "eth_sendRawTransaction", "request_id": "request", "payloads": {"request": PAYLOAD, "response": "plain text"}}]}}}
         raise AssertionError(f"Unexpected request: {method} {self.path}")
 
 
@@ -137,8 +140,8 @@ def main():
                 env = dict(os.environ, ADMIN_MOCK_URL=f"http://127.0.0.1:{server.server_port}/")
                 subprocess.run(commands[language], cwd=ROOT, env=env, check=True, timeout=60)
                 assert not server.failures, server.failures
-                assert len(server.calls) == 19, (language, server.calls)
-                print(f"{language}: 19 localhost Admin requests verified", flush=True)
+                assert len(server.calls) == 20, (language, server.calls)
+                print(f"{language}: 20 localhost Admin requests verified", flush=True)
         finally:
             server.shutdown()
             thread.join()

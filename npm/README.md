@@ -1195,7 +1195,7 @@ Error breakdown rows contain `kind` and `count`, plus the selected grouping dime
 
 For the first page, supply `last` as a positive integer duration ending now (`s`, `m`, `h`, or `d`), or both `from` and `to` as ISO 8601 timestamps with timezones. Bare dates are not summary timestamps. Use `groupBy` for grouping. Credits summaries have no grouping parameter. The limit is 1 through 1000 and defaults to 100.
 
-Pass native arrays for groups and array filters. The SDK encodes repeated bracketed query keys such as `group_by[]=method&group_by[]=endpoint`. IDs, error codes, and HTTP status-code filters remain strings. `endpointNames` contains endpoint subdomains; RPC/traffic result `endpoint` values and account-error `endpoints` filters use external endpoint UUIDs. `tagIds` and `addonIds` contain numeric IDs represented as strings. Endpoint error-summary `id` uses the numeric endpoint ID represented as a string.
+Pass native arrays for groups and array filters. The SDK encodes repeated bracketed query keys such as `group_by[]=method&group_by[]=endpoint`. Error codes and HTTP status-code filters remain strings. `endpointNames` contains endpoint subdomains; RPC, traffic, and account-error result `endpoint` values are integer endpoint IDs. Account-error `endpoints` filters accept integer arrays, such as `[123, 456]`. `tagIds` and `addonIds` contain numeric IDs represented as strings. Endpoint error-summary `id` uses the numeric endpoint ID represented as a string.
 
 For error summaries, `kind` is `rpc` or `http`. Method filtering/grouping requires `rpc`; RPC kind rejects `statusCodes`, and HTTP kind rejects `codes`. Feature access and retention can produce API errors, including HTTP 403.
 
@@ -1203,7 +1203,7 @@ Continue with `cursor` alone. A cursor belongs to the original route, account, a
 
 Summary metrics use floating-point numbers, including count-like fields, and can contain fractions such as `7.5`. They do not promise arbitrary decimal precision. Legacy usage fields remain integers. RPC breakdown `requests` and traffic breakdown `successfulRequests` can be null even though totals are non-null. A missing `breakdown` is not an empty grouped result.
 
-An omitted grouping dimension is absent from the object; an explicit null remains `null`. Use `Object.hasOwn` or the `in` operator when presence matters. An omitted breakdown remains absent.
+Endpoint grouping values are `number` or `null`. An omitted grouping dimension is absent from the object; an explicit null remains `null`. Use `Object.hasOwn` or the `in` operator when presence matters. An omitted breakdown remains absent.
 
 ```typescript
 const page = await qn.admin.getUsageRpcSummary({
@@ -1235,14 +1235,14 @@ if (activity.data.length > 0) {
 
 `listTransactions` returns retained transactions and an optional continuation cursor. A first page needs `last` (for example, `1h`), or both `from` and `to` as ISO 8601 timestamps with timezones. A cursor alone continues the same resolved window.
 
-Optional filters are `network`, `method`, `state`, `transactionHash`, and `endpoints`. States are `submitted`, `succeeded`, and `failed`. Endpoint filters use external UUIDs and repeated `endpoints[]` query keys. The limit is 1 through 1000 and defaults to 100.
+Optional filters are `network`, `method`, `state`, `transactionHash`, and `endpoints`. States are `submitted`, `succeeded`, and `failed`. Endpoint filters accept integer endpoint IDs, such as `[123, 456]`, and use repeated `endpoints[]` query keys. The limit is 1 through 1000 and defaults to 100.
 
 `getTransaction` takes a network, a transaction hash, and optional `includePayloads`. It returns an outer `data` containing `exists` and a second `data` value. An absent or expired transaction can return `exists: false`; Node exposes the optional detail as `undefined` when the API returns null or omits it. Payloads default to excluded; set `includePayloads` to true to request retained request and response text. The SDK preserves that text without parsing it. Feature access can return HTTP 403.
 
-Block heights remain decimal strings, including values such as `9007199254740993`. Detail metadata can be absent or null. Attempts retain the order returned by the API.
+Transaction `endpointIds` arrays contain integer endpoint IDs or null elements. Node exposes an absent or null detail array as `undefined`; null entries inside a returned array remain null. Each attempt has a required integer `endpointId`. Block heights remain decimal strings, including values such as `9007199254740993`. Other detail metadata can be absent or null. Attempts retain the order returned by the API.
 
 ```typescript
-const page = await qn.admin.listTransactions({ last: "1h", limit: 20 });
+const page = await qn.admin.listTransactions({ last: "1h", endpoints: [123, 456], limit: 20 });
 const transaction = page.data.transactions[0];
 if (transaction) {
   const result = await qn.admin.getTransaction(
@@ -1258,6 +1258,8 @@ if (page.data.nextCursor) {
 ```
 
 #### Admin compatibility notes
+
+Summary endpoint dimensions and transaction endpoint IDs use `number` values. Account-error and transaction `endpoints` filters accept `number[]`. Transaction `endpointIds` arrays can contain `null`; attempt `endpointId` is required. Update callers that used UUID strings.
 
 Existing methods retain their return values and optional argument requiredness. Required API inputs are documented above; omitted or invalid values still produce API errors. Use the response-returning methods when you need created records.
 

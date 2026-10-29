@@ -33,17 +33,25 @@ async function expectApiError(request: Promise<unknown>, status: number) {
 
 async function showObservability(qn: QuicknodeSdk) {
   const summaries = [
-    qn.admin.getUsageCreditsSummary.bind(qn.admin),
-    qn.admin.getUsageRpcSummary.bind(qn.admin),
-    qn.admin.getUsageStreamsSummary.bind(qn.admin),
-    qn.admin.getUsageWebhooksSummary.bind(qn.admin),
-    qn.admin.getTrafficSummary.bind(qn.admin),
-    qn.admin.getErrorsSummary.bind(qn.admin),
+    { method: qn.admin.getUsageCreditsSummary.bind(qn.admin), endpointGroup: false },
+    { method: qn.admin.getUsageRpcSummary.bind(qn.admin), endpointGroup: true },
+    { method: qn.admin.getUsageStreamsSummary.bind(qn.admin), endpointGroup: false },
+    { method: qn.admin.getUsageWebhooksSummary.bind(qn.admin), endpointGroup: false },
+    { method: qn.admin.getTrafficSummary.bind(qn.admin), endpointGroup: true },
+    { method: qn.admin.getErrorsSummary.bind(qn.admin), endpointGroup: true },
   ];
-  for (const method of summaries) {
-    const summary = await optionalRead<Awaited<ReturnType<typeof method>>>("summary", method({ last: "1h", limit: 20 }));
+  for (const { method, endpointGroup } of summaries) {
+    const params = { last: "1h", limit: 20, ...(endpointGroup ? { groupBy: ["endpoint"] } : {}) };
+    const summary = await optionalRead<Awaited<ReturnType<typeof method>>>("summary", method(params));
     if (!summary) continue;
     if (!summary.data.from || !summary.data.to) throw new Error("missing summary window");
+    if (endpointGroup) {
+      for (const row of summary.data.breakdown ?? []) {
+        if (!("endpoint" in row) || (row.endpoint !== null && !Number.isInteger(row.endpoint))) {
+          throw new Error("selected endpoint dimension must be an integer or null");
+        }
+      }
+    }
     if (summary.data.nextCursor) {
       const nextPage = await method({ cursor: summary.data.nextCursor });
       if (nextPage.data.from !== summary.data.from || nextPage.data.to !== summary.data.to) {
@@ -64,6 +72,9 @@ async function showObservability(qn: QuicknodeSdk) {
   const transactions = await optionalRead("transactions", qn.admin.listTransactions({ last: "1h", limit: 20 }));
   if (!transactions) return;
   for (const transaction of transactions.data.transactions) {
+    if (!transaction.endpointIds.every(id => id === null || Number.isInteger(id))) {
+      throw new Error("transaction endpoint IDs must be integers or null");
+    }
     if (transaction.height != null && typeof transaction.height !== "string") {
       throw new Error("transaction height must remain a string");
     }
@@ -76,6 +87,12 @@ async function showObservability(qn: QuicknodeSdk) {
     if (detail.data.exists) {
       if (detail.data.data?.transactionHash !== transaction.transactionHash) {
         throw new Error("transaction detail hash mismatch");
+      }
+      if (detail.data.data.endpointIds != null && !detail.data.data.endpointIds.every(id => id === null || Number.isInteger(id))) {
+        throw new Error("transaction detail endpoint IDs must be integers or null");
+      }
+      if (!detail.data.data.attempts.every(attempt => Number.isInteger(attempt.endpointId))) {
+        throw new Error("transaction attempt endpoint ID must be an integer");
       }
       if (detail.data.data.attempts.some(attempt => attempt.payloads != null)) {
         throw new Error("transaction payloads were not requested");

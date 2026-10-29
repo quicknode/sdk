@@ -41,10 +41,16 @@ async def show_observability(qn):
         "get_traffic_summary", "get_errors_summary",
     ):
         method = getattr(qn.admin, name)
-        summary = await optional_read(name, method(last="1h", limit=20))
+        endpoint_group = name in {"get_usage_rpc_summary", "get_traffic_summary", "get_errors_summary"}
+        groups = {"group_by": ["endpoint"]} if endpoint_group else {}
+        summary = await optional_read(name, method(last="1h", limit=20, **groups))
         if summary is None:
             continue
         assert summary.data.from_time and summary.data.to_time
+        if endpoint_group:
+            for row in summary.data.breakdown or []:
+                assert hasattr(row, "endpoint")
+                assert row.endpoint is None or type(row.endpoint) is int
         if summary.data.next_cursor is not None:
             next_page = await method(cursor=summary.data.next_cursor)
             assert next_page.data.from_time == summary.data.from_time
@@ -67,6 +73,7 @@ async def show_observability(qn):
         return
     for transaction in transactions.data.transactions:
         assert transaction.height is None or isinstance(transaction.height, str)
+        assert all(endpoint_id is None or type(endpoint_id) is int for endpoint_id in transaction.endpoint_ids)
     if transactions.data.transactions:
         transaction = transactions.data.transactions[0]
         detail = await qn.admin.get_transaction(
@@ -76,6 +83,9 @@ async def show_observability(qn):
             assert detail.data.data is not None
             assert detail.data.data.transaction_hash == transaction.transaction_hash
             assert all(attempt.payloads is None for attempt in detail.data.data.attempts)
+            if detail.data.data.endpoint_ids is not None:
+                assert all(endpoint_id is None or type(endpoint_id) is int for endpoint_id in detail.data.data.endpoint_ids)
+            assert all(type(attempt.endpoint_id) is int for attempt in detail.data.data.attempts)
 
 
 async def main():

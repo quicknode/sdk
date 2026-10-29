@@ -850,7 +850,7 @@ class AdminApiClient:
         r"""
         Get activity log.
         """
-    def list_transactions(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, network: typing.Optional[builtins.str] = None, method: typing.Optional[builtins.str] = None, state: typing.Optional[builtins.str] = None, transaction_hash: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, endpoints: typing.Optional[typing.Sequence[builtins.str]] = None, limit: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, ListTransactionsResponse]:
+    def list_transactions(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, network: typing.Optional[builtins.str] = None, method: typing.Optional[builtins.str] = None, state: typing.Optional[builtins.str] = None, transaction_hash: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, endpoints: typing.Optional[typing.Sequence[builtins.int]] = None, limit: typing.Optional[builtins.int] = None) -> typing.Coroutine[typing.Any, typing.Any, ListTransactionsResponse]:
         r"""
         List transactions.
         """
@@ -878,7 +878,7 @@ class AdminApiClient:
         r"""
         Get traffic summary.
         """
-    def get_errors_summary(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None, group_by: typing.Optional[typing.Sequence[builtins.str]] = None, endpoints: typing.Optional[typing.Sequence[builtins.str]] = None, networks: typing.Optional[typing.Sequence[builtins.str]] = None, methods: typing.Optional[typing.Sequence[builtins.str]] = None, codes: typing.Optional[typing.Sequence[builtins.str]] = None, status_codes: typing.Optional[typing.Sequence[builtins.str]] = None, kind: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, GetErrorsSummaryResponse]:
+    def get_errors_summary(self, last: typing.Optional[builtins.str] = None, from_time: typing.Optional[builtins.str] = None, to_time: typing.Optional[builtins.str] = None, cursor: typing.Optional[builtins.str] = None, limit: typing.Optional[builtins.int] = None, group_by: typing.Optional[typing.Sequence[builtins.str]] = None, endpoints: typing.Optional[typing.Sequence[builtins.int]] = None, networks: typing.Optional[typing.Sequence[builtins.str]] = None, methods: typing.Optional[typing.Sequence[builtins.str]] = None, codes: typing.Optional[typing.Sequence[builtins.str]] = None, status_codes: typing.Optional[typing.Sequence[builtins.str]] = None, kind: typing.Optional[builtins.str] = None) -> typing.Coroutine[typing.Any, typing.Any, GetErrorsSummaryResponse]:
         r"""
         Get errors summary.
         """
@@ -3697,7 +3697,7 @@ class ErrorsSummaryRow:
         Present only when this dimension was selected for grouping.
         """
     @property
-    def endpoint(self) -> typing.Optional[builtins.str]:
+    def endpoint(self) -> typing.Optional[builtins.int]:
         r"""
         Present only when this dimension was selected for grouping.
         """
@@ -4644,14 +4644,14 @@ class GetErrorsSummaryRequest:
         Grouping dimensions. Allowed values: `code`, `endpoint`, `network`, `method`.
         """
     @property
-    def endpoints(self) -> typing.Optional[builtins.list[builtins.str]]:
+    def endpoints(self) -> typing.Optional[builtins.list[builtins.int]]:
         r"""
-        Endpoint external UUIDs to include.
+        Numeric endpoint IDs to include.
         """
     @endpoints.setter
-    def endpoints(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+    def endpoints(self, value: typing.Optional[builtins.list[builtins.int]]) -> None:
         r"""
-        Endpoint external UUIDs to include.
+        Numeric endpoint IDs to include.
         """
     @property
     def networks(self) -> typing.Optional[builtins.list[builtins.str]]:
@@ -6761,14 +6761,14 @@ class ListTransactionsRequest:
         Opaque continuation cursor; can be supplied without a time window.
         """
     @property
-    def endpoints(self) -> typing.Optional[builtins.list[builtins.str]]:
+    def endpoints(self) -> typing.Optional[builtins.list[builtins.int]]:
         r"""
-        Endpoint external UUIDs, encoded as repeated `endpoints[]` keys.
+        Numeric endpoint IDs, encoded as repeated `endpoints[]` keys.
         """
     @endpoints.setter
-    def endpoints(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+    def endpoints(self, value: typing.Optional[builtins.list[builtins.int]]) -> None:
         r"""
-        Endpoint external UUIDs, encoded as repeated `endpoints[]` keys.
+        Numeric endpoint IDs, encoded as repeated `endpoints[]` keys.
         """
     @property
     def limit(self) -> typing.Optional[builtins.int]:
@@ -8999,7 +8999,7 @@ class TrafficSummaryRow:
         Present only when this dimension was selected for grouping.
         """
     @property
-    def endpoint(self) -> typing.Optional[builtins.str]:
+    def endpoint(self) -> typing.Optional[builtins.int]:
         r"""
         Present only when this dimension was selected for grouping.
         """
@@ -9086,14 +9086,14 @@ class TransactionAttempt:
         Submission timestamp.
         """
     @property
-    def endpoint_id(self) -> builtins.str:
+    def endpoint_id(self) -> builtins.int:
         r"""
-        External UUID of the submitting endpoint.
+        Numeric ID of the submitting endpoint.
         """
     @endpoint_id.setter
-    def endpoint_id(self, value: builtins.str) -> None:
+    def endpoint_id(self, value: builtins.int) -> None:
         r"""
-        External UUID of the submitting endpoint.
+        Numeric ID of the submitting endpoint.
         """
     @property
     def method(self) -> builtins.str:
@@ -9192,14 +9192,14 @@ class TransactionDetail:
         Number of attempts, when available.
         """
     @property
-    def endpoint_ids(self) -> typing.Optional[builtins.list[builtins.str]]:
+    def endpoint_ids(self) -> typing.Optional[builtins.list[typing.Optional[builtins.int]]]:
         r"""
-        External endpoint UUIDs, when available.
+        Numeric endpoint IDs, when available; individual entries may be null.
         """
     @endpoint_ids.setter
-    def endpoint_ids(self, value: typing.Optional[builtins.list[builtins.str]]) -> None:
+    def endpoint_ids(self, value: typing.Optional[builtins.list[typing.Optional[builtins.int]]]) -> None:
         r"""
-        External endpoint UUIDs, when available.
+        Numeric endpoint IDs, when available; individual entries may be null.
         """
     @property
     def methods(self) -> typing.Optional[builtins.list[builtins.str]]:
@@ -9350,14 +9350,14 @@ class TransactionSummary:
         Number of submission attempts.
         """
     @property
-    def endpoint_ids(self) -> builtins.list[builtins.str]:
+    def endpoint_ids(self) -> builtins.list[typing.Optional[builtins.int]]:
         r"""
-        External UUIDs of endpoints that submitted this transaction.
+        Numeric IDs of submitting endpoints; null entries remain in place.
         """
     @endpoint_ids.setter
-    def endpoint_ids(self, value: builtins.list[builtins.str]) -> None:
+    def endpoint_ids(self, value: builtins.list[typing.Optional[builtins.int]]) -> None:
         r"""
-        External UUIDs of endpoints that submitted this transaction.
+        Numeric IDs of submitting endpoints; null entries remain in place.
         """
     @property
     def methods(self) -> builtins.list[builtins.str]:
@@ -10188,7 +10188,7 @@ class UsageRpcSummaryRow:
         Present only when this dimension was selected for grouping.
         """
     @property
-    def endpoint(self) -> typing.Optional[builtins.str]:
+    def endpoint(self) -> typing.Optional[builtins.int]:
         r"""
         Present only when this dimension was selected for grouping.
         """

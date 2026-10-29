@@ -936,7 +936,7 @@ export interface ErrorsSummaryRow {
   /** Group value, preserving omitted versus explicitly null fields. */
   code?: string | undefined | null
   /** Group value, preserving omitted versus explicitly null fields. */
-  endpoint?: string | undefined | null
+  endpoint?: number | undefined | null
   /** Group value, preserving omitted versus explicitly null fields. */
   network?: string | undefined | null
   /** Group value, preserving omitted versus explicitly null fields. */
@@ -1239,8 +1239,8 @@ export interface GetErrorsSummaryRequest {
   limit?: number
   /** Grouping dimensions. Allowed values: `code`, `endpoint`, `network`, `method`. */
   groupBy?: Array<string>
-  /** Endpoint external UUIDs to include. */
-  endpoints?: Array<string>
+  /** Numeric endpoint IDs to include. */
+  endpoints?: Array<number>
   /** Network names to include. */
   networks?: Array<string>
   /** RPC method names to include. */
@@ -1879,8 +1879,8 @@ export interface ListTransactionsRequest {
   transactionHash?: string
   /** Opaque continuation cursor; can be supplied without a time window. */
   cursor?: string
-  /** Endpoint external UUIDs, encoded as repeated `endpoints[]` keys. */
-  endpoints?: Array<string>
+  /** Numeric endpoint IDs, encoded as repeated `endpoints[]` keys. */
+  endpoints?: Array<number>
   /** Page size from 1 through 1000; the API defaults to 100. */
   limit?: number
 }
@@ -2575,8 +2575,8 @@ export interface TrafficSummaryTotals {
 export interface TransactionAttempt {
   /** Submission timestamp. */
   submittedAt: string
-  /** External UUID of the submitting endpoint. */
-  endpointId: string
+  /** Numeric ID of the submitting endpoint. */
+  endpointId: number
   /** RPC method used. */
   method: string
   /** Request UUID. */
@@ -2599,8 +2599,8 @@ export interface TransactionDetail {
   state: string
   /** Number of attempts, when available. */
   attemptCount?: number
-  /** External endpoint UUIDs, when available. */
-  endpointIds?: Array<string>
+  /** Numeric endpoint IDs, when available; individual entries may be null. */
+  endpointIds?: Array<number | undefined | null>
   /** Submission methods, when available. */
   methods?: Array<string>
   /** Whether archive data was used, when available. */
@@ -2651,8 +2651,8 @@ export interface TransactionSummary {
   lastSubmittedAt: string
   /** Number of submission attempts. */
   attemptCount: number
-  /** External UUIDs of endpoints that submitted this transaction. */
-  endpointIds: Array<string>
+  /** Numeric IDs of submitting endpoints; null entries remain in place. */
+  endpointIds: Array<number | undefined | null>
   /** RPC methods used to submit this transaction. */
   methods: Array<string>
   /** Whether archive data was used. */
@@ -4009,7 +4009,7 @@ export interface TrafficSummaryRow {
   credits: number
   activeMethods: number
   method?: string | undefined | null
-  endpoint?: string | undefined | null
+  endpoint?: number | undefined | null
 }
 
 export interface UpdateStreamParamsNode {
@@ -4062,7 +4062,7 @@ export interface UsageRpcSummaryRow {
   dataCredits: number
   credits: number
   method?: string | undefined | null
-  endpoint?: string | undefined | null
+  endpoint?: number | undefined | null
   chain?: string | undefined | null
   network?: string | undefined | null
 }

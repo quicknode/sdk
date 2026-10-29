@@ -13,7 +13,7 @@ pub struct UsageRpcSummaryRow {
     pub data_credits: f64,
     pub credits: f64,
     pub method: Option<Option<String>>,
-    pub endpoint: Option<Option<String>>,
+    pub endpoint: Option<Option<i64>>,
     pub chain: Option<Option<String>>,
     pub network: Option<Option<String>>,
 }
@@ -84,7 +84,7 @@ pub struct TrafficSummaryRow {
     pub credits: f64,
     pub active_methods: f64,
     pub method: Option<Option<String>>,
-    pub endpoint: Option<Option<String>>,
+    pub endpoint: Option<Option<i64>>,
 }
 
 impl From<core::TrafficSummaryRow> for TrafficSummaryRow {

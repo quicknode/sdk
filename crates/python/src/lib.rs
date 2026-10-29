@@ -414,7 +414,7 @@ impl AdminApiClient {
         state: Option<String>,
         transaction_hash: Option<String>,
         cursor: Option<String>,
-        endpoints: Option<Vec<String>>,
+        endpoints: Option<Vec<i64>>,
         limit: Option<i32>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let client = self.inner.clone();
@@ -669,7 +669,7 @@ impl AdminApiClient {
         cursor: Option<String>,
         limit: Option<i32>,
         group_by: Option<Vec<String>>,
-        endpoints: Option<Vec<String>>,
+        endpoints: Option<Vec<i64>>,
         networks: Option<Vec<String>>,
         methods: Option<Vec<String>>,
         codes: Option<Vec<String>>,

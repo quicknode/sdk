@@ -1283,7 +1283,7 @@ Error breakdown rows contain `kind` and `count`, plus the selected grouping dime
 
 For the first page, supply `last` as a positive integer duration ending now (`s`, `m`, `h`, or `d`), or both `from_time` and `to_time` as ISO 8601 timestamps with timezones. Bare dates are not summary timestamps. Use `group_by` for grouping. Credits summaries have no grouping parameter. The limit is 1 through 1000 and defaults to 100.
 
-Pass native arrays for groups and array filters. The SDK encodes repeated bracketed query keys such as `group_by[]=method&group_by[]=endpoint`. IDs, error codes, and HTTP status-code filters remain strings. `endpoint_names` contains endpoint subdomains; RPC/traffic result `endpoint` values and account-error `endpoints` filters use external endpoint UUIDs. `tag_ids` and `addon_ids` contain numeric IDs represented as strings. Endpoint error-summary `id` uses the numeric endpoint ID represented as a string.
+Pass native arrays for groups and array filters. The SDK encodes repeated bracketed query keys such as `group_by[]=method&group_by[]=endpoint`. Error codes and HTTP status-code filters remain strings. `endpoint_names` contains endpoint subdomains; RPC, traffic, and account-error result `endpoint` values are integer endpoint IDs. Account-error `endpoints` filters accept integer arrays, such as `[123, 456]`. `tag_ids` and `addon_ids` contain numeric IDs represented as strings. Endpoint error-summary `id` uses the numeric endpoint ID represented as a string.
 
 For error summaries, `kind` is `rpc` or `http`. Method filtering/grouping requires `rpc`; RPC kind rejects `status_codes`, and HTTP kind rejects `codes`. Feature access and retention can produce API errors, including HTTP 403.
 
@@ -1291,7 +1291,7 @@ Continue with `cursor` alone. A cursor belongs to the original route, account, a
 
 Summary metrics use floating-point numbers, including count-like fields, and can contain fractions such as `7.5`. They do not promise arbitrary decimal precision. Legacy usage fields remain integers. RPC breakdown `requests` and traffic breakdown `successful_requests` can be null even though totals are non-null. A missing `breakdown` is not an empty grouped result.
 
-Grouping dimensions use `Option<Option<String>>`: `None` means omitted, `Some(None)` means an explicit null, and `Some(Some(value))` holds a value. New summary window fields are `from_time` and `to_time`; JSON uses `from` and `to`.
+Endpoint grouping dimensions use `Option<Option<i64>>`; other dimensions use `Option<Option<String>>`: `None` means omitted, `Some(None)` means an explicit null, and `Some(Some(value))` holds a value. New summary window fields are `from_time` and `to_time`; JSON uses `from` and `to`.
 
 ```rust
 use quicknode_sdk::admin::GetUsageRpcSummaryRequest;
@@ -1335,17 +1335,17 @@ if let Some(entry) = page.data.first() {
 
 `list_transactions` returns retained transactions and an optional continuation cursor. A first page needs `last` (for example, `1h`), or both `from_time` and `to_time` as ISO 8601 timestamps with timezones. A cursor alone continues the same resolved window.
 
-Optional filters are `network`, `method`, `state`, `transaction_hash`, and `endpoints`. States are `submitted`, `succeeded`, and `failed`. Endpoint filters use external UUIDs and repeated `endpoints[]` query keys. The limit is 1 through 1000 and defaults to 100.
+Optional filters are `network`, `method`, `state`, `transaction_hash`, and `endpoints`. States are `submitted`, `succeeded`, and `failed`. Endpoint filters accept integer endpoint IDs, such as `[123, 456]`, and use repeated `endpoints[]` query keys. The limit is 1 through 1000 and defaults to 100.
 
 `get_transaction` takes a network, a transaction hash, and optional `include_payloads`. It returns an outer `data` containing `exists` and a second `data` value. An absent or expired transaction can return `exists: false` and `data: null`. Payloads default to excluded; set `include_payloads` to true to request retained request and response text. The SDK preserves that text without parsing it. Feature access can return HTTP 403.
 
-Block heights remain decimal strings, including values such as `9007199254740993`. Detail metadata can be absent or null. Attempts retain the order returned by the API.
+Transaction `endpoint_ids` arrays contain integer endpoint IDs or null elements; the detail array itself can be absent or null. Each attempt has a required integer `endpoint_id`. Block heights remain decimal strings, including values such as `9007199254740993`. Other detail metadata can be absent or null. Attempts retain the order returned by the API.
 
 ```rust
 use quicknode_sdk::admin::{GetTransactionRequest, ListTransactionsRequest};
 
 let page = qn.admin.list_transactions(
-    &ListTransactionsRequest::builder().last("1h".to_string()).limit(20).build(),
+    &ListTransactionsRequest::builder().last("1h".to_string()).endpoints(vec![123, 456]).limit(20).build(),
 ).await?;
 if let Some(transaction) = page.data.transactions.first() {
     let result = qn.admin.get_transaction(
@@ -1365,6 +1365,8 @@ if let Some(cursor) = page.data.next_cursor {
 ```
 
 #### Admin compatibility notes
+
+Summary `endpoint` dimensions use `Option<Option<i64>>`. Account-error and transaction `endpoints` filters use `Option<Vec<i64>>`. Transaction list `endpoint_ids` uses `Vec<Option<i64>>`, detail `endpoint_ids` uses `Option<Vec<Option<i64>>>`, and attempt `endpoint_id` uses `i64`. Update callers that used UUID strings.
 
 Existing methods retain their return values and optional argument requiredness. Required API inputs are documented above; omitted or invalid values still produce API errors. Use the response-returning methods when you need created records.
 

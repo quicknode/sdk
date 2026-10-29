@@ -44,9 +44,9 @@ pub struct ListTransactionsRequest {
     /// Opaque continuation cursor; can be supplied without a time window.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cursor: Option<String>,
-    /// Endpoint external UUIDs, encoded as repeated `endpoints[]` keys.
+    /// Numeric endpoint IDs, encoded as repeated `endpoints[]` keys.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub endpoints: Option<Vec<String>>,
+    pub endpoints: Option<Vec<i64>>,
     /// Page size from 1 through 1000; the API defaults to 100.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<i32>,
@@ -113,8 +113,8 @@ pub struct TransactionSummary {
     pub last_submitted_at: String,
     /// Number of submission attempts.
     pub attempt_count: i64,
-    /// External UUIDs of endpoints that submitted this transaction.
-    pub endpoint_ids: Vec<String>,
+    /// Numeric IDs of submitting endpoints; null entries remain in place.
+    pub endpoint_ids: Vec<Option<i64>>,
     /// RPC methods used to submit this transaction.
     pub methods: Vec<String>,
     /// Whether archive data was used.
@@ -167,8 +167,8 @@ pub struct TransactionDetail {
     pub state: String,
     /// Number of attempts, when available.
     pub attempt_count: Option<i64>,
-    /// External endpoint UUIDs, when available.
-    pub endpoint_ids: Option<Vec<String>>,
+    /// Numeric endpoint IDs, when available; individual entries may be null.
+    pub endpoint_ids: Option<Vec<Option<i64>>>,
     /// Submission methods, when available.
     pub methods: Option<Vec<String>>,
     /// Whether archive data was used, when available.
@@ -187,8 +187,8 @@ pub struct TransactionDetail {
 pub struct TransactionAttempt {
     /// Submission timestamp.
     pub submitted_at: String,
-    /// External UUID of the submitting endpoint.
-    pub endpoint_id: String,
+    /// Numeric ID of the submitting endpoint.
+    pub endpoint_id: i64,
     /// RPC method used.
     pub method: String,
     /// Request UUID.
@@ -281,7 +281,7 @@ fn transactions_query(params: &ListTransactionsRequest) -> Vec<(&'static str, St
     }
     if let Some(endpoints) = &params.endpoints {
         for endpoint in endpoints {
-            query.push(("endpoints[]", endpoint.clone()));
+            query.push(("endpoints[]", endpoint.to_string()));
         }
     }
     if let Some(limit) = params.limit {
@@ -320,7 +320,7 @@ mod tests {
             "from": "2026-01-01T00:00:00Z", "to": "2026-01-02T00:00:00Z",
             "transactions": [{"network": "ethereum-mainnet", "transaction_hash": "0xfixture",
                 "first_submitted_at": "2026-01-01T01:00:00Z", "last_submitted_at": "2026-01-01T02:00:00Z",
-                "attempt_count": 2, "endpoint_ids": ["fixture-endpoint-a", "fixture-endpoint-b"],
+                "attempt_count": 2, "endpoint_ids": [4123, null, 4124],
                 "methods": ["eth_sendRawTransaction"], "archive": false,
                 "height": "9007199254740993", "state": "succeeded"}], "next_cursor": "fixture+/cursor="
         }, "error": null})
@@ -344,10 +344,7 @@ mod tests {
                 method: Some("eth_sendRawTransaction".into()),
                 state: Some("succeeded".into()),
                 transaction_hash: Some("0xfixture&state=failed".into()),
-                endpoints: Some(vec![
-                    "fixture-endpoint-a".into(),
-                    "fixture-endpoint-b".into(),
-                ]),
+                endpoints: Some(vec![4123, 4124]),
                 limit: Some(2),
                 ..Default::default()
             })
@@ -358,6 +355,14 @@ mod tests {
             Some("9007199254740993")
         );
         assert_eq!(result.data.transactions[0].attempt_count, 2);
+        assert_eq!(
+            result.data.transactions[0].endpoint_ids,
+            vec![Some(4123), None, Some(4124)]
+        );
+        assert_eq!(
+            serde_json::to_value(&result).unwrap()["data"]["transactions"][0]["endpoint_ids"],
+            json!([4123, null, 4124])
+        );
         assert!(!result.data.transactions[0].archive);
         assert_eq!(result.data.next_cursor.as_deref(), Some("fixture+/cursor="));
         assert_eq!(
@@ -378,8 +383,8 @@ mod tests {
                 ("method".into(), "eth_sendRawTransaction".into()),
                 ("state".into(), "succeeded".into()),
                 ("transaction_hash".into(), "0xfixture&state=failed".into()),
-                ("endpoints[]".into(), "fixture-endpoint-a".into()),
-                ("endpoints[]".into(), "fixture-endpoint-b".into()),
+                ("endpoints[]".into(), "4123".into()),
+                ("endpoints[]".into(), "4124".into()),
                 ("limit".into(), "2".into()),
             ]
         );
@@ -486,12 +491,12 @@ mod tests {
                 "network": "network/part?x#y", "transaction_hash": "hash/part?include_payloads=false",
                 "first_submitted_at": "2026-01-01T01:00:00Z", "last_submitted_at": "2026-01-01T02:00:00Z",
                 "state": "succeeded", "height": "9007199254740993", "archive": false,
-                "attempt_count": null, "endpoint_ids": null, "methods": null,
+                "attempt_count": null, "endpoint_ids": [4123, null, 4124], "methods": null,
                 "attempts": [
-                    {"submitted_at": "2026-01-01T01:00:00Z", "endpoint_id": "fixture-endpoint-a",
+                    {"submitted_at": "2026-01-01T01:00:00Z", "endpoint_id": 4123,
                      "method": "eth_sendRawTransaction", "request_id": "fixture-request-a",
                      "payloads": {"request": request_text, "response": response_text}},
-                    {"submitted_at": "2026-01-01T02:00:00Z", "endpoint_id": "fixture-endpoint-b",
+                    {"submitted_at": "2026-01-01T02:00:00Z", "endpoint_id": 4124,
                      "method": "eth_sendRawTransaction", "request_id": "fixture-request-b",
                      "payloads": {"request": null, "response": null}}
                 ]}}, "error": null}))).expect(1).mount(&server).await;
@@ -512,8 +517,13 @@ mod tests {
         assert_eq!(detail.height.as_deref(), Some("9007199254740993"));
         assert_eq!(detail.archive, Some(false));
         assert!(detail.attempt_count.is_none());
-        assert!(detail.endpoint_ids.is_none());
+        assert_eq!(
+            detail.endpoint_ids,
+            Some(vec![Some(4123), None, Some(4124)])
+        );
         assert!(detail.methods.is_none());
+        assert_eq!(detail.attempts[0].endpoint_id, 4123);
+        assert_eq!(detail.attempts[1].endpoint_id, 4124);
         assert_eq!(detail.attempts[0].request_id, "fixture-request-a");
         assert_eq!(detail.attempts[1].request_id, "fixture-request-b");
         let payloads = detail.attempts[0].payloads.as_ref().unwrap();
@@ -538,7 +548,7 @@ mod tests {
                 "network": "ethereum-mainnet", "transaction_hash": "0xfixture",
                 "first_submitted_at": "2026-01-01T01:00:00Z", "last_submitted_at": "2026-01-01T01:00:00Z",
                 "state": "submitted", "attempts": [{"submitted_at": "2026-01-01T01:00:00Z",
-                    "endpoint_id": "fixture-endpoint-a", "method": "eth_sendRawTransaction", "request_id": "fixture-request-a"}]
+                    "endpoint_id": 4123, "method": "eth_sendRawTransaction", "request_id": "fixture-request-a"}]
             }}, "error": null}))).expect(1).mount(&server).await;
         let sdk = make_sdk(format!("{}/", server.uri()));
         let detail = sdk

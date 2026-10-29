@@ -26,21 +26,29 @@ async function main() {
   assert.equal(summary.totals.rpcCredits, 7.5);
   assert.equal(summary.breakdown[0].requests, null);
   assert.equal(summary.breakdown[0].method, null);
-  assert.equal(Object.hasOwn(summary.breakdown[0], "endpoint"), false);
   assert.equal(summary.from, "2026-10-01T00:00:00Z");
   const page = (await admin.getUsageRpcSummary({ cursor: summary.nextCursor })).data;
   assert.equal(page.totals.rpcCredits, 7.5);
   assert.equal(page.nextCursor, undefined);
-  const traffic = (await admin.getTrafficSummary({ last: "1d", groupBy: ["method"] })).data;
+  const traffic = (await admin.getTrafficSummary({ last: "1d", groupBy: ["method", "endpoint"] })).data;
   assert.equal(traffic.breakdown[0].successfulRequests, null);
   assert.equal(traffic.breakdown[0].method, null);
-  assert.equal(Object.hasOwn(traffic.breakdown[0], "endpoint"), false);
-  assert.equal((await admin.listTransactions({ last: "1d" })).data.transactions[0].height, "9007199254740993");
+  const errors = (await admin.getErrorsSummary({ last: "1d", groupBy: ["endpoint"], endpoints: [4123, 4124] })).data;
+  for (const response of [summary, traffic, errors]) {
+    assert.equal(response.breakdown[0].endpoint, 4123);
+    assert.equal(response.breakdown[1].endpoint, null);
+    assert.equal(Object.hasOwn(response.breakdown[2], "endpoint"), false);
+  }
+  const rows = (await admin.listTransactions({ last: "1d", endpoints: [4123, 4124] })).data.transactions;
+  assert.equal(rows[0].height, "9007199254740993");
+  assert.deepEqual(rows[0].endpointIds, [4123, null, 4124]);
   const absent = (await admin.getTransaction("ethereum-mainnet", "hash", { includePayloads: false })).data;
   assert.equal(absent.exists, false);
   assert.equal(absent.data, undefined);
   const detail = (await admin.getTransaction("ethereum-mainnet", "hash", { includePayloads: true })).data.data;
   assert.equal(detail.height, "9007199254740993");
+  assert.deepEqual(detail.endpointIds, [4123, null, 4124]);
+  assert.equal(detail.attempts[0].endpointId, 4123);
   assert.equal(detail.attempts[0].payloads.request, ' { "method" : "eth_sendRawTransaction" }\n');
   assert.equal(detail.attempts[0].payloads.response, "plain text");
   await assert.rejects(admin.getEndpointSecurity("missing"), error => error instanceof ApiError && error.status === 404 && error.body.includes("fixture missing endpoint"));

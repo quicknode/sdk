@@ -50,8 +50,8 @@ impl UsageRpcSummaryRow {
     }
     /// Present only when this dimension was selected for grouping.
     #[getter]
-    fn endpoint(&self) -> PyResult<Option<String>> {
-        self.inner.endpoint.clone().ok_or_else(|| {
+    fn endpoint(&self) -> PyResult<Option<i64>> {
+        self.inner.endpoint.ok_or_else(|| {
             PyAttributeError::new_err("endpoint was not included in this summary group")
         })
     }
@@ -392,8 +392,8 @@ impl TrafficSummaryRow {
     }
     /// Present only when this dimension was selected for grouping.
     #[getter]
-    fn endpoint(&self) -> PyResult<Option<String>> {
-        self.inner.endpoint.clone().ok_or_else(|| {
+    fn endpoint(&self) -> PyResult<Option<i64>> {
+        self.inner.endpoint.ok_or_else(|| {
             PyAttributeError::new_err("endpoint was not included in this summary group")
         })
     }
@@ -500,8 +500,8 @@ impl ErrorsSummaryRow {
     }
     /// Present only when this dimension was selected for grouping.
     #[getter]
-    fn endpoint(&self) -> PyResult<Option<String>> {
-        self.inner.endpoint.clone().ok_or_else(|| {
+    fn endpoint(&self) -> PyResult<Option<i64>> {
+        self.inner.endpoint.ok_or_else(|| {
             PyAttributeError::new_err("endpoint was not included in this summary group")
         })
     }

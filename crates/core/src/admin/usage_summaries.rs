@@ -228,7 +228,7 @@ pub struct UsageRpcSummaryRow {
         deserialize_with = "deserialize_dimension",
         skip_serializing_if = "Option::is_none"
     )]
-    pub endpoint: Option<Option<String>>,
+    pub endpoint: Option<Option<i64>>,
     /// Group value, preserving omitted versus explicitly null fields.
     #[serde(
         default,
@@ -628,25 +628,26 @@ pub(super) fn summary_window_query(
     query
 }
 
-pub(super) fn push_array(
+pub(super) fn push_array<T: ToString>(
     query: &mut Vec<(&'static str, String)>,
     key: &'static str,
-    values: &Option<Vec<String>>,
+    values: &Option<Vec<T>>,
 ) {
     if let Some(values) = values {
-        query.extend(values.iter().map(|value| (key, value.clone())));
+        query.extend(values.iter().map(|value| (key, value.to_string())));
     }
 }
 
 // Serde normally maps both missing and null fields to None. The outer option
 // records presence so selected null groups survive serialization and bindings.
-pub(super) fn deserialize_dimension<'de, D>(
+pub(super) fn deserialize_dimension<'de, D, T>(
     deserializer: D,
-) -> Result<Option<Option<String>>, D::Error>
+) -> Result<Option<Option<T>>, D::Error>
 where
     D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
 {
-    Option::<String>::deserialize(deserializer).map(Some)
+    Option::<T>::deserialize(deserializer).map(Some)
 }
 
 #[cfg(test)]
@@ -805,7 +806,7 @@ mod tests {
                         "data_credits": 7.5,
                         "credits": 7.5,
                         "method": null,
-                        "endpoint": "fixture-group"
+                        "endpoint": 4123
                     },
                     {
                         "requests": 1.5,

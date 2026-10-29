@@ -40,7 +40,8 @@ def check_summary(qn, operation, **params)
     (data[:breakdown] || []).each do |row|
       params.fetch(:group_by, []).each do |dimension|
         raise "missing selected dimension #{dimension}" unless row.key?(dimension)
-        raise "unexpected dimension value" unless row[dimension].nil? || row[dimension].is_a?(String)
+        expected_type = dimension == "endpoint" ? Integer : String
+        raise "unexpected dimension value" unless row[dimension].nil? || row[dimension].is_a?(expected_type)
       end
     end
     if data[:next_cursor]
@@ -132,12 +133,12 @@ sleep 0.5
 
 # Summary windows and continuation cursors use the same request on every page.
 check_summary(qn, :get_usage_credits_summary, last: "1h")
-check_summary(qn, :get_usage_rpc_summary, last: "1h", group_by: ["method"], limit: 2)
+check_summary(qn, :get_usage_rpc_summary, last: "1h", group_by: ["method", "endpoint"], limit: 2)
 check_summary(qn, :get_usage_streams_summary, last: "1h", group_by: ["stream"], limit: 2)
 check_summary(qn, :get_usage_webhooks_summary, last: "1h", group_by: ["webhook"], limit: 2)
-check_summary(qn, :get_traffic_summary, last: "1h", group_by: ["method"], limit: 2)
-check_summary(qn, :get_errors_summary, last: "1h", kind: "rpc", group_by: ["code"], limit: 2)
-check_summary(qn, :get_errors_summary, last: "1h", kind: "http", group_by: ["code"], limit: 2)
+check_summary(qn, :get_traffic_summary, last: "1h", group_by: ["method", "endpoint"], limit: 2)
+check_summary(qn, :get_errors_summary, last: "1h", kind: "rpc", group_by: ["code", "endpoint"], limit: 2)
+check_summary(qn, :get_errors_summary, last: "1h", kind: "http", group_by: ["code", "endpoint"], limit: 2)
 
 with_feature_access("activity logs") do
   filters = qn.admin.list_activity_log_filters.fetch(:data)
@@ -164,6 +165,7 @@ with_feature_access("transactions") do
   response = qn.admin.list_transactions(last: "1h", limit: 2)
   data = response.fetch(:data)
   data.fetch(:transactions).each do |transaction|
+    raise "transaction endpoint IDs must be integers or nil" unless transaction.fetch(:endpoint_ids).all? { |id| id.nil? || id.is_a?(Integer) }
     height = transaction[:height]
     raise "transaction height lost decimal-string representation" unless height.nil? || (height.is_a?(String) && height.match?(/\A-?\d+\z/))
   end
@@ -174,7 +176,12 @@ with_feature_access("transactions") do
       ).fetch(:data)
       raise "missing transaction existence flag" unless [true, false].include?(lookup[:exists])
       if lookup[:exists]
-        lookup.fetch(:data).fetch(:attempts).each do |attempt|
+        detail = lookup.fetch(:data)
+        unless detail[:endpoint_ids].nil?
+          raise "transaction detail endpoint IDs must be integers or nil" unless detail[:endpoint_ids].all? { |id| id.nil? || id.is_a?(Integer) }
+        end
+        detail.fetch(:attempts).each do |attempt|
+          raise "transaction attempt endpoint ID must be an integer" unless attempt.fetch(:endpoint_id).is_a?(Integer)
           payloads = attempt[:payloads]
           raise "unexpected transaction payloads" if !include_payloads && payloads
           next unless payloads

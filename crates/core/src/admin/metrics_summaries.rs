@@ -112,7 +112,7 @@ pub struct TrafficSummaryRow {
         deserialize_with = "deserialize_dimension",
         skip_serializing_if = "Option::is_none"
     )]
-    pub endpoint: Option<Option<String>>,
+    pub endpoint: Option<Option<i64>>,
 }
 
 /// Summary window and grouped results. Totals cover the full window on every page.
@@ -222,9 +222,9 @@ pub struct GetErrorsSummaryRequest {
     /// Grouping dimensions. Allowed values: `code`, `endpoint`, `network`, `method`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_by: Option<Vec<String>>,
-    /// Endpoint external UUIDs to include.
+    /// Numeric endpoint IDs to include.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub endpoints: Option<Vec<String>>,
+    pub endpoints: Option<Vec<i64>>,
     /// Network names to include.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub networks: Option<Vec<String>>,
@@ -276,7 +276,7 @@ pub struct ErrorsSummaryRow {
         deserialize_with = "deserialize_dimension",
         skip_serializing_if = "Option::is_none"
     )]
-    pub endpoint: Option<Option<String>>,
+    pub endpoint: Option<Option<i64>>,
     /// Group value, preserving omitted versus explicitly null fields.
     #[serde(
         default,
@@ -539,7 +539,7 @@ mod tests {
                         "credits": 7.5,
                         "active_methods": 7.5,
                         "method": null,
-                        "endpoint": "fixture-group"
+                        "endpoint": 4123
                     }
                 ],
                 "next_cursor": "opaque+/cursor=="
@@ -668,7 +668,7 @@ mod tests {
                         "kind": "rpc",
                         "count": 7.5,
                         "code": null,
-                        "endpoint": "fixture-group"
+                        "endpoint": 4123
                     }
                 ],
                 "next_cursor": "opaque+/cursor=="
@@ -687,10 +687,7 @@ mod tests {
                 last: Some("1h".to_string()),
                 limit: Some(2),
                 group_by: Some(vec!["code".to_string(), "endpoint".to_string()]),
-                endpoints: Some(vec![
-                    "fixture-uuid-one".to_string(),
-                    "fixture-uuid-two".to_string(),
-                ]),
+                endpoints: Some(vec![4123, 4124]),
                 networks: Some(vec!["mainnet".to_string(), "sepolia".to_string()]),
                 methods: Some(vec!["eth_blockNumber".to_string(), "eth_call".to_string()]),
                 codes: Some(vec!["-32000".to_string(), "-32601".to_string()]),
@@ -711,8 +708,8 @@ mod tests {
             ("limit".to_string(), "2".to_string()),
             ("group_by[]".to_string(), "code".to_string()),
             ("group_by[]".to_string(), "endpoint".to_string()),
-            ("endpoints[]".to_string(), "fixture-uuid-one".to_string()),
-            ("endpoints[]".to_string(), "fixture-uuid-two".to_string()),
+            ("endpoints[]".to_string(), "4123".to_string()),
+            ("endpoints[]".to_string(), "4124".to_string()),
             ("networks[]".to_string(), "mainnet".to_string()),
             ("networks[]".to_string(), "sepolia".to_string()),
             ("methods[]".to_string(), "eth_blockNumber".to_string()),

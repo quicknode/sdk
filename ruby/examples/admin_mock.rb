@@ -33,18 +33,30 @@ summary = admin.get_usage_rpc_summary(last: "1d", group_by: ["method", "endpoint
 check(summary[:totals][:rpc_credits] == 7.5)
 row = summary[:breakdown][0]
 check(row.key?(:requests) && row[:requests].nil?)
-check(row.key?(:method) && row[:method].nil? && !row.key?(:endpoint))
+check(row.key?(:method) && row[:method].nil?)
 check(summary[:from] == "2026-10-01T00:00:00Z")
 page = admin.get_usage_rpc_summary(cursor: summary[:next_cursor])[:data]
 check(page[:totals][:rpc_credits] == 7.5 && page[:next_cursor].nil?)
-traffic = admin.get_traffic_summary(last: "1d", group_by: ["method"])[:data][:breakdown][0]
+traffic_data = admin.get_traffic_summary(last: "1d", group_by: ["method", "endpoint"])[:data]
+traffic = traffic_data[:breakdown][0]
 check(traffic.key?(:successful_requests) && traffic[:successful_requests].nil?)
-check(traffic.key?(:method) && traffic[:method].nil? && !traffic.key?(:endpoint))
-check(admin.list_transactions(last: "1d")[:data][:transactions][0][:height] == "9007199254740993")
+check(traffic.key?(:method) && traffic[:method].nil?)
+errors = admin.get_errors_summary(last: "1d", group_by: ["endpoint"], endpoints: [4123, 4124])[:data]
+[summary, traffic_data, errors].each do |response|
+  rows = response[:breakdown]
+  check(rows[0][:endpoint] == 4123)
+  check(rows[1].key?(:endpoint) && rows[1][:endpoint].nil?)
+  check(!rows[2].key?(:endpoint))
+end
+rows = admin.list_transactions(last: "1d", endpoints: [4123, 4124])[:data][:transactions]
+check(rows[0][:height] == "9007199254740993")
+check(rows[0][:endpoint_ids] == [4123, nil, 4124])
 absent = admin.get_transaction(network: "ethereum-mainnet", hash: "hash", include_payloads: false)[:data]
 check(absent[:exists] == false && absent[:data].nil?)
 detail = admin.get_transaction(network: "ethereum-mainnet", hash: "hash", include_payloads: true)[:data][:data]
 check(detail[:height] == "9007199254740993")
+check(detail[:endpoint_ids] == [4123, nil, 4124])
+check(detail[:attempts][0][:endpoint_id] == 4123)
 check(detail[:attempts][0][:payloads][:request] == " { \"method\" : \"eth_sendRawTransaction\" }\n")
 check(detail[:attempts][0][:payloads][:response] == "plain text")
 begin

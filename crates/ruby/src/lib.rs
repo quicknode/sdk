@@ -182,6 +182,16 @@ fn hash_get_vec_i32(h: &RHash, key: &str) -> Result<Option<Vec<i32>>, Error> {
     }
 }
 
+fn hash_get_vec_i64(h: &RHash, key: &str) -> Result<Option<Vec<i64>>, Error> {
+    let r = ruby();
+    match h.get(r.to_symbol(key)) {
+        Some(v) if !v.is_nil() => Vec::<i64>::try_convert(v)
+            .map(Some)
+            .map_err(|e| Error::new(r.exception_type_error(), format!("{key}: {e}"))),
+        _ => Ok(None),
+    }
+}
+
 fn hash_get_map_string_string(
     h: &RHash,
     key: &str,
@@ -565,7 +575,7 @@ impl AdminApiClient {
             state: hash_get_string(&opts, "state")?,
             transaction_hash: hash_get_string(&opts, "transaction_hash")?,
             cursor: hash_get_string(&opts, "cursor")?,
-            endpoints: hash_get_vec_string(&opts, "endpoints")?,
+            endpoints: hash_get_vec_i64(&opts, "endpoints")?,
             limit: hash_get_i32(&opts, "limit")?,
         };
         runtime()
@@ -759,7 +769,7 @@ impl AdminApiClient {
             cursor: hash_get_string(&opts, "cursor")?,
             limit: hash_get_i32(&opts, "limit")?,
             group_by: hash_get_vec_string(&opts, "group_by")?,
-            endpoints: hash_get_vec_string(&opts, "endpoints")?,
+            endpoints: hash_get_vec_i64(&opts, "endpoints")?,
             networks: hash_get_vec_string(&opts, "networks")?,
             methods: hash_get_vec_string(&opts, "methods")?,
             codes: hash_get_vec_string(&opts, "codes")?,

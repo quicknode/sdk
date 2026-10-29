@@ -130,14 +130,14 @@ module QuicknodeSdk
     def list_activity_logs: (?q: String, ?actor: String, ?endpoint_id: String, ?target_type: String, ?from_time: String, ?to_time: String, ?limit: Integer, ?offset: Integer) -> untyped
     def list_activity_log_filters: () -> untyped
     def get_activity_log: (id: String) -> untyped
-    def list_transactions: (?last: String, ?from_time: String, ?to_time: String, ?network: String, ?method: String, ?state: String, ?transaction_hash: String, ?cursor: String, ?endpoints: Array[String], ?limit: Integer) -> untyped
+    def list_transactions: (?last: String, ?from_time: String, ?to_time: String, ?network: String, ?method: String, ?state: String, ?transaction_hash: String, ?cursor: String, ?endpoints: Array[Integer], ?limit: Integer) -> untyped
     def get_transaction: (network: String, hash: String, ?include_payloads: bool) -> untyped
     def get_usage_credits_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer) -> untyped
     def get_usage_rpc_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?endpoint_names: Array[String], ?chains: Array[String], ?networks: Array[String], ?methods: Array[String], ?tag_ids: Array[String], ?addon_ids: Array[String]) -> untyped
     def get_usage_streams_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?stream_id: String) -> untyped
     def get_usage_webhooks_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?webhook_id: String) -> untyped
     def get_traffic_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?endpoint_names: Array[String], ?chains: Array[String], ?networks: Array[String], ?methods: Array[String], ?tag_ids: Array[String], ?addon_ids: Array[String]) -> untyped
-    def get_errors_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?endpoints: Array[String], ?networks: Array[String], ?methods: Array[String], ?codes: Array[String], ?status_codes: Array[String], ?kind: String) -> untyped
+    def get_errors_summary: (?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?endpoints: Array[Integer], ?networks: Array[String], ?methods: Array[String], ?codes: Array[String], ?status_codes: Array[String], ?kind: String) -> untyped
     def get_endpoint_errors_summary: (id: String, ?last: String, ?from_time: String, ?to_time: String, ?cursor: String, ?limit: Integer, ?group_by: Array[String], ?networks: Array[String], ?methods: Array[String], ?codes: Array[String], ?status_codes: Array[String], ?kind: String) -> untyped
     def create_token_with_response: (id: String) -> untyped
     def create_referrer_with_response: (id: String, referrer: String) -> untyped
