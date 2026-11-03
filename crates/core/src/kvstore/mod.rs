@@ -42,6 +42,21 @@ impl ResolvedKvStoreConfig {
         }
         Ok(Self { base_url })
     }
+
+    /// Builds an endpoint URL from path segments. Each segment is
+    /// percent-encoded, so a key or list item containing `/`, `?`, `#` or
+    /// spaces stays a single path segment instead of changing the path,
+    /// starting a query string or being cut off.
+    fn url(&self, segments: &[&str]) -> Result<reqwest::Url, SdkError> {
+        let mut url = self.base_url.clone();
+        url.path_segments_mut()
+            .map_err(|()| {
+                SdkError::Config("KV store base URL does not support path segments".into())
+            })?
+            .pop_if_empty()
+            .extend(segments);
+        Ok(url)
+    }
 }
 
 // ── Request types ──────────────────────────────────────────────────────────
@@ -403,11 +418,7 @@ impl KvStoreApiClient {
 
     /// Returns the string value stored for a single set by key.
     pub async fn get_set(&self, key: &str) -> Result<GetSetResponse, SdkError> {
-        let url = self
-            .config
-            .kvstore()
-            .base_url
-            .join(&format!("sets/{key}"))?;
+        let url = self.config.kvstore().url(&["sets", key])?;
         let resp = self
             .config
             .http_client()
@@ -447,11 +458,7 @@ impl KvStoreApiClient {
 
     /// Removes a single set by key.
     pub async fn delete_set(&self, key: &str) -> Result<(), SdkError> {
-        let url = self
-            .config
-            .kvstore()
-            .base_url
-            .join(&format!("sets/{key}"))?;
+        let url = self.config.kvstore().url(&["sets", key])?;
         let resp = self
             .config
             .http_client()
@@ -523,11 +530,7 @@ impl KvStoreApiClient {
         key: &str,
         params: &GetListParams,
     ) -> Result<GetListResponse, SdkError> {
-        let mut url = self
-            .config
-            .kvstore()
-            .base_url
-            .join(&format!("lists/{key}"))?;
+        let mut url = self.config.kvstore().url(&["lists", key])?;
         {
             let mut pairs = url.query_pairs_mut();
             if let Some(v) = params.limit {
@@ -555,11 +558,7 @@ impl KvStoreApiClient {
     /// Updates an existing list by adding and/or removing items in a single
     /// operation. Either `add_items`, `remove_items`, or both may be supplied.
     pub async fn update_list(&self, key: &str, params: &UpdateListParams) -> Result<(), SdkError> {
-        let url = self
-            .config
-            .kvstore()
-            .base_url
-            .join(&format!("lists/{key}"))?;
+        let url = self.config.kvstore().url(&["lists", key])?;
         let resp = self
             .config
             .http_client()
@@ -582,11 +581,7 @@ impl KvStoreApiClient {
         key: &str,
         params: &AddListItemParams,
     ) -> Result<(), SdkError> {
-        let url = self
-            .config
-            .kvstore()
-            .base_url
-            .join(&format!("lists/{key}/items"))?;
+        let url = self.config.kvstore().url(&["lists", key, "items"])?;
         let resp = self
             .config
             .http_client()
@@ -612,8 +607,7 @@ impl KvStoreApiClient {
         let url = self
             .config
             .kvstore()
-            .base_url
-            .join(&format!("lists/{key}/contains/{item}"))?;
+            .url(&["lists", key, "contains", item])?;
         let resp = self
             .config
             .http_client()
@@ -633,11 +627,7 @@ impl KvStoreApiClient {
 
     /// Removes a specific item from the list identified by `key`.
     pub async fn delete_list_item(&self, key: &str, item: &str) -> Result<(), SdkError> {
-        let url = self
-            .config
-            .kvstore()
-            .base_url
-            .join(&format!("lists/{key}/items/{item}"))?;
+        let url = self.config.kvstore().url(&["lists", key, "items", item])?;
         let resp = self
             .config
             .http_client()
@@ -655,11 +645,7 @@ impl KvStoreApiClient {
 
     /// Removes a list and all of its items by key.
     pub async fn delete_list(&self, key: &str) -> Result<(), SdkError> {
-        let url = self
-            .config
-            .kvstore()
-            .base_url
-            .join(&format!("lists/{key}"))?;
+        let url = self.config.kvstore().url(&["lists", key])?;
         let resp = self
             .config
             .http_client()
@@ -850,6 +836,23 @@ mod tests {
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
         let resp = sdk.kvstore.get_set("my-key").await.unwrap();
+        assert_eq!(resp.value, "my-value");
+    }
+
+    #[tokio::test]
+    async fn get_set_key_is_one_encoded_path_segment() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/sets/user:1%2Fprofile%3Fv=2"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"data": {"value": "my-value"}})),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.kvstore.get_set("user:1/profile?v=2").await.unwrap();
         assert_eq!(resp.value, "my-value");
     }
 
@@ -1402,6 +1405,29 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn list_contains_item_encodes_key_and_item() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path(
+                "/lists/my%20list/contains/https:%2F%2Fexample.com%2Fa%3Fb=1%23top",
+            ))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"data": {"exists": true}})),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk
+            .kvstore
+            .list_contains_item("my list", "https://example.com/a?b=1#top")
+            .await
+            .unwrap();
+        assert!(resp.exists);
+    }
+
+    #[tokio::test]
     async fn list_contains_item_not_found() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
@@ -1449,6 +1475,25 @@ mod tests {
         let sdk = make_sdk(format!("{}/", server.uri()));
         sdk.kvstore
             .delete_list_item("my-list", "item1")
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn delete_list_item_cannot_escape_the_list() {
+        let server = MockServer::start().await;
+        Mock::given(method("DELETE"))
+            .and(path("/lists/my-list/items/..%2F..%2Fsets%2Fsecret"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"code": 0, "msg": "ok", "data": null})),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        sdk.kvstore
+            .delete_list_item("my-list", "../../sets/secret")
             .await
             .unwrap();
     }
