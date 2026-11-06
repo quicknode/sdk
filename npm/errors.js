@@ -107,7 +107,10 @@ function fromNapiError(err) {
   // embed the body in msg, so scanning for the first separator is unsafe.
   let msg = rest;
   let body = "";
-  if (bodyLenStr !== "-") {
+  if (bodyLenStr === "-") {
+    // Rust also appends the framing separator when there is no body.
+    if (msg.endsWith("\x1f")) msg = msg.slice(0, -1);
+  } else {
     const bodyLen = Number(bodyLenStr);
     const bodyBytes = Buffer.from(rest, "utf8");
     const bodyStart = bodyBytes.length - bodyLen;
