@@ -1,7 +1,68 @@
 const assert = require("node:assert");
-const sdk = require("./sdk.js");
+const errors = require("./errors.js");
+
+async function testErrorMessages() {
+  const bodylessKinds = [
+    ["Config", errors.ConfigError, errors.QuicknodeError],
+    ["Http", errors.HttpError, errors.QuicknodeError],
+    ["Timeout", errors.TimeoutError, errors.HttpError],
+    ["Connect", errors.ConnectionError, errors.HttpError],
+    ["PaymentUnsupported", errors.PaymentUnsupportedError, errors.PaymentError],
+    ["PaymentIndeterminate", errors.PaymentIndeterminateError, errors.PaymentError],
+  ];
+  for (const [kind, ErrorClass, BaseClass] of bodylessKinds) {
+    for (const message of ["request failed", "", "café 🙂", "embedded\x1fmarker", "trailing\x1f\x1f"]) {
+      const error = errors.fromNapiError(new Error(`[${kind}|-|-]${message}\x1f`));
+      assert(error instanceof ErrorClass);
+      assert(error instanceof BaseClass);
+      assert.strictEqual(error.message, message, `${kind} message`);
+    }
+    const legacy = errors.fromNapiError(new Error(`[${kind}|-|-]legacy message`));
+    assert.strictEqual(legacy.message, "legacy message");
+  }
+
+  // Body lengths count UTF-8 bytes, and the separator can also occur in data.
+  for (const body of ["", "café 🙂\x1fbody"]) {
+    const message = "response\x1fmessage";
+    for (const [kind, status, ErrorClass] of [
+      ["Api", 400, errors.ApiError],
+      ["Decode", "-", errors.DecodeError],
+      ["PaymentRejected", 402, errors.PaymentRejectedError],
+    ]) {
+      const error = errors.fromNapiError(new Error(
+        `[${kind}|${status}|${Buffer.byteLength(body)}]${message}\x1f${body}`,
+      ));
+      assert(error instanceof ErrorClass);
+      assert.strictEqual(error.message, message);
+      assert.strictEqual(error.body, body);
+      if (kind !== "Decode") assert.strictEqual(error.status, status);
+    }
+  }
+
+  const rpcMessage = "RPC café 🙂\x1fmessage";
+  const rpc = errors.fromNapiError(new Error(
+    `[Rpc|-32600|${Buffer.byteLength(rpcMessage)}]RPC failed\x1f${rpcMessage}`,
+  ));
+  assert(rpc instanceof errors.RpcError);
+  assert.strictEqual(rpc.message, rpcMessage);
+  assert.strictEqual(rpc.code, -32600);
+
+  const untagged = new Error("ordinary error\x1f");
+  assert.strictEqual(errors.fromNapiError(untagged), untagged);
+  assert.strictEqual(errors.fromNapiError("ordinary rejection"), "ordinary rejection");
+
+  const client = errors.wrapClient({
+    sync() { throw new Error("[Config|-|-]invalid config\x1f"); },
+    async async() { throw new Error("[Timeout|-|-]request timed out\x1f"); },
+  });
+  assert.throws(() => client.sync(), (e) => e instanceof errors.ConfigError && e.message === "invalid config");
+  await assert.rejects(() => client.async(), (e) => e instanceof errors.TimeoutError && e.message === "request timed out");
+  console.log("node error messages OK");
+}
 
 async function main() {
+  await testErrorMessages();
+  const sdk = require("./sdk.js");
   // Payment errors preserve the expected hierarchy.
   assert(sdk.PaymentError.prototype instanceof sdk.QuicknodeError);
   assert(sdk.PaymentUnsupportedError.prototype instanceof sdk.PaymentError);
@@ -65,7 +126,11 @@ async function main() {
   return true;
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+module.exports = { testErrorMessages };
+
+if (require.main === module) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
