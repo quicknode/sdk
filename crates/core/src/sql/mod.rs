@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 use crate::{config::SqlConfig, errors::SdkError, SdkConfig};
 
 const SQL_BASE_URL: &str = "https://api.quicknode.com/sql/rest/v1/";
+/// Public catalog + x402 drawdown SQL host. Callers that want this prefix set
+/// it on [`SqlConfig::base_url`]; the account host above is the default.
+pub const X402_SQL_BASE_URL: &str = "https://x402.quicknode.com/sql/rest/v1/";
 
 // ── Resolved config ────────────────────────────────────────────────────────
 
@@ -30,6 +33,40 @@ impl ResolvedSqlConfig {
         }
         Ok(Self { base_url })
     }
+}
+
+// ── Catalog types ──────────────────────────────────────────────────────────
+
+/// One cluster from `GET /sql/rest/v1/clusters`.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SqlCluster {
+    /// Cluster identifier (e.g. `"hyperliquid-core-mainnet"`).
+    pub id: String,
+    /// Human-readable name (e.g. `"Hyperliquid (HyperCore)"`).
+    pub display_name: String,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl SqlCluster {
+    #[new]
+    pub fn new(id: String, display_name: String) -> Self {
+        Self { id, display_name }
+    }
+}
+
+/// A successful MPP-session SQL query plus the receipt's accepted cumulative
+/// spend. The caller persists `accepted_cumulative` on the channel; do not
+/// advance the channel by `query.credits` (SQL credits ≠ voucher increment).
+#[cfg(feature = "payments-tempo")]
+#[derive(Debug, Clone)]
+pub struct MppQueryResult {
+    pub query: QueryResponse,
+    pub accepted_cumulative: u128,
 }
 
 // ── Request types ──────────────────────────────────────────────────────────
@@ -264,6 +301,91 @@ impl SqlApiClient {
         serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
+    /// Lists clusters from the public SQL catalog (`GET clusters`). Always
+    /// unauthenticated: uses the keyless client so an `x-api-key` is never
+    /// sent, even when the SDK was built with one.
+    pub async fn list_clusters(&self) -> Result<Vec<SqlCluster>, SdkError> {
+        let url = self.config.sql().base_url.join("clusters")?;
+        let resp = self
+            .config
+            .rpc_http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Executes a SQL query against the x402 drawdown host with a SIWX session
+    /// JWT (`Authorization: Bearer`). Single attempt; 401/403 stay
+    /// [`SdkError::Api`] so the caller can re-auth on `token_expired`. A 402
+    /// `requires_payment` is also [`SdkError::Api`] — this lane never signs a
+    /// per-request payment.
+    #[cfg(feature = "payments")]
+    pub async fn query_with_session(
+        &self,
+        params: &QueryParams,
+        session: &crate::rpc::payment::drawdown::GatewaySession,
+    ) -> Result<QueryResponse, SdkError> {
+        let url = self.config.sql().base_url.join("query")?;
+        let resp = self
+            .config
+            .rpc_http_client()
+            .post(url)
+            .bearer_auth(&session.token)
+            .json(params)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
+    }
+
+    /// Executes a SQL query on the MPP session route
+    /// (`POST {mpp}/session/sql/rest/v1/query`) with a cumulative voucher.
+    /// The increment is the SQL challenge `amount`, not
+    /// [`crate::rpc::payment::session::ChannelState::per_call`]. A 402
+    /// insufficient-balance is terminal — this method does not sign a smaller
+    /// increment.
+    ///
+    /// Advances `channel.cumulative_spent` whenever the voucher reached the
+    /// gateway, errors included. Persist `channel` on every outcome, not only
+    /// after a 200, or a later query re-signs a cumulative the gateway refuses.
+    #[cfg(feature = "payments-tempo")]
+    pub async fn query_with_mpp_session(
+        &self,
+        params: &QueryParams,
+        payment: &crate::config::PaymentConfig,
+        channel: &mut crate::rpc::payment::session::ChannelState,
+    ) -> Result<MppQueryResult, SdkError> {
+        let resolved = crate::rpc::payment::ResolvedPayment::from_config(payment)?;
+        let body = serde_json::to_value(params).map_err(|e| {
+            SdkError::Config(format!("could not serialize the SQL query body: {e}"))
+        })?;
+        let (text, accepted_cumulative) = crate::rpc::payment::session::sql_voucher_call(
+            self.config.rpc_http_client(),
+            &resolved,
+            channel,
+            &body,
+        )
+        .await?;
+        let query = serde_json::from_str(&text)
+            .map_err(|source| SdkError::Decode { source, body: text })?;
+        Ok(MppQueryResult {
+            query,
+            accepted_cumulative,
+        })
+    }
+
     /// Fetches the database schema for a cluster, including table names,
     /// columns, types, sort keys, and partition strategies.
     pub async fn get_schema(&self, cluster_id: &str) -> Result<ChainSchema, SdkError> {
@@ -463,5 +585,361 @@ mod tests {
         let sdk = make_sdk(format!("{}/", server.uri()));
         let err = sdk.sql.get_schema("bad-cluster").await.unwrap_err();
         assert!(matches!(err, SdkError::Api { .. }));
+    }
+
+    // ── list_clusters ────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn list_clusters_decodes_id_and_display_name() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/clusters"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {"id": "hyperliquid-core-mainnet", "display_name": "Hyperliquid (HyperCore)"},
+                {"id": "solana-mainnet", "display_name": "Solana"}
+            ])))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let clusters = sdk.sql.list_clusters().await.unwrap();
+        assert_eq!(clusters.len(), 2);
+        assert_eq!(clusters[0].id, "hyperliquid-core-mainnet");
+        assert_eq!(clusters[0].display_name, "Hyperliquid (HyperCore)");
+        assert_eq!(clusters[1].id, "solana-mainnet");
+        assert_eq!(clusters[1].display_name, "Solana");
+    }
+
+    // ── query_with_session ───────────────────────────────────────────────────
+
+    #[cfg(feature = "payments")]
+    fn session() -> crate::rpc::payment::drawdown::GatewaySession {
+        crate::rpc::payment::drawdown::GatewaySession {
+            token: "jwt-abc".into(),
+            exp_unix: 4_102_444_800,
+            account_id: "a".into(),
+        }
+    }
+
+    #[cfg(feature = "payments")]
+    fn ok_query_body() -> serde_json::Value {
+        serde_json::json!({
+            "meta": [{"name": "1", "type": "UInt8"}],
+            "data": [{"1": 1}],
+            "rows": 1,
+            "rows_before_limit_at_least": 1,
+            "statistics": {"elapsed": 0.001, "rows_read": 1, "bytes_read": 1},
+            "credits": 117
+        })
+    }
+
+    #[cfg(feature = "payments")]
+    #[tokio::test]
+    async fn query_with_session_attaches_bearer_and_no_api_key() {
+        use wiremock::matchers::header;
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/query"))
+            .and(header("authorization", "Bearer jwt-abc"))
+            .and(|req: &wiremock::Request| !req.headers.contains_key("x-api-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(ok_query_body()))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk
+            .sql
+            .query_with_session(&query_params(), &session())
+            .await
+            .unwrap();
+        assert_eq!(resp.credits, 117);
+        assert_eq!(resp.rows, 1);
+    }
+
+    #[cfg(feature = "payments")]
+    #[tokio::test]
+    async fn query_with_session_402_requires_payment_does_not_sign() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/query"))
+            .respond_with(ResponseTemplate::new(402).set_body_json(serde_json::json!({
+                "error": "requires_payment",
+                "message": "SIWX drawdown required"
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk
+            .sql
+            .query_with_session(&query_params(), &session())
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, SdkError::Api { status, body }
+                if status.as_u16() == 402 && body.contains("requires_payment")),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    // ── query_with_mpp_session ───────────────────────────────────────────────
+
+    #[cfg(feature = "payments-tempo")]
+    fn tempo_payment(base: &str) -> crate::config::PaymentConfig {
+        crate::config::PaymentConfig {
+            scheme: "mpp".into(),
+            key: "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80".into(),
+            pay_network: "eip155:42431".into(),
+            asset: "0x20c0000000000000000000000000000000000000".into(),
+            max_amount: "1000000".into(),
+            svm_rpc_url: None,
+            base_url_override: Some(base.to_string()),
+        }
+    }
+
+    #[cfg(feature = "payments-tempo")]
+    fn sample_channel() -> crate::rpc::payment::session::ChannelState {
+        crate::rpc::payment::session::ChannelState {
+            channel_id: format!("0x{}", "11".repeat(32)),
+            token: "0x20c0000000000000000000000000000000000000".into(),
+            payee: "0xfd24114c3981aba78ae2441991b1bdb89329c556".into(),
+            salt: format!("0x{}", "22".repeat(32)),
+            authorized_signer: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266".into(),
+            escrow_contract: "0x33b901018174DDabE4841042ab76ba85D4e24f25".into(),
+            deposit: 1_000_000,
+            cumulative_spent: 10,
+            per_call: 10,
+            chain_id: 42431,
+        }
+    }
+
+    #[cfg(feature = "payments-tempo")]
+    fn sql_session_offer(amount: &str) -> String {
+        let request = {
+            use base64::Engine;
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(
+                serde_json::to_vec(&serde_json::json!({
+                    "amount": amount,
+                    "currency": "0x20c0000000000000000000000000000000000000",
+                    "recipient": "0xfd24114c3981aba78ae2441991b1bdb89329c556",
+                    "methodDetails": {
+                        "chainId": 42431,
+                        "escrowContract": "0x33b901018174DDabE4841042ab76ba85D4e24f25"
+                    }
+                }))
+                .unwrap(),
+            )
+        };
+        format!(
+            "Payment id=\"sql1\", realm=\"mpp.quicknode.com\", method=\"tempo\", \
+             intent=\"session\", description=\"d\", expires=\"2099-01-01T00:00:00Z\", \
+             request=\"{request}\""
+        )
+    }
+
+    #[cfg(feature = "payments-tempo")]
+    fn receipt_header(accepted: &str) -> String {
+        use base64::Engine;
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(
+            serde_json::to_vec(&serde_json::json!({
+                "acceptedCumulative": accepted,
+                "spent": accepted,
+                "status": "success",
+                "intent": "session",
+                "method": "tempo",
+            }))
+            .unwrap(),
+        )
+    }
+
+    #[cfg(feature = "payments-tempo")]
+    #[tokio::test]
+    async fn query_with_mpp_session_uses_challenge_amount_not_per_call() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use wiremock::{Request, Respond};
+
+        struct SqlSeq {
+            calls: AtomicUsize,
+        }
+        impl Respond for SqlSeq {
+            fn respond(&self, req: &Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n == 0 && !req.headers.contains_key("authorization") {
+                    return ResponseTemplate::new(402)
+                        .insert_header("www-authenticate", sql_session_offer("100"));
+                }
+                // Decode the voucher increment. increment 10 (per_call) is
+                // insufficient; increment 100 (challenge amount) is accepted.
+                let auth = req
+                    .headers
+                    .get("authorization")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("");
+                let b64 = auth.strip_prefix("Payment ").unwrap_or(auth);
+                let cred: serde_json::Value = {
+                    use base64::Engine;
+                    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+                        .decode(b64.trim_end_matches('='))
+                        .unwrap();
+                    serde_json::from_slice(&bytes).unwrap()
+                };
+                let cumulative = cred["payload"]["cumulativeAmount"]
+                    .as_str()
+                    .unwrap()
+                    .parse::<u128>()
+                    .unwrap();
+                // channel.cumulative_spent is 10; per_call would yield 20.
+                if cumulative == 20 {
+                    return ResponseTemplate::new(402).set_body_json(serde_json::json!({
+                        "title": "Insufficient Balance",
+                        "detail": "Insufficient balance: requested 100, available 10."
+                    }));
+                }
+                assert_eq!(cumulative, 110, "expected challenge increment 100");
+                ResponseTemplate::new(200)
+                    .insert_header("payment-receipt", receipt_header("110").as_str())
+                    .set_body_json(ok_query_body())
+            }
+        }
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/session/sql/rest/v1/query"))
+            .respond_with(SqlSeq {
+                calls: AtomicUsize::new(0),
+            })
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let mut channel = sample_channel();
+        let result = sdk
+            .sql
+            .query_with_mpp_session(&query_params(), &tempo_payment(&server.uri()), &mut channel)
+            .await
+            .unwrap();
+        assert_eq!(result.query.credits, 117);
+        assert_eq!(result.accepted_cumulative, 110);
+        assert_eq!(channel.cumulative_spent, 110);
+    }
+
+    #[cfg(feature = "payments-tempo")]
+    #[tokio::test]
+    async fn query_with_mpp_session_insufficient_balance_does_not_resign() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use wiremock::{Request, Respond};
+
+        struct OnceThenRefuse {
+            calls: AtomicUsize,
+        }
+        impl Respond for OnceThenRefuse {
+            fn respond(&self, req: &Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n == 0 && !req.headers.contains_key("authorization") {
+                    return ResponseTemplate::new(402)
+                        .insert_header("www-authenticate", sql_session_offer("100"));
+                }
+                ResponseTemplate::new(402).set_body_json(serde_json::json!({
+                    "title": "Insufficient Balance",
+                    "detail": "Insufficient balance: requested 100, available 10."
+                }))
+            }
+        }
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/session/sql/rest/v1/query"))
+            .respond_with(OnceThenRefuse {
+                calls: AtomicUsize::new(0),
+            })
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let mut channel = sample_channel();
+        let err = sdk
+            .sql
+            .query_with_mpp_session(&query_params(), &tempo_payment(&server.uri()), &mut channel)
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, SdkError::Api { status, body }
+                if status.as_u16() == 402 && body.contains("Insufficient")),
+            "unexpected error: {err:?}"
+        );
+        // Advances despite the failure: no receipt, so the signed value stands.
+        assert_eq!(channel.cumulative_spent, 110);
+    }
+
+    #[cfg(feature = "payments-tempo")]
+    #[tokio::test]
+    async fn query_with_mpp_session_advances_channel_from_receipt_on_error() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use wiremock::{Request, Respond};
+
+        struct ChallengeThenServerError {
+            calls: AtomicUsize,
+        }
+        impl Respond for ChallengeThenServerError {
+            fn respond(&self, req: &Request) -> ResponseTemplate {
+                let n = self.calls.fetch_add(1, Ordering::SeqCst);
+                if n == 0 && !req.headers.contains_key("authorization") {
+                    return ResponseTemplate::new(402)
+                        .insert_header("www-authenticate", sql_session_offer("100"));
+                }
+                // Voucher banked, query body failed.
+                ResponseTemplate::new(500)
+                    .insert_header("payment-receipt", receipt_header("110").as_str())
+                    .set_body_string("query engine unavailable")
+            }
+        }
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/session/sql/rest/v1/query"))
+            .respond_with(ChallengeThenServerError {
+                calls: AtomicUsize::new(0),
+            })
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let mut channel = sample_channel();
+        let err = sdk
+            .sql
+            .query_with_mpp_session(&query_params(), &tempo_payment(&server.uri()), &mut channel)
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, SdkError::Api { status, .. } if status.as_u16() == 500),
+            "unexpected error: {err:?}"
+        );
+        assert_eq!(channel.cumulative_spent, 110);
+    }
+
+    #[cfg(feature = "payments-tempo")]
+    #[tokio::test]
+    async fn query_with_mpp_session_leaves_channel_alone_when_never_sent() {
+        // Nothing listening: the probe cannot connect, so no voucher is signed.
+        let sdk = make_sdk("http://127.0.0.1:1/".to_string());
+        let mut channel = sample_channel();
+        let before = channel.cumulative_spent;
+        let err = sdk
+            .sql
+            .query_with_mpp_session(
+                &query_params(),
+                &tempo_payment("http://127.0.0.1:1"),
+                &mut channel,
+            )
+            .await
+            .unwrap_err();
+        assert!(
+            !matches!(err, SdkError::PaymentIndeterminate),
+            "a failed probe must not read as an indeterminate payment: {err:?}"
+        );
+        assert_eq!(channel.cumulative_spent, before);
     }
 }
