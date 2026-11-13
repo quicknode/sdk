@@ -1856,7 +1856,7 @@ Executes a SQL query against a cluster and returns the result set. Paginate by w
 
 **Parameters**: `query` (str, required), `cluster_id` (str, required).
 
-**Returns**: `QueryResponse` — `meta` (list of `ColumnMeta`, each with `name` and `column_type`), `data` (`list[dict]`, rows keyed by column name), `rows`, `rows_before_limit_at_least`, `statistics` (`QueryStatistics` with `elapsed`, `rows_read`, `bytes_read`), and `credits`.
+**Returns**: `QueryResponse` — `meta` (list of `ColumnMeta`, each with `name` and `column_type`), `data` (`list[dict]`, rows keyed by column name), `rows`, `rows_before_limit_at_least`, `statistics` (`QueryStatistics` with `elapsed`, `rows_read`, `bytes_read`), and `credits` (optional).
 
 ```python
 # Python

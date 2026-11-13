@@ -154,7 +154,7 @@ pub struct QueryResponse {
     /// Query execution statistics.
     pub statistics: QueryStatistics,
     /// Credits consumed by the query.
-    pub credits: i64,
+    pub credits: Option<i64>,
 }
 
 // ── Schema response types ──────────────────────────────────────────────────
@@ -441,7 +441,7 @@ mod tests {
         let resp = sdk.sql.query(&query_params()).await.unwrap();
         assert_eq!(resp.rows, 2);
         assert_eq!(resp.rows_before_limit_at_least, 18251);
-        assert_eq!(resp.credits, 135);
+        assert_eq!(resp.credits, Some(135));
         assert_eq!(resp.meta.len(), 2);
         assert_eq!(resp.meta[0].name, "time");
         assert_eq!(resp.statistics.rows_read, 31341);
@@ -473,6 +473,26 @@ mod tests {
             .await;
         let sdk = make_sdk(format!("{}/", server.uri()));
         sdk.sql.query(&query_params()).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn query_without_credits() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/query"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "meta": [{"name": "1", "type": "UInt8"}],
+                "data": [{"1": 1}],
+                "rows": 1,
+                "rows_before_limit_at_least": 1,
+                "statistics": {"elapsed": 0.001, "rows_read": 1, "bytes_read": 1}
+            })))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let resp = sdk.sql.query(&query_params()).await.unwrap();
+        assert_eq!(resp.rows, 1);
+        assert_eq!(resp.credits, None);
     }
 
     #[tokio::test]

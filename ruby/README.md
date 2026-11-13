@@ -1869,7 +1869,7 @@ Executes a SQL query against a cluster and returns the result set. Paginate by w
 
 **Parameters** (Hash): `query:` (String, required), `cluster_id:` (String, required).
 
-**Returns** a Hash with `meta` (column metadata, each with `name` and `type`), `data` (rows as Hashes keyed by column name), `rows`, `rows_before_limit_at_least`, `statistics` (`elapsed`, `rows_read`, `bytes_read`), and `credits`. Access with `[]` or `dig`.
+**Returns** a Hash with `meta` (column metadata, each with `name` and `type`), `data` (rows as Hashes keyed by column name), `rows`, `rows_before_limit_at_least`, `statistics` (`elapsed`, `rows_read`, `bytes_read`), and `credits` (may be `nil`). Access with `[]` or `dig`.
 
 ```ruby
 # Ruby

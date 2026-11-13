@@ -21,7 +21,7 @@ pub struct PyQueryResponse {
     #[pyo3(get)]
     pub statistics: QueryStatistics,
     #[pyo3(get)]
-    pub credits: i64,
+    pub credits: Option<i64>,
 }
 
 impl PyQueryResponse {
