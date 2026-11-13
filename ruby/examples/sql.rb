@@ -4,6 +4,12 @@ CLUSTER_ID = "hyperliquid-core-mainnet"
 
 qn = QuicknodeSdk::SDK.from_env
 
+# Clusters
+clusters = qn.sql.list_clusters
+puts "clusters: #{clusters.map { |c| c[:id] }.join(', ')}"
+raise "every cluster must have an id and a display_name" unless clusters.all? { |c| c[:id] && c[:display_name] }
+raise "#{CLUSTER_ID} not in cluster list" unless clusters.any? { |c| c[:id] == CLUSTER_ID }
+
 # Query
 resp = qn.sql.query(
   query: "SELECT toDateTime(block_time) AS time, action_type, user " \

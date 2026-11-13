@@ -2337,6 +2337,17 @@ export interface SolanaWalletFilterTemplate {
   accounts: Array<string>
 }
 
+/** A cluster that SQL queries can target, as returned by `list_clusters`. */
+export interface SqlCluster {
+  /**
+   * Cluster identifier (e.g. `"hyperliquid-core-mainnet"`); pass it as
+   * `cluster_id` to `query` and `get_schema`.
+   */
+  id: string
+  /** Human-readable name (e.g. `"Hyperliquid (HyperCore)"`). */
+  displayName: string
+}
+
 export interface SqlConfig {
   baseUrl?: string
 }
@@ -3647,8 +3658,9 @@ export declare class RpcApiClient {
   gatewayBuyCredits(session: any, network: string): Promise<any>
   /**
    * Requests testnet tokens from the x402 faucet. Resolves to the funding
-   * transaction `{ accountId, transactionHash }` — NOT a balance; call
-   * `gatewayCredits` afterwards for that. Allowed once per account.
+   * transfer metadata containing either `transferId` or `transactionHash`.
+   * The former is asynchronous Circle settlement; the latter is a direct
+   * on-chain transfer. This is not a balance; call `gatewayCredits` for that.
    */
   gatewayDrip(session: any): Promise<any>
   /**
@@ -3698,6 +3710,8 @@ export declare class RpcApiClient {
 }
 
 export declare class SqlApiClient {
+  /** Lists the clusters available to query. */
+  listClusters(): Promise<Array<SqlCluster>>
   /** Executes a SQL query against the given cluster and returns the result set. */
   query(query: string, clusterId: string): Promise<QueryResponseNode>
   /**

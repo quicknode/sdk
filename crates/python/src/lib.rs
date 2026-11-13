@@ -3349,6 +3349,17 @@ pub struct SqlApiClient {
 #[gen_stub_pymethods]
 #[pymethods]
 impl SqlApiClient {
+    /// Lists the clusters available to query.
+    #[gen_stub(override_return_type(
+        type_repr = "typing.Coroutine[typing.Any, typing.Any, list[SqlCluster]]"
+    ))]
+    fn list_clusters<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        let client = self.inner.clone();
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            client.list_clusters().await.map_err(errors::map_sdk_err)
+        })
+    }
+
     /// Executes a SQL query against the given cluster and returns the result
     /// set.
     #[pyo3(signature = (query, cluster_id))]
@@ -4230,6 +4241,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<core::kvstore::ListContainsItemResponse>()?;
     // sql
     m.add_class::<SqlApiClient>()?;
+    m.add_class::<core::sql::SqlCluster>()?;
     m.add_class::<sql::PyQueryResponse>()?;
     m.add_class::<core::sql::ColumnMeta>()?;
     m.add_class::<core::sql::QueryStatistics>()?;

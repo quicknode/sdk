@@ -5,6 +5,16 @@ const CLUSTER_ID = "hyperliquid-core-mainnet";
 async function main() {
   const qn = QuicknodeSdk.fromEnv();
 
+  // Clusters
+  const clusters = await qn.sql.listClusters();
+  console.log(`clusters: ${clusters.map((c) => c.id).join(", ")}`);
+  if (!clusters.every((c) => c.id && c.displayName)) {
+    throw new Error("every cluster must have an id and a displayName");
+  }
+  if (!clusters.some((c) => c.id === CLUSTER_ID)) {
+    throw new Error(`${CLUSTER_ID} not in cluster list`);
+  }
+
   // Query
   const resp = await qn.sql.query(
     "SELECT toDateTime(block_time) AS time, action_type, user " +

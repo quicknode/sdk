@@ -2494,6 +2494,14 @@ pub struct SqlApiClient {
 
 #[allow(clippy::needless_pass_by_value)]
 impl SqlApiClient {
+    fn list_clusters(&self) -> Result<magnus::Value, Error> {
+        let client = self.inner.clone();
+        runtime()
+            .block_on(client.list_clusters())
+            .map_err(map_err)
+            .and_then(to_ruby)
+    }
+
     fn query(&self, opts: RHash) -> Result<magnus::Value, Error> {
         validate_keys(&opts, &["query", "cluster_id"])?;
         let client = self.inner.clone();
@@ -3341,6 +3349,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
 
     // ── Sql ───────────────────────────────────────────────────
     let sql = native.define_class("Sql", ruby.class_object())?;
+    sql.define_method("list_clusters", method!(SqlApiClient::list_clusters, 0))?;
     sql.define_method("query", method!(SqlApiClient::query, 1))?;
     sql.define_method("get_schema", method!(SqlApiClient::get_schema, 1))?;
 

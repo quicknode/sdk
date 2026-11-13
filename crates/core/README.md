@@ -1998,7 +1998,21 @@ qn.kvstore.delete_list("my-list").await?;
 
 ### SQL Client
 
-Accessed as `qn.sql`. Runs SQL queries against indexed blockchain data and fetches the database schema. Backed by `https://api.quicknode.com/sql/rest/v1/`.
+Accessed as `qn.sql`. Lists the available clusters, runs SQL queries against indexed blockchain data, and fetches the database schema. Backed by `https://api.quicknode.com/sql/rest/v1/`.
+
+##### `list_clusters`
+
+Lists the clusters available to query. Pass a cluster's `id` as the `cluster_id` for `query` and `get_schema`.
+
+**Parameters**: none.
+
+**Returns**: `Vec<SqlCluster>`, each with `id` and `display_name`.
+
+```rust
+// Rust
+let clusters = qn.sql.list_clusters().await?;
+println!("{:?}", clusters.iter().map(|c| &c.id).collect::<Vec<_>>());
+```
 
 ##### `query`
 
