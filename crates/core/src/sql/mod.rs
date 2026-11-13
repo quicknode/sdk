@@ -32,6 +32,31 @@ impl ResolvedSqlConfig {
     }
 }
 
+// ── Catalog types ──────────────────────────────────────────────────────────
+
+/// A cluster that SQL queries can target, as returned by `list_clusters`.
+#[cfg_attr(feature = "python", gen_stub_pyclass)]
+#[cfg_attr(feature = "python", pyclass(get_all, set_all))]
+#[cfg_attr(feature = "node", napi(object))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SqlCluster {
+    /// Cluster identifier (e.g. `"hyperliquid-core-mainnet"`); pass it as
+    /// `cluster_id` to `query` and `get_schema`.
+    pub id: String,
+    /// Human-readable name (e.g. `"Hyperliquid (HyperCore)"`).
+    pub display_name: String,
+}
+
+#[cfg(feature = "python")]
+#[gen_stub_pymethods]
+#[pymethods]
+impl SqlCluster {
+    #[new]
+    pub fn new(id: String, display_name: String) -> Self {
+        Self { id, display_name }
+    }
+}
+
 // ── Request types ──────────────────────────────────────────────────────────
 
 /// Parameters for `query`.
@@ -232,8 +257,9 @@ impl ChainSchema {
 
 // ── Client ─────────────────────────────────────────────────────────────────
 
-/// Client for the Quicknode SQL Explorer. Executes SQL queries against indexed
-/// blockchain data and fetches the database schema.
+/// Client for the Quicknode SQL Explorer. Lists the available clusters,
+/// executes SQL queries against indexed blockchain data, and fetches the
+/// database schema.
 #[derive(Debug, Clone)]
 pub struct SqlApiClient {
     config: SdkConfig,
@@ -242,6 +268,27 @@ pub struct SqlApiClient {
 impl SqlApiClient {
     pub fn new(config: SdkConfig) -> Self {
         Self { config }
+    }
+
+    /// Lists the clusters available to query.
+    // The cluster catalog is public, so this uses the keyless client: the
+    // account `x-api-key` is never sent, and an SDK built without an API key
+    // can still call it.
+    pub async fn list_clusters(&self) -> Result<Vec<SqlCluster>, SdkError> {
+        let url = self.config.sql().base_url.join("clusters")?;
+        let resp = self
+            .config
+            .rpc_http_client()
+            .get(url)
+            .send()
+            .await
+            .map_err(SdkError::Http)?;
+        let status = resp.status();
+        let body = resp.text().await.map_err(SdkError::Http)?;
+        if !status.is_success() {
+            return Err(SdkError::Api { status, body });
+        }
+        serde_json::from_str(&body).map_err(|source| SdkError::Decode { source, body })
     }
 
     /// Executes a SQL query against the given cluster and returns the result
@@ -319,6 +366,57 @@ mod tests {
             query: "SELECT 1".to_string(),
             cluster_id: "hyperliquid-core-mainnet".to_string(),
         }
+    }
+
+    // ── list_clusters ────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn list_clusters_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/clusters"))
+            // The SDK under test has an API key; the public catalog request
+            // must not carry it.
+            .and(|req: &wiremock::Request| !req.headers.contains_key("x-api-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {"id": "hyperliquid-core-mainnet", "display_name": "Hyperliquid (HyperCore)"},
+                {"id": "solana-mainnet", "display_name": "Solana"}
+            ])))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let clusters = sdk.sql.list_clusters().await.unwrap();
+        assert_eq!(clusters.len(), 2);
+        assert_eq!(clusters[0].id, "hyperliquid-core-mainnet");
+        assert_eq!(clusters[0].display_name, "Hyperliquid (HyperCore)");
+        assert_eq!(clusters[1].id, "solana-mainnet");
+        assert_eq!(clusters[1].display_name, "Solana");
+    }
+
+    #[tokio::test]
+    async fn list_clusters_api_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/clusters"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk.sql.list_clusters().await.unwrap_err();
+        assert!(matches!(err, SdkError::Api { .. }));
+    }
+
+    #[tokio::test]
+    async fn list_clusters_decode_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/clusters"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("not json"))
+            .mount(&server)
+            .await;
+        let sdk = make_sdk(format!("{}/", server.uri()));
+        let err = sdk.sql.list_clusters().await.unwrap_err();
+        assert!(matches!(err, SdkError::Decode { .. }));
     }
 
     // ── query ──────────────────────────────────────────────────────────────

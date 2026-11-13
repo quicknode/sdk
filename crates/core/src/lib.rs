@@ -56,7 +56,7 @@ pub use rpc::{
 pub use rpc::{ChannelState, ChannelStatus};
 pub use sql::{
     ChainSchema, ColumnMeta, ColumnSchema, QueryParams, QueryResponse, QueryStatistics,
-    SqlApiClient, TableSchema,
+    SqlApiClient, SqlCluster, TableSchema,
 };
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
@@ -285,8 +285,9 @@ pub struct QuicknodeSdk {
     /// Key-Value Store client: manages sets (single values) and lists
     /// (ordered collections) under string keys.
     pub kvstore: kvstore::KvStoreApiClient,
-    /// SQL Explorer client: executes SQL queries against indexed blockchain
-    /// data and fetches the database schema.
+    /// SQL Explorer client: lists the available clusters, executes SQL
+    /// queries against indexed blockchain data, and fetches the database
+    /// schema.
     pub sql: sql::SqlApiClient,
     /// JSON-RPC client: makes on-chain calls against the account's Tooling
     /// Access endpoint using short-lived session JWTs.
