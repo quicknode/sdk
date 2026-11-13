@@ -1923,6 +1923,15 @@ pub struct SqlApiClient {
 
 #[napi]
 impl SqlApiClient {
+    /// Lists the clusters available to query.
+    #[napi]
+    pub async fn list_clusters(&self) -> Result<Vec<core::sql::SqlCluster>> {
+        self.inner
+            .list_clusters()
+            .await
+            .map_err(errors::map_sdk_err)
+    }
+
     /// Executes a SQL query against the given cluster and returns the result set.
     #[napi]
     pub async fn query(&self, query: String, cluster_id: String) -> Result<sql::QueryResponseNode> {

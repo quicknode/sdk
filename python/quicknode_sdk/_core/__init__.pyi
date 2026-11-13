@@ -234,6 +234,7 @@ __all__ = [
     "SolanaWalletFilterByListTemplate",
     "SolanaWalletFilterTemplate",
     "SqlApiClient",
+    "SqlCluster",
     "SqlConfig",
     "StellarWalletTransactionsFilterArgs",
     "StellarWalletTransactionsFilterByListArgs",
@@ -1837,7 +1838,7 @@ class CachedToken:
     A minted session JWT plus the endpoint it authenticates against and its
     wall-clock expiry. This is the unit cached by the RPC client and the unit a
     host persists between processes (e.g. the CLI's on-disk token cache).
-
+    
     `exp_unix` is the JWT `exp` claim (unix seconds), used directly so it
     survives a process restart (unlike a monotonic `Instant`).
     """
@@ -5793,7 +5794,7 @@ class HttpConfig:
     def headers(self) -> typing.Optional[builtins.dict[builtins.str, builtins.str]]:
         r"""
         Custom HTTP headers added to every outbound request.
-
+        
         **These headers OVERRIDE any SDK-managed header with the same name**,
         including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`.
         Header names are matched case-insensitively. Use this to override the
@@ -5803,7 +5804,7 @@ class HttpConfig:
     def headers(self, value: typing.Optional[builtins.dict[builtins.str, builtins.str]]) -> None:
         r"""
         Custom HTTP headers added to every outbound request.
-
+        
         **These headers OVERRIDE any SDK-managed header with the same name**,
         including `User-Agent`, `x-api-key`, `Accept`, and `Content-Type`.
         Header names are matched case-insensitively. Use this to override the
@@ -7158,7 +7159,7 @@ class PaymentConfig:
     boundary. The private `key` field stays readable to the caller, but the
     SDK's own `Debug` redacts it (below) so an SDK log line or panic can't leak
     it.
-
+    
     **Do not log your own `PaymentConfig`** — `println!("{config:?}")` on the
     derived-Debug *binding* object (napi/pyclass/hash) still shows the raw key.
     Only the SDK's internal rendering is redacted.
@@ -7665,7 +7666,7 @@ class RpcApiClient:
         and defaults to `[]`. `network` selects a chain on the multichain
         endpoint (a key in the seeded network map, e.g. `"solana-mainnet"`);
         omit for the endpoint's default network.
-
+        
         `endpoint_url` sends this call to a custom HTTP URL instead, bypassing
         the Tooling Access endpoint and the session JWT (no Authorization header
         is attached). It overrides the client-wide `RpcConfig.endpoint_url`
@@ -7724,8 +7725,8 @@ class RpcApiClient:
     def gateway_drip(self, session: typing.Any) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
         r"""
         Requests testnet tokens from the x402 faucet. Returns the funding
-        transaction as a dict `{account_id, transaction_hash}` — NOT a balance;
-        call `gateway_credits` afterwards for that. Allowed once per account.
+        transfer metadata as a dict. Circle-backed responses contain
+        `transfer_id`; direct transfers contain `transaction_hash`.
         """
     def gateway_drawdown_call(self, method: builtins.str, session: typing.Any, network: builtins.str, params: typing.Optional[typing.Any] = None) -> typing.Coroutine[typing.Any, typing.Any, typing.Any]:
         r"""
@@ -7739,7 +7740,7 @@ class RpcApiClient:
         decimal string) into the escrow. Returns the channel state dict — persist
         it; the gateway has no read-only channel endpoint, so a lost record means
         opening a new channel. Moves real funds; single-attempt.
-
+        
         Takes no network: the channel is scoped by the configured pay network and
         asset, so one channel funds calls to every supported network.
         """
@@ -7758,7 +7759,7 @@ class RpcApiClient:
         r"""
         Fetches the gateway's view of the channel as a dict `{channel_id,
         accepted_cumulative, spent}` (amounts are decimal strings).
-
+        
         **This costs one request unit** and advances the voucher by `per_call`,
         exactly like a session call — persist the advanced `cumulative_spent`.
         Raises `PaymentUnsupportedError` before any network I/O when the channel
@@ -8283,6 +8284,10 @@ class SolanaWalletFilterTemplate:
 
 @typing.final
 class SqlApiClient:
+    def list_clusters(self) -> typing.Coroutine[typing.Any, typing.Any, list[SqlCluster]]:
+        r"""
+        Lists the clusters available to query.
+        """
     def query(self, query: builtins.str, cluster_id: builtins.str) -> typing.Coroutine[typing.Any, typing.Any, QueryResponse]:
         r"""
         Executes a SQL query against the given cluster and returns the result
@@ -8293,6 +8298,35 @@ class SqlApiClient:
         Fetches the database schema for a cluster, including table names,
         columns, types, sort keys, and partition strategies.
         """
+
+@typing.final
+class SqlCluster:
+    r"""
+    A cluster that SQL queries can target, as returned by `list_clusters`.
+    """
+    @property
+    def id(self) -> builtins.str:
+        r"""
+        Cluster identifier (e.g. `"hyperliquid-core-mainnet"`); pass it as
+        `cluster_id` to `query` and `get_schema`.
+        """
+    @id.setter
+    def id(self, value: builtins.str) -> None:
+        r"""
+        Cluster identifier (e.g. `"hyperliquid-core-mainnet"`); pass it as
+        `cluster_id` to `query` and `get_schema`.
+        """
+    @property
+    def display_name(self) -> builtins.str:
+        r"""
+        Human-readable name (e.g. `"Hyperliquid (HyperCore)"`).
+        """
+    @display_name.setter
+    def display_name(self, value: builtins.str) -> None:
+        r"""
+        Human-readable name (e.g. `"Hyperliquid (HyperCore)"`).
+        """
+    def __new__(cls, id: builtins.str, display_name: builtins.str) -> SqlCluster: ...
 
 @typing.final
 class SqlConfig:

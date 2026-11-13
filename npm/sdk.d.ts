@@ -17,6 +17,7 @@ import {
   HyperliquidWalletEventsFilterTemplate,
   StellarWalletTransactionsFilterTemplate,
   RpcApiClient,
+  SqlCluster,
 } from "./index";
 
 // Stream destination attributes (input). The inner key is `attributes` rather
@@ -410,6 +411,7 @@ export type {
   // sql
   SqlConfig,
   SqlApiClient,
+  SqlCluster,
   QueryResponseNode,
   ColumnMetaNode,
   QueryStatisticsNode,
@@ -572,6 +574,7 @@ export interface QueryResult extends Omit<QueryResponseNode, "data"> {
 }
 
 export interface SqlApiClientTyped {
+  listClusters(): Promise<SqlCluster[]>;
   query(query: string, clusterId: string): Promise<QueryResult>;
   getSchema(clusterId: string): Promise<ChainSchemaNode>;
 }

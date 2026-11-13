@@ -242,6 +242,7 @@ module QuicknodeSdk
   class Sql
     def initialize: (untyped native) -> void
 
+    def list_clusters: () -> untyped
     def query: (query: String, cluster_id: String) -> untyped
     def get_schema: (cluster_id: String) -> untyped
   end
