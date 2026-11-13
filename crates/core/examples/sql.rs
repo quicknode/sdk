@@ -8,6 +8,24 @@ async fn main() {
     let config = SdkFullConfig::from_env().expect("Config from env failed");
     let qn = QuicknodeSdk::new(&config).expect("sdk failed to initialize");
 
+    // ── Clusters ──────────────────────────────────────────────────────────────
+
+    let clusters = qn.sql.list_clusters().await.expect("list_clusters failed");
+    println!(
+        "clusters: {:?}",
+        clusters.iter().map(|c| &c.id).collect::<Vec<_>>()
+    );
+    assert!(
+        clusters
+            .iter()
+            .all(|c| !c.id.is_empty() && !c.display_name.is_empty()),
+        "every cluster has an id and a display name"
+    );
+    assert!(
+        clusters.iter().any(|c| c.id == CLUSTER_ID),
+        "{CLUSTER_ID} is in the cluster list"
+    );
+
     // ── Query ─────────────────────────────────────────────────────────────────
 
     let params = QueryParams {

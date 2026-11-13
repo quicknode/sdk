@@ -7,6 +7,12 @@ CLUSTER_ID = "hyperliquid-core-mainnet"
 async def main():
     qn = QuicknodeSdk.from_env()
 
+    # Clusters
+    clusters = await qn.sql.list_clusters()
+    print(f"clusters: {[c.id for c in clusters]}")
+    assert all(c.id and c.display_name for c in clusters)
+    assert any(c.id == CLUSTER_ID for c in clusters), f"{CLUSTER_ID} not in cluster list"
+
     # Query
     resp = await qn.sql.query(
         query=(

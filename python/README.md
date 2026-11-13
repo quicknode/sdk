@@ -1834,7 +1834,21 @@ await qn.kvstore.delete_list("my-list")
 
 ### SQL Client
 
-Accessed as `qn.sql`. Runs SQL queries against indexed blockchain data and fetches the database schema. Backed by `https://api.quicknode.com/sql/rest/v1/`.
+Accessed as `qn.sql`. Lists the available clusters, runs SQL queries against indexed blockchain data, and fetches the database schema. Backed by `https://api.quicknode.com/sql/rest/v1/`.
+
+##### `list_clusters`
+
+Lists the clusters available to query. Pass a cluster's `id` as the `cluster_id` for `query` and `get_schema`. The request does not need an API key, and the SDK does not send one.
+
+**Parameters**: none.
+
+**Returns**: `list[SqlCluster]`, each with `id` and `display_name`.
+
+```python
+# Python
+clusters = await qn.sql.list_clusters()
+print([c.id for c in clusters])
+```
 
 ##### `query`
 
