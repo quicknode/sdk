@@ -1843,7 +1843,7 @@ Accessed as `qn.sql`. Lists the available clusters, runs SQL queries against ind
 
 ##### `list_clusters` / `listClusters`
 
-Lists the clusters available to query. Pass a cluster's `id` as the `cluster_id` / `clusterId` for `query` and `getSchema`. The request does not need an API key, and the SDK does not send one.
+Lists the clusters available to query. Pass a cluster's `id` as the `cluster_id` / `clusterId` for `query` and `getSchema`.
 
 **Parameters**: none.
 

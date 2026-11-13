@@ -271,14 +271,11 @@ impl SqlApiClient {
     }
 
     /// Lists the clusters available to query.
-    // The cluster catalog is public, so this uses the keyless client: the
-    // account `x-api-key` is never sent, and an SDK built without an API key
-    // can still call it.
     pub async fn list_clusters(&self) -> Result<Vec<SqlCluster>, SdkError> {
         let url = self.config.sql().base_url.join("clusters")?;
         let resp = self
             .config
-            .rpc_http_client()
+            .http_client()
             .get(url)
             .send()
             .await
@@ -342,7 +339,7 @@ impl SqlApiClient {
 mod tests {
     use super::*;
     use crate::{QuicknodeSdk, SdkFullConfig, SqlConfig};
-    use wiremock::matchers::{body_json, method, path};
+    use wiremock::matchers::{body_json, header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn make_sdk(base_url: String) -> QuicknodeSdk {
@@ -375,9 +372,7 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/clusters"))
-            // The SDK under test has an API key; the public catalog request
-            // must not carry it.
-            .and(|req: &wiremock::Request| !req.headers.contains_key("x-api-key"))
+            .and(header("x-api-key", "test-key"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
                 {"id": "hyperliquid-core-mainnet", "display_name": "Hyperliquid (HyperCore)"},
                 {"id": "solana-mainnet", "display_name": "Solana"}
