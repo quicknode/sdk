@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "quicknode_sdk"
-  s.version = "0.9.0"
+  s.version = "0.10.0"
   s.summary     = "Quicknode SDK for Ruby"
   s.authors     = ["Quicknode"]
   s.license     = "MIT"
