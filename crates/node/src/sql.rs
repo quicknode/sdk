@@ -62,7 +62,7 @@ pub struct QueryResponseNode {
     /// Query execution statistics.
     pub statistics: QueryStatisticsNode,
     /// Credits consumed by the query.
-    pub credits: i64,
+    pub credits: Option<i64>,
 }
 
 impl From<core::sql::QueryResponse> for QueryResponseNode {

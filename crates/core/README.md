@@ -2020,7 +2020,7 @@ Executes a SQL query against a cluster and returns the result set. Paginate by w
 
 **Parameters**: `QueryParams` with `query` (String, required) and `cluster_id` (String, required).
 
-**Returns**: `QueryResponse` — `meta` (`Vec<ColumnMeta>`, each with `name` and `column_type`), `data` (`Vec<serde_json::Value>`, rows as JSON objects keyed by column name), `rows`, `rows_before_limit_at_least`, `statistics` (`QueryStatistics` with `elapsed`, `rows_read`, `bytes_read`), and `credits`.
+**Returns**: `QueryResponse` — `meta` (`Vec<ColumnMeta>`, each with `name` and `column_type`), `data` (`Vec<serde_json::Value>`, rows as JSON objects keyed by column name), `rows`, `rows_before_limit_at_least`, `statistics` (`QueryStatistics` with `elapsed`, `rows_read`, `bytes_read`), and `credits` (`Option<i64>`, absent when not reported).
 
 ```rust
 // Rust

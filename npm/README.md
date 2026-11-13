@@ -1861,7 +1861,7 @@ Executes a SQL query against a cluster and returns the result set. Paginate by w
 
 **Parameters**: `query` (string, required), `cluster_id` / `clusterId` (string, required).
 
-**Returns**: a query result — `meta` (column metadata, each with `name` and `type`), `data` (rows as objects keyed by column name), `rows`, `rows_before_limit_at_least` / `rowsBeforeLimitAtLeast`, `statistics` (`elapsed`, `rows_read`/`rowsRead`, `bytes_read`/`bytesRead`), and `credits`.
+**Returns**: a query result — `meta` (column metadata, each with `name` and `type`), `data` (rows as objects keyed by column name), `rows`, `rows_before_limit_at_least` / `rowsBeforeLimitAtLeast`, `statistics` (`elapsed`, `rows_read`/`rowsRead`, `bytes_read`/`bytesRead`), and `credits` (optional).
 
 ```typescript
 // Node.js

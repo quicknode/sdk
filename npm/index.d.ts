@@ -3945,7 +3945,7 @@ export interface QueryResponseNode {
   /** Query execution statistics. */
   statistics: QueryStatisticsNode
   /** Credits consumed by the query. */
-  credits: number
+  credits?: number
 }
 
 export interface QueryStatisticsNode {

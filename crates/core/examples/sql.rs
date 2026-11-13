@@ -40,7 +40,10 @@ async fn main() {
         Ok(resp) => {
             println!(
                 "query: {} rows ({} before limit), {} credits, {:.4}s",
-                resp.rows, resp.rows_before_limit_at_least, resp.credits, resp.statistics.elapsed
+                resp.rows,
+                resp.rows_before_limit_at_least,
+                resp.credits.unwrap_or_default(),
+                resp.statistics.elapsed
             );
             println!(
                 "columns: {:?}",
